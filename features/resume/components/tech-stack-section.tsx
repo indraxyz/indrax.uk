@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionHeader } from "@/features/resume/components/section-header"
-import { personalInfo, techStacks } from "@/features/resume/data/resume"
+import { techStacks } from "@/features/resume/data/resume"
 import { Code } from "lucide-react"
 
 const groupedStacks = techStacks.reduce(
@@ -15,8 +15,24 @@ const groupedStacks = techStacks.reduce(
   {} as Record<string, typeof techStacks>
 )
 
+const groupOrder = [
+  "Languages & Web Foundations",
+  "Frontend Engineering",
+  "Backend & API Engineering",
+  "Data & Storage",
+  "Architecture & Security",
+  "Website Operations",
+  "Cloud & Delivery",
+  "Quality & Observability",
+  "Integrations & Growth",
+  "Mobile & Specialized Product UI",
+  "AI & Automation",
+  "Design & Product Experience",
+  "Project Management & Collaboration",
+] as const
+
 function getGroupOrder(groupName: string) {
-  const index = personalInfo.highlightSkills?.indexOf(groupName) ?? -1
+  const index = groupOrder.indexOf(groupName as (typeof groupOrder)[number])
   return index >= 0 ? index : Number.MAX_SAFE_INTEGER
 }
 
@@ -31,7 +47,7 @@ export function TechStackSection() {
         <SectionHeader
           icon={<Code className="h-5 w-5" />}
           title="Tech Stack"
-          subtitle="Grouped capabilities across delivery, architecture, automation, quality, and collaboration."
+          subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
           variant="primary"
         />
       </CardHeader>

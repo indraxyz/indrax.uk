@@ -10,7 +10,18 @@ const geist = localFont({
 
 export const metadata: Metadata = {
   title: "Indra Cahya Edytya - Software Engineer",
-  description: "Personal portfolio website of Indra Cahya Edytya, Fullstack Software Engineer",
+  description:
+    "Indra Cahya Edytya — full-stack software engineer with 9+ years across TypeScript, React, Next.js, backend APIs, cloud deployment, testing, and AI automation.",
+  keywords: [
+    "Full-stack software engineer",
+    "TypeScript",
+    "React",
+    "Next.js",
+    "Node.js",
+    "Backend APIs",
+    "Cloud deployment",
+    "AI automation",
+  ],
 }
 
 const themeScript = `

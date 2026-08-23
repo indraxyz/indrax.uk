@@ -11,7 +11,7 @@ import type {
 
 export const personalInfo: PersonalInfo = {
   name: "Indra Cahya Edytya",
-  title: "Software Engineer",
+  title: "Software Engineer · Full-Stack · Growth Websites",
   email: "indracahyae@gmail.com",
   phone: "+62 813 3563 0404",
   location: "Surabaya, Indonesia",
@@ -23,23 +23,19 @@ export const personalInfo: PersonalInfo = {
   github: "https://github.com/indraxyz",
   website: "https://indrax.my.id",
   highlightSkills: [
-    "Deployment & CI/CD",
-    "System & Software Architecture",
-    "Fullstack Development",
+    "Modern Frontend",
+    "Backend, APIs & Integrations",
     "SQL & NoSQL Databases",
-    "Authentication & Authorization",
-    "Automation & Agentic AI",
-    "Thirdparty Integration",
-    "UI/UX Design System & Animation",
-    "QA, Testing & Debugging",
-    "Project Management & Collaboration",
-    "Digital Marketing",
+    "Cloud Deployment & CI/CD",
+    "Testing, Debugging & Performance",
+    "System Architecture",
+    "AI Automation & Agentic Workflows",
+    "Product UI/UX & Design Systems",
   ],
 }
 
-export const bio = `9+ years Software Engineer with extensive expertise in building scalable & maintainable applications.
-Specialize in modern technologies, delivering high-quality solutions that solve complex business challenges.
-With a proven track record in full-stack development, system architecture, and project management, I bring a comprehensive approach to software engineering that combines technical excellence with strategic thinking.`
+export const bio = `Software engineer and web developer with 9 years building, maintaining,  improving production apps, websites and digital products.
+I partner closely with app, design, marketing and business teams for developments, campaigns and requirements to turn into polished, measurable web experiences.`
 
 export const experiences: ExperienceItem[] = [
   {
@@ -48,8 +44,10 @@ export const experiences: ExperienceItem[] = [
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
-      "Fullstack Software Engineer working with a fully agentic AI workflow while maintaining a strong focus on code quality, conventions, and best practices. Experienced in delivering features quickly and resolving issues with clear, maintainable solutions.",
-      "Tech stack includes frameworks such as Laravel, Statamic, Next.js, and WordPress; databases such as MySQL, MariaDB, and PostgreSQL; containerized environments with Docker, Redis, and cloud storage; CI/CD deployment across AWS and VPS instances; AI API integration and automation; collaboration with Jira, Slack, WhatsApp, Trello, and GitHub; payment gateways including Stripe and Xendit; unit, feature, and automated testing; UI/UX and animation workflows with Figma, pen.dev, GSAP, and Lenis; and agentic workflows with Claude, Codex, Agentic terminal setup, MCP, and custom skills.",
+      "Build and maintain production websites and product features across Laravel, Statamic, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
+      "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and custom skills to improve delivery efficiency.",
+      "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
   {
@@ -179,189 +177,176 @@ export const portfolioItems: PortfolioItem[] = [
 ]
 
 export const techSkills = [
-  "Cross-functional team collaboration and effective communication",
-  "Rapid adaptation to emerging technologies and frameworks",
-  "Business problem analysis with innovative technical solutions",
-  "User-centered design and seamless UX journey optimization",
-  "Advanced algorithms, OOP principles, functional programming, and clean code practices",
-  "Data structures, database architecture, and schema design",
-  "Comprehensive testing strategies: black box, white box, and unit testing",
-  "Performance optimization, bottleneck resolution, and debugging expertise",
-  "System architecture design, security implementation, and design patterns",
-  "End-to-end project management: planning, monitoring, optimization, and documentation",
+  "Architect and evolve scalable, maintainable software systems from requirements through production",
+  "Apply clean code, strong design principles, structured problem-solving, and pragmatic engineering judgment",
+  "Deliver full-stack web products with consistent ownership across frontend, backend, data, integrations, and release quality",
+  "Translate business goals and user needs into clear technical solutions, priorities, and implementation plans",
+  "Design reliable APIs, service boundaries, authentication flows, data models, and third-party integrations",
+  "Protect applications through security-aware design, access control, validation, dependency hygiene, and operational discipline",
+  "Own website and CMS lifecycles, including content accuracy, landing pages, staging, publishing, maintenance, and continuous improvement",
+  "Create responsive, accessible, user-centered experiences that meet product, brand, and cross-device quality standards",
+  "Improve performance through measurement, bottleneck analysis, Core Web Vitals, page-speed work, and focused iteration",
+  "Build quality into delivery with test strategy, regression prevention, debugging, release validation, and production support",
+  "Operate dependable delivery workflows across environments, deployments, monitoring, backups, incident response, and rollback planning",
+  "Implement measurable technical SEO, analytics, event tracking, and user-journey instrumentation for informed decisions",
+  "Connect CRM, marketing automation, lead capture, notification, booking, payment, membership, and event-registration journeys",
+  "Improve conversion through funnel analysis, experimentation, A/B testing, landing-page refinement, and user feedback",
+  "Collaborate effectively with marketing, design, product, operations, vendors, and engineering teams",
+  "Lead project execution through planning, documentation, progress communication, risk management, and continuous improvement",
+  "Use AI-assisted development and workflow automation responsibly, with human review for correctness, security, and maintainability",
+  "Adapt quickly to new technologies and business contexts while preserving clear standards and dependable delivery",
 ] as const
 
 export const techStacks: TechStack[] = [
   {
-    group: "Fullstack Development",
+    group: "Languages & Web Foundations",
     category: "Languages",
-    items: "TypeScript, Go, JavaScript, Python, PHP, SQL, NoSQL",
+    items: "TypeScript, JavaScript, PHP, Go, Python, SQL, HTML, CSS",
   },
   {
-    group: "System & Software Architecture",
-    category: "Software Architecture",
-    items:
-      "Microservice, Monolith, Service Oriented, Event-driven, Serverless, Microkernel, Monorepo",
+    group: "Languages & Web Foundations",
+    category: "Web Standards",
+    items: "Responsive web development, accessibility, semantic HTML, modern CSS, browser APIs, JSON, web performance fundamentals",
   },
   {
-    group: "System & Software Architecture",
-    category: "Methodologies",
-    items: "Agile, Scrum, Sprint",
+    group: "Frontend Engineering",
+    category: "Frameworks & Rendering",
+    items: "React, Next.js, Remix, React Router, Preact, Server-side rendering, static generation, server components",
   },
   {
-    group: "Deployment & CI/CD",
-    category: "Cloud Platforms",
-    items: "Vercel, AWS, Cloudflare",
+    group: "Frontend Engineering",
+    category: "UI, Styling & Design Systems",
+    items: "Tailwind CSS, Material UI, Ant Design, Bootstrap, Bulma, Semantic UI, Emotion, Styled JSX, UnoCSS, shadcn/ui, Radix, HeroUI, Fluent UI, Mantine, Chakra UI, Gluestack, Tamagui",
   },
   {
-    group: "Deployment & CI/CD",
-    category: "Containers & Serverless",
-    items: "Docker, AWS Lambda, Cloudflare Workers, Vercel Function",
+    group: "Frontend Engineering",
+    category: "State, Data & Forms",
+    items: "Redux, Zustand, Context, TanStack Query, Axios, Fetch, React Hook Form, Zod, Urql, Lodash, RxJS, async utilities, React Hooks, loadable-components",
   },
   {
-    group: "Fullstack Development",
-    category: "Backend Frameworks",
-    items: "Hono.js, GoFiber, Laravel, Express, Gin",
+    group: "Frontend Engineering",
+    category: "Motion, Visualization & Components",
+    items: "GSAP, Framer Motion, Remotion, Lenis, ECharts, Recharts, Nivo, TanStack Table, Swiper, Embla Carousel, Onborda, React Flow, Mapbox",
   },
   {
-    group: "SQL & NoSQL Databases",
+    group: "Backend & API Engineering",
+    category: "Frameworks & Runtime",
+    items: "Laravel, Express, Hono.js, GoFiber, Gin, Node.js, serverless functions",
+  },
+  {
+    group: "Backend & API Engineering",
+    category: "APIs & Communication",
+    items: "REST, GraphQL, WebSocket, RPC, JSON-RPC, webhooks, async workflows, API documentation with Swagger",
+  },
+  {
+    group: "Data & Storage",
     category: "Databases",
-    items: "PostgreSQL, MySQL, MongoDB, Supabase, Firebase, Neon",
+    items: "PostgreSQL, MySQL, MariaDB, MongoDB, Supabase, Firebase, Neon, SQL and NoSQL data modeling",
   },
   {
-    group: "SQL & NoSQL Databases",
-    category: "ORM & Storage",
-    items: "Prisma, Drizzle, Redis, Serverless Storage",
+    group: "Data & Storage",
+    category: "ORM, Cache & Storage",
+    items: "Prisma, Drizzle, ORM patterns, Redis, object storage, cloud storage, serverless storage, query optimization",
   },
   {
-    group: "Authentication & Authorization",
-    category: "Security & Auth",
-    items: "JWT, Auth.js, Better-auth, Crypto",
+    group: "Architecture & Security",
+    category: "Architecture Patterns",
+    items: "Monolith, modular monolith, microservices, service-oriented, event-driven, serverless, monorepo, microkernel",
   },
   {
-    group: "System & Software Architecture",
-    category: "Protocols",
-    items: "RESTful, GraphQL, RPC, JSON-RPC",
+    group: "Architecture & Security",
+    category: "Authentication & Application Security",
+    items: "JWT, Auth.js, Better Auth, access control, input validation, secure API design, cryptography fundamentals",
   },
   {
-    group: "System & Software Architecture",
-    category: "Realtime",
-    items: "WebSocket",
+    group: "Architecture & Security",
+    category: "Engineering Practices",
+    items: "Clean architecture, design patterns, OOP, functional programming, Agile, Scrum, iterative delivery",
   },
   {
-    group: "Fullstack Development",
-    category: "Frameworks",
-    items: "Next.js, Remix React-Router, Preact, Statamic",
+    group: "Website Operations",
+    category: "CMS & Website Platforms",
+    items: "WordPress, Elementor Pro, PHP, Statamic, Next.js, Laravel, landing pages, content publishing",
   },
   {
-    group: "UI/UX Design System & Animation",
-    category: "UI Components",
-    items: "Shadcn, Radix, HeroUI, FluentUI, MantineUI, Chakra, Gluestack, Tamagui, Lit",
+    group: "Website Operations",
+    category: "Performance, SEO & Accessibility",
+    items: "Core Web Vitals, PageSpeed Insights, technical SEO, responsive optimization, accessibility, metadata, structured content",
   },
   {
-    group: "UI/UX Design System & Animation",
-    category: "Styling",
-    items: "Emotion, Tailwind, UnoCSS, Kuma UI, Styled JSX",
+    group: "Website Operations",
+    category: "Security & Site Reliability",
+    items: "Platform security, plugin management, updates, backups, monitoring, staging/live environments, DNS, SSL",
   },
   {
-    group: "Fullstack Development",
-    category: "State Management",
-    items: "Redux, Zustand, Context",
+    group: "Cloud & Delivery",
+    category: "Cloud & Hosting",
+    items: "AWS, Cloudflare, Vercel, VPS, AWS Lambda, Cloudflare Workers, Vercel Functions",
   },
   {
-    group: "Fullstack Development",
-    category: "Data Fetching",
-    items: "TanStack Query, Axios, Fetch",
+    group: "Cloud & Delivery",
+    category: "Containers, CI/CD & Build",
+    items: "Docker, Kubernetes, GitHub workflows, CI/CD, Webpack, Turbopack, Vite, Turborepo, VPS deployment",
   },
   {
-    group: "Deployment & CI/CD",
-    category: "Build Tools",
-    items: "Webpack, Turbopack, Vite, Turborepo",
-  },
-  {
-    group: "UI/UX Design System & Animation",
-    category: "Animation",
-    items: "GSAP, Framer Motion, Remotion",
-  },
-  {
-    group: "UI/UX Design System & Animation",
-    category: "Data Visualization",
-    items: "Echarts, Recharts, Nivo, TanStack Table",
-  },
-  {
-    group: "Fullstack Development",
-    category: "Forms & Utilities",
-    items:
-      "React-hook-form, Zod, Lodash, RxJS, Hooks, Async, Loadable-components, Algolia, Alpine, Mapbox, Urql",
-  },
-  {
-    group: "UI/UX Design System & Animation",
-    category: "Specialized Components",
-    items: "Tiptap, Plate, Quill, Swiper, Embla-carousel, Onborda, React Flow",
-  },
-  {
-    group: "Fullstack Development",
-    category: "React Native",
-    items:
-      "Tamagui, Expo, Flash List, Firebase, React Navigation, Mapbox, Notifications, Hardware Module",
-  },
-  {
-    group: "Automation & Agentic AI",
-    category: "LLMs",
-    items: "GPT, Claude, Gemini, Llama, N8n",
-  },
-  {
-    group: "Automation & Agentic AI",
-    category: "Agentic Workflows",
-    items:
-      "Agentic AI, Vs Code/Cursor, Rules, Skills, MCP, Agents, Models, PRDs & Plans, Prompting.",
-  },
-  {
-    group: "QA, Testing & Debugging",
+    group: "Quality & Observability",
     category: "Testing",
-    items: "Jest, Vitest, Testify, Unit, Integration, JSON-server (data mocking)",
+    items: "Jest, Vitest, Testify, unit testing, integration testing, feature testing, regression testing, JSON Server, data mocking",
   },
   {
-    group: "QA, Testing & Debugging",
+    group: "Quality & Observability",
     category: "Debugging & Performance",
-    items:
-      "Browser DevTools, React Profiler, logs tracing, bottleneck analysis, performance tuning",
+    items: "Browser DevTools, React Profiler, log tracing, bottleneck analysis, performance tuning, release validation",
+  },
+  {
+    group: "Integrations & Growth",
+    category: "CRM, Analytics & Automation",
+    items: "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
+  },
+  {
+    group: "Integrations & Growth",
+    category: "Funnels, Payments & Conversion",
+    items: "Stripe, Xendit, Midtrans, Polar, lead capture, booking flows, membership journeys, event registration, CRO, A/B testing",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native",
+    items: "React Native, Expo, React Navigation, FlashList, Firebase, Mapbox, notifications, hardware modules",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Rich Interfaces",
+    items: "Tiptap, Plate, Quill, React Flow, Mapbox, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
+  },
+  {
+    group: "AI & Automation",
+    category: "AI Platforms & Models",
+    items: "OpenAI, Claude, Gemini, Llama, AI APIs, prompt design, evaluation, and human-in-the-loop review",
+  },
+  {
+    group: "AI & Automation",
+    category: "Agentic Workflows",
+    items: "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic tools, custom skills, structured plans, rules, and AI-assisted engineering workflows",
+  },
+  {
+    group: "Design & Product Experience",
+    category: "Product Design & UX",
+    items: "Figma, pen.dev, Adobe XD, Eraser, Photoshop, Illustrator, CorelDRAW, Lightroom, design systems, UX review, user flows, visual QA",
   },
   {
     group: "Project Management & Collaboration",
-    category: "Development Tools",
-    items: "Git, GitHub, VSCode, Swagger, Storybook",
+    category: "Development & Documentation",
+    items: "Git, GitHub, VS Code, Storybook, Swagger, technical documentation, decision records",
   },
   {
     group: "Project Management & Collaboration",
     category: "Project Management",
-    items: "Jira, Planner Microsoft, GitHub Project, Notion",
+    items: "Jira, Microsoft Planner, GitHub Projects, Trello, Notion, Agile planning, sprint coordination, progress tracking, risk management",
   },
   {
     group: "Project Management & Collaboration",
-    category: "Communication",
-    items: "Teams, Google Meet, Zoom, Microsoft Cloud, Google Workspace",
-  },
-  {
-    group: "UI/UX Design System & Animation",
-    category: "Design & Media",
-    items: "Figma, Adobe XD, Eraser, Photoshop, Coreldraw, Illustrator, Lightroom",
-  },
-  {
-    group: "Thirdparty Integration",
-    category: "Payment Gateways",
-    items: "Midtrans, Stripe, Polar",
-  },
-  {
-    group: "Digital Marketing",
-    category: "Growth & Analytics",
-    items:
-      "SEO, Google Analytics, Search Console, Meta Pixel, campaign tracking, landing page optimization",
-  },
-  {
-    group: "Deployment & CI/CD",
-    category: "Operating Systems",
-    items: "Windows, Linux, MacOS",
+    category: "Communication & Stakeholders",
+    items: "Slack, Microsoft Teams, WhatsApp, Google Meet, Zoom, Microsoft 365, Microsoft Cloud, Google Workspace, cross-functional communication, vendor coordination",
   },
 ]
 
