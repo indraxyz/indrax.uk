@@ -11,7 +11,7 @@ import type {
 
 export const personalInfo: PersonalInfo = {
   name: "Indra Cahya Edytya",
-  title: "Software Engineer · Full-Stack · Growth Websites",
+  title: "Software Engineer · Full-Stack",
   email: "indracahyae@gmail.com",
   phone: "+62 813 3563 0404",
   location: "Surabaya, Indonesia",
@@ -46,7 +46,7 @@ export const experiences: ExperienceItem[] = [
     description: [
       "Build and maintain production websites and product features across Laravel, Statamic, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
-      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and custom skills to improve delivery efficiency.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency.",
       "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
@@ -193,7 +193,7 @@ export const techSkills = [
   "Improve conversion through funnel analysis, experimentation, A/B testing, landing-page refinement, and user feedback",
   "Collaborate effectively with marketing, design, product, operations, vendors, and engineering teams",
   "Lead project execution through planning, documentation, progress communication, risk management, and continuous improvement",
-  "Use AI-assisted development and workflow automation responsibly, with human review for correctness, security, and maintainability",
+  "Use AI-agentic development and workflow automation responsibly, with human review for correctness, security, and maintainability",
   "Adapt quickly to new technologies and business contexts while preserving clear standards and dependable delivery",
 ] as const
 
@@ -326,7 +326,7 @@ export const techStacks: TechStack[] = [
   {
     group: "AI & Automation",
     category: "Agentic Workflows",
-    items: "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic tools, custom skills, structured plans, rules, and AI-assisted engineering workflows",
+    items: "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
   },
   {
     group: "Design & Product Experience",
