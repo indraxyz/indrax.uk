@@ -32,7 +32,7 @@ export function PersonalInfoDrawer() {
             Personal Information
           </DrawerTitle>
           <DrawerDescription className="text-xs font-semibold">
-            Summary of my personal details, education, and organizations
+            Profile, capabilities, education, certifications, and additional background
           </DrawerDescription>
         </DrawerHeader>
         <div className="overflow-y-auto px-4 pb-4 pt-6">
