@@ -11,7 +11,7 @@ import type {
 
 export const personalInfo: PersonalInfo = {
   name: "Indra Cahya Edytya",
-  title: "Software Engineer · Full-Stack",
+  title: "Software Engineer",
   email: "indracahyae@gmail.com",
   phone: "+62 813 3563 0404",
   location: "Surabaya, Indonesia",
@@ -179,7 +179,7 @@ export const portfolioItems: PortfolioItem[] = [
 export const techSkills = [
   "Architect and evolve scalable, maintainable software systems from requirements through production",
   "Apply clean code, strong design principles, structured problem-solving, and pragmatic engineering judgment",
-  "Deliver full-stack web products with consistent ownership across frontend, backend, data, integrations, and release quality",
+  "Deliver full-stack app/web products with consistent ownership across frontend, backend, data, integrations, and release quality",
   "Translate business goals and user needs into clear technical solutions, priorities, and implementation plans",
   "Design reliable APIs, service boundaries, authentication flows, data models, and third-party integrations",
   "Protect applications through security-aware design, access control, validation, dependency hygiene, and operational discipline",
