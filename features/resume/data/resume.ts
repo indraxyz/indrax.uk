@@ -47,7 +47,7 @@ export const experiences: ExperienceItem[] = [
       "Build and maintain production websites and product features across Laravel, Statamic, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
       "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency.",
-      "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
+      "Website growth and operations: Shopify, HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
   {
@@ -67,7 +67,7 @@ export const experiences: ExperienceItem[] = [
     role: "Fullstack",
     description: [
       "Develop web apps and hybrid mobile apps (profile, online store, education, health, finance, custom)",
-      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker, Kubernetes",
+      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker",
     ],
   },
   {
@@ -231,7 +231,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Backend & API Engineering",
     category: "Frameworks & Runtime",
-    items: "Laravel, Express, Hono.js, GoFiber, Gin, Node.js, serverless functions",
+    items: "Laravel, Express, Fastify, Hono.js, GoFiber, Gin, Node.js, serverless functions",
   },
   {
     group: "Backend & API Engineering",
@@ -266,7 +266,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Website Operations",
     category: "CMS & Website Platforms",
-    items: "WordPress, Elementor Pro, PHP, Statamic, Next.js, Laravel, landing pages, content publishing",
+    items: "Shopify, WordPress, Elementor Pro, PHP, Statamic, Next.js, Laravel, landing pages, content publishing",
   },
   {
     group: "Website Operations",
@@ -286,12 +286,12 @@ export const techStacks: TechStack[] = [
   {
     group: "Cloud & Delivery",
     category: "Containers, CI/CD & Build",
-    items: "Docker, Kubernetes, GitHub workflows, CI/CD, Webpack, Turbopack, Vite, Turborepo, VPS deployment",
+    items: "Docker, GitHub workflows, CI/CD, Webpack, Turbopack, Vite, Turborepo, VPS deployment",
   },
   {
     group: "Quality & Observability",
     category: "Testing",
-    items: "Jest, Vitest, Testify, unit testing, integration testing, feature testing, regression testing, JSON Server, data mocking",
+    items: "Pest, Jest, Vitest, Testify, unit testing, integration testing, feature testing, regression testing, automated browser testing, JSON Server, data mocking",
   },
   {
     group: "Quality & Observability",
@@ -336,7 +336,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Project Management & Collaboration",
     category: "Development & Documentation",
-    items: "Git, GitHub, VS Code, Storybook, Swagger, technical documentation, decision records",
+    items: "Git, GitHub, VS Code, Storybook, Swagger, Larecipe, technical documentation, decision records",
   },
   {
     group: "Project Management & Collaboration",
