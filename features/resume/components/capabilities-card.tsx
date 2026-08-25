@@ -1,13 +1,14 @@
 import { Award } from "lucide-react"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { techSkills } from "@/features/resume/data/resume"
 
 export function CapabilitiesCard() {
   return (
-    <SidebarSectionCard
+    <SectionCard
       icon={<Award className="h-5 w-5" />}
       title="Capabilities"
-      variant="tertiary"
+      tone="tertiary"
+      height="lg"
     >
       <div className="max-h-[32rem] min-h-[16rem] overflow-y-auto pr-2">
         <ul className="space-y-3">
@@ -19,6 +20,6 @@ export function CapabilitiesCard() {
           ))}
         </ul>
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }

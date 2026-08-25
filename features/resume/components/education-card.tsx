@@ -1,11 +1,11 @@
 import { Separator } from "@/components/ui/separator"
 import { education } from "@/features/resume/data/resume"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { GraduationCap } from "lucide-react"
 
 export function EducationCard() {
   return (
-    <SidebarSectionCard icon={<GraduationCap className="h-5 w-5" />} title="Education" variant="tertiary">
+    <SectionCard icon={<GraduationCap className="h-5 w-5" />} title="Education" tone="tertiary">
       <div className="space-y-6">
         {education.map((item, index) => (
           <div key={`${item.institution}-${item.period}`} className="space-y-3">
@@ -41,6 +41,6 @@ export function EducationCard() {
           </div>
         ))}
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }

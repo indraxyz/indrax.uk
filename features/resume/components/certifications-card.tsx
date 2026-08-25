@@ -1,12 +1,12 @@
 import { Separator } from "@/components/ui/separator"
 import { certifications } from "@/features/resume/data/resume"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { Award, ExternalLink } from "lucide-react"
 import Link from "next/link"
 
 export function CertificationsCard() {
   return (
-    <SidebarSectionCard icon={<Award className="h-5 w-5" />} title="Certifications" variant="tertiary">
+    <SectionCard icon={<Award className="h-5 w-5" />} title="Certifications" tone="tertiary">
       <div className="space-y-4">
         {certifications.map((certification, index) => (
           <div key={`${certification.title}-${certification.period}`}>
@@ -29,6 +29,6 @@ export function CertificationsCard() {
           </div>
         ))}
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }
