@@ -1,7 +1,7 @@
 import { Separator } from "@/components/ui/separator"
 import { personalInfo } from "@/features/resume/data/resume"
 import { InfoItem } from "@/features/resume/components/info-item"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { formatBirthDetails, getCurrentAge } from "@/features/resume/utils/personal-info"
 import { Calendar, MapPin, User, UserSearch } from "lucide-react"
 
@@ -10,7 +10,7 @@ export function PersonalCard() {
   const birthDetails = formatBirthDetails(personalInfo.birthPlace, personalInfo.birthDate)
 
   return (
-    <SidebarSectionCard icon={<User className="h-5 w-5" />} title="Personal" variant="tertiary">
+    <SectionCard icon={<User className="h-5 w-5" />} title="Personal" tone="tertiary">
       <div className="space-y-1">
         <InfoItem icon={<User className="h-4 w-4" />} label="Name" value={personalInfo.name} />
         <Separator className="my-2" />
@@ -32,6 +32,6 @@ export function PersonalCard() {
           value={personalInfo.address}
         />
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }

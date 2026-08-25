@@ -1,11 +1,11 @@
 import { Separator } from "@/components/ui/separator"
 import { achievements } from "@/features/resume/data/resume"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { Award } from "lucide-react"
 
 export function AchievementsCard() {
   return (
-    <SidebarSectionCard icon={<Award className="h-5 w-5" />} title="Achievements" variant="tertiary">
+    <SectionCard icon={<Award className="h-5 w-5" />} title="Achievements" tone="tertiary">
       <div className="space-y-4">
         {achievements.map((achievement, index) => (
           <div key={achievement.title}>
@@ -17,6 +17,6 @@ export function AchievementsCard() {
           </div>
         ))}
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }

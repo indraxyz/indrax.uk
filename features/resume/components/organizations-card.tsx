@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator"
 import { organizations } from "@/features/resume/data/resume"
-import { SidebarSectionCard } from "@/features/resume/components/sidebar-section-card"
+import { SectionCard } from "@/components/ui/section-card"
 import { Users } from "lucide-react"
 
 export function OrganizationsCard() {
@@ -9,7 +9,7 @@ export function OrganizationsCard() {
   }
 
   return (
-    <SidebarSectionCard icon={<Users className="h-5 w-5" />} title="Organizations" variant="tertiary">
+    <SectionCard icon={<Users className="h-5 w-5" />} title="Organizations" tone="tertiary">
       <div className="space-y-4">
         {organizations.map((organization, index) => (
           <div key={`${organization.title}-${organization.period}`}>
@@ -26,6 +26,6 @@ export function OrganizationsCard() {
           </div>
         ))}
       </div>
-    </SidebarSectionCard>
+    </SectionCard>
   )
 }
