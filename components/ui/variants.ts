@@ -1,9 +1,4 @@
-export type VisualVariant =
-  | "primary"
-  | "secondary"
-  | "tertiary"
-  | "destructive"
-  | "ghost"
+export type VisualVariant = "primary" | "secondary" | "tertiary" | "destructive" | "ghost"
 
 export const variantClassNames = {
   primary: "variant-primary",
