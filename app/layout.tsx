@@ -28,15 +28,15 @@ const themeScript = `
 (() => {
   try {
     const storageKey = "indrax-theme";
-    const theme = localStorage.getItem(storageKey) || "dark";
+    const theme = localStorage.getItem(storageKey) || "light";
     const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     const resolvedTheme = theme === "system" ? systemTheme : theme;
 
     document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
     document.documentElement.dataset.theme = theme;
   } catch {
-    document.documentElement.classList.add("dark");
-    document.documentElement.dataset.theme = "dark";
+    document.documentElement.classList.remove("dark");
+    document.documentElement.dataset.theme = "light";
   }
 })();
 `

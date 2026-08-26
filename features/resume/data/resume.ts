@@ -299,6 +299,16 @@ export const techStacks: TechStack[] = [
     items: "Browser DevTools, React Profiler, log tracing, bottleneck analysis, performance tuning, release validation",
   },
   {
+    group: "Quality & Observability",
+    category: "Backend Code Quality & Security",
+    items: "Code review, consistent naming and project conventions, formatting, linting, type safety, input validation, secure API design, dependency updates, threat-aware implementation, API documentation, architecture notes, and decision records",
+  },
+  {
+    group: "Quality & Observability",
+    category: "Frontend Code Quality & Documentation",
+    items: "Component conventions, reusable UI patterns, accessibility, responsive quality, formatting, linting, type safety, secure client-side practices, dependency updates, README guides, Storybook documentation, architecture notes, and decision records",
+  },
+  {
     group: "Integrations & Growth",
     category: "CRM, Analytics & Automation",
     items: "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
