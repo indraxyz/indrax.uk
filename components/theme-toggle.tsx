@@ -1,6 +1,6 @@
 "use client"
 
-import { Monitor, Moon, Sun } from "lucide-react"
+import { Moon, Palette, Sun } from "lucide-react"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ type ThemePreference = "light" | "dark" | "system"
 
 const storageKey = "indrax-theme"
 const themeChangeEvent = "indrax-theme-change"
-const defaultTheme: ThemePreference = "dark"
+const defaultTheme: ThemePreference = "light"
 
 function getSystemTheme() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
@@ -58,7 +58,7 @@ const themeLabels = {
 const themeIcons = {
   light: Sun,
   dark: Moon,
-  system: Monitor,
+  system: Palette,
 } satisfies Record<ThemePreference, typeof Sun>
 
 export function ThemeToggle() {
