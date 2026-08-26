@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/utils"
+
 export function getCurrentAge(birthDate?: string) {
   if (!birthDate) return undefined
 
@@ -16,7 +18,7 @@ export function getCurrentAge(birthDate?: string) {
 export function formatBirthDetails(birthPlace?: string, birthDate?: string) {
   if (!birthDate) return birthPlace ?? ""
 
-  const formattedDate = new Date(birthDate).toLocaleDateString("en-US", {
+  const formattedDate = formatDate(birthDate, {
     day: "numeric",
     month: "long",
     year: "numeric",

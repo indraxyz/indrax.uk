@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import localFont from "next/font/local"
+
+import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
 import "./globals.css"
 
 const geist = localFont({
@@ -27,8 +29,8 @@ export const metadata: Metadata = {
 const themeScript = `
 (() => {
   try {
-    const storageKey = "indrax-theme";
-    const theme = localStorage.getItem(storageKey) || "light";
+    const storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
+    const theme = localStorage.getItem(storageKey) || ${JSON.stringify(DEFAULT_THEME)};
     const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     const resolvedTheme = theme === "system" ? systemTheme : theme;
 
@@ -36,7 +38,7 @@ const themeScript = `
     document.documentElement.dataset.theme = theme;
   } catch {
     document.documentElement.classList.remove("dark");
-    document.documentElement.dataset.theme = "light";
+    document.documentElement.dataset.theme = ${JSON.stringify(DEFAULT_THEME)};
   }
 })();
 `
