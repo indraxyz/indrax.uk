@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SectionCard } from "@/components/ui/section-card"
 import { Timeline, TimelineContent, TimelineItem } from "@/components/ui/timeline"
+import { SOCIAL_LINKS } from "@/features/resume/config"
 import { experiences } from "@/features/resume/data/resume"
-import { SectionHeader } from "@/features/resume/components/section-header"
 import { Briefcase } from "lucide-react"
 
 function ExperienceDetails({
@@ -41,68 +42,65 @@ function ExperienceDetails({
 
 export function ExperienceSection() {
   return (
-    <Card className="variant-primary variant-surface bg-[var(--variant-soft)]">
-      <CardHeader className="variant-surface-header border-b-2">
-        <SectionHeader
-          icon={<Briefcase className="h-5 w-5" />}
-          title="Experiences"
-          subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
-          variant="primary"
-        />
-      </CardHeader>
-      <CardContent className="pt-8">
-        <div className="hidden max-h-[1250px] overflow-y-auto pr-4 xl:block">
-          <Timeline>
-            {experiences.map((experience, index) => (
-              <TimelineItem
-                key={`${experience.company}-${experience.period}`}
-                isLast={index === experiences.length - 1}
-              >
-                <TimelineContent>
-                  <ExperienceDetails {...experience} />
-                </TimelineContent>
-              </TimelineItem>
-            ))}
-          </Timeline>
-        </div>
-
-        <div className="flex gap-6 overflow-x-auto pb-4 xl:hidden">
-          {experiences.map((experience) => (
-            <Card
+    <SectionCard
+      variant="ghost"
+      icon={<Briefcase className="h-5 w-5" />}
+      title="Experiences"
+      subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
+      link={{ href: SOCIAL_LINKS.linkedin, textLink: "Linkedin" }}
+      contentClassName="pt-8"
+    >
+      <div className="hidden max-h-[1250px] overflow-y-auto pr-4 xl:block">
+        <Timeline>
+          {experiences.map((experience, index) => (
+            <TimelineItem
               key={`${experience.company}-${experience.period}`}
-              className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
+              isLast={index === experiences.length - 1}
             >
-              <CardHeader className="variant-surface-header border-b-2 pb-4">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <p className="variant-soft-chip rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
-                    {experience.period}
-                  </p>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <Badge variant="tertiary" className="w-fit px-2 text-[10px]">
-                    {experience.role}
-                  </Badge>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-current">
-                    ({experience.timing})
-                  </span>
-                </div>
-                <CardTitle className="mt-2 text-lg font-black uppercase leading-tight tracking-tight">
-                  {experience.company}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="max-h-72 overflow-y-auto pt-4">
-                <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground">
-                  {experience.description.map((item) => (
-                    <li key={item} className="leading-relaxed font-medium">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+              <TimelineContent>
+                <ExperienceDetails {...experience} />
+              </TimelineContent>
+            </TimelineItem>
           ))}
-        </div>
-      </CardContent>
-    </Card>
+        </Timeline>
+      </div>
+
+      <div className="flex gap-6 overflow-x-auto pb-4 xl:hidden">
+        {experiences.map((experience) => (
+          <Card
+            key={`${experience.company}-${experience.period}`}
+            className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
+          >
+            <CardHeader className="variant-surface-header border-b-2 pb-4">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="variant-soft-chip rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
+                  {experience.period}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge variant="tertiary" className="w-fit px-2 text-[10px]">
+                  {experience.role}
+                </Badge>
+                <span className="text-[10px] font-black uppercase tracking-widest text-current">
+                  ({experience.timing})
+                </span>
+              </div>
+              <CardTitle className="mt-2 text-lg font-black uppercase leading-tight tracking-tight">
+                {experience.company}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-72 overflow-y-auto pt-4">
+              <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground">
+                {experience.description.map((item) => (
+                  <li key={item} className="leading-relaxed font-medium">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </SectionCard>
   )
 }

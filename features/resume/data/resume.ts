@@ -20,8 +20,6 @@ export const personalInfo: PersonalInfo = {
   gender: "Male",
   status: "Married",
   address: "Bali, Indonesia",
-  github: "https://github.com/indraxyz",
-  website: "https://indrax.my.id",
   highlightSkills: [
     "Modern Frontend",
     "Backend, APIs & Integrations",
@@ -34,8 +32,8 @@ export const personalInfo: PersonalInfo = {
   ],
 }
 
-export const bio = `Software engineer and web developer with 9 years building, maintaining,  improving production apps, websites and digital products.
-I partner closely with app, design, marketing and business teams for developments, campaigns and requirements to turn into polished, measurable web experiences.`
+export const bio = `Software engineer with 9 years building, maintaining,  improving production apps, websites and digital products.
+I partner closely with app, design, marketing and business teams for developments, campaigns and requirements to turn into polished, measurable app/web experiences.`
 
 export const experiences: ExperienceItem[] = [
   {
@@ -121,7 +119,7 @@ export const experiences: ExperienceItem[] = [
 
 export const portfolioItems: PortfolioItem[] = [
   {
-    title: "Manage Student,  Product, Task",
+    title: "kademix",
     description:
       "data table management with proper uiux & performance with Next.js, React Router/ Remix,  MongoDB, GraphQL, React 19, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
     year: "2025",
@@ -206,27 +204,32 @@ export const techStacks: TechStack[] = [
   {
     group: "Languages & Web Foundations",
     category: "Web Standards",
-    items: "Responsive web development, accessibility, semantic HTML, modern CSS, browser APIs, JSON, web performance fundamentals",
+    items:
+      "Responsive web development, accessibility, semantic HTML, modern CSS, browser APIs, JSON, web performance fundamentals",
   },
   {
     group: "Frontend Engineering",
     category: "Frameworks & Rendering",
-    items: "React, Next.js, Remix, React Router, Preact, Server-side rendering, static generation, server components",
+    items:
+      "React, Next.js, Remix, React Router, Preact, Server-side rendering, static generation, server components",
   },
   {
     group: "Frontend Engineering",
     category: "UI, Styling & Design Systems",
-    items: "Tailwind CSS, Material UI, Ant Design, Bootstrap, Bulma, Semantic UI, Emotion, Styled JSX, UnoCSS, shadcn/ui, Radix, HeroUI, Fluent UI, Mantine, Chakra UI, Gluestack, Tamagui",
+    items:
+      "Tailwind CSS, Material UI, Ant Design, Bootstrap, Bulma, Semantic UI, Emotion, Styled JSX, UnoCSS, shadcn/ui, Radix, HeroUI, Fluent UI, Mantine, Chakra UI, Gluestack, Tamagui",
   },
   {
     group: "Frontend Engineering",
     category: "State, Data & Forms",
-    items: "Redux, Zustand, Context, TanStack Query, Axios, Fetch, React Hook Form, Zod, Urql, Lodash, RxJS, async utilities, React Hooks, loadable-components",
+    items:
+      "Redux, Zustand, Context, TanStack Query, Axios, Fetch, React Hook Form, Zod, Urql, Lodash, RxJS, async utilities, React Hooks, loadable-components",
   },
   {
     group: "Frontend Engineering",
     category: "Motion, Visualization & Components",
-    items: "GSAP, Framer Motion, Remotion, Lenis, ECharts, Recharts, Nivo, TanStack Table, Swiper, Embla Carousel, Onborda, React Flow, Mapbox",
+    items:
+      "GSAP, Framer Motion, Remotion, Lenis, ECharts, Recharts, Nivo, TanStack Table, Swiper, Embla Carousel, Onborda, React Flow, Mapbox",
   },
   {
     group: "Backend & API Engineering",
@@ -236,47 +239,56 @@ export const techStacks: TechStack[] = [
   {
     group: "Backend & API Engineering",
     category: "APIs & Communication",
-    items: "REST, GraphQL, WebSocket, RPC, JSON-RPC, webhooks, async workflows, API documentation with Swagger",
+    items:
+      "REST, GraphQL, WebSocket, RPC, JSON-RPC, webhooks, async workflows, API documentation with Swagger",
   },
   {
     group: "Data & Storage",
     category: "Databases",
-    items: "PostgreSQL, MySQL, MariaDB, MongoDB, Supabase, Firebase, Neon, SQL and NoSQL data modeling",
+    items:
+      "PostgreSQL, MySQL, MariaDB, MongoDB, Supabase, Firebase, Neon, SQL and NoSQL data modeling",
   },
   {
     group: "Data & Storage",
     category: "ORM, Cache & Storage",
-    items: "Prisma, Drizzle, ORM patterns, Redis, object storage, cloud storage, serverless storage, query optimization",
+    items:
+      "Prisma, Drizzle, ORM patterns, Redis, object storage, cloud storage, serverless storage, query optimization",
   },
   {
     group: "Architecture & Security",
     category: "Architecture Patterns",
-    items: "Monolith, modular monolith, microservices, service-oriented, event-driven, serverless, monorepo, microkernel",
+    items:
+      "Monolith, modular monolith, microservices, service-oriented, event-driven, serverless, monorepo, microkernel",
   },
   {
     group: "Architecture & Security",
     category: "Authentication & Application Security",
-    items: "JWT, Auth.js, Better Auth, access control, input validation, secure API design, cryptography fundamentals",
+    items:
+      "JWT, Auth.js, Better Auth, access control, input validation, secure API design, cryptography fundamentals",
   },
   {
     group: "Architecture & Security",
     category: "Engineering Practices",
-    items: "Clean architecture, design patterns, OOP, functional programming, Agile, Scrum, iterative delivery",
+    items:
+      "Clean architecture, design patterns, OOP, functional programming, Agile, Scrum, iterative delivery",
   },
   {
     group: "Website Operations",
     category: "CMS & Website Platforms",
-    items: "Shopify, WordPress, Elementor Pro, PHP, Statamic, Next.js, Laravel, landing pages, content publishing",
+    items:
+      "Shopify, WordPress, Elementor Pro, PHP, Statamic, Next.js, Laravel, landing pages, content publishing",
   },
   {
     group: "Website Operations",
     category: "Performance, SEO & Accessibility",
-    items: "Core Web Vitals, PageSpeed Insights, technical SEO, responsive optimization, accessibility, metadata, structured content",
+    items:
+      "Core Web Vitals, PageSpeed Insights, technical SEO, responsive optimization, accessibility, metadata, structured content",
   },
   {
     group: "Website Operations",
     category: "Security & Site Reliability",
-    items: "Platform security, plugin management, updates, backups, monitoring, staging/live environments, DNS, SSL",
+    items:
+      "Platform security, plugin management, updates, backups, monitoring, staging/live environments, DNS, SSL",
   },
   {
     group: "Cloud & Delivery",
@@ -291,72 +303,86 @@ export const techStacks: TechStack[] = [
   {
     group: "Quality & Observability",
     category: "Testing",
-    items: "Pest, Jest, Vitest, Testify, unit testing, integration testing, feature testing, regression testing, automated browser testing, JSON Server, data mocking",
+    items:
+      "Pest, Jest, Vitest, Testify, unit testing, integration testing, feature testing, regression testing, automated browser testing, JSON Server, data mocking",
   },
   {
     group: "Quality & Observability",
     category: "Debugging & Performance",
-    items: "Browser DevTools, React Profiler, log tracing, bottleneck analysis, performance tuning, release validation",
+    items:
+      "Browser DevTools, React Profiler, log tracing, bottleneck analysis, performance tuning, release validation",
   },
   {
     group: "Quality & Observability",
     category: "Backend Code Quality & Security",
-    items: "Code review, consistent naming and project conventions, formatting, linting, type safety, input validation, secure API design, dependency updates, threat-aware implementation, API documentation, architecture notes, and decision records",
+    items:
+      "Code review, consistent naming and project conventions, formatting, linting, type safety, input validation, secure API design, dependency updates, threat-aware implementation, API documentation, architecture notes, and decision records",
   },
   {
     group: "Quality & Observability",
     category: "Frontend Code Quality & Documentation",
-    items: "Component conventions, reusable UI patterns, accessibility, responsive quality, formatting, linting, type safety, secure client-side practices, dependency updates, README guides, Storybook documentation, architecture notes, and decision records",
+    items:
+      "Component conventions, reusable UI patterns, accessibility, responsive quality, formatting, linting, type safety, secure client-side practices, dependency updates, README guides, Storybook documentation, architecture notes, and decision records",
   },
   {
     group: "Integrations & Growth",
     category: "CRM, Analytics & Automation",
-    items: "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
+    items:
+      "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
   },
   {
     group: "Integrations & Growth",
     category: "Funnels, Payments & Conversion",
-    items: "Stripe, Xendit, Midtrans, Polar, lead capture, booking flows, membership journeys, event registration, CRO, A/B testing",
+    items:
+      "Stripe, Xendit, Midtrans, Polar, lead capture, booking flows, membership journeys, event registration, CRO, A/B testing",
   },
   {
     group: "Mobile & Specialized Product UI",
     category: "React Native",
-    items: "React Native, Expo, React Navigation, FlashList, Firebase, Mapbox, notifications, hardware modules",
+    items:
+      "React Native, Expo, React Navigation, FlashList, Firebase, Mapbox, notifications, hardware modules",
   },
   {
     group: "Mobile & Specialized Product UI",
     category: "Rich Interfaces",
-    items: "Tiptap, Plate, Quill, React Flow, Mapbox, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
+    items:
+      "Tiptap, Plate, Quill, React Flow, Mapbox, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
   },
   {
     group: "AI & Automation",
     category: "AI Platforms & Models",
-    items: "OpenAI, Claude, Gemini, Llama, AI APIs, prompt design, evaluation, and human-in-the-loop review",
+    items:
+      "OpenAI, Claude, Gemini, Llama, AI APIs, prompt design, evaluation, and human-in-the-loop review",
   },
   {
     group: "AI & Automation",
     category: "Agentic Workflows",
-    items: "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
+    items:
+      "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
   },
   {
     group: "Design & Product Experience",
     category: "Product Design & UX",
-    items: "Figma, pen.dev, Adobe XD, Eraser, Photoshop, Illustrator, CorelDRAW, Lightroom, design systems, UX review, user flows, visual QA",
+    items:
+      "Figma, pen.dev, Adobe XD, Eraser, Photoshop, Illustrator, CorelDRAW, Lightroom, design systems, UX review, user flows, visual QA",
   },
   {
     group: "Project Management & Collaboration",
     category: "Development & Documentation",
-    items: "Git, GitHub, VS Code, Storybook, Swagger, Larecipe, technical documentation, decision records",
+    items:
+      "Git, GitHub, VS Code, Storybook, Swagger, Larecipe, technical documentation, decision records",
   },
   {
     group: "Project Management & Collaboration",
     category: "Project Management",
-    items: "Jira, Microsoft Planner, GitHub Projects, Trello, Notion, Agile planning, sprint coordination, progress tracking, risk management",
+    items:
+      "Jira, Microsoft Planner, GitHub Projects, Trello, Notion, Agile planning, sprint coordination, progress tracking, risk management",
   },
   {
     group: "Project Management & Collaboration",
     category: "Communication & Stakeholders",
-    items: "Slack, Microsoft Teams, WhatsApp, Google Meet, Zoom, Microsoft 365, Microsoft Cloud, Google Workspace, cross-functional communication, vendor coordination",
+    items:
+      "Slack, Microsoft Teams, WhatsApp, Google Meet, Zoom, Microsoft 365, Microsoft Cloud, Google Workspace, cross-functional communication, vendor coordination",
   },
 ]
 
