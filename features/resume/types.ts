@@ -19,21 +19,6 @@ export interface TechStack {
   group?: string
 }
 
-export interface SkillSets {
-  role:
-    | "backend"
-    | "frontend"
-    | "fullstack"
-    | "mobile"
-    | "database"
-    | "devops"
-    | "cloud"
-    | "testing"
-    | "other"
-  name: string
-  skills: string[]
-}
-
 export interface PersonalInfo {
   name: string
   title: string
@@ -45,11 +30,7 @@ export interface PersonalInfo {
   gender: string
   status: string
   address: string
-  github?: string
-  linkedin?: string
-  skillSets?: SkillSets[]
   highlightSkills?: string[]
-  website?: string
 }
 
 export interface Education {

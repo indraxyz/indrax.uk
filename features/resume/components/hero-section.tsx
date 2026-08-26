@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { bio, personalInfo } from "@/features/resume/data/resume"
-import { ProfileAvatar } from "@/features/resume/components/profile-avatar"
 
 export function HeroSection() {
   const firstName = personalInfo.name.trim().split(/\s+/)[0]
@@ -9,34 +8,29 @@ export function HeroSection() {
   return (
     <Card className="variant-primary variant-surface mb-8 overflow-hidden bg-[var(--variant-soft)]">
       <CardContent className="relative p-8 xl:p-12">
-        <div className="flex flex-col gap-10 xl:flex-row xl:items-start">
-          <div className="shrink-0 justify-center text-center xl:justify-start">
-            <ProfileAvatar src="/foto-profile.jpg" alt={personalInfo.name} fallback="ICE" />
-          </div>
-          <div className="flex-1 space-y-6 text-center xl:text-left">
-            <div className="space-y-2">
-              <h1 className="text-4xl font-black uppercase tracking-tight text-foreground md:text-5xl">
-                {firstName}
-              </h1>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[var(--variant-border)] md:text-base">
-                {personalInfo.title}
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
-              {personalInfo.highlightSkills?.map((skill) => (
-                <Badge
-                  variant="primary"
-                  className="variant-primary variant-soft-chip px-3 py-1 text-xs shadow-none"
-                  key={skill}
-                >
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-            <p className="mx-auto max-w-3xl text-base leading-relaxed text-foreground xl:mx-0 md:text-lg">
-              {bio}
+        <div className="space-y-6 text-center xl:text-left">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-black uppercase tracking-tight text-foreground md:text-5xl">
+              {firstName}
+            </h1>
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-[var(--variant-border)] md:text-base">
+              {personalInfo.title}
             </p>
           </div>
+          <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
+            {personalInfo.highlightSkills?.map((skill) => (
+              <Badge
+                variant="primary"
+                className="variant-primary variant-soft-chip px-3 py-1 text-xs shadow-none"
+                key={skill}
+              >
+                {skill}
+              </Badge>
+            ))}
+          </div>
+          <p className="mx-auto max-w-3xl text-base leading-relaxed text-foreground xl:mx-0 md:text-lg">
+            {bio}
+          </p>
         </div>
       </CardContent>
     </Card>

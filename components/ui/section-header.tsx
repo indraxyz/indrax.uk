@@ -1,35 +1,54 @@
 import { variantClassNames, type VisualVariant } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
+
+export interface SectionLink {
+  href: string
+  textLink: string
+}
+
+export type SectionHeaderSize = "sm" | "lg"
+
+const titleSizeClasses: Record<SectionHeaderSize, string> = {
+  sm: "text-xl",
+  lg: "text-2xl",
+}
 
 interface SectionHeaderProps {
   icon: ReactNode
   title: string
   subtitle?: string
-  variant?: VisualVariant
-  link?: {
-    href: string
-    textLink: string
-  }
+  tone?: VisualVariant
+  size?: SectionHeaderSize
+  link?: SectionLink
 }
 
 export function SectionHeader({
   icon,
   title,
   subtitle,
-  variant = "primary",
+  tone = "primary",
+  size = "sm",
   link,
 }: SectionHeaderProps) {
+  const hasDetails = Boolean(subtitle || link)
+
   return (
-    <div className="flex items-start gap-3">
+    <div className={cn("flex gap-3", hasDetails ? "items-start" : "items-center")}>
       <div
-        className={`variant-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-none border-2 ${variantClassNames[variant]}`}
+        className={cn(
+          "variant-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-none border-2",
+          variantClassNames[tone]
+        )}
       >
         {icon}
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <h2 className="text-2xl font-black uppercase tracking-tight">{title}</h2>
+        <h2 className={cn("font-black uppercase tracking-tight", titleSizeClasses[size])}>
+          {title}
+        </h2>
         {subtitle && (
           <p className="max-w-3xl text-sm font-semibold leading-relaxed text-current opacity-85">
             {subtitle}

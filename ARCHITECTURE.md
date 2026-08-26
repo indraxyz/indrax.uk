@@ -11,13 +11,18 @@ This document describes the architecture and design decisions for the Resume/CV 
 │   └── globals.css          # Global styles with Tailwind v4
 │
 ├── components/              # Shared UI primitives
-│   ├── ui/                  # shadcn/ui base components
-│   │   ├── avatar.tsx
-│   │   ├── badge.tsx
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── separator.tsx
-│   │   └── timeline.tsx
+│   ├── theme-toggle.tsx     # Light / dark / system switcher
+│   └── ui/                  # shadcn/ui base components
+│       ├── avatar.tsx
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── drawer.tsx
+│       ├── section-card.tsx # Card + header composition used by every section
+│       ├── section-header.tsx
+│       ├── separator.tsx
+│       ├── timeline.tsx
+│       └── variants.ts      # Visual variant tokens
 │
 ├── features/
 │   └── resume/
@@ -27,7 +32,8 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       ├── config.ts        # Resume config and links
 │       └── types.ts         # Resume domain types
 │
-├── lib/                     # Utility functions
+├── lib/                     # Shared, framework-level helpers
+│   ├── theme.ts            # Theme storage key, event, and default
 │   └── utils/
 │       ├── cn.ts           # Class name utility (clsx + tailwind-merge)
 │       ├── date.ts         # Date formatting utilities
@@ -40,6 +46,7 @@ This document describes the architecture and design decisions for the Resume/CV 
 ## 🏗️ Architecture Principles
 
 ### 1. **Separation of Concerns**
+
 - **Feature ownership**: Resume code lives together under `features/resume/`
 - **Data**: Resume source data is separated into `features/resume/data/resume.ts`
 - **Types**: Resume domain types live in `features/resume/types.ts`
@@ -47,24 +54,28 @@ This document describes the architecture and design decisions for the Resume/CV 
 - **Utilities**: Shared utilities stay in `lib/utils/`, while resume-specific derivations live in `features/resume/utils/`
 
 ### 2. **Type Safety**
+
 - Full TypeScript implementation
 - All data structures are typed
 - Component props are strictly typed
 - No `any` types used
 
 ### 3. **Component Reusability**
+
 - Shared UI primitives in `components/ui/`
 - Resume-specific components in `features/resume/components/`
 - Base UI components from shadcn/ui
 - Consistent component patterns
 
 ### 4. **Maintainability**
+
 - Feature-based folder structure
 - Smaller focused components for sidebar cards and sections
 - Derived values are computed from source data instead of duplicated
 - Single source of truth for data
 
 ### 5. **Developer Experience**
+
 - TypeScript for autocomplete and type checking
 - ESLint for code quality
 - Prettier for code formatting
@@ -97,6 +108,9 @@ components/ui/ (Base UI Components)
 
 ### Component Organization
 
+- **Section composition**: Every section — the six drawer cards and the three main
+  sections — renders through `components/ui/section-card.tsx`, which owns the card
+  frame, the header bar, and the `card` / `ghost` variants
 - **UI Components** (`components/ui/`): Base design system components
 - **Resume Feature** (`features/resume/`): Domain-specific data, types, config, and components
 - **Page Components** (`app/`): Thin route entry points
@@ -125,11 +139,13 @@ components/ui/ (Base UI Components)
 ## 🚀 Future Improvements
 
 Potential enhancements:
+
 - [ ] Add unit tests with Vitest
 - [ ] Add E2E tests with Playwright
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
-- [ ] Add dark mode toggle
 - [ ] Add PDF generation API route
 - [ ] Add analytics
-- [ ] Add SEO improvements
+- [ ] Add Open Graph / Twitter metadata and a sitemap
+- [ ] Surface contact details (email, phone, website) in the personal card
+- [ ] Enforce import ordering with an ESLint rule

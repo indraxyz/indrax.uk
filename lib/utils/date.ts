@@ -12,4 +12,3 @@ export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOpt
 export function getCurrentDateFormatted(): string {
   return formatDate(new Date())
 }
-

@@ -8,16 +8,11 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        primary:
-          "variant-primary variant-chip",
-        secondary:
-          "variant-secondary variant-chip",
-        tertiary:
-          "variant-tertiary variant-chip",
-        destructive:
-          "variant-destructive variant-chip",
-        ghost:
-          "variant-ghost border-transparent bg-transparent text-foreground",
+        primary: "variant-primary variant-chip",
+        secondary: "variant-secondary variant-chip",
+        tertiary: "variant-tertiary variant-chip",
+        destructive: "variant-destructive variant-chip",
+        ghost: "variant-ghost border-transparent bg-transparent text-foreground",
       },
     },
     defaultVariants: {
@@ -27,13 +22,10 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />
 }
 
 export { Badge, badgeVariants }

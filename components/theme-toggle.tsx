@@ -4,12 +4,12 @@ import { Moon, Palette, Sun } from "lucide-react"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
-
-type ThemePreference = "light" | "dark" | "system"
-
-const storageKey = "indrax-theme"
-const themeChangeEvent = "indrax-theme-change"
-const defaultTheme: ThemePreference = "light"
+import {
+  DEFAULT_THEME,
+  THEME_CHANGE_EVENT,
+  THEME_STORAGE_KEY,
+  type ThemePreference,
+} from "@/lib/theme"
 
 function getSystemTheme() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
@@ -33,19 +33,19 @@ function isThemePreference(theme: string | null): theme is ThemePreference {
 }
 
 function getStoredTheme(): ThemePreference {
-  if (typeof window === "undefined") return defaultTheme
+  if (typeof window === "undefined") return DEFAULT_THEME
 
-  const storedTheme = window.localStorage.getItem(storageKey)
-  return isThemePreference(storedTheme) ? storedTheme : defaultTheme
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME
 }
 
 function subscribeToThemeStore(callback: () => void) {
   window.addEventListener("storage", callback)
-  window.addEventListener(themeChangeEvent, callback)
+  window.addEventListener(THEME_CHANGE_EVENT, callback)
 
   return () => {
     window.removeEventListener("storage", callback)
-    window.removeEventListener(themeChangeEvent, callback)
+    window.removeEventListener(THEME_CHANGE_EVENT, callback)
   }
 }
 
@@ -62,7 +62,7 @@ const themeIcons = {
 } satisfies Record<ThemePreference, typeof Sun>
 
 export function ThemeToggle() {
-  const [theme, setTheme] = React.useState<ThemePreference>(defaultTheme)
+  const [theme, setTheme] = React.useState<ThemePreference>(DEFAULT_THEME)
 
   React.useEffect(() => {
     const syncTheme = () => setTheme(getStoredTheme())
@@ -96,10 +96,10 @@ export function ThemeToggle() {
       aria-label={`${themeLabels[theme]}. Activate ${nextTheme} mode.`}
       title={`${themeLabels[theme]} -> ${nextTheme}`}
       onClick={() => {
-        window.localStorage.setItem(storageKey, nextTheme)
+        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
         setTheme(nextTheme)
         applyTheme(nextTheme)
-        window.dispatchEvent(new Event(themeChangeEvent))
+        window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
       }}
     >
       <Icon className="h-5 w-5" aria-hidden="true" />

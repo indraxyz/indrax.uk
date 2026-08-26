@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SectionHeader } from "@/features/resume/components/section-header"
+import { SectionCard } from "@/components/ui/section-card"
 import { techStacks } from "@/features/resume/data/resume"
 import { Code } from "lucide-react"
 
@@ -42,39 +42,35 @@ const orderedGroupedStacks = Object.entries(groupedStacks).sort(
 
 export function TechStackSection() {
   return (
-    <Card className="variant-primary variant-surface bg-[var(--variant-soft)]">
-      <CardHeader className="variant-surface-header border-b-2">
-        <SectionHeader
-          icon={<Code className="h-5 w-5" />}
-          title="Tech Stack"
-          subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
-          variant="primary"
-        />
-      </CardHeader>
-      <CardContent className="flex gap-6 overflow-x-auto pb-6 pt-6">
-        {orderedGroupedStacks.map(([groupName, stacks]) => (
-          <Card
-            key={groupName}
-            className="variant-secondary variant-border flex w-[350px] max-w-[85vw] shrink-0 flex-col bg-[var(--variant-soft)]"
-          >
-            <CardHeader className="variant-surface-header border-b-2 pb-4">
-              <CardTitle className="text-base font-black uppercase tracking-tight">
-                {groupName}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="max-h-72 space-y-5 overflow-y-auto pt-4">
-              {stacks.map((stack) => (
-                <div key={`${groupName}-${stack.category}`} className="space-y-1.5">
-                  <p className="variant-secondary variant-soft-chip inline-block rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
-                    {stack.category}
-                  </p>
-                  <p className="text-sm font-medium leading-relaxed text-foreground">{stack.items}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
-      </CardContent>
-    </Card>
+    <SectionCard
+      variant="ghost"
+      icon={<Code className="h-5 w-5" />}
+      title="Tech Stack"
+      subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
+      contentClassName="flex gap-6 overflow-x-auto"
+    >
+      {orderedGroupedStacks.map(([groupName, stacks]) => (
+        <Card
+          key={groupName}
+          className="variant-secondary variant-border flex w-[350px] max-w-[85vw] shrink-0 flex-col bg-[var(--variant-soft)]"
+        >
+          <CardHeader className="variant-surface-header border-b-2 pb-4">
+            <CardTitle className="text-base font-black uppercase tracking-tight">
+              {groupName}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="max-h-72 space-y-5 overflow-y-auto pt-4">
+            {stacks.map((stack) => (
+              <div key={`${groupName}-${stack.category}`} className="space-y-1.5">
+                <p className="variant-secondary variant-soft-chip inline-block rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
+                  {stack.category}
+                </p>
+                <p className="text-sm font-medium leading-relaxed text-foreground">{stack.items}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </SectionCard>
   )
 }

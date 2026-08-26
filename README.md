@@ -50,17 +50,20 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ### Installation
 
 1. Clone the repository
+
 ```bash
 git clone <repository-url>
-cd indrax-nextjs-materialui-vercel
+cd indrax-nextjs-shadcn-vercel
 ```
 
 2. Install dependencies
+
 ```bash
 npm install
 ```
 
 3. Run the development server
+
 ```bash
 npm run dev
 ```
@@ -107,6 +110,7 @@ Edit `features/resume/data/resume.ts` to update your personal information, exper
 ### Other Platforms
 
 Build the project:
+
 ```bash
 npm run build
 ```
@@ -120,6 +124,7 @@ Private project - All rights reserved
 ## 👤 Author
 
 **Indra Cahya Edytya**
+
 - Email: indracahyae@gmail.com
 - GitHub: [@indraxyz](https://github.com/indraxyz)
 

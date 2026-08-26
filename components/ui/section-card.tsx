@@ -7,6 +7,7 @@ import {
   type CardHeight,
   type CardVariant,
 } from "@/components/ui/card"
+import { SectionHeader, type SectionLink } from "@/components/ui/section-header"
 import { variantClassNames, type VisualVariant } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +15,8 @@ interface SectionCardProps {
   title: string
   icon: ReactNode
   children: ReactNode
+  subtitle?: string
+  link?: SectionLink
   tone?: VisualVariant
   variant?: CardVariant
   height?: CardHeight
@@ -26,6 +29,8 @@ export function SectionCard({
   title,
   icon,
   children,
+  subtitle,
+  link,
   tone = "primary",
   variant = "card",
   height = "auto",
@@ -39,37 +44,19 @@ export function SectionCard({
     <Card
       variant={variant}
       height={height}
-      className={cn(
-        variantClassNames[tone],
-        !isGhost && "bg-[var(--variant-soft)]",
-        className
-      )}
+      className={cn(variantClassNames[tone], !isGhost && "bg-[var(--variant-soft)]", className)}
     >
-      <CardHeader
-        variant={variant}
-        className={cn(
-          !isGhost && "variant-surface-header border-b-2",
-          headerClassName
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-none",
-              !isGhost &&
-                `variant-icon border-2 ${variantClassNames[tone]}`,
-              isGhost && "text-current"
-            )}
-          >
-            {icon}
-          </div>
-          <h2 className="text-xl font-black uppercase tracking-tight">{title}</h2>
-        </div>
+      <CardHeader className={cn("variant-surface-header border-b-2", headerClassName)}>
+        <SectionHeader
+          icon={icon}
+          title={title}
+          subtitle={subtitle}
+          link={link}
+          tone={tone}
+          size={isGhost ? "lg" : "sm"}
+        />
       </CardHeader>
-      <CardContent
-        variant={variant}
-        className={cn(!isGhost && "pt-6", contentClassName)}
-      >
+      <CardContent variant={variant} className={cn(isGhost ? "py-6" : "pt-6", contentClassName)}>
         {children}
       </CardContent>
     </Card>
