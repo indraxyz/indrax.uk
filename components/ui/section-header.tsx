@@ -50,7 +50,7 @@ export function SectionHeader({
           {title}
         </h2>
         {subtitle && (
-          <p className="max-w-3xl text-sm font-semibold leading-relaxed text-current opacity-85">
+          <p className="max-w-5xl text-sm font-semibold leading-relaxed text-current opacity-85">
             {subtitle}
           </p>
         )}

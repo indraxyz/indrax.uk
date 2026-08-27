@@ -4,6 +4,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  isBoundedHeight,
   type CardHeight,
   type CardVariant,
 } from "@/components/ui/card"
@@ -39,6 +40,7 @@ export function SectionCard({
   contentClassName,
 }: SectionCardProps) {
   const isGhost = variant === "ghost"
+  const isBounded = isBoundedHeight(height)
 
   return (
     <Card
@@ -56,7 +58,11 @@ export function SectionCard({
           size={isGhost ? "lg" : "sm"}
         />
       </CardHeader>
-      <CardContent variant={variant} className={cn(isGhost ? "py-6" : "pt-6", contentClassName)}>
+      <CardContent
+        variant={variant}
+        scrollable={isBounded}
+        className={cn(isGhost ? "py-6" : "pt-6", contentClassName)}
+      >
         {children}
       </CardContent>
     </Card>

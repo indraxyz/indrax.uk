@@ -28,6 +28,9 @@
   --color-input: var(--semantic-border-strong);
   --color-ring: var(--semantic-focus-ring);
   --radius: 0.5rem;
+
+  --font-sans: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 @layer base {
@@ -400,4 +403,34 @@
 
 .shadow-soft-lg {
   box-shadow: 10px 10px 0 0 var(--semantic-border-strong);
+}
+
+/* Height caps and carousels exist to keep the screen layout compact, but on paper
+   there is nothing to scroll: release every bound so printing and "save as PDF"
+   emit the full resume instead of the visible slice. */
+@media print {
+  * {
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Releasing overflow alone leaves the horizontal card rails running off the
+     sheet, so let them wrap and let each card size to its own content. */
+  [class*="overflow-x-auto"] {
+    display: block !important;
+  }
+
+  [class*="overflow-x-auto"] > * {
+    width: auto !important;
+    max-width: none !important;
+    margin-bottom: 1.5rem;
+    break-inside: avoid;
+  }
+
+  .shadow-soft,
+  .shadow-soft-sm,
+  .shadow-soft-lg {
+    box-shadow: none !important;
+  }
 }

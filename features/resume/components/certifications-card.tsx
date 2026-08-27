@@ -6,7 +6,12 @@ import Link from "next/link"
 
 export function CertificationsCard() {
   return (
-    <SectionCard icon={<Award className="h-5 w-5" />} title="Certifications" tone="tertiary">
+    <SectionCard
+      icon={<Award className="h-5 w-5" />}
+      title="Certifications"
+      tone="tertiary"
+      height="lg"
+    >
       <div className="space-y-4">
         {certifications.map((certification, index) => (
           <div key={`${certification.title}-${certification.period}`}>

@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { HighlightSkills } from "@/features/resume/components/highlight-skills"
 import { bio, personalInfo } from "@/features/resume/data/resume"
 
 export function HeroSection() {
@@ -17,18 +17,8 @@ export function HeroSection() {
               {personalInfo.title}
             </p>
           </div>
-          <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
-            {personalInfo.highlightSkills?.map((skill) => (
-              <Badge
-                variant="primary"
-                className="variant-primary variant-soft-chip px-3 py-1 text-xs shadow-none"
-                key={skill}
-              >
-                {skill}
-              </Badge>
-            ))}
-          </div>
-          <p className="mx-auto max-w-3xl text-base leading-relaxed text-foreground xl:mx-0 md:text-lg">
+          <HighlightSkills skills={personalInfo.highlightSkills ?? []} />
+          <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground xl:mx-0 md:text-lg">
             {bio}
           </p>
         </div>
