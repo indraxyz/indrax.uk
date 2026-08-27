@@ -22,9 +22,6 @@ export interface TechStack {
 export interface PersonalInfo {
   name: string
   title: string
-  email: string
-  phone: string
-  location: string
   birthDate?: string
   birthPlace?: string
   gender: string
@@ -59,7 +56,6 @@ export interface Achievement {
 
 export interface Organization {
   title: string
-  role?: string
   period: string
   description?: string
 }

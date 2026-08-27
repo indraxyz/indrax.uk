@@ -15,7 +15,7 @@ export function ProfileAvatar({ src, alt, fallback = "ICE", className }: Profile
     <div
       className={cn(
         "relative inline-flex items-center justify-center",
-        "group cursor-pointer transition-all duration-300",
+        "group transition-all duration-300",
         className
       )}
     >

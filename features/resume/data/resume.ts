@@ -12,9 +12,6 @@ import type {
 export const personalInfo: PersonalInfo = {
   name: "Indra Cahya Edytya",
   title: "Software Engineer",
-  email: "indracahyae@gmail.com",
-  phone: "+62 813 3563 0404",
-  location: "Surabaya, Indonesia",
   birthDate: "1994-03-22",
   birthPlace: "Surabaya",
   gender: "Male",

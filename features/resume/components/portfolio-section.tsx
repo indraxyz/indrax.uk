@@ -18,7 +18,8 @@ export function PortfolioSection() {
       {portfolioItems.map((item) => (
         <Card
           key={`${item.title}-${item.year}`}
-          className="variant-secondary variant-border flex w-[350px] max-w-[85vw] shrink-0 flex-col bg-[var(--variant-soft)]"
+          height="md"
+          className="variant-secondary variant-border w-[350px] max-w-[85vw] shrink-0 bg-[var(--variant-soft)]"
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <div className="flex items-start justify-between gap-4">
@@ -37,7 +38,7 @@ export function PortfolioSection() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="max-h-72 min-h-72 flex-1 overflow-y-auto pt-4">
+          <CardContent scrollable className="pt-4">
             <p className="text-sm font-medium leading-relaxed text-foreground">
               {item.description}
             </p>
