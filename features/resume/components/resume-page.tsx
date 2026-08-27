@@ -13,9 +13,9 @@ export function ResumePage() {
       <div className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85">
         <div className="container mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
+            <p className="text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
               {RESUME_CONFIG.title}
-            </h1>
+            </p>
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <PersonalInfoDrawer />

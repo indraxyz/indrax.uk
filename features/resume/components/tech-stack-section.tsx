@@ -52,14 +52,15 @@ export function TechStackSection() {
       {orderedGroupedStacks.map(([groupName, stacks]) => (
         <Card
           key={groupName}
-          className="variant-secondary variant-border flex w-[350px] max-w-[85vw] shrink-0 flex-col bg-[var(--variant-soft)]"
+          height="md"
+          className="variant-secondary variant-border w-[350px] max-w-[85vw] shrink-0 bg-[var(--variant-soft)]"
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <CardTitle className="text-base font-black uppercase tracking-tight">
               {groupName}
             </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-72 space-y-5 overflow-y-auto pt-4">
+          <CardContent scrollable className="space-y-5 pt-4">
             {stacks.map((stack) => (
               <div key={`${groupName}-${stack.category}`} className="space-y-1.5">
                 <p className="variant-secondary variant-soft-chip inline-block rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">

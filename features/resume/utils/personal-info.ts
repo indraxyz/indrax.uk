@@ -3,12 +3,14 @@ import { formatDate } from "@/lib/utils"
 export function getCurrentAge(birthDate?: string) {
   if (!birthDate) return undefined
 
+  // The birth date is a calendar date parsed as UTC midnight, so compare it in
+  // UTC too rather than mixing it with the runtime's local calendar.
   const today = new Date()
   const birth = new Date(birthDate)
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
+  let age = today.getUTCFullYear() - birth.getUTCFullYear()
+  const monthDiff = today.getUTCMonth() - birth.getUTCMonth()
 
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+  if (monthDiff < 0 || (monthDiff === 0 && today.getUTCDate() < birth.getUTCDate())) {
     age -= 1
   }
 
