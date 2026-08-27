@@ -14,14 +14,14 @@ import {
 import { ProfileAvatar } from "@/features/resume/components/profile-avatar"
 import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { personalInfo } from "@/features/resume/data/resume"
-import { User, X } from "lucide-react"
+import { UserRound, X } from "lucide-react"
 
 export function PersonalInfoDrawer() {
   return (
     <Drawer direction="right">
       <DrawerTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Open personal information">
-          <User className="h-5 w-5" />
+          <UserRound className="h-5 w-5" />
         </Button>
       </DrawerTrigger>
       <DrawerContent className="w-full rounded-none border-l-2 border-border sm:max-w-xl">

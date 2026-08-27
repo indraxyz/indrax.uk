@@ -19,33 +19,34 @@ export const personalInfo: PersonalInfo = {
   birthPlace: "Surabaya",
   gender: "Male",
   status: "Married",
-  address: "Bali, Indonesia",
+  address: "Denpasar, Bali, Indonesia",
+  // Ordered by headline value: the first five are the ones the hero shows on mobile.
   highlightSkills: [
     "Modern Frontend",
     "Backend, APIs & Integrations",
-    "SQL & NoSQL Databases",
-    "Cloud Deployment & CI/CD",
-    "Testing, Debugging & Performance",
-    "System Architecture",
     "AI Automation & Agentic Workflows",
+    "System Architecture",
+    "Cloud Deployment & CI/CD",
+    "SQL & NoSQL Databases",
+    "Testing, Debugging & Performance",
     "Product UI/UX & Design Systems",
   ],
 }
 
-export const bio = `Software engineer with 9 years building, maintaining,  improving production apps, websites and digital products.
-I partner closely with app, design, marketing and business teams for developments, campaigns and requirements to turn into polished, measurable app/web experiences.`
+export const bio = `[9 years] building, maintaining,  improving production apps, websites and digital products.
+I partner closely with app, design, marketing and business teams for developments, campaigns and to turn requirements into polished, measurable app/web experiences with strategic approaches.`
 
 export const experiences: ExperienceItem[] = [
   {
     period: "Apr 2026 - Present",
-    company: "Juicebox Indonesia, South Denpasar, Bali",
+    company: "Juicebox Indonesia, Bali",
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
-      "Build and maintain production websites and product features across Laravel, Statamic, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
+      "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
-      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency.",
-      "Website growth and operations: Shopify, HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
+      "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
   {
@@ -117,29 +118,13 @@ export const experiences: ExperienceItem[] = [
   },
 ]
 
+// Ordered by project value: production systems with real business domains and
+// fullstack ownership first, then the smaller showcase builds.
 export const portfolioItems: PortfolioItem[] = [
   {
     title: "kademix",
     description:
       "data table management with proper uiux & performance with Next.js, React Router/ Remix,  MongoDB, GraphQL, React 19, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
-    year: "2025",
-  },
-  {
-    title: "Calculator",
-    description:
-      "beautiful, secure that built with React 19, TypeScript, Vite, Tailwind CSS v4, and React Router v7. This calculator combines modern design with robust security measures, excellent user experience, optimized code architecture.",
-    year: "2025",
-  },
-  {
-    title: "TodoApp",
-    description:
-      "todoApp (kanban board) q with drag drop functionality use Typescript, NextJs, NextUi, tailwind, motion.",
-    year: "2025",
-  },
-  {
-    title: "Pokedex",
-    description:
-      "search about pokemons that built with typescript, nextJs, material ui, tailwind, pokemon api v2.",
     year: "2025",
   },
   {
@@ -155,22 +140,40 @@ export const portfolioItems: PortfolioItem[] = [
     year: "2023",
   },
   {
-    title: "Belov",
-    description:
-      "Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
-    year: "2022",
-  },
-  {
     title: "Parkir",
     description:
       "Parking management system. Main features: auto select location, park entrance and out, tariff and payment, report. Web base using Laravel, Tailwind, MySQL",
     year: "2021",
   },
   {
+    title: "Belov",
+    description:
+      "Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
+    year: "2022",
+  },
+  {
     title: "Crimenesia",
     description:
       "Crime reporting system between police and society. Main features: crime reporting and crime mapping. Web and android platform using Laravel, MySQL, jQuery, Semantic, NotyJS, ReactJS, React Native",
     year: "2017",
+  },
+  {
+    title: "TodoApp",
+    description:
+      "todoApp (kanban board) q with drag drop functionality use Typescript, NextJs, NextUi, tailwind, motion.",
+    year: "2025",
+  },
+  {
+    title: "Calculator",
+    description:
+      "beautiful, secure that built with React 19, TypeScript, Vite, Tailwind CSS v4, and React Router v7. This calculator combines modern design with robust security measures, excellent user experience, optimized code architecture.",
+    year: "2025",
+  },
+  {
+    title: "Pokedex",
+    description:
+      "search about pokemons that built with typescript, nextJs, material ui, tailwind, pokemon api v2.",
+    year: "2025",
   },
 ]
 

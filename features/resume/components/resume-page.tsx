@@ -35,7 +35,7 @@ export function ResumePage() {
 
         <div className="mt-12 border-t-2 border-border py-10 text-center">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
-            by Indra • updated at {getCurrentDateFormatted()}
+            updated at {getCurrentDateFormatted()}
           </p>
         </div>
       </div>

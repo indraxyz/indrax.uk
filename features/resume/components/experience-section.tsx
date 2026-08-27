@@ -19,8 +19,6 @@ function ExperienceDetails({
         <p className="variant-secondary variant-soft-chip rounded-none border-2 px-2 py-1 text-xs font-black uppercase tracking-[0.12em] text-foreground">
           {period}
         </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary" className="px-2 text-xs">
           {role}
         </Badge>
@@ -48,9 +46,10 @@ export function ExperienceSection() {
       title="Experiences"
       subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
       link={{ href: SOCIAL_LINKS.linkedin, textLink: "Linkedin" }}
-      contentClassName="pt-8"
+      height="xl"
+      contentClassName="pt-8 pb-4 xl:pr-4"
     >
-      <div className="hidden max-h-[1250px] overflow-y-auto pr-4 xl:block">
+      <div className="hidden xl:block">
         <Timeline>
           {experiences.map((experience, index) => (
             <TimelineItem
@@ -65,10 +64,11 @@ export function ExperienceSection() {
         </Timeline>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto pb-4 xl:hidden">
+      <div className="flex gap-6 overflow-x-auto xl:hidden">
         {experiences.map((experience) => (
           <Card
             key={`${experience.company}-${experience.period}`}
+            height="md"
             className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
           >
             <CardHeader className="variant-surface-header border-b-2 pb-4">
@@ -89,7 +89,7 @@ export function ExperienceSection() {
                 {experience.company}
               </CardTitle>
             </CardHeader>
-            <CardContent className="max-h-72 overflow-y-auto pt-4">
+            <CardContent scrollable className="pt-4">
               <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground">
                 {experience.description.map((item) => (
                   <li key={item} className="leading-relaxed font-medium">

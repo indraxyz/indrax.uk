@@ -5,7 +5,12 @@ import { GraduationCap } from "lucide-react"
 
 export function EducationCard() {
   return (
-    <SectionCard icon={<GraduationCap className="h-5 w-5" />} title="Education" tone="tertiary">
+    <SectionCard
+      icon={<GraduationCap className="h-5 w-5" />}
+      title="Education"
+      tone="tertiary"
+      height="lg"
+    >
       <div className="space-y-6">
         {education.map((item, index) => (
           <div key={`${item.institution}-${item.period}`} className="space-y-3">
