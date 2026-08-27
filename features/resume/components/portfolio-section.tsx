@@ -23,14 +23,9 @@ export function PortfolioSection() {
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <CardTitle className="text-base font-black uppercase leading-snug tracking-tight">
-                  {item.title}
-                </CardTitle>
-                <p className="variant-soft-chip w-fit rounded-none border-2 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
-                  {item.year}
-                </p>
-              </div>
+              <CardTitle className="text-base font-black uppercase leading-snug tracking-tight">
+                {item.title}
+              </CardTitle>
               {item.link && (
                 <Link
                   href={item.link}
