@@ -68,7 +68,7 @@ export function ExperienceSection() {
         {experiences.map((experience) => (
           <Card
             key={`${experience.company}-${experience.period}`}
-            height="md"
+            height="2xl"
             className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
           >
             <CardHeader className="variant-surface-header border-b-2 pb-4">

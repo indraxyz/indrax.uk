@@ -3,7 +3,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export type CardVariant = "card" | "ghost"
-export type CardHeight = "auto" | "sm" | "md" | "lg" | "xl" | "full"
+export type CardHeight = "auto" | "sm" | "md" | "lg" | "xl" | "2xl" | "full"
 
 const cardVariantClasses: Record<CardVariant, string> = {
   card: "rounded-none border-2 border-border bg-card shadow-soft",
@@ -16,6 +16,10 @@ const cardHeightClasses: Record<CardHeight, string> = {
   md: "flex flex-col min-h-64 max-h-96",
   lg: "flex flex-col min-h-96 max-h-[40rem]",
   xl: "flex flex-col min-h-96 max-h-[1250px]",
+  // The only step measured against the viewport instead of a fixed pixel cap, so a
+  // tall card grows on a roomy screen and still fits a short one. Use it where the
+  // card has to hold as much as the device allows, such as the mobile carousels.
+  "2xl": "flex flex-col min-h-96 max-h-[70svh]",
   full: "flex flex-col h-full",
 }
 
