@@ -54,8 +54,8 @@ export const experiences: ExperienceItem[] = [
     role: "Software Engineer",
     description: [
       "Core team of Kisum App, development from inception, to production with a focus on architecture, scalable systems with best UI/UX and multi-tenant. Key modules developed include Artists, AI (Chat, Prediction), News, Events & Financials, Festivals, Venues, Vendors, and Market.",
-      "Projects: Kisum App, Artists sites, Events sites, and Venues sites.",
-      "Technologies: TypeScript, NextJs, UiUx (Tailwind & Shadcn, Redux/ Zustand/ Context, Tanstack, Mapbox, Swiper, Onborda, Echarts/ Recharts, Figma, Axios, Async, Hooks, React-hook-form, Zod ), GraphQL, WebSocket, REST API, JWT, Stripe, Figma, Jest, docker, github, Turbopack, MongoDB & PostgreSQL, Redis, Aws & Cloudflare, microservices, serverless (Lambda, Cloudflare Workers), express, Web Socket, Crypto, Stripe Payment Gateway, Github, Collaboration (Github Project, Teams, Zoom, Microsoft Cloud), Ai (gemini, n8n)",
+      "Projects: Kisum App, plus the Artists, Events, and Venues sites.",
+      "Technologies: TypeScript, NextJs, UiUx (Tailwind & Shadcn, Redux/ Zustand/ Context, Tanstack, Mapbox, Swiper, Onborda, Echarts/ Recharts, Figma, Axios, Async, Hooks, React-hook-form, Zod ), GraphQL, WebSocket, REST API, JWT, Jest, docker, github, Turbopack, MongoDB & PostgreSQL, Redis, Aws & Cloudflare, microservices, serverless (Lambda, Cloudflare Workers), express, Crypto, Stripe Payment Gateway, Collaboration (Github Project, Teams, Zoom, Microsoft Cloud), Ai (gemini, n8n)",
     ],
   },
   {
@@ -324,7 +324,7 @@ export const techStacks: TechStack[] = [
     group: "Quality & Observability",
     category: "Frontend Code Quality & Documentation",
     items:
-      "Component conventions, reusable UI patterns, accessibility, responsive quality, formatting, linting, type safety, secure client-side practices, dependency updates, README guides, Storybook documentation, architecture notes, and decision records",
+      "Component conventions, reusable UI patterns, accessibility, responsive quality, secure client-side practices, README guides, Storybook documentation",
   },
   {
     group: "Integrations & Growth",
@@ -347,8 +347,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Mobile & Specialized Product UI",
     category: "Rich Interfaces",
-    items:
-      "Tiptap, Plate, Quill, React Flow, Mapbox, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
+    items: "Tiptap, Plate, Quill, React Flow, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
   },
   {
     group: "AI & Automation",
@@ -422,84 +421,84 @@ export const certifications: Certification[] = [
     issuer: "Anthropic",
     period: "May 2026",
     link: "https://verify.skilljar.com/c/mwaaehb59bxc",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Fundamentals",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "AI Fluency",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "MCP",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Claude API",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "AI Capabilities & Limitations",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Claude Cowork",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Skills",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Subagents",
     issuer: "Anthropic",
-    group: "Claude - Anthropic",
+    group: "Claude by Anthropic",
   },
   {
     title: "Agents and Workflows",
     issuer: "OpenAI",
-    group: "Codex - OpenAI",
+    group: "ChatGPT/Codex by OpenAI",
   },
   {
     title: "AI Foundations and Applied",
     issuer: "OpenAI",
-    group: "Codex - OpenAI",
+    group: "ChatGPT/Codex by OpenAI",
   },
   {
     title: "N8n Integrations & Automations",
     issuer: "MySkill",
     period: "Jun 2026",
     link: "https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fstorage.googleapis.com%2Fmyskill-v2-certificates%2Fcourse-OZLZZJOr9qUzEB0JLbDk%2FrnHNapLUn7RYMFGW0JWkQBBpTTa2-M8zTyO8pby9zYg0uuqhc.pdf&urlhash=u3TY&mt=_icNjnn8-94jHaJN35EiGKqVsFuarQ6zqnhg-kViy-sApL4BbpNgO43l_Iall3ikF2CZlrdlGZMJ-sK2T7GaAm4B3UY&isSdui=true&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_certifications_details%3BpVejrEsuST2iAdxnRoy4mA%3D%3D",
-    group: "AI Automations - MySkill",
+    group: "AI Automations by MySkill",
   },
   {
     title: "Chatbot",
     issuer: "MySkill",
-    group: "AI Automations - MySkill",
+    group: "AI Automations by MySkill",
   },
   {
     title: "Social Media",
     issuer: "MySkill",
-    group: "AI Automations - MySkill",
+    group: "AI Automations by MySkill",
   },
   {
     title: "Resume",
     issuer: "MySkill",
-    group: "AI Automations - MySkill",
+    group: "AI Automations by MySkill",
   },
   {
     title: "Prediction",
     issuer: "MySkill",
-    group: "AI Automations - MySkill",
+    group: "AI Automations by MySkill",
   },
   {
     title: "Problem Solving",
