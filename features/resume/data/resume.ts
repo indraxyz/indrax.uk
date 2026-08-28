@@ -54,8 +54,8 @@ export const experiences: ExperienceItem[] = [
     role: "Software Engineer",
     description: [
       "Core team of Kisum App, development from inception, to production with a focus on architecture, scalable systems with best UI/UX and multi-tenant. Key modules developed include Artists, AI (Chat, Prediction), News, Events & Financials, Festivals, Venues, Vendors, and Market.",
-      "Projects: Kisum App, Artists sites, Events sites, and Venues sites.",
-      "Technologies: TypeScript, NextJs, UiUx (Tailwind & Shadcn, Redux/ Zustand/ Context, Tanstack, Mapbox, Swiper, Onborda, Echarts/ Recharts, Figma, Axios, Async, Hooks, React-hook-form, Zod ), GraphQL, WebSocket, REST API, JWT, Stripe, Figma, Jest, docker, github, Turbopack, MongoDB & PostgreSQL, Redis, Aws & Cloudflare, microservices, serverless (Lambda, Cloudflare Workers), express, Web Socket, Crypto, Stripe Payment Gateway, Github, Collaboration (Github Project, Teams, Zoom, Microsoft Cloud), Ai (gemini, n8n)",
+      "Projects: Kisum App, plus the Artists, Events, and Venues sites.",
+      "Technologies: TypeScript, NextJs, UiUx (Tailwind & Shadcn, Redux/ Zustand/ Context, Tanstack, Mapbox, Swiper, Onborda, Echarts/ Recharts, Figma, Axios, Async, Hooks, React-hook-form, Zod ), GraphQL, WebSocket, REST API, JWT, Jest, docker, github, Turbopack, MongoDB & PostgreSQL, Redis, Aws & Cloudflare, microservices, serverless (Lambda, Cloudflare Workers), express, Crypto, Stripe Payment Gateway, Collaboration (Github Project, Teams, Zoom, Microsoft Cloud), Ai (gemini, n8n)",
     ],
   },
   {
@@ -324,7 +324,7 @@ export const techStacks: TechStack[] = [
     group: "Quality & Observability",
     category: "Frontend Code Quality & Documentation",
     items:
-      "Component conventions, reusable UI patterns, accessibility, responsive quality, formatting, linting, type safety, secure client-side practices, dependency updates, README guides, Storybook documentation, architecture notes, and decision records",
+      "Component conventions, reusable UI patterns, accessibility, responsive quality, secure client-side practices, README guides, Storybook documentation",
   },
   {
     group: "Integrations & Growth",
@@ -347,8 +347,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Mobile & Specialized Product UI",
     category: "Rich Interfaces",
-    items:
-      "Tiptap, Plate, Quill, React Flow, Mapbox, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
+    items: "Tiptap, Plate, Quill, React Flow, Algolia, Alpine.js, jQuery, NotyJS, RxJS, Lodash",
   },
   {
     group: "AI & Automation",
