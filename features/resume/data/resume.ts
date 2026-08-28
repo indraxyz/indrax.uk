@@ -422,12 +422,84 @@ export const certifications: Certification[] = [
     issuer: "Anthropic",
     period: "May 2026",
     link: "https://verify.skilljar.com/c/mwaaehb59bxc",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Fundamentals",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "AI Fluency",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "MCP",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Claude API",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "AI Capabilities & Limitations",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Claude Cowork",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Skills",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Subagents",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Agents and Workflows",
+    issuer: "OpenAI",
+    group: "Codex - OpenAI",
+  },
+  {
+    title: "AI Foundations and Applied",
+    issuer: "OpenAI",
+    group: "Codex - OpenAI",
   },
   {
     title: "N8n Integrations & Automations",
     issuer: "MySkill",
     period: "Jun 2026",
     link: "https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fstorage.googleapis.com%2Fmyskill-v2-certificates%2Fcourse-OZLZZJOr9qUzEB0JLbDk%2FrnHNapLUn7RYMFGW0JWkQBBpTTa2-M8zTyO8pby9zYg0uuqhc.pdf&urlhash=u3TY&mt=_icNjnn8-94jHaJN35EiGKqVsFuarQ6zqnhg-kViy-sApL4BbpNgO43l_Iall3ikF2CZlrdlGZMJ-sK2T7GaAm4B3UY&isSdui=true&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_certifications_details%3BpVejrEsuST2iAdxnRoy4mA%3D%3D",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Chatbot",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Social Media",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Resume",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Prediction",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
   },
   {
     title: "Problem Solving",
@@ -456,6 +528,7 @@ export const achievements: Achievement[] = [
   {
     title: "1st Champion of DANS 2010",
     description: "Duta Anti Narkoba Sidoarjo (DANS) BNNK Sidoarjo",
+    period: "2010",
   },
   {
     title: "8th Best Graduate",
@@ -474,7 +547,6 @@ export const organizations: Organization[] = [
     title: "Vice Chairman of DANS Sidoarjo",
     period: "2010 - 2012",
     description: "Duta Anti Narkoba Sidoarjo (DANS) BNNK Sidoarjo",
-    period: "2010",
   },
   {
     title: "Member of Pencak Silat Merpati Putih",

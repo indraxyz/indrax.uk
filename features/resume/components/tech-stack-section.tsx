@@ -1,19 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { techStacks } from "@/features/resume/data/resume"
+import { groupInOrder } from "@/lib/utils"
 import { Code } from "lucide-react"
-
-const groupedStacks = techStacks.reduce(
-  (acc, stack) => {
-    const group = stack.group || "Other"
-    if (!acc[group]) {
-      acc[group] = []
-    }
-    acc[group].push(stack)
-    return acc
-  },
-  {} as Record<string, typeof techStacks>
-)
 
 const groupOrder = [
   "Languages & Web Foundations",
@@ -31,14 +20,7 @@ const groupOrder = [
   "Project Management & Collaboration",
 ] as const
 
-function getGroupOrder(groupName: string) {
-  const index = groupOrder.indexOf(groupName as (typeof groupOrder)[number])
-  return index >= 0 ? index : Number.MAX_SAFE_INTEGER
-}
-
-const orderedGroupedStacks = Object.entries(groupedStacks).sort(
-  ([groupA], [groupB]) => getGroupOrder(groupA) - getGroupOrder(groupB)
-)
+const orderedGroupedStacks = groupInOrder(techStacks, (stack) => stack.group || "Other", groupOrder)
 
 export function TechStackSection() {
   return (
