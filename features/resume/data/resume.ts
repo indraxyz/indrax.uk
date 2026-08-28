@@ -36,7 +36,7 @@ I partner closely with app, design, marketing and business teams for development
 export const experiences: ExperienceItem[] = [
   {
     period: "Apr 2026 - Present",
-    company: "Juicebox Indonesia, Bali",
+    company: "Juicebox ID/AU, Bali",
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
@@ -121,7 +121,7 @@ export const portfolioItems: PortfolioItem[] = [
   {
     title: "kademix",
     description:
-      "data table management with proper uiux & performance with Next.js, React Router/ Remix,  MongoDB, GraphQL, React 19, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
+      "data table management with proper uiux & performance with Next.js, React Router,  MongoDB, GraphQL, React, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
     year: "2025",
   },
   {
