@@ -5,7 +5,11 @@ import { groupInOrder } from "@/lib/utils"
 import { Award, ExternalLink } from "lucide-react"
 import Link from "next/link"
 
-const groupOrder = ["Claude - Anthropic", "Codex - OpenAI", "AI Automations - MySkill"] as const
+const groupOrder = [
+  "Claude by Anthropic",
+  "ChatGPT/Codex by OpenAI",
+  "AI Automations by MySkill",
+] as const
 
 // A certificate without an explicit group stands under its own issuer, so the
 // heading always names who issued the items beneath it.
