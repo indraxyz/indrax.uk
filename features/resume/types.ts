@@ -44,14 +44,17 @@ export interface Education {
 export interface Certification {
   title: string
   issuer: string
-  period: string
+  // Optional: course certificates listed under a group often carry no date.
+  period?: string
   link?: string
+  // Falls back to `issuer` when unset, so every certificate lands in a group.
+  group?: string
 }
 
 export interface Achievement {
   title: string
   description: string
-  year?: string
+  period?: string
 }
 
 export interface Organization {

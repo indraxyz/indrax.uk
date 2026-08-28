@@ -7,8 +7,8 @@ export function HeroSection() {
 
   return (
     <Card className="variant-primary variant-surface mb-8 overflow-hidden bg-[var(--variant-soft)]">
-      <CardContent className="relative p-8 xl:p-12">
-        <div className="space-y-6 text-center xl:text-left">
+      <CardContent className="relative p-8 lg:p-12">
+        <div className="space-y-6 text-center sm:text-left">
           <div className="space-y-2">
             <h1 className="text-4xl font-black uppercase tracking-tight text-foreground md:text-5xl">
               {firstName}
@@ -18,7 +18,7 @@ export function HeroSection() {
             </p>
           </div>
           <HighlightSkills skills={personalInfo.highlightSkills ?? []} />
-          <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground xl:mx-0 md:text-lg">
+          <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground sm:mx-0 md:text-lg">
             {bio}
           </p>
         </div>

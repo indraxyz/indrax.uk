@@ -24,7 +24,7 @@ export function ResumePage() {
         </div>
       </div>
 
-      <div className="container mx-auto max-w-7xl px-4 py-10 print:py-4 xl:py-14">
+      <div className="container mx-auto max-w-7xl px-4 py-10 print:py-4 lg:py-14">
         <HeroSection />
 
         <div className="space-y-8">

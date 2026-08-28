@@ -18,7 +18,7 @@ export function PortfolioSection() {
       {portfolioItems.map((item) => (
         <Card
           key={`${item.title}-${item.year}`}
-          height="md"
+          height="2xl"
           className="variant-secondary variant-border w-[350px] max-w-[85vw] shrink-0 bg-[var(--variant-soft)]"
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">

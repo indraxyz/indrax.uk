@@ -36,13 +36,14 @@ I partner closely with app, design, marketing and business teams for development
 export const experiences: ExperienceItem[] = [
   {
     period: "Apr 2026 - Present",
-    company: "Juicebox Indonesia, Bali",
+    company: "Juicebox ID/AU, Bali",
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
       "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
       "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
+      "Projects: Pirate Journey, Capitaliz, Ehrenberg-Bass Institute, XV Premium, MySharePlan, and Kent Removals & Storage.",
       "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
@@ -53,6 +54,7 @@ export const experiences: ExperienceItem[] = [
     role: "Software Engineer",
     description: [
       "Core team of Kisum App, development from inception, to production with a focus on architecture, scalable systems with best UI/UX and multi-tenant. Key modules developed include Artists, AI (Chat, Prediction), News, Events & Financials, Festivals, Venues, Vendors, and Market.",
+      "Projects: Kisum App, Artists sites, Events sites, and Venues sites.",
       "Technologies: TypeScript, NextJs, UiUx (Tailwind & Shadcn, Redux/ Zustand/ Context, Tanstack, Mapbox, Swiper, Onborda, Echarts/ Recharts, Figma, Axios, Async, Hooks, React-hook-form, Zod ), GraphQL, WebSocket, REST API, JWT, Stripe, Figma, Jest, docker, github, Turbopack, MongoDB & PostgreSQL, Redis, Aws & Cloudflare, microservices, serverless (Lambda, Cloudflare Workers), express, Web Socket, Crypto, Stripe Payment Gateway, Github, Collaboration (Github Project, Teams, Zoom, Microsoft Cloud), Ai (gemini, n8n)",
     ],
   },
@@ -121,7 +123,7 @@ export const portfolioItems: PortfolioItem[] = [
   {
     title: "kademix",
     description:
-      "data table management with proper uiux & performance with Next.js, React Router/ Remix,  MongoDB, GraphQL, React 19, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
+      "data table management with proper uiux & performance with Next.js, React Router,  MongoDB, GraphQL, React, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
     year: "2025",
   },
   {
@@ -420,12 +422,84 @@ export const certifications: Certification[] = [
     issuer: "Anthropic",
     period: "May 2026",
     link: "https://verify.skilljar.com/c/mwaaehb59bxc",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Fundamentals",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "AI Fluency",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "MCP",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Claude API",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "AI Capabilities & Limitations",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Claude Cowork",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Skills",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Subagents",
+    issuer: "Anthropic",
+    group: "Claude - Anthropic",
+  },
+  {
+    title: "Agents and Workflows",
+    issuer: "OpenAI",
+    group: "Codex - OpenAI",
+  },
+  {
+    title: "AI Foundations and Applied",
+    issuer: "OpenAI",
+    group: "Codex - OpenAI",
   },
   {
     title: "N8n Integrations & Automations",
     issuer: "MySkill",
     period: "Jun 2026",
     link: "https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fstorage.googleapis.com%2Fmyskill-v2-certificates%2Fcourse-OZLZZJOr9qUzEB0JLbDk%2FrnHNapLUn7RYMFGW0JWkQBBpTTa2-M8zTyO8pby9zYg0uuqhc.pdf&urlhash=u3TY&mt=_icNjnn8-94jHaJN35EiGKqVsFuarQ6zqnhg-kViy-sApL4BbpNgO43l_Iall3ikF2CZlrdlGZMJ-sK2T7GaAm4B3UY&isSdui=true&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_certifications_details%3BpVejrEsuST2iAdxnRoy4mA%3D%3D",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Chatbot",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Social Media",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Resume",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
+  },
+  {
+    title: "Prediction",
+    issuer: "MySkill",
+    group: "AI Automations - MySkill",
   },
   {
     title: "Problem Solving",
@@ -454,10 +528,17 @@ export const achievements: Achievement[] = [
   {
     title: "1st Champion of DANS 2010",
     description: "Duta Anti Narkoba Sidoarjo (DANS) BNNK Sidoarjo",
+    period: "2010",
   },
   {
     title: "8th Best Graduate",
     description: "SMPN 3 Waru (Junior High School)",
+    period: "2009",
+  },
+  {
+    title: "Consistently Ranked 1st in Class",
+    description: "Elementary School, from 1st through 6th grade",
+    period: "2000 - 2006",
   },
 ]
 

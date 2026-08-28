@@ -47,9 +47,9 @@ export function ExperienceSection() {
       subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
       link={{ href: SOCIAL_LINKS.linkedin, textLink: "Linkedin" }}
       height="xl"
-      contentClassName="pt-8 pb-4 xl:pr-4"
+      contentClassName="pt-8 pb-4 sm:pr-4"
     >
-      <div className="hidden xl:block">
+      <div className="hidden sm:block">
         <Timeline>
           {experiences.map((experience, index) => (
             <TimelineItem
@@ -64,11 +64,11 @@ export function ExperienceSection() {
         </Timeline>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto xl:hidden">
+      <div className="flex gap-6 overflow-x-auto sm:hidden">
         {experiences.map((experience) => (
           <Card
             key={`${experience.company}-${experience.period}`}
-            height="md"
+            height="2xl"
             className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
           >
             <CardHeader className="variant-surface-header border-b-2 pb-4">
