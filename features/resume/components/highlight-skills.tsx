@@ -61,7 +61,7 @@ export function HighlightSkills({ skills, className }: HighlightSkillsProps) {
   const collapsed = skills.slice(MOBILE_VISIBLE_COUNT)
 
   return (
-    <div className={cn("flex flex-wrap justify-center gap-2 xl:justify-start", className)}>
+    <div className={cn("flex flex-wrap justify-center gap-2 sm:justify-start", className)}>
       {visible.map((skill) => (
         <Badge variant="primary" className={chipClassName} key={skill}>
           {skill}
