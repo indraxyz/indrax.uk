@@ -51,7 +51,7 @@ export interface Certification {
 export interface Achievement {
   title: string
   description: string
-  year?: string
+  period?: string
 }
 
 export interface Organization {

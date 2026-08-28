@@ -13,6 +13,11 @@ export function AchievementsCard() {
             <p className="text-xs leading-relaxed text-muted-foreground">
               {achievement.description}
             </p>
+            {achievement.period && (
+              <p className="variant-tertiary variant-soft-chip mt-2 inline-block rounded-none border-2 px-2 py-1 text-xs font-black uppercase tracking-[0.12em] text-foreground">
+                {achievement.period}
+              </p>
+            )}
             {index < achievements.length - 1 && <Separator className="mt-4" />}
           </div>
         ))}

@@ -458,6 +458,12 @@ export const achievements: Achievement[] = [
   {
     title: "8th Best Graduate",
     description: "SMPN 3 Waru (Junior High School)",
+    period: "2009",
+  },
+  {
+    title: "Consistently Ranked 1st in Class",
+    description: "Elementary School, from 1st through 6th grade",
+    period: "2000 - 2006",
   },
 ]
 
@@ -466,6 +472,7 @@ export const organizations: Organization[] = [
     title: "Vice Chairman of DANS Sidoarjo",
     period: "2010 - 2012",
     description: "Duta Anti Narkoba Sidoarjo (DANS) BNNK Sidoarjo",
+    period: "2010",
   },
   {
     title: "Member of Pencak Silat Merpati Putih",
