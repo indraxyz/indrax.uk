@@ -201,7 +201,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Languages & Web Foundations",
     category: "Languages",
-    items: "TypeScript, JavaScript, PHP, Go, Python, SQL, HTML, CSS",
+    items: "TypeScript, JavaScript, Dart, PHP, Go, Python, SQL, HTML, CSS",
   },
   {
     group: "Languages & Web Foundations",
@@ -340,9 +340,93 @@ export const techStacks: TechStack[] = [
   },
   {
     group: "Mobile & Specialized Product UI",
-    category: "React Native",
+    category: "Flutter Language & Core",
     items:
-      "React Native, Expo, React Navigation, FlashList, Firebase, Mapbox, notifications, hardware modules",
+      "Flutter, Flutter SDK, Dart, sound null safety, strong typing, Futures & async/await, Streams & StreamController, isolates & compute, generics, mixins, extension methods, sealed classes & pattern matching, records, error handling, lifecycle & memory management",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter UI & Rendering",
+    items:
+      "Widget/Element/RenderObject tree, Material 3, Cupertino, slivers & CustomScrollView, custom painters & render objects, LayoutBuilder, responsive and adaptive layouts, theming & design tokens, implicit and explicit animations, AnimationController, Hero transitions, Rive, Lottie, fragment shaders, intl localization, accessibility semantics",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter State Management",
+    items:
+      "Riverpod, Bloc/Cubit, Provider, GetX, MobX, InheritedWidget, ChangeNotifier & ValueNotifier, signals, immutable state with freezed, state restoration, dependency scoping",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Architecture & Code Generation",
+    items:
+      "Clean architecture, MVVM, feature-first modularization, repository pattern, get_it & injectable DI, go_router & Navigator 2.0, deep links, build_runner, freezed, json_serializable, Pigeon, Melos monorepos, build flavors & environment config",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Data & Networking",
+    items:
+      "Dio, Retrofit, http, REST, GraphQL, WebSocket, gRPC, interceptors, retries & auth refresh, Hive, Isar, Drift, sqflite, shared_preferences, flutter_secure_storage, offline-first sync, caching & pagination",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Platform & Native Integration",
+    items:
+      "Platform channels, Pigeon, Dart FFI, Kotlin & Swift interop, Firebase (Auth, Firestore, Messaging, Crashlytics, Remote Config, Analytics), push notifications, in-app purchase, maps, camera, permissions, biometrics, background tasks, WebView",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Testing & Performance",
+    items:
+      "Unit, widget, golden, and integration_test suites, mocktail & mockito, patrol, DevTools, timeline & memory profiling, jank and rebuild analysis, const & RepaintBoundary tuning, deferred loading, app size reduction",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Build & Release",
+    items:
+      "Fastlane, Codemagic, GitHub Actions, code signing, build flavors, Play Store & App Store release, staged rollouts, Firebase App Distribution, TestFlight, Crashlytics monitoring, web & desktop targets",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Core & Runtime",
+    items:
+      "React Native, New Architecture (Fabric, TurboModules, JSI), Hermes, bridgeless mode, Expo & EAS, bare workflow, Metro bundler, monorepo setup, React 19 concurrent features, OTA updates with EAS Update",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native UI & Interaction",
+    items:
+      "Flexbox layout, StyleSheet, NativeWind, Reanimated, Gesture Handler, Skia, Lottie, FlashList & FlatList virtualization, SafeArea, responsive and adaptive layouts, dark mode theming, accessibility props, i18n",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Navigation & State",
+    items:
+      "React Navigation, Expo Router, deep links & universal links, Redux Toolkit, Zustand, Jotai, MobX, Context, TanStack Query, RTK Query, React Hook Form, Zod",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Data & Storage",
+    items:
+      "REST, GraphQL with Apollo & urql, WebSocket, Axios, MMKV, AsyncStorage, WatermelonDB, Realm, SQLite, Keychain & Keystore secure storage, offline-first sync, caching & pagination",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Modules & Device",
+    items:
+      "TurboModules & legacy native modules, Kotlin/Java and Swift/Objective-C interop, Expo config plugins, Firebase (Auth, Firestore, Messaging, Crashlytics, Remote Config, Analytics), push notifications, in-app purchase, Mapbox & Google Maps, camera, permissions, biometrics, background tasks, WebView",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Testing & Performance",
+    items:
+      "Jest, React Native Testing Library, Detox, Maestro, MSW, React DevTools & Flipper, Hermes profiling, re-render analysis, list performance, startup time & bundle size, memory leak tracing",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Build & Release",
+    items:
+      "EAS Build & Submit, Fastlane, GitHub Actions, Bitrise, code signing & provisioning, build flavors & schemes, Play Store & App Store release, staged rollouts, OTA updates, Sentry & Crashlytics monitoring",
   },
   {
     group: "Mobile & Specialized Product UI",
