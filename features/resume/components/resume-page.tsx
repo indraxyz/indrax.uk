@@ -49,7 +49,7 @@ export function ResumePage() {
       <footer className="container mx-auto max-w-7xl px-4">
         <div className="mt-12 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
-            updated at {formatDate(RESUME_CONFIG.updatedAt)} &middot; base on {SITE_HOST}
+            Updated {formatDate(RESUME_CONFIG.updatedAt)} &middot; {SITE_HOST}
           </p>
         </div>
       </footer>
