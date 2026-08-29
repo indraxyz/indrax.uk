@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { JetBrains_Mono } from "next/font/google"
 
+import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
+import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
 import "./globals.css"
 
@@ -10,10 +12,20 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap",
 })
 
+const TITLE = "Indra Cahya Edytya - Software Engineer"
+const DESCRIPTION =
+  "Indra Cahya Edytya — full-stack software engineer with 9+ years across TypeScript, React, Next.js, backend APIs, cloud deployment, testing, and AI automation."
+
 export const metadata: Metadata = {
-  title: "Indra Cahya Edytya - Software Engineer",
-  description:
-    "Indra Cahya Edytya — full-stack software engineer with 9+ years across TypeScript, React, Next.js, backend APIs, cloud deployment, testing, and AI automation.",
+  // Resolves the relative URLs below against the deployment, so shared links and
+  // crawlers see absolute addresses rather than a bare path.
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  applicationName: RESUME_CONFIG.title,
+  authors: [{ name: personalInfo.name, url: SITE_URL }],
+  creator: personalInfo.name,
+  alternates: { canonical: "/" },
   keywords: [
     "Full-stack software engineer",
     "TypeScript",
@@ -24,6 +36,26 @@ export const metadata: Metadata = {
     "Cloud deployment",
     "AI automation",
   ],
+  openGraph: {
+    type: "profile",
+    url: "/",
+    siteName: RESUME_CONFIG.title,
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "en_US",
+    images: [{ url: "/foto-profile.jpg", alt: personalInfo.name }],
+  },
+  twitter: {
+    card: "summary",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/foto-profile.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 }
 
 const themeScript = `

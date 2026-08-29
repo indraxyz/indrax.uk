@@ -1,3 +1,7 @@
+// The deployed origin, used to resolve the absolute URLs metadata and the sitemap
+// need. Overridable so a preview deployment advertises itself, not production.
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://indrax.uk"
+
 export const RESUME_CONFIG = {
   title: "Indra's Resume",
   // The date the resume content last changed. Deliberately authored rather than
