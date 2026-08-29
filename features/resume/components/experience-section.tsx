@@ -64,7 +64,12 @@ export function ExperienceSection() {
         </Timeline>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto sm:hidden">
+      <div
+        role="region"
+        aria-label="Experience cards"
+        tabIndex={0}
+        className="flex gap-6 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden"
+      >
         {experiences.map((experience) => (
           <Card
             key={`${experience.company}-${experience.period}`}
@@ -89,7 +94,7 @@ export function ExperienceSection() {
                 {experience.company}
               </CardTitle>
             </CardHeader>
-            <CardContent scrollable className="pt-4">
+            <CardContent scrollable aria-label={experience.company} className="pt-4">
               <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground">
                 {experience.description.map((item) => (
                   <li key={item} className="leading-relaxed font-medium">

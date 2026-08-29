@@ -13,7 +13,7 @@ export function PortfolioSection() {
       title="Portfolio"
       subtitle="Selected projects that show practical delivery across web, mobile, and integrated product systems."
       link={{ href: SOCIAL_LINKS.github, textLink: "Github" }}
-      contentClassName="flex gap-6 overflow-x-auto"
+      carousel
     >
       {portfolioItems.map((item) => (
         <Card
@@ -38,7 +38,7 @@ export function PortfolioSection() {
               )}
             </div>
           </CardHeader>
-          <CardContent scrollable className="pt-4">
+          <CardContent scrollable aria-label={item.title} className="pt-4">
             <p className="text-sm font-medium leading-relaxed text-foreground">
               {item.description}
             </p>
