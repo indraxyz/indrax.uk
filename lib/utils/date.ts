@@ -18,10 +18,3 @@ export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOpt
     ...(isDateOnly ? { timeZone: "UTC" } : {}),
   })
 }
-
-/**
- * Get current date formatted
- */
-export function getCurrentDateFormatted(): string {
-  return formatDate(new Date())
-}
