@@ -431,6 +431,12 @@
     -webkit-print-color-adjust: exact;
   }
 
+  /* The blanket overflow release above also unclips object-fit, which lets a
+     cover-cropped photo paint outside its box and across the text beside it. */
+  [data-print-clip] {
+    overflow: hidden !important;
+  }
+
   /* The personal-information drawer is portalled out of the page and duplicates
      the copy printed inline, so drop it whether or not it happens to be open. */
   [data-slot="drawer-content"],
