@@ -339,6 +339,12 @@ export const techStacks: TechStack[] = [
       "Stripe, Xendit, Midtrans, Polar, lead capture, booking flows, membership journeys, event registration, CRO, A/B testing",
   },
   {
+    group: "Integrations & Growth",
+    category: "Digital Advertising & Performance Marketing",
+    items:
+      "Google Ads (Search, Performance Max, Display, YouTube, Shopping), Meta Ads Manager, TikTok Ads, LinkedIn Ads, campaign structure & budget pacing, keyword research & negative keywords, audience segmentation, lookalike and retargeting audiences, ad copy and creative testing, landing page & offer alignment, Google Merchant Center and product feeds, server-side tagging, Conversions API, offline conversion import, attribution modelling, UTM taxonomy, ROAS, CPA and LTV analysis, bid strategies & budget allocation, Looker Studio reporting, email marketing and lifecycle automation, remarketing funnels",
+  },
+  {
     group: "Mobile & Specialized Product UI",
     category: "Flutter Language & Core",
     items:
