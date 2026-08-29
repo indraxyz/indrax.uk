@@ -42,9 +42,9 @@ export const experiences: ExperienceItem[] = [
     description: [
       "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
-      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration, n8n workflow automation, and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
       "Projects: Pirate Journey, Capitaliz, Ehrenberg-Bass Institute, XV Premium, MySharePlan, and Kent Removals & Storage.",
-      "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
+      "Website growth and operations: HubSpot forms and automation, n8n integrations across CRM, notifications, and reporting, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
   {
@@ -330,7 +330,7 @@ export const techStacks: TechStack[] = [
     group: "Integrations & Growth",
     category: "CRM, Analytics & Automation",
     items:
-      "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
+      "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel",
   },
   {
     group: "Integrations & Growth",
@@ -443,7 +443,43 @@ export const techStacks: TechStack[] = [
     group: "AI & Automation",
     category: "Agentic Workflows",
     items:
-      "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
+      "MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Core & Workflow Design",
+    items:
+      "n8n, workflow design & orchestration, Webhook, Schedule, Polling, Form and Chat triggers, Execute Workflow & sub-workflows, Merge, Loop Over Items, Split In Batches, IF, Switch, Filter, Wait, Stop and Error, error workflows, retries & continue-on-fail, pinned data, tags, folders, templates, workflow versioning",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Nodes & Integrations",
+    items:
+      "HTTP Request, Webhook & Respond to Webhook, REST & GraphQL APIs, pagination, rate limiting & backoff, Google Workspace (Sheets, Drive, Gmail, Calendar), Slack, Notion, Airtable, HubSpot, Stripe, Telegram, WhatsApp, Discord, GitHub, Jira, Postgres, MySQL, MongoDB, Redis, S3, SFTP, RSS, community nodes, custom node development",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n AI & LLM Automation",
+    items:
+      "AI Agent and Chat Trigger nodes, basic and conversational LLM chains, OpenAI, Claude, Gemini and Ollama model nodes, tool calling, MCP client & server nodes, vector stores (Pinecone, Qdrant, Supabase, PGVector), embeddings, RAG pipelines, document loaders & text splitters, buffer/Postgres/Redis memory, structured output parsers, evaluation and human-in-the-loop approval",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Data & Logic",
+    items:
+      "Code node in JavaScript and Python, n8n expressions, JMESPath, Edit Fields, Item Lists, Aggregate, Sort, Remove Duplicates, Date & Time, Crypto, JSON, XML, HTML and CSV parsing, binary and file handling, data mapping & schema shaping, idempotency keys, deduplication",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Security & Credentials",
+    items:
+      "Credential management, OAuth2 and API key auth, JWT, HMAC webhook signature verification, header auth, environment variables & external secrets, RBAC and project permissions, SSO, audit logs, data redaction, retention policies",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Deployment & Operations",
+    items:
+      "Self-hosted n8n on Docker and Docker Compose, n8n Cloud, queue mode with Redis and workers, Postgres persistence, horizontal scaling & concurrency tuning, separated webhook and worker processes, Nginx & Traefik reverse proxy, staging environments, Git-based source control, CI/CD, execution logging & pruning, monitoring, alerting, backup & restore",
   },
   {
     group: "Design & Product Experience",
