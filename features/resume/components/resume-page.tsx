@@ -31,11 +31,11 @@ export function ResumePage() {
         {/* On screen this content lives in the drawer, which unmounts while closed
             and so never reaches the printer. Paper has no drawer, so print gets its
             own copy and the sheet carries the whole resume. */}
-        <aside className="mb-8 hidden print:block">
+        <aside className="mb-4 hidden print:block">
           <SidebarInfo />
         </aside>
 
-        <div className="space-y-8">
+        <div className="space-y-8 print:space-y-4">
           <ExperienceSection />
           <TechStackSection />
           <PortfolioSection />
@@ -43,7 +43,7 @@ export function ResumePage() {
       </main>
 
       <footer className="container mx-auto max-w-7xl px-4">
-        <div className="mt-12 border-t-2 border-border py-10 text-center">
+        <div className="mt-12 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
             updated at {formatDate(RESUME_CONFIG.updatedAt)}
           </p>

@@ -70,8 +70,9 @@ export function SectionCard({
         variant={variant}
         scrollable={scrolls}
         aria-label={scrolls ? title : undefined}
+        data-print-columns={carousel ? "" : undefined}
         className={cn(
-          isGhost ? "py-6" : "pt-6",
+          isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2",
           carousel && "flex gap-6 overflow-x-auto",
           contentClassName
         )}

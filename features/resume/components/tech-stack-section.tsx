@@ -42,13 +42,19 @@ export function TechStackSection() {
               {groupName}
             </CardTitle>
           </CardHeader>
-          <CardContent scrollable aria-label={groupName} className="space-y-5 pt-4">
+          <CardContent
+            scrollable
+            aria-label={groupName}
+            className="space-y-5 pt-4 print:space-y-2 print:pt-2"
+          >
             {stacks.map((stack) => (
-              <div key={`${groupName}-${stack.category}`} className="space-y-1.5">
+              <div key={`${groupName}-${stack.category}`} className="space-y-1.5 print:space-y-0.5">
                 <p className="variant-secondary variant-soft-chip inline-block rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
                   {stack.category}
                 </p>
-                <p className="text-sm font-medium leading-relaxed text-foreground">{stack.items}</p>
+                <p className="text-sm font-medium leading-relaxed text-foreground print:leading-snug">
+                  {stack.items}
+                </p>
               </div>
             ))}
           </CardContent>

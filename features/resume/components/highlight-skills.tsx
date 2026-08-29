@@ -7,7 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 
 // Below `md` the hero only has room for a handful of chips, so the rest collapse
-// behind a "N+" trigger. From `md` up every skill is listed inline.
+// behind a "N+" trigger. From `md` up every skill is listed inline. Paper is
+// narrower than `md` but has no way to open a popover, so print lists them all
+// and drops the trigger.
 const MOBILE_VISIBLE_COUNT = 5
 
 // Leaving the trigger unmounts the popover, so a short grace period lets the
@@ -69,7 +71,11 @@ export function HighlightSkills({ skills, className }: HighlightSkillsProps) {
       ))}
 
       {collapsed.map((skill) => (
-        <Badge variant="primary" className={cn(chipClassName, "hidden md:inline-flex")} key={skill}>
+        <Badge
+          variant="primary"
+          className={cn(chipClassName, "hidden md:inline-flex print:inline-flex")}
+          key={skill}
+        >
           {skill}
         </Badge>
       ))}
@@ -81,7 +87,7 @@ export function HighlightSkills({ skills, className }: HighlightSkillsProps) {
             className={cn(
               badgeVariants({ variant: "primary" }),
               chipClassName,
-              "cursor-pointer tracking-[0.12em] md:hidden",
+              "cursor-pointer tracking-[0.12em] md:hidden print:hidden",
               open
                 ? "bg-[var(--variant-bg)] text-[var(--variant-fg)]"
                 : "hover:bg-[var(--variant-bg)] hover:text-[var(--variant-fg)]"

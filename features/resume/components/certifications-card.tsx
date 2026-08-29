@@ -27,13 +27,13 @@ export function CertificationsCard() {
       tone="tertiary"
       height="lg"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 print:space-y-3">
         {groupedCertifications.map(([groupName, items], groupIndex) => (
           <div key={groupName}>
             <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-foreground">
               {groupName}
             </p>
-            <div className="space-y-4">
+            <div className="space-y-4 print:space-y-2">
               {items.map((certification) => (
                 <div key={`${groupName}-${certification.title}`}>
                   <p className="mb-1 text-sm font-bold leading-tight">{certification.title}</p>

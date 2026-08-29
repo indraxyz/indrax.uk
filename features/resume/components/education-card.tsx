@@ -11,9 +11,9 @@ export function EducationCard() {
       tone="tertiary"
       height="lg"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 print:space-y-3">
         {education.map((item, index) => (
-          <div key={`${item.institution}-${item.period}`} className="space-y-3">
+          <div key={`${item.institution}-${item.period}`} className="space-y-3 print:space-y-1.5">
             <div>
               <p className="mb-1 text-sm font-bold uppercase tracking-wider">{item.degree}</p>
               <p className="text-sm font-medium">{item.institution}</p>
