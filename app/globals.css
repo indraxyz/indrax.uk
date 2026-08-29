@@ -410,7 +410,15 @@
    emit the full resume instead of the visible slice. */
 @media print {
   @page {
-    margin: 12mm;
+    margin: 10mm;
+  }
+
+  /* Tailwind sizes and spacing are rem-based, so shrinking the root scales the
+     whole sheet at once and fits the resume into far fewer pages. 11px is the
+     largest step that still lands the resume on six sheets; the breakpoints are
+     px-based, so nothing swaps layout underfoot when this changes. */
+  html {
+    font-size: 11px;
   }
 
   /* The palette carries the structure of this layout, so keep the borders and
@@ -423,6 +431,12 @@
     -webkit-print-color-adjust: exact;
   }
 
+  /* The blanket overflow release above also unclips object-fit, which lets a
+     cover-cropped photo paint outside its box and across the text beside it. */
+  [data-print-clip] {
+    overflow: hidden !important;
+  }
+
   /* The personal-information drawer is portalled out of the page and duplicates
      the copy printed inline, so drop it whether or not it happens to be open. */
   [data-slot="drawer-content"],
@@ -431,22 +445,32 @@
   }
 
   /* Releasing overflow alone leaves the horizontal card rails running off the
-     sheet, so let them wrap and let each card size to its own content. */
-  [class*="overflow-x-auto"] {
+     sheet. These are narrow cards, so on paper they flow down two columns rather
+     than one tall stack, which roughly halves the sheet count. Keyed to the
+     attribute, never to the utility class: matching `overflow-x-auto` also caught
+     the mobile-only rail and forced it to print alongside the desktop layout. */
+  [data-print-columns] {
     display: block !important;
+    columns: 2;
+    column-gap: 0.75rem;
   }
 
-  [class*="overflow-x-auto"] > * {
+  [data-print-columns] > * {
     width: auto !important;
     max-width: none !important;
-    margin-bottom: 1.5rem;
-    break-inside: avoid;
+    margin-bottom: 0.75rem;
+    /* Deliberately allowed to break: keeping each card whole in its column costs
+       two extra sheets, which matters more here than a card split at the fold. */
+  }
+
+  /* The stacks set their rhythm with space-y, which fights the column gap. */
+  [data-print-columns] > * + * {
+    margin-top: 0 !important;
   }
 
   .shadow-soft,
   .shadow-soft-sm,
   .shadow-soft-lg {
     box-shadow: none !important;
-    break-inside: avoid;
   }
 }

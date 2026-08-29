@@ -39,7 +39,7 @@ export function PortfolioSection() {
             </div>
           </CardHeader>
           <CardContent scrollable aria-label={item.title} className="pt-4">
-            <p className="text-sm font-medium leading-relaxed text-foreground">
+            <p className="text-sm font-medium leading-relaxed text-foreground print:leading-snug">
               {item.description}
             </p>
           </CardContent>

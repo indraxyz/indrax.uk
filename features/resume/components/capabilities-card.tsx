@@ -10,11 +10,11 @@ export function CapabilitiesCard() {
       tone="tertiary"
       height="lg"
     >
-      <ul className="space-y-3">
+      <ul className="space-y-3 print:space-y-1">
         {techSkills.map((skill) => (
           <li key={skill} className="flex items-start gap-3">
             <span className="variant-tertiary mt-1.5 h-2 w-2 shrink-0 rounded-none bg-[var(--variant-bg)]" />
-            <span className="text-sm font-medium leading-relaxed">{skill}</span>
+            <span className="text-sm font-medium leading-relaxed print:leading-snug">{skill}</span>
           </li>
         ))}
       </ul>

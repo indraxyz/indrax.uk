@@ -1,4 +1,4 @@
-import { RESUME_CONFIG } from "@/features/resume/config"
+import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { ExperienceSection } from "@/features/resume/components/experience-section"
 import { HeroSection } from "@/features/resume/components/hero-section"
 import { PersonalInfoDrawer } from "@/features/resume/components/personal-info-drawer"
@@ -7,6 +7,10 @@ import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { TechStackSection } from "@/features/resume/components/tech-stack-section"
 import { formatDate } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+
+// Derived from the configured origin so the credit cannot drift from the
+// canonical URL the metadata advertises.
+const SITE_HOST = new URL(SITE_URL).host
 
 export function ResumePage() {
   return (
@@ -31,11 +35,11 @@ export function ResumePage() {
         {/* On screen this content lives in the drawer, which unmounts while closed
             and so never reaches the printer. Paper has no drawer, so print gets its
             own copy and the sheet carries the whole resume. */}
-        <aside className="mb-8 hidden print:block">
+        <aside className="mb-4 hidden print:block">
           <SidebarInfo />
         </aside>
 
-        <div className="space-y-8">
+        <div className="space-y-8 print:space-y-4">
           <ExperienceSection />
           <TechStackSection />
           <PortfolioSection />
@@ -43,9 +47,9 @@ export function ResumePage() {
       </main>
 
       <footer className="container mx-auto max-w-7xl px-4">
-        <div className="mt-12 border-t-2 border-border py-10 text-center">
+        <div className="mt-12 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
-            updated at {formatDate(RESUME_CONFIG.updatedAt)}
+            Updated {formatDate(RESUME_CONFIG.updatedAt)} &middot; {SITE_HOST}
           </p>
         </div>
       </footer>

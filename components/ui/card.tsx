@@ -69,7 +69,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, CardPartProps>(
         ref={ref}
         className={cn(
           "flex shrink-0 flex-col space-y-1.5",
-          variant === "card" ? "p-6" : "p-0",
+          variant === "card" ? "p-6 print:p-3" : "p-0",
           className
         )}
         {...props}
@@ -103,7 +103,7 @@ const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
         role={isNamedRegion ? "region" : undefined}
         tabIndex={scrollable ? 0 : undefined}
         className={cn(
-          variant === "card" ? "p-6 pt-0" : "p-0",
+          variant === "card" ? "p-6 pt-0 print:p-3 print:pt-0" : "p-0",
           scrollable && scrollRegionClasses,
           className
         )}

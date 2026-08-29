@@ -12,7 +12,7 @@ interface SidebarInfoProps {
 
 export function SidebarInfo({ className }: SidebarInfoProps) {
   return (
-    <div className={cn("space-y-8", className)}>
+    <div data-print-columns className={cn("space-y-8 print:space-y-4", className)}>
       <PersonalCard />
       <CapabilitiesCard />
       <EducationCard />

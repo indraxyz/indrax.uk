@@ -14,9 +14,9 @@ const experienceKey = (experience: Experience) => `${experience.company}-${exper
 // bullet list itself is identical in both, so it lives here once.
 function ExperienceDescription({ description }: Pick<Experience, "description">) {
   return (
-    <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground">
+    <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground print:space-y-1">
       {description.map((item) => (
-        <li key={item} className="leading-relaxed font-medium">
+        <li key={item} className="leading-relaxed font-medium print:leading-snug">
           {item}
         </li>
       ))}
@@ -86,7 +86,7 @@ export function ExperienceSection() {
       height="xl"
       contentClassName="pt-8 pb-4 sm:pr-4"
     >
-      <div className="hidden sm:block">
+      <div className="hidden print:block sm:block">
         <Timeline>
           {experiences.map((experience, index) => (
             <TimelineItem key={experienceKey(experience)} isLast={index === experiences.length - 1}>
@@ -102,7 +102,7 @@ export function ExperienceSection() {
         role="region"
         aria-label="Experience cards"
         tabIndex={0}
-        className="flex gap-6 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden"
+        className="flex gap-6 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden sm:hidden"
       >
         {experiences.map((experience) => (
           <ExperienceCard key={experienceKey(experience)} {...experience} />

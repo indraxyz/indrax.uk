@@ -10,7 +10,7 @@ export function OrganizationsCard() {
 
   return (
     <SectionCard icon={<Users className="h-5 w-5" />} title="Organizations" tone="tertiary">
-      <div className="space-y-4">
+      <div className="space-y-4 print:space-y-2">
         {organizations.map((organization, index) => (
           <div key={`${organization.title}-${organization.period}`}>
             <p className="mb-1 text-sm font-bold leading-tight">{organization.title}</p>
