@@ -6,8 +6,10 @@ This document describes the architecture and design decisions for the Resume/CV 
 
 ```
 ├── app/                      # Next.js App Router
-│   ├── layout.tsx           # Root layout with metadata
+│   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
 │   ├── page.tsx             # Server entry for the resume page
+│   ├── robots.ts            # Generated /robots.txt
+│   ├── sitemap.ts           # Generated /sitemap.xml
 │   └── globals.css          # Global styles with Tailwind v4
 │
 ├── components/              # Shared UI primitives
@@ -18,6 +20,7 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       ├── button.tsx
 │       ├── card.tsx
 │       ├── drawer.tsx
+│       ├── popover.tsx
 │       ├── section-card.tsx # Card + header composition used by every section
 │       ├── section-header.tsx
 │       ├── separator.tsx
@@ -108,6 +111,12 @@ components/ui/ (Base UI Components)
 
 ### Component Organization
 
+- **Scrolling panes are regions**: any pane that scrolls — a height-capped card
+  body or a horizontal rail — is focusable and carries an `aria-label`, so keyboard
+  users can reach content that is off-screen
+- **Print carries everything**: the sidebar lives in a drawer that unmounts while
+  closed, so `resume-page.tsx` renders a print-only copy and `globals.css` drops the
+  portalled drawer from the printed sheet
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
@@ -146,6 +155,5 @@ Potential enhancements:
 - [ ] Add i18n support for multiple languages
 - [ ] Add PDF generation API route
 - [ ] Add analytics
-- [ ] Add Open Graph / Twitter metadata and a sitemap
 - [ ] Surface contact details (email, phone, website) in the personal card
 - [ ] Enforce import ordering with an ESLint rule

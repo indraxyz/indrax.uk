@@ -7,9 +7,9 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Modern UI/UX**: Clean, professional design with shadcn/ui components
 - **Fully Typed**: Complete TypeScript implementation
 - **Responsive**: Mobile-first design that works on all devices
-- **Print-Friendly**: Optimized for PDF export
+- **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
 - **Performance**: Built with Next.js 16 and optimized for speed
-- **Accessible**: WCAG compliant components
+- **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
 ## 🛠️ Tech Stack
 
@@ -24,8 +24,10 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 
 ```
 ├── app/                    # Next.js app directory
-│   ├── layout.tsx         # Root layout
+│   ├── layout.tsx         # Root layout and metadata
 │   ├── page.tsx           # Server route entry
+│   ├── robots.ts          # Generated /robots.txt
+│   ├── sitemap.ts         # Generated /sitemap.xml
 │   └── globals.css        # Global styles
 ├── components/            # Shared UI primitives
 │   └── ui/               # shadcn/ui components
