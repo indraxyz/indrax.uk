@@ -443,7 +443,7 @@ export const techStacks: TechStack[] = [
     group: "AI & Automation",
     category: "Agentic Workflows",
     items:
-      "MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
+      "Claude Code, Codex, Cursor, VS Code, agentic CLIs & IDE agents, MCP clients & servers, tool and function design, skills, subagents & multi-agent orchestration, structured plans and task decomposition, context engineering, repository rules & conventions files, hooks and permission policies, sandboxed execution, git worktree isolation, spec-driven and test-driven agentic loops, review & refactor agents, codebase retrieval, prompt and workflow versioning, evaluation harnesses & regression suites, guardrails, human-in-the-loop approval, token & cost budgeting, observability and audit trails, agents in CI/CD",
   },
   {
     group: "AI & Automation",
