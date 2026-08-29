@@ -21,6 +21,9 @@ interface SectionCardProps {
   tone?: VisualVariant
   variant?: CardVariant
   height?: CardHeight
+  // Lays the children out as a horizontal rail of cards. Owned here rather than
+  // passed as classes so every rail also gets the same scroll-region semantics.
+  carousel?: boolean
   className?: string
   headerClassName?: string
   contentClassName?: string
@@ -35,12 +38,17 @@ export function SectionCard({
   tone = "primary",
   variant = "card",
   height = "auto",
+  carousel = false,
   className,
   headerClassName,
   contentClassName,
 }: SectionCardProps) {
   const isGhost = variant === "ghost"
   const isBounded = isBoundedHeight(height)
+  // A height-capped pane scrolls vertically and a rail scrolls horizontally; both
+  // strand their content unless a keyboard can reach and a screen reader can name
+  // the scroller itself.
+  const scrolls = isBounded || carousel
 
   return (
     <Card
@@ -60,8 +68,13 @@ export function SectionCard({
       </CardHeader>
       <CardContent
         variant={variant}
-        scrollable={isBounded}
-        className={cn(isGhost ? "py-6" : "pt-6", contentClassName)}
+        scrollable={scrolls}
+        aria-label={scrolls ? title : undefined}
+        className={cn(
+          isGhost ? "py-6" : "pt-6",
+          carousel && "flex gap-6 overflow-x-auto",
+          contentClassName
+        )}
       >
         {children}
       </CardContent>

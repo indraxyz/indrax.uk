@@ -42,9 +42,9 @@ export const experiences: ExperienceItem[] = [
     description: [
       "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
-      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration, n8n workflow automation, and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
       "Projects: Pirate Journey, Capitaliz, Ehrenberg-Bass Institute, XV Premium, MySharePlan, and Kent Removals & Storage.",
-      "Website growth and operations: HubSpot forms and automation, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
+      "Website growth and operations: HubSpot forms and automation, n8n integrations across CRM, notifications, and reporting, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
     ],
   },
   {
@@ -201,7 +201,7 @@ export const techStacks: TechStack[] = [
   {
     group: "Languages & Web Foundations",
     category: "Languages",
-    items: "TypeScript, JavaScript, PHP, Go, Python, SQL, HTML, CSS",
+    items: "TypeScript, JavaScript, Dart, PHP, Go, Python, SQL, HTML, CSS",
   },
   {
     group: "Languages & Web Foundations",
@@ -330,7 +330,7 @@ export const techStacks: TechStack[] = [
     group: "Integrations & Growth",
     category: "CRM, Analytics & Automation",
     items:
-      "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel, n8n",
+      "HubSpot forms, workflows, reporting, GA4, Google Tag Manager, Google Search Console, Microsoft Clarity, Meta Pixel",
   },
   {
     group: "Integrations & Growth",
@@ -339,10 +339,100 @@ export const techStacks: TechStack[] = [
       "Stripe, Xendit, Midtrans, Polar, lead capture, booking flows, membership journeys, event registration, CRO, A/B testing",
   },
   {
-    group: "Mobile & Specialized Product UI",
-    category: "React Native",
+    group: "Integrations & Growth",
+    category: "Digital Advertising & Performance Marketing",
     items:
-      "React Native, Expo, React Navigation, FlashList, Firebase, Mapbox, notifications, hardware modules",
+      "Google Ads (Search, Performance Max, Display, YouTube, Shopping), Meta Ads Manager, TikTok Ads, LinkedIn Ads, campaign structure & budget pacing, keyword research & negative keywords, audience segmentation, lookalike and retargeting audiences, ad copy and creative testing, landing page & offer alignment, Google Merchant Center and product feeds, server-side tagging, Conversions API, offline conversion import, attribution modelling, UTM taxonomy, ROAS, CPA and LTV analysis, bid strategies & budget allocation, Looker Studio reporting, email marketing and lifecycle automation, remarketing funnels",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Language & Core",
+    items:
+      "Flutter, Flutter SDK, Dart, sound null safety, strong typing, Futures & async/await, Streams & StreamController, isolates & compute, generics, mixins, extension methods, sealed classes & pattern matching, records, error handling, lifecycle & memory management",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter UI & Rendering",
+    items:
+      "Widget/Element/RenderObject tree, Material 3, Cupertino, slivers & CustomScrollView, custom painters & render objects, LayoutBuilder, responsive and adaptive layouts, theming & design tokens, implicit and explicit animations, AnimationController, Hero transitions, Rive, Lottie, fragment shaders, intl localization, accessibility semantics",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter State Management",
+    items:
+      "Riverpod, Bloc/Cubit, Provider, GetX, MobX, InheritedWidget, ChangeNotifier & ValueNotifier, signals, immutable state with freezed, state restoration, dependency scoping",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Architecture & Code Generation",
+    items:
+      "Clean architecture, MVVM, feature-first modularization, repository pattern, get_it & injectable DI, go_router & Navigator 2.0, deep links, build_runner, freezed, json_serializable, Pigeon, Melos monorepos, build flavors & environment config",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Data & Networking",
+    items:
+      "Dio, Retrofit, http, REST, GraphQL, WebSocket, gRPC, interceptors, retries & auth refresh, Hive, Isar, Drift, sqflite, shared_preferences, flutter_secure_storage, offline-first sync, caching & pagination",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Platform & Native Integration",
+    items:
+      "Platform channels, Pigeon, Dart FFI, Kotlin & Swift interop, Firebase (Auth, Firestore, Messaging, Crashlytics, Remote Config, Analytics), push notifications, in-app purchase, maps, camera, permissions, biometrics, background tasks, WebView",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Testing & Performance",
+    items:
+      "Unit, widget, golden, and integration_test suites, mocktail & mockito, patrol, DevTools, timeline & memory profiling, jank and rebuild analysis, const & RepaintBoundary tuning, deferred loading, app size reduction",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "Flutter Build & Release",
+    items:
+      "Fastlane, Codemagic, GitHub Actions, code signing, build flavors, Play Store & App Store release, staged rollouts, Firebase App Distribution, TestFlight, Crashlytics monitoring, web & desktop targets",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Core & Runtime",
+    items:
+      "React Native, New Architecture (Fabric, TurboModules, JSI), Hermes, bridgeless mode, Expo & EAS, bare workflow, Metro bundler, monorepo setup, React 19 concurrent features, OTA updates with EAS Update",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native UI & Interaction",
+    items:
+      "Flexbox layout, StyleSheet, NativeWind, Reanimated, Gesture Handler, Skia, Lottie, FlashList & FlatList virtualization, SafeArea, responsive and adaptive layouts, dark mode theming, accessibility props, i18n",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Navigation & State",
+    items:
+      "React Navigation, Expo Router, deep links & universal links, Redux Toolkit, Zustand, Jotai, MobX, Context, TanStack Query, RTK Query, React Hook Form, Zod",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Data & Storage",
+    items:
+      "REST, GraphQL with Apollo & urql, WebSocket, Axios, MMKV, AsyncStorage, WatermelonDB, Realm, SQLite, Keychain & Keystore secure storage, offline-first sync, caching & pagination",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Modules & Device",
+    items:
+      "TurboModules & legacy native modules, Kotlin/Java and Swift/Objective-C interop, Expo config plugins, Firebase (Auth, Firestore, Messaging, Crashlytics, Remote Config, Analytics), push notifications, in-app purchase, Mapbox & Google Maps, camera, permissions, biometrics, background tasks, WebView",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Testing & Performance",
+    items:
+      "Jest, React Native Testing Library, Detox, Maestro, MSW, React DevTools & Flipper, Hermes profiling, re-render analysis, list performance, startup time & bundle size, memory leak tracing",
+  },
+  {
+    group: "Mobile & Specialized Product UI",
+    category: "React Native Build & Release",
+    items:
+      "EAS Build & Submit, Fastlane, GitHub Actions, Bitrise, code signing & provisioning, build flavors & schemes, Play Store & App Store release, staged rollouts, OTA updates, Sentry & Crashlytics monitoring",
   },
   {
     group: "Mobile & Specialized Product UI",
@@ -359,7 +449,43 @@ export const techStacks: TechStack[] = [
     group: "AI & Automation",
     category: "Agentic Workflows",
     items:
-      "n8n, MCP, Codex, Claude Code, VS Code/Cursor, agentic cli & tools, skills, structured plans, rules, and AI-agentic engineering workflows",
+      "Claude Code, Codex, Cursor, VS Code, agentic CLIs & IDE agents, MCP clients & servers, tool and function design, skills, subagents & multi-agent orchestration, structured plans and task decomposition, context engineering, repository rules & conventions files, hooks and permission policies, sandboxed execution, git worktree isolation, spec-driven and test-driven agentic loops, review & refactor agents, codebase retrieval, prompt and workflow versioning, evaluation harnesses & regression suites, guardrails, human-in-the-loop approval, token & cost budgeting, observability and audit trails, agents in CI/CD",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Core & Workflow Design",
+    items:
+      "n8n, workflow design & orchestration, Webhook, Schedule, Polling, Form and Chat triggers, Execute Workflow & sub-workflows, Merge, Loop Over Items, Split In Batches, IF, Switch, Filter, Wait, Stop and Error, error workflows, retries & continue-on-fail, pinned data, tags, folders, templates, workflow versioning",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Nodes & Integrations",
+    items:
+      "HTTP Request, Webhook & Respond to Webhook, REST & GraphQL APIs, pagination, rate limiting & backoff, Google Workspace (Sheets, Drive, Gmail, Calendar), Slack, Notion, Airtable, HubSpot, Stripe, Telegram, WhatsApp, Discord, GitHub, Jira, Postgres, MySQL, MongoDB, Redis, S3, SFTP, RSS, community nodes, custom node development",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n AI & LLM Automation",
+    items:
+      "AI Agent and Chat Trigger nodes, basic and conversational LLM chains, OpenAI, Claude, Gemini and Ollama model nodes, tool calling, MCP client & server nodes, vector stores (Pinecone, Qdrant, Supabase, PGVector), embeddings, RAG pipelines, document loaders & text splitters, buffer/Postgres/Redis memory, structured output parsers, evaluation and human-in-the-loop approval",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Data & Logic",
+    items:
+      "Code node in JavaScript and Python, n8n expressions, JMESPath, Edit Fields, Item Lists, Aggregate, Sort, Remove Duplicates, Date & Time, Crypto, JSON, XML, HTML and CSV parsing, binary and file handling, data mapping & schema shaping, idempotency keys, deduplication",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Security & Credentials",
+    items:
+      "Credential management, OAuth2 and API key auth, JWT, HMAC webhook signature verification, header auth, environment variables & external secrets, RBAC and project permissions, SSO, audit logs, data redaction, retention policies",
+  },
+  {
+    group: "AI & Automation",
+    category: "n8n Deployment & Operations",
+    items:
+      "Self-hosted n8n on Docker and Docker Compose, n8n Cloud, queue mode with Redis and workers, Postgres persistence, horizontal scaling & concurrency tuning, separated webhook and worker processes, Nginx & Traefik reverse proxy, staging environments, Git-based source control, CI/CD, execution logging & pruning, monitoring, alerting, backup & restore",
   },
   {
     group: "Design & Product Experience",

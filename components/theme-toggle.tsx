@@ -33,10 +33,14 @@ function isThemePreference(theme: string | null): theme is ThemePreference {
 }
 
 function getStoredTheme(): ThemePreference {
-  if (typeof window === "undefined") return DEFAULT_THEME
-
   const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
   return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME
+}
+
+// The server has no stored preference to read, so it renders the default and the
+// inline head script has already applied the real one to <html> by then.
+function getServerTheme(): ThemePreference {
+  return DEFAULT_THEME
 }
 
 function subscribeToThemeStore(callback: () => void) {
@@ -62,15 +66,13 @@ const themeIcons = {
 } satisfies Record<ThemePreference, typeof Sun>
 
 export function ThemeToggle() {
-  const [theme, setTheme] = React.useState<ThemePreference>(DEFAULT_THEME)
+  // Reading the store directly rather than syncing it into state in an effect
+  // keeps the very first client render on the stored preference, so the icon no
+  // longer shows the default for a frame before correcting itself.
+  const theme = React.useSyncExternalStore(subscribeToThemeStore, getStoredTheme, getServerTheme)
 
-  React.useEffect(() => {
-    const syncTheme = () => setTheme(getStoredTheme())
-
-    syncTheme()
-    return subscribeToThemeStore(syncTheme)
-  }, [])
-
+  // Keeps <html> in step with the store, including a preference changed in
+  // another tab, which arrives here as a storage event and no other way.
   React.useEffect(() => {
     applyTheme(theme)
   }, [theme])
@@ -97,8 +99,8 @@ export function ThemeToggle() {
       title={`${themeLabels[theme]} -> ${nextTheme}`}
       onClick={() => {
         window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-        setTheme(nextTheme)
-        applyTheme(nextTheme)
+        // Storage events only reach other tabs, so this is what tells the
+        // subscribers in this one to re-read the store.
         window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
       }}
     >

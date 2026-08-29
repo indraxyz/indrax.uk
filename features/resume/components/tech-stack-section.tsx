@@ -29,7 +29,7 @@ export function TechStackSection() {
       icon={<Code className="h-5 w-5" />}
       title="Tech Stack"
       subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
-      contentClassName="flex gap-6 overflow-x-auto"
+      carousel
     >
       {orderedGroupedStacks.map(([groupName, stacks]) => (
         <Card
@@ -42,7 +42,7 @@ export function TechStackSection() {
               {groupName}
             </CardTitle>
           </CardHeader>
-          <CardContent scrollable className="space-y-5 pt-4">
+          <CardContent scrollable aria-label={groupName} className="space-y-5 pt-4">
             {stacks.map((stack) => (
               <div key={`${groupName}-${stack.category}`} className="space-y-1.5">
                 <p className="variant-secondary variant-soft-chip inline-block rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">

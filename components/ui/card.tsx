@@ -37,6 +37,11 @@ interface CardContentProps extends CardPartProps {
   scrollable?: boolean
 }
 
+// A pane that scrolls has to be reachable by keyboard, or its content is stranded
+// for anyone not using a pointer. Focusing it also needs to be visible.
+const scrollRegionClasses =
+  "min-h-0 flex-1 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
@@ -87,12 +92,19 @@ CardTitle.displayName = "CardTitle"
 
 const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, variant = "card", scrollable = false, ...props }, ref) => {
+    // Only name the pane as a region once it actually has a label; an anonymous
+    // region is noise for a screen reader, so a caller that skips the label gets
+    // a plain focusable pane instead.
+    const isNamedRegion = scrollable && Boolean(props["aria-label"])
+
     return (
       <div
         ref={ref}
+        role={isNamedRegion ? "region" : undefined}
+        tabIndex={scrollable ? 0 : undefined}
         className={cn(
           variant === "card" ? "p-6 pt-0" : "p-0",
-          scrollable && "min-h-0 flex-1 overflow-y-auto",
+          scrollable && scrollRegionClasses,
           className
         )}
         {...props}

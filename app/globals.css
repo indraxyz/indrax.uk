@@ -409,10 +409,25 @@
    there is nothing to scroll: release every bound so printing and "save as PDF"
    emit the full resume instead of the visible slice. */
 @media print {
+  @page {
+    margin: 12mm;
+  }
+
+  /* The palette carries the structure of this layout, so keep the borders and
+     surface fills on paper instead of letting the browser strip them. */
   * {
     max-height: none !important;
     min-height: 0 !important;
     overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* The personal-information drawer is portalled out of the page and duplicates
+     the copy printed inline, so drop it whether or not it happens to be open. */
+  [data-slot="drawer-content"],
+  [data-slot="drawer-overlay"] {
+    display: none !important;
   }
 
   /* Releasing overflow alone leaves the horizontal card rails running off the
@@ -432,5 +447,6 @@
   .shadow-soft-sm,
   .shadow-soft-lg {
     box-shadow: none !important;
+    break-inside: avoid;
   }
 }
