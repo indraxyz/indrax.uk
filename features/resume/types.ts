@@ -27,6 +27,8 @@ export interface PersonalInfo {
   gender: string
   status: string
   address: string
+  phone?: string
+  email?: string
   highlightSkills?: string[]
 }
 

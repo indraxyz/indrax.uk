@@ -110,6 +110,8 @@ export function ResumeDocument() {
                 value={`${age ?? "-"} years / ${personalInfo.gender} / ${personalInfo.status}`}
               />
               <Labelled label="Address" value={personalInfo.address} />
+              {personalInfo.phone ? <Labelled label="Phone" value={personalInfo.phone} /> : null}
+              {personalInfo.email ? <Labelled label="Email" value={personalInfo.email} /> : null}
               <Labelled label="GitHub" value={SOCIAL_LINKS.github} />
               <Labelled label="LinkedIn" value={SOCIAL_LINKS.linkedin} />
             </Card>
