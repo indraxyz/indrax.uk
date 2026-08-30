@@ -414,11 +414,11 @@
   }
 
   /* Tailwind sizes and spacing are rem-based, so shrinking the root scales the
-     whole sheet at once and fits the resume into far fewer pages. 11px is the
+     whole sheet at once and fits the resume into far fewer pages. 10.75px is the
      largest step that still lands the resume on six sheets; the breakpoints are
      px-based, so nothing swaps layout underfoot when this changes. */
   html {
-    font-size: 11px;
+    font-size: 10.75px;
   }
 
   /* The palette carries the structure of this layout, so keep the borders and

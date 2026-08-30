@@ -50,6 +50,7 @@ export function DownloadResumeButton() {
       size="icon"
       onClick={download}
       disabled={working}
+      aria-busy={working}
       aria-label={working ? "Building the resume PDF" : "Download resume as PDF"}
       title={state === "error" ? "Could not build the PDF - try again" : "Download resume (PDF)"}
       className="print:hidden"

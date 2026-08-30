@@ -31,7 +31,6 @@ export function ResumePage() {
                   <GithubIcon className="h-5 w-5" />
                 </Link>
               </Button>
-              <DownloadResumeButton />
               <ThemeToggle />
               <PersonalInfoDrawer />
             </div>
@@ -57,7 +56,8 @@ export function ResumePage() {
       </main>
 
       <footer className="container mx-auto max-w-7xl px-4">
-        <div className="mt-12 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
+        <div className="mt-12 flex items-center justify-center gap-3 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
+          <DownloadResumeButton />
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
             Updated {formatDate(RESUME_CONFIG.updatedAt)} &middot; {SITE_HOST}
           </p>

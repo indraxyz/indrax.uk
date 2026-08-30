@@ -132,7 +132,7 @@ export const portfolioItems: PortfolioItem[] = [
   {
     title: "Belov",
     description:
-      "Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
+      "[BPJS-TK Sidoarjo] Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
     year: "2022",
   },
   {
@@ -652,7 +652,13 @@ export const certifications: Certification[] = [
   },
 ]
 
+// Newest first: the list reads as a timeline, so a new entry slots in by date.
 export const achievements: Achievement[] = [
+  {
+    title: "Favorite Employee",
+    description: "Yayasan IIK Bhakti Wiyata, Surabaya",
+    period: "2018 - 2019",
+  },
   {
     title: "1st Champion of DANS 2010",
     description: "Duta Anti Narkoba Sidoarjo (DANS) BNNK Sidoarjo",
