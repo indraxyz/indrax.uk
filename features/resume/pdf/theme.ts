@@ -123,14 +123,12 @@ export const styles = StyleSheet.create({
   divider: { borderTopWidth: 1, borderTopColor: pdfColors.tertiaryBorder, marginVertical: 5 },
 
   footer: {
-    position: "absolute",
-    bottom: 14,
-    left: 24,
-    right: 24,
+    marginTop: 4,
     textAlign: "center",
     fontSize: 6,
     fontWeight: 800,
     letterSpacing: 1,
+    lineHeight: 1.3,
     color: pdfColors.textMuted,
     borderTopWidth: 1.5,
     borderTopColor: pdfColors.border,

@@ -67,7 +67,8 @@ export const experiences: ExperienceItem[] = [
     role: "Fullstack",
     description: [
       "Develop web apps and hybrid mobile apps (profile, online store, education, health, finance, custom)",
-      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker",
+      "Digital marketing delivery: Google Ads and Meta Ads campaigns, SEO, analytics and conversion tracking, landing page optimization, and performance reporting for client products",
+      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, Flutter, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker",
     ],
   },
   {
@@ -545,7 +546,7 @@ export const education: Education[] = [
 
 export const certifications: Certification[] = [
   {
-    title: "Claude Code in Actions",
+    title: "Claude Code",
     issuer: "Anthropic",
     period: "May 2026",
     link: "https://verify.skilljar.com/c/mwaaehb59bxc",

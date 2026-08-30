@@ -116,14 +116,6 @@ export function ResumeDocument() {
               <Labelled label="LinkedIn" value={SOCIAL_LINKS.linkedin} />
             </Card>
 
-            <Card title="Capabilities">
-              {techSkills.map((skill) => (
-                <Bullet key={skill}>{skill}</Bullet>
-              ))}
-            </Card>
-          </View>
-
-          <View style={styles.column}>
             <Card title="Education">
               {education.map((item, index) => (
                 <View key={`${item.institution}-${item.period}`} wrap={false}>
@@ -149,6 +141,14 @@ export function ResumeDocument() {
               ))}
             </Card>
 
+            <Card title="Capabilities">
+              {techSkills.map((skill) => (
+                <Bullet key={skill}>{skill}</Bullet>
+              ))}
+            </Card>
+          </View>
+
+          <View style={styles.column}>
             <Card title="Achievements">
               {achievements.map((achievement, index) => (
                 <View key={achievement.title} wrap={false}>
@@ -274,13 +274,9 @@ export function ResumeDocument() {
           ))}
         </Card>
 
-        <Text
-          style={styles.footer}
-          render={({ pageNumber, totalPages }) =>
-            `UPDATED ${formatDate(RESUME_CONFIG.updatedAt).toUpperCase()} - ${SITE_HOST.toUpperCase()} - ${pageNumber}/${totalPages}`
-          }
-          fixed
-        />
+        <Text style={styles.footer}>
+          {`UPDATED ${formatDate(RESUME_CONFIG.updatedAt).toUpperCase()} - ${SITE_HOST.toUpperCase()}`}
+        </Text>
       </Page>
     </Document>
   )
