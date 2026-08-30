@@ -47,7 +47,7 @@ function Card({
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <View style={styles.bullet}>
+    <View style={styles.bullet} wrap={false}>
       <View style={styles.bulletMark} />
       <Text style={styles.bulletText}>{children}</Text>
     </View>
@@ -116,31 +116,6 @@ export function ResumeDocument() {
               <Labelled label="LinkedIn" value={SOCIAL_LINKS.linkedin} />
             </Card>
 
-            <Card title="Education">
-              {education.map((item, index) => (
-                <View key={`${item.institution}-${item.period}`} wrap={false}>
-                  {index > 0 ? <View style={styles.divider} /> : null}
-                  <Text style={[styles.itemTitle, { letterSpacing: 0.5 }]}>
-                    {item.degree.toUpperCase()}
-                  </Text>
-                  <Text>{item.institution}</Text>
-                  <Text style={styles.itemMeta}>{item.field}</Text>
-                  <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
-                    {item.period.toUpperCase()}
-                    {item.gpa ? ` - GPA: ${item.gpa}` : ""}
-                  </Text>
-                  {item.thesis ? (
-                    <Text style={[styles.itemMeta, { marginTop: 2 }]}>Thesis: {item.thesis}</Text>
-                  ) : null}
-                  {item.organization?.length ? (
-                    <Text style={[styles.itemMeta, { marginTop: 2 }]}>
-                      Organizations: {item.organization.join(", ")}
-                    </Text>
-                  ) : null}
-                </View>
-              ))}
-            </Card>
-
             <Card title="Achievements">
               {achievements.map((achievement, index) => (
                 <View key={achievement.title} wrap={false}>
@@ -172,12 +147,37 @@ export function ResumeDocument() {
                 ))}
               </Card>
             ) : null}
-          </View>
 
-          <View style={styles.column}>
             <Card title="Capabilities">
               {techSkills.map((skill) => (
                 <Bullet key={skill}>{skill}</Bullet>
+              ))}
+            </Card>
+          </View>
+
+          <View style={styles.column}>
+            <Card title="Education">
+              {education.map((item, index) => (
+                <View key={`${item.institution}-${item.period}`} wrap={false}>
+                  {index > 0 ? <View style={styles.divider} /> : null}
+                  <Text style={[styles.itemTitle, { letterSpacing: 0.5 }]}>
+                    {item.degree.toUpperCase()}
+                  </Text>
+                  <Text>{item.institution}</Text>
+                  <Text style={styles.itemMeta}>{item.field}</Text>
+                  <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
+                    {item.period.toUpperCase()}
+                    {item.gpa ? ` - GPA: ${item.gpa}` : ""}
+                  </Text>
+                  {item.thesis ? (
+                    <Text style={[styles.itemMeta, { marginTop: 2 }]}>Thesis: {item.thesis}</Text>
+                  ) : null}
+                  {item.organization?.length ? (
+                    <Text style={[styles.itemMeta, { marginTop: 2 }]}>
+                      Organizations: {item.organization.join(", ")}
+                    </Text>
+                  ) : null}
+                </View>
               ))}
             </Card>
 
