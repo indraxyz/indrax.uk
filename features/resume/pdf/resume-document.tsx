@@ -1,6 +1,6 @@
-import { Document, Image, Page, Text, View } from "@react-pdf/renderer"
+import { Document, Image, Link, Page, Text, View } from "@react-pdf/renderer"
 
-import { RESUME_CONFIG, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
+import { RESUME_CONFIG, SECTION_COPY, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
 import {
   achievements,
   bio,
@@ -137,6 +137,9 @@ export function ResumeDocument() {
                       Organizations: {item.organization.join(", ")}
                     </Text>
                   ) : null}
+                  {item.description ? (
+                    <Text style={[styles.itemMeta, { marginTop: 2 }]}>{item.description}</Text>
+                  ) : null}
                 </View>
               ))}
             </Card>
@@ -192,6 +195,11 @@ export function ResumeDocument() {
                       {certification.period ? (
                         <Text style={styles.itemMeta}>{certification.period}</Text>
                       ) : null}
+                      {certification.link ? (
+                        <Link src={certification.link} style={styles.link}>
+                          View certificate
+                        </Link>
+                      ) : null}
                     </View>
                   ))}
                 </View>
@@ -201,11 +209,7 @@ export function ResumeDocument() {
         </View>
 
         {/* Experience */}
-        <Card
-          title="Experiences"
-          subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
-          tone="primary"
-        >
+        <Card title="Experiences" subtitle={SECTION_COPY.experiences} tone="primary">
           {experiences.map((experience, index) => (
             <View key={`${experience.company}-${experience.period}`} wrap={false}>
               {index > 0 ? <View style={styles.divider} /> : null}
@@ -236,11 +240,7 @@ export function ResumeDocument() {
         </Card>
 
         {/* Tech stack */}
-        <Card
-          title="Tech Stack"
-          subtitle="Technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
-          tone="primary"
-        >
+        <Card title="Tech Stack" subtitle={SECTION_COPY.techStack} tone="primary">
           {techStackGroups.map(([groupName, stacks]) => (
             <View key={groupName} style={{ marginBottom: 5 }} wrap={false}>
               <Text style={styles.groupLabel}>{groupName.toUpperCase()}</Text>
@@ -257,11 +257,7 @@ export function ResumeDocument() {
         </Card>
 
         {/* Portfolio */}
-        <Card
-          title="Portfolio"
-          subtitle="Selected projects across web, mobile, and integrated product systems."
-          tone="primary"
-        >
+        <Card title="Portfolio" subtitle={SECTION_COPY.portfolio} tone="primary">
           {portfolioItems.map((item, index) => (
             <View key={`${item.title}-${item.year}`} wrap={false}>
               {index > 0 ? <View style={styles.divider} /> : null}

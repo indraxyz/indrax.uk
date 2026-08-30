@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
+import { SECTION_COPY } from "@/features/resume/config"
 import { techStackGroups } from "@/features/resume/utils/groups"
 import { Code } from "lucide-react"
 
@@ -9,7 +10,7 @@ export function TechStackSection() {
       variant="ghost"
       icon={<Code className="h-5 w-5" />}
       title="Tech Stack"
-      subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
+      subtitle={SECTION_COPY.techStack}
       carousel
     >
       {techStackGroups.map(([groupName, stacks]) => (

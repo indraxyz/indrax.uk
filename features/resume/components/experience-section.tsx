@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { Timeline, TimelineContent, TimelineItem } from "@/components/ui/timeline"
-import { SOCIAL_LINKS } from "@/features/resume/config"
+import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { experiences } from "@/features/resume/data/resume"
 import { Briefcase } from "lucide-react"
 
@@ -81,7 +81,7 @@ export function ExperienceSection() {
       variant="ghost"
       icon={<Briefcase className="h-5 w-5" />}
       title="Experiences"
-      subtitle="Professional timeline across product engineering, fullstack delivery, and agentic workflow execution."
+      subtitle={SECTION_COPY.experiences}
       link={{ href: SOCIAL_LINKS.linkedin, textLink: "Linkedin" }}
       height="xl"
       contentClassName="pt-8 pb-4 sm:pr-4"

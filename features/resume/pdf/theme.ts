@@ -114,6 +114,13 @@ export const styles = StyleSheet.create({
 
   itemTitle: { fontSize: 7.5, lineHeight: 1.35, fontWeight: 700 },
   itemMeta: { fontSize: 6.5, lineHeight: 1.35, color: pdfColors.textMuted },
+  link: {
+    fontSize: 6.5,
+    lineHeight: 1.35,
+    color: pdfColors.secondaryBg,
+    textDecoration: "underline",
+  },
+
   groupLabel: { fontSize: 6.5, fontWeight: 800, letterSpacing: 0.8, marginBottom: 3 },
 
   bullet: { flexDirection: "row", gap: 4, marginBottom: 2.5 },
