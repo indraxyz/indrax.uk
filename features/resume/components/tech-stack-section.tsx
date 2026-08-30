@@ -1,26 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
-import { techStacks } from "@/features/resume/data/resume"
-import { groupInOrder } from "@/lib/utils"
+import { techStackGroups } from "@/features/resume/utils/groups"
 import { Code } from "lucide-react"
-
-const groupOrder = [
-  "Languages & Web Foundations",
-  "Frontend Engineering",
-  "Backend & API Engineering",
-  "Data & Storage",
-  "Architecture & Security",
-  "Website Operations",
-  "Cloud & Delivery",
-  "Quality & Observability",
-  "Integrations & Growth",
-  "Mobile & Specialized Product UI",
-  "AI & Automation",
-  "Design & Product Experience",
-  "Project Management & Collaboration",
-] as const
-
-const orderedGroupedStacks = groupInOrder(techStacks, (stack) => stack.group || "Other", groupOrder)
 
 export function TechStackSection() {
   return (
@@ -31,7 +12,7 @@ export function TechStackSection() {
       subtitle="A structured view of the technologies, platforms, and engineering practices used to design, build, operate, and improve digital products."
       carousel
     >
-      {orderedGroupedStacks.map(([groupName, stacks]) => (
+      {techStackGroups.map(([groupName, stacks]) => (
         <Card
           key={groupName}
           height="2xl"

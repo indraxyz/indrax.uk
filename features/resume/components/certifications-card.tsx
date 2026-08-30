@@ -1,23 +1,8 @@
 import { Separator } from "@/components/ui/separator"
-import { certifications } from "@/features/resume/data/resume"
 import { SectionCard } from "@/components/ui/section-card"
-import { groupInOrder } from "@/lib/utils"
+import { certificationGroups } from "@/features/resume/utils/groups"
 import { Award, ExternalLink } from "lucide-react"
 import Link from "next/link"
-
-const groupOrder = [
-  "Claude by Anthropic",
-  "ChatGPT/Codex by OpenAI",
-  "AI Automations by MySkill",
-] as const
-
-// A certificate without an explicit group stands under its own issuer, so the
-// heading always names who issued the items beneath it.
-const groupedCertifications = groupInOrder(
-  certifications,
-  (certification) => certification.group ?? certification.issuer,
-  groupOrder
-)
 
 export function CertificationsCard() {
   return (
@@ -28,7 +13,7 @@ export function CertificationsCard() {
       height="lg"
     >
       <div className="space-y-6 print:space-y-3">
-        {groupedCertifications.map(([groupName, items], groupIndex) => (
+        {certificationGroups.map(([groupName, items], groupIndex) => (
           <div key={groupName}>
             <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-foreground">
               {groupName}
@@ -55,7 +40,7 @@ export function CertificationsCard() {
                 </div>
               ))}
             </div>
-            {groupIndex < groupedCertifications.length - 1 && <Separator className="mt-6" />}
+            {groupIndex < certificationGroups.length - 1 && <Separator className="mt-6" />}
           </div>
         ))}
       </div>

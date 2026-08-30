@@ -11,22 +11,24 @@ import type {
 
 export const personalInfo: PersonalInfo = {
   name: "Indra Cahya Edytya",
-  title: "Software Engineer",
+  title: "Agentic Software Engineer",
   birthDate: "1994-03-22",
   birthPlace: "Surabaya",
   gender: "Male",
   status: "Married",
   address: "Denpasar, Bali, Indonesia",
+  phone: "0813 3563 0404",
+  email: "indracahyae@gmail.com",
   // Ordered by headline value: the first five are the ones the hero shows on mobile.
   highlightSkills: [
-    "Modern Frontend",
-    "Backend, APIs & Integrations",
+    "Full-stack, APIs & Integrations",
     "AI Automation & Agentic Workflows",
+    "Digital Marketing & CRO",
     "System Architecture",
+    "Product UI/UX & Design Systems",
     "Cloud Deployment & CI/CD",
     "SQL & NoSQL Databases",
     "Testing, Debugging & Performance",
-    "Product UI/UX & Design Systems",
   ],
 }
 
@@ -65,7 +67,8 @@ export const experiences: ExperienceItem[] = [
     role: "Fullstack",
     description: [
       "Develop web apps and hybrid mobile apps (profile, online store, education, health, finance, custom)",
-      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker",
+      "Digital marketing delivery: Google Ads and Meta Ads campaigns, SEO, analytics and conversion tracking, landing page optimization, and performance reporting for client products",
+      "Technologies: TypeScript, Material UI, Tailwind, Ant Design, ReactJS, Redux, NextJS, ExpressJS, Laravel, React Native, Flutter, MySQL, PostgreSQL, ORM, GitHub, GraphQL, REST API, Web Socket, Golang, Python, Docker",
     ],
   },
   {
@@ -123,8 +126,20 @@ export const portfolioItems: PortfolioItem[] = [
   {
     title: "kademix",
     description:
-      "data table management with proper uiux & performance with Next.js, React Router,  MongoDB, GraphQL, React, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
+      "data table management with proper uiux & performance with Next.js, React Router,  MongoDB, Postgresql, GraphQL, React, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
     year: "2025",
+  },
+  {
+    title: "Belov",
+    description:
+      "Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
+    year: "2022",
+  },
+  {
+    title: "Crimenesia",
+    description:
+      "Crime reporting system between police and society. Main features: crime reporting and crime mapping. Web and android platform using Laravel, MySQL, jQuery, Semantic, NotyJS, ReactJS, React Native",
+    year: "2017",
   },
   {
     title: "WisataApp",
@@ -143,18 +158,6 @@ export const portfolioItems: PortfolioItem[] = [
     description:
       "Parking management system. Main features: auto select location, park entrance and out, tariff and payment, report. Web base using Laravel, Tailwind, MySQL",
     year: "2021",
-  },
-  {
-    title: "Belov",
-    description:
-      "Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
-    year: "2022",
-  },
-  {
-    title: "Crimenesia",
-    description:
-      "Crime reporting system between police and society. Main features: crime reporting and crime mapping. Web and android platform using Laravel, MySQL, jQuery, Semantic, NotyJS, ReactJS, React Native",
-    year: "2017",
   },
   {
     title: "TodoApp",
@@ -219,7 +222,7 @@ export const techStacks: TechStack[] = [
     group: "Frontend Engineering",
     category: "UI, Styling & Design Systems",
     items:
-      "Tailwind CSS, Material UI, Ant Design, Bootstrap, Bulma, Semantic UI, Emotion, Styled JSX, UnoCSS, shadcn/ui, Radix, HeroUI, Fluent UI, Mantine, Chakra UI, Gluestack, Tamagui",
+      "Tailwind CSS, Material UI, Ant Design, Bootstrap, Bulma, Emotion, Styled JSX, UnoCSS, Shadcn, Radix, Base UI, HeroUI, Fluent UI, Mantine, Chakra UI, Gluestack, Tamagui",
   },
   {
     group: "Frontend Engineering",
@@ -242,7 +245,7 @@ export const techStacks: TechStack[] = [
     group: "Backend & API Engineering",
     category: "APIs & Communication",
     items:
-      "REST, GraphQL, WebSocket, RPC, JSON-RPC, webhooks, async workflows, API documentation with Swagger",
+      "REST, GraphQL, WebSocket, RPC, JSON-RPC, webhooks, async workflows, API documentation with Swagger & Larecipe",
   },
   {
     group: "Data & Storage",
@@ -272,7 +275,7 @@ export const techStacks: TechStack[] = [
     group: "Architecture & Security",
     category: "Engineering Practices",
     items:
-      "Clean architecture, design patterns, OOP, functional programming, Agile, Scrum, iterative delivery",
+      "Clean architecture, design patterns, OOP, functional programming, Agile, Scrum, iterative delivery, code review, documentation, decision records, architecture notes, security awareness, dependency management, threat modeling, observability, logging, monitoring, alerting, incident response, rollback planning",
   },
   {
     group: "Website Operations",
@@ -449,7 +452,7 @@ export const techStacks: TechStack[] = [
     group: "AI & Automation",
     category: "Agentic Workflows",
     items:
-      "Claude Code, Codex, Cursor, VS Code, agentic CLIs & IDE agents, MCP clients & servers, tool and function design, skills, subagents & multi-agent orchestration, structured plans and task decomposition, context engineering, repository rules & conventions files, hooks and permission policies, sandboxed execution, git worktree isolation, spec-driven and test-driven agentic loops, review & refactor agents, codebase retrieval, prompt and workflow versioning, evaluation harnesses & regression suites, guardrails, human-in-the-loop approval, token & cost budgeting, observability and audit trails, agents in CI/CD",
+      "Claude Code, Codex, Cursor/ VS Code/ ZED IDE, agentic CLIs & agents, MCP clients & servers, tool and function design, skills, subagents & multi-agent orchestration, structured plans and task decomposition, context engineering, repository rules & conventions files, hooks and permission policies, sandboxed execution, git worktree isolation, spec-driven and test-driven agentic loops, review & refactor agents, codebase retrieval, prompt and workflow versioning, evaluation harnesses & regression suites, guardrails, human-in-the-loop approval, token & cost budgeting, observability and audit trails, agents in CI/CD",
   },
   {
     group: "AI & Automation",
@@ -543,7 +546,7 @@ export const education: Education[] = [
 
 export const certifications: Certification[] = [
   {
-    title: "Claude Code in Actions",
+    title: "Claude Code",
     issuer: "Anthropic",
     period: "May 2026",
     link: "https://verify.skilljar.com/c/mwaaehb59bxc",
