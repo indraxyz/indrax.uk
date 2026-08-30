@@ -116,38 +116,6 @@ export function ResumeDocument() {
               <Labelled label="LinkedIn" value={SOCIAL_LINKS.linkedin} />
             </Card>
 
-            <Card title="Achievements">
-              {achievements.map((achievement, index) => (
-                <View key={achievement.title} wrap={false}>
-                  {index > 0 ? <View style={styles.divider} /> : null}
-                  <Text style={styles.itemTitle}>{achievement.title}</Text>
-                  <Text style={styles.itemMeta}>{achievement.description}</Text>
-                  {achievement.period ? (
-                    <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
-                      {achievement.period.toUpperCase()}
-                    </Text>
-                  ) : null}
-                </View>
-              ))}
-            </Card>
-
-            {organizations.length ? (
-              <Card title="Organizations">
-                {organizations.map((organization, index) => (
-                  <View key={`${organization.title}-${organization.period}`} wrap={false}>
-                    {index > 0 ? <View style={styles.divider} /> : null}
-                    <Text style={styles.itemTitle}>{organization.title}</Text>
-                    {organization.description ? (
-                      <Text style={styles.itemMeta}>{organization.description}</Text>
-                    ) : null}
-                    <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
-                      {organization.period.toUpperCase()}
-                    </Text>
-                  </View>
-                ))}
-              </Card>
-            ) : null}
-
             <Card title="Capabilities">
               {techSkills.map((skill) => (
                 <Bullet key={skill}>{skill}</Bullet>
@@ -180,6 +148,38 @@ export function ResumeDocument() {
                 </View>
               ))}
             </Card>
+
+            <Card title="Achievements">
+              {achievements.map((achievement, index) => (
+                <View key={achievement.title} wrap={false}>
+                  {index > 0 ? <View style={styles.divider} /> : null}
+                  <Text style={styles.itemTitle}>{achievement.title}</Text>
+                  <Text style={styles.itemMeta}>{achievement.description}</Text>
+                  {achievement.period ? (
+                    <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
+                      {achievement.period.toUpperCase()}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </Card>
+
+            {organizations.length ? (
+              <Card title="Organizations">
+                {organizations.map((organization, index) => (
+                  <View key={`${organization.title}-${organization.period}`} wrap={false}>
+                    {index > 0 ? <View style={styles.divider} /> : null}
+                    <Text style={styles.itemTitle}>{organization.title}</Text>
+                    {organization.description ? (
+                      <Text style={styles.itemMeta}>{organization.description}</Text>
+                    ) : null}
+                    <Text style={[styles.chip, styles.chipTertiary, { alignSelf: "flex-start" }]}>
+                      {organization.period.toUpperCase()}
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            ) : null}
 
             <Card title="Certifications">
               {certificationGroups.map(([groupName, items], groupIndex) => (
