@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SOCIAL_LINKS } from "@/features/resume/config"
+import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { SectionCard } from "@/components/ui/section-card"
 import { portfolioItems } from "@/features/resume/data/resume"
 import { Code, ExternalLink } from "lucide-react"
@@ -11,7 +11,7 @@ export function PortfolioSection() {
       variant="ghost"
       icon={<Code className="h-5 w-5" />}
       title="Portfolio"
-      subtitle="Selected projects that show practical delivery across web, mobile, and integrated product systems."
+      subtitle={SECTION_COPY.portfolio}
       link={{ href: SOCIAL_LINKS.github, textLink: "Github" }}
       carousel
     >
