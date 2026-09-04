@@ -117,6 +117,14 @@ components/ui/ (Base UI Components)
 - **Print carries everything**: the sidebar lives in a drawer that unmounts while
   closed, so `resume-page.tsx` renders a print-only copy and `globals.css` drops the
   portalled drawer from the printed sheet
+- **Server-rendered assets resolve from disk**: react-pdf and Satori both pick how to
+  load a font or image from the shape of its `src` - a URL is fetched, anything else
+  is opened as a filesystem path. Browser-style paths such as `/fonts/x.ttf` fail
+  silently on the server, so `features/resume/pdf/theme.ts` and
+  `features/resume/og/profile-card.tsx` resolve every asset against `process.cwd()`
+- **One PDF render path**: the document is drawn by `app/api/resume-pdf` at build
+  time and served as a static file. The footer control is a plain link, so the
+  renderer never reaches the browser bundle and the download survives without JS
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
@@ -149,11 +157,12 @@ components/ui/ (Base UI Components)
 
 Potential enhancements:
 
+- [x] Add E2E tests with Playwright
+- [x] Add PDF generation API route - `/resume.pdf`
+- [x] Add analytics - PostHog, key-gated
+- [x] Surface contact details in the hero (email, LinkedIn, GitHub)
 - [ ] Add unit tests with Vitest
-- [ ] Add E2E tests with Playwright
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
-- [ ] Add PDF generation API route
-- [ ] Add analytics
-- [ ] Surface contact details (email, phone, website) in the personal card
 - [ ] Enforce import ordering with an ESLint rule
+- [ ] Cookie-consent gate before analytics runs for UK/EU visitors

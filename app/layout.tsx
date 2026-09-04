@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { JetBrains_Mono } from "next/font/google"
 
+import { PostHogAnalytics } from "@/components/analytics/posthog-analytics"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
@@ -43,13 +44,12 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     locale: "en_US",
-    images: [{ url: "/foto-profile.jpg", alt: personalInfo.name }],
   },
   twitter: {
-    card: "summary",
+    // The banner is 1200x630, so the large card is the one that shows it.
+    card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/foto-profile.jpg"],
   },
   robots: {
     index: true,
@@ -85,7 +85,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased">{children}</body>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        {children}
+        <PostHogAnalytics />
+      </body>
     </html>
   )
 }
