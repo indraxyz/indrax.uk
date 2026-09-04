@@ -1,3 +1,5 @@
+import { join } from "node:path"
+
 import { Font, StyleSheet } from "@react-pdf/renderer"
 
 /**
@@ -24,6 +26,21 @@ export const pdfColors = {
 
 // Self-hosted rather than pulled from a CDN, so the download works offline and
 // cannot break when a font host changes a URL.
+//
+// react-pdf picks how to load a font from the shape of `src`: a data URL is
+// decoded, an http(s) URL is fetched, and anything else is handed to
+// `fontkit.open()` as a path on disk. The document is rendered on the server now,
+// where there is no origin for a bare "/fonts/..." to resolve against, so the
+// sources have to be real filesystem paths.
+const PUBLIC_DIR = join(process.cwd(), "public")
+const FONT_DIR = join(PUBLIC_DIR, "fonts")
+
+// `Image` sources resolve exactly the same way, so the hero photo has to be a path
+// on disk too. Left as "/foto-profile.jpg" it silently renders nothing: react-pdf
+// logs the ENOENT and draws the rest of the document without it, so the CV loses
+// its photo without anything failing.
+export const PDF_PHOTO_SRC = join(PUBLIC_DIR, "foto-profile.jpg")
+
 let registered = false
 
 export function registerPdfFonts() {
@@ -33,9 +50,9 @@ export function registerPdfFonts() {
   Font.register({
     family: "JetBrains Mono",
     fonts: [
-      { src: "/fonts/JetBrainsMono-Regular.ttf", fontWeight: 400 },
-      { src: "/fonts/JetBrainsMono-Bold.ttf", fontWeight: 700 },
-      { src: "/fonts/JetBrainsMono-ExtraBold.ttf", fontWeight: 800 },
+      { src: join(FONT_DIR, "JetBrainsMono-Regular.ttf"), fontWeight: 400 },
+      { src: join(FONT_DIR, "JetBrainsMono-Bold.ttf"), fontWeight: 700 },
+      { src: join(FONT_DIR, "JetBrainsMono-ExtraBold.ttf"), fontWeight: 800 },
     ],
   })
 

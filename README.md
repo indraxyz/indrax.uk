@@ -8,6 +8,10 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Fully Typed**: Complete TypeScript implementation
 - **Responsive**: Mobile-first design that works on all devices
 - **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
+- **Permanent CV URL**: `/resume.pdf` is built at deploy time and served as a static file
+- **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
+- **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
+- **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
@@ -23,22 +27,31 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ## 📁 Project Structure
 
 ```
-├── app/                    # Next.js app directory
-│   ├── layout.tsx         # Root layout and metadata
-│   ├── page.tsx           # Server route entry
-│   ├── robots.ts          # Generated /robots.txt
-│   ├── sitemap.ts         # Generated /sitemap.xml
-│   └── globals.css        # Global styles
-├── components/            # Shared UI primitives
-│   └── ui/               # shadcn/ui components
+├── app/                       # Next.js app directory
+│   ├── layout.tsx            # Root layout and metadata
+│   ├── page.tsx              # Server route entry, emits the JSON-LD block
+│   ├── opengraph-image.tsx   # Next convention; serves the social card
+│   ├── api/resume-pdf/       # Renders the CV; served at /resume.pdf
+│   ├── robots.ts             # Generated /robots.txt
+│   ├── sitemap.ts            # Generated /sitemap.xml
+│   └── globals.css           # Global styles
+├── components/               # Shared UI primitives
+│   ├── posthog-analytics.tsx # Starts the tracker; renders nothing
+│   ├── theme-toggle.tsx     # Light / dark / system switcher
+│   └── ui/                  # shadcn/ui components
+├── e2e/                      # Playwright end-to-end specs
 ├── features/
 │   └── resume/
-│       ├── components/   # Resume feature components
-│       ├── data/         # Resume data
-│       ├── utils/        # Resume-specific helpers
-│       ├── config.ts     # Resume config
-│       └── types.ts      # Resume types
-└── lib/                   # Utility functions
+│       ├── components/      # Resume feature components
+│       ├── data/            # Resume data
+│       ├── pdf/             # PDF document and theme
+│       ├── utils/           # Resume-specific helpers
+│       ├── config.ts        # Resume config
+│       ├── social-card.tsx  # Link-preview banner composition
+│       └── types.ts         # Resume types
+├── docs/                     # Feature specs
+└── lib/                      # Utility functions
+    ├── analytics.ts         # PostHog init and event capture
     └── utils/
 ```
 
@@ -72,6 +85,26 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+### Environment
+
+Every variable is optional; copy `.env.example` to `.env.local` to set them.
+
+| Variable                   | Default                    | Purpose                                                         |
+| :------------------------- | :------------------------- | :-------------------------------------------------------------- |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | unset                      | PostHog project key. Unset means analytics never initialises.   |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com` | Ingestion host.                                                 |
+| `NEXT_PUBLIC_SITE_URL`     | `https://indrax.uk`        | Origin advertised in metadata, the sitemap and the social card. |
+
+### Testing
+
+```bash
+npx playwright install chromium   # once
+npm run test:e2e
+```
+
+The suite builds the site and runs against `next start`, because the CV and the
+social card are prerendered at build time and behave differently under `next dev`.
+
 ## 📜 Available Scripts
 
 - `npm run dev` - Start development server
@@ -83,6 +116,9 @@ npm run dev
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 - `npm run clean` - Clean build artifacts
+- `npm run check` - Format check, lint and type-check in one pass
+- `npm run test:e2e` - Run the Playwright suite against a production build
+- `npm run test:e2e:ui` - The same suite in Playwright's UI mode
 
 ## 🎨 Customization
 
