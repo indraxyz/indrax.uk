@@ -18,11 +18,18 @@ test.describe("the social card", () => {
     expect(body.readUInt32BE(20)).toBe(630)
   })
 
-  test("is also served for Twitter", async ({ request }) => {
-    const response = await request.get("/twitter-image")
+  test("is reused for the Twitter/X card rather than built twice", async ({ page }) => {
+    await page.goto("/")
 
-    expect(response.status()).toBe(200)
-    expect(response.headers()["content-type"]).toContain("image/png")
+    // Next derives `twitter:image` from the Open Graph route, so there is no second
+    // card to keep in step - and no `twitter-image` file in a codebase that has
+    // nothing else to do with Twitter.
+    const twitterImage = await page
+      .locator('meta[name="twitter:image"]')
+      .first()
+      .getAttribute("content")
+
+    expect(twitterImage).toContain("/opengraph-image")
   })
 
   test("is advertised as an absolute URL on a large card", async ({ page }) => {

@@ -126,20 +126,22 @@ app/
 ├── layout.tsx                      (M) twitter card → summary_large_image;
 │                                       drop manual og image; mount analytics
 ├── page.tsx                        (M) render the JSON-LD block
-├── opengraph-image.tsx             (A) 1200×630 ImageResponse
-├── twitter-image.tsx               (A) re-exports the opengraph image
+├── opengraph-image.tsx             (A) Next convention; serves the card
 └── api/resume-pdf/route.tsx        (A) server-rendered PDF
 
-components/analytics/
-├── posthog-provider.tsx            (A) "use client", key-gated init
-└── use-analytics.ts                (A) capture helper, safe when uninitialised
+components/
+└── posthog-analytics.tsx           (A) "use client", key-gated init
+
+lib/
+└── analytics.ts                    (A) capture helper, safe when uninitialised
 
 features/resume/
 ├── components/hero-section.tsx     (M) contact row
 ├── components/contact-links.tsx    (A) email / LinkedIn / GitHub actions
 ├── components/download-resume-button.tsx  (M) anchor to /resume.pdf + event
-├── config.ts                       (M) PDF_FILE_NAME, RESUME_PDF_PATH
+├── config.ts                       (M) RESUME_PDF_FILE_NAME, RESUME_PDF_PATH
 ├── pdf/theme.ts                    (M) server-resolvable font paths
+├── social-card.tsx                 (A) 1200×630 ImageResponse
 └── utils/structured-data.ts        (A) Person / ProfilePage builder
 
 next.config.ts                      (M) rewrite, tracing includes, externals
@@ -197,10 +199,11 @@ thrown error, satisfying AC-5.5. Download and contact events pass
 batching would drop the event.
 
 **D8 — the OG image comes from the file convention.**
-`app/opengraph-image.tsx` and `app/twitter-image.tsx` are picked up by Next's
-metadata conventions and produce absolute URLs automatically. The manual
-`openGraph.images` / `twitter.images` entries in `layout.tsx` are removed so the
-page does not advertise both the banner and the bare photo.
+`app/opengraph-image.tsx` is picked up by Next's metadata convention and produces
+an absolute URL automatically. Next also derives `twitter:image` from that same
+route, so there is no second card to keep in step. The manual `openGraph.images` /
+`twitter.images` entries in `layout.tsx` are removed so the page does not advertise
+both the banner and the bare photo.
 
 ### 5.3 Structured data shape
 
@@ -266,7 +269,7 @@ analytics specs, and requests to that host are intercepted in-page.
 | :---------------------------- | :-------------------------------------------------- |
 | `e2e/smoke.spec.ts`           | page renders, `h1`, no console errors, theme toggle |
 | `e2e/structured-data.spec.ts` | AC-1.1 … AC-1.6                                     |
-| `e2e/og-image.spec.ts`        | AC-2.1 … AC-2.5                                     |
+| `e2e/social-card.spec.ts`     | AC-2.1 … AC-2.5                                     |
 | `e2e/contact-links.spec.ts`   | AC-3.1 … AC-3.5                                     |
 | `e2e/resume-pdf.spec.ts`      | AC-4.1 … AC-4.4                                     |
 | `e2e/analytics.spec.ts`       | AC-5.1 … AC-5.5                                     |
@@ -321,13 +324,13 @@ covered by a spec asserting the PDF contains a `DCTDecode` stream.
 
 ### 10.2 Corrections to §5.1
 
-| Planned                                 | Built                                                        | Why                                                                                                                                      |
-| :-------------------------------------- | :----------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
-| —                                       | `components/ui/linkedin-icon.tsx`                            | lucide-react v1 ships no brand marks; `github-icon.tsx` already sets the precedent                                                       |
-| `components/analytics/use-analytics.ts` | `lib/analytics.ts`                                           | A hook buys nothing over a plain function callable from an event handler, and `lib/` is where framework-level helpers already live       |
-| `posthog-provider.tsx`                  | `posthog-analytics.tsx`                                      | It provides no context — it starts the tracker and renders `null`                                                                        |
-| Inline OG markup per route              | `features/resume/og/profile-card.tsx` + two thin route files | Each social image resolves by filename convention; sharing the card keeps the two from drifting                                          |
-| Contact row as a `div`                  | A `nav` labelled "Contact"                                   | The header already exposes a "GitHub profile" link; two links sharing an accessible name is ambiguous for anyone navigating by link list |
+| Planned                                     | Built                                           | Why                                                                                                                                                                                                     |
+| :------------------------------------------ | :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| —                                           | `components/ui/linkedin-icon.tsx`               | lucide-react v1 ships no brand marks; `github-icon.tsx` already sets the precedent                                                                                                                      |
+| `components/analytics/use-analytics.ts`     | `lib/analytics.ts`                              | A hook buys nothing over a plain function callable from an event handler, and `lib/` is where framework-level helpers already live                                                                      |
+| `components/analytics/posthog-provider.tsx` | `components/posthog-analytics.tsx`              | It provides no context — it starts the tracker and renders `null`. A single-file directory also sat oddly next to `components/theme-toggle.tsx`                                                         |
+| `opengraph-image.tsx` + `twitter-image.tsx` | `features/resume/social-card.tsx` and one route | Next derives `twitter:image` from the Open Graph route, so the second file was dead weight - and a `twitter-` filename reads as unrelated in a codebase whose only social links are GitHub and LinkedIn |
+| Contact row as a `div`                      | A `nav` labelled "Contact"                      | The header already exposes a "GitHub profile" link; two links sharing an accessible name is ambiguous for anyone navigating by link list                                                                |
 
 ### 10.3 Analytics findings
 
@@ -351,8 +354,8 @@ covered by a spec asserting the PDF contains a `DCTDecode` stream.
 ### 10.4 Verification performed
 
 - `npm run check` — Prettier, ESLint and `tsc --noEmit` all clean, no warnings.
-- `npm run build` — `/`, `/api/resume-pdf`, `/opengraph-image` and
-  `/twitter-image` all prerender as static content.
+- `npm run build` — `/`, `/api/resume-pdf` and `/opengraph-image` all prerender as
+  static content.
 - `npm run test:e2e` — 23 specs passing against a production build.
 - The PDF was fetched and inspected: `%PDF-1.3`, ~240KB, all three JetBrains Mono
   faces embedded, one `DCTDecode` image, and the text extracts cleanly (so it

@@ -121,7 +121,7 @@ components/ui/ (Base UI Components)
   load a font or image from the shape of its `src` - a URL is fetched, anything else
   is opened as a filesystem path. Browser-style paths such as `/fonts/x.ttf` fail
   silently on the server, so `features/resume/pdf/theme.ts` and
-  `features/resume/og/profile-card.tsx` resolve every asset against `process.cwd()`
+  `features/resume/social-card.tsx` resolve every asset against `process.cwd()`
 - **One PDF render path**: the document is drawn by `app/api/resume-pdf` at build
   time and served as a static file. The footer control is a plain link, so the
   renderer never reaches the browser bundle and the download survives without JS

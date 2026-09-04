@@ -9,7 +9,7 @@ import { SOCIAL_LINKS } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { captureEvent, type ContactChannel } from "@/lib/analytics"
 
-function track(channel: ContactChannel) {
+function trackContact(channel: ContactChannel) {
   captureEvent("contact_clicked", { channel })
 }
 
@@ -30,7 +30,11 @@ export function ContactLinks() {
       {/* `email` is optional on the type, so the row has to survive its absence. */}
       {email ? (
         <Button asChild variant="primary" size="sm">
-          <a href={`mailto:${email}`} aria-label={`Email ${email}`} onClick={() => track("email")}>
+          <a
+            href={`mailto:${email}`}
+            aria-label={`Email ${email}`}
+            onClick={() => trackContact("email")}
+          >
             <Mail aria-hidden="true" />
             {/* The address itself rather than the word "Email": paper has no link
                 to follow, and neither the screen nor the printed sheet carried an
@@ -47,7 +51,7 @@ export function ContactLinks() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="LinkedIn profile"
-          onClick={() => track("linkedin")}
+          onClick={() => trackContact("linkedin")}
         >
           <LinkedinIcon aria-hidden="true" />
           LinkedIn
@@ -60,7 +64,7 @@ export function ContactLinks() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub profile"
-          onClick={() => track("github")}
+          onClick={() => trackContact("github")}
         >
           <GithubIcon aria-hidden="true" />
           GitHub

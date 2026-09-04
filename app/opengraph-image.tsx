@@ -1,14 +1,18 @@
 import {
-  OG_ALT,
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  renderProfileCard,
-} from "@/features/resume/og/profile-card"
+  renderSocialCard,
+  SOCIAL_CARD_ALT,
+  SOCIAL_CARD_CONTENT_TYPE,
+  SOCIAL_CARD_SIZE,
+} from "@/features/resume/social-card"
 
-export const alt = OG_ALT
-export const size = OG_SIZE
-export const contentType = OG_CONTENT_TYPE
+// The filename is a Next.js metadata convention, not a description of the contents:
+// this route is what populates `og:image`. Next also derives `twitter:image` from
+// it, so no separate `twitter-image` route is needed - the card itself is named for
+// what it is, in `features/resume/social-card.tsx`.
+export const alt = SOCIAL_CARD_ALT
+export const size = SOCIAL_CARD_SIZE
+export const contentType = SOCIAL_CARD_CONTENT_TYPE
 
 export default function OpengraphImage() {
-  return renderProfileCard()
+  return renderSocialCard()
 }

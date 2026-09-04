@@ -6,9 +6,9 @@ import { ImageResponse } from "next/og"
 import { SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 
-export const OG_SIZE = { width: 1200, height: 630 }
-export const OG_CONTENT_TYPE = "image/png"
-export const OG_ALT = `${personalInfo.name} - ${personalInfo.title}`
+export const SOCIAL_CARD_SIZE = { width: 1200, height: 630 }
+export const SOCIAL_CARD_CONTENT_TYPE = "image/png"
+export const SOCIAL_CARD_ALT = `${personalInfo.name} - ${personalInfo.title}`
 
 const PUBLIC_DIR = join(process.cwd(), "public")
 const SITE_HOST = new URL(SITE_URL).host
@@ -42,12 +42,14 @@ async function loadAssets() {
 }
 
 /**
- * The card behind `/opengraph-image` and `/twitter-image`.
+ * The banner shown when a link to this site is unfurled - in a Slack channel, on
+ * LinkedIn, in a WhatsApp preview.
  *
- * Both routes are prerendered, so the reads above happen during `next build` where
- * `public/` is certain to exist.
+ * Rendered through `app/opengraph-image.tsx`, whose filename is a Next.js metadata
+ * convention rather than a choice. The route is prerendered, so the reads above
+ * happen during `next build`, where `public/` is certain to exist.
  */
-export async function renderProfileCard() {
+export async function renderSocialCard() {
   const { regular, extraBold, photoSrc } = await loadAssets()
   const skills = (personalInfo.highlightSkills ?? []).slice(0, SKILLS_ON_CARD)
 
@@ -143,7 +145,7 @@ export async function renderProfileCard() {
       </div>
     </div>,
     {
-      ...OG_SIZE,
+      ...SOCIAL_CARD_SIZE,
       fonts: [
         { name: "JetBrains Mono", data: regular, weight: 400, style: "normal" },
         { name: "JetBrains Mono", data: extraBold, weight: 800, style: "normal" },

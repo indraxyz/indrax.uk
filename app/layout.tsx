@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { JetBrains_Mono } from "next/font/google"
 
-import { PostHogAnalytics } from "@/components/analytics/posthog-analytics"
+import { PostHogAnalytics } from "@/components/posthog-analytics"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"

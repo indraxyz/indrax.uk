@@ -30,24 +30,24 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ├── app/                       # Next.js app directory
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
-│   ├── opengraph-image.tsx   # Generated 1200x630 social card
-│   ├── twitter-image.tsx     # The same card for Twitter/X
+│   ├── opengraph-image.tsx   # Next convention; serves the social card
 │   ├── api/resume-pdf/       # Renders the CV; served at /resume.pdf
 │   ├── robots.ts             # Generated /robots.txt
 │   ├── sitemap.ts            # Generated /sitemap.xml
 │   └── globals.css           # Global styles
 ├── components/               # Shared UI primitives
-│   ├── analytics/           # PostHog bootstrap
+│   ├── posthog-analytics.tsx # Starts the tracker; renders nothing
+│   ├── theme-toggle.tsx     # Light / dark / system switcher
 │   └── ui/                  # shadcn/ui components
 ├── e2e/                      # Playwright end-to-end specs
 ├── features/
 │   └── resume/
 │       ├── components/      # Resume feature components
 │       ├── data/            # Resume data
-│       ├── og/              # Social card composition
 │       ├── pdf/             # PDF document and theme
 │       ├── utils/           # Resume-specific helpers
 │       ├── config.ts        # Resume config
+│       ├── social-card.tsx  # Link-preview banner composition
 │       └── types.ts         # Resume types
 ├── docs/                     # Feature specs
 └── lib/                      # Utility functions

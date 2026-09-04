@@ -16,13 +16,13 @@ const nextConfig: NextConfig = {
   // the server build breaks the font loader.
   serverExternalPackages: ["@react-pdf/renderer"],
 
-  // The PDF and the OG card both read their fonts off disk. Both are prerendered
-  // during `next build`, where `public/` is certain to exist, but tracing the
-  // files explicitly keeps the routes working if either is ever made dynamic.
+  // The PDF and the social card both read their fonts off disk. Both are
+  // prerendered during `next build`, where `public/` is certain to exist, but
+  // tracing the files explicitly keeps the routes working if either is ever made
+  // dynamic.
   outputFileTracingIncludes: {
     "/api/resume-pdf": ["./public/fonts/**", "./public/foto-profile.jpg"],
     "/opengraph-image": ["./public/fonts/**", "./public/foto-profile.jpg"],
-    "/twitter-image": ["./public/fonts/**", "./public/foto-profile.jpg"],
   },
 }
 

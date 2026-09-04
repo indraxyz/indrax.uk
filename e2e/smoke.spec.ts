@@ -17,7 +17,11 @@ test.describe("the resume page", () => {
   test("exposes the three sections and the contact landmark", async ({ page }) => {
     await page.goto("/")
 
-    await expect(page.getByRole("navigation", { name: "Contact" })).toBeVisible()
     await expect(page.getByRole("main")).toBeVisible()
+    await expect(page.getByRole("navigation", { name: "Contact" })).toBeVisible()
+
+    for (const section of ["Experiences", "Tech Stack", "Portfolio"]) {
+      await expect(page.getByRole("heading", { level: 2, name: section })).toBeVisible()
+    }
   })
 })
