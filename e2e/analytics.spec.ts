@@ -26,7 +26,7 @@ test.describe("analytics", () => {
 
     await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("link", { name: "Download resume as PDF" }).click(),
+      page.getByRole("button", { name: "Download resume as PDF" }).click(),
     ])
 
     await expect
@@ -60,7 +60,7 @@ test.describe("analytics", () => {
     await page.goto("/")
     await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("link", { name: "Download resume as PDF" }).click(),
+      page.getByRole("button", { name: "Download resume as PDF" }).click(),
     ])
 
     expect(analytics.captured("resume_pdf_downloaded")).toBe(false)
@@ -75,7 +75,7 @@ test.describe("analytics", () => {
 
     const download = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("link", { name: "Download resume as PDF" }).click(),
+      page.getByRole("button", { name: "Download resume as PDF" }).click(),
     ]).then(([event]) => event)
 
     expect(download.suggestedFilename()).toBe("Indra-Cahya-Edytya-Resume.pdf")

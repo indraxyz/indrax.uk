@@ -8,7 +8,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Fully Typed**: Complete TypeScript implementation
 - **Responsive**: Mobile-first design that works on all devices
 - **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
-- **Permanent CV URL**: `/resume.pdf` is built at deploy time and served as a static file
+- **Downloadable CV**: react-pdf draws the resume in the browser on request, lazily loaded
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
 - **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
@@ -31,7 +31,6 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── api/resume-pdf/       # Renders the CV; served at /resume.pdf
 │   ├── robots.ts             # Generated /robots.txt
 │   ├── sitemap.ts            # Generated /sitemap.xml
 │   └── globals.css           # Global styles

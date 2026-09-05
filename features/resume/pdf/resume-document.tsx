@@ -13,7 +13,7 @@ import {
 } from "@/features/resume/data/resume"
 import { certificationGroups, techStackGroups } from "@/features/resume/utils/groups"
 import { formatBirthDetails, getCurrentAge } from "@/features/resume/utils/personal-info"
-import { PDF_PHOTO_SRC, registerPdfFonts, styles } from "@/features/resume/pdf/theme"
+import { registerPdfFonts, styles } from "@/features/resume/pdf/theme"
 import { formatDate } from "@/lib/utils"
 
 const SITE_HOST = new URL(SITE_URL).host
@@ -83,7 +83,7 @@ export function ResumeDocument() {
         <View style={[styles.card, { backgroundColor: styles.chipPrimary.backgroundColor }]}>
           <View style={[styles.cardBody, styles.hero]}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image takes no alt */}
-            <Image src={PDF_PHOTO_SRC} style={styles.heroPhoto} />
+            <Image src="/foto-profile.jpg" style={styles.heroPhoto} />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroName}>{firstName.toUpperCase()}</Text>
               <Text style={styles.heroRole}>{personalInfo.title.toUpperCase()}</Text>

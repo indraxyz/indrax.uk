@@ -1,5 +1,3 @@
-import { personalInfo } from "@/features/resume/data/resume"
-
 // The deployed origin, used to resolve the absolute URLs metadata and the sitemap
 // need. Overridable so a preview deployment advertises itself, not production.
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://indrax.uk"
@@ -27,10 +25,3 @@ export const SOCIAL_LINKS = {
   github: "https://github.com/indraxyz",
   linkedin: "https://www.linkedin.com/in/indra-cahya-edytya",
 } as const
-
-// The CV's permanent address. `next.config.ts` rewrites it onto the route handler
-// that draws the file. The footer link and the PDF response both take the filename
-// from here, so the pasted URL and the saved file can never disagree.
-export const RESUME_PDF_PATH = "/resume.pdf"
-
-export const RESUME_PDF_FILE_NAME = `${personalInfo.name.replace(/\s+/g, "-")}-Resume.pdf`
