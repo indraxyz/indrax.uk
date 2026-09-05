@@ -43,15 +43,12 @@ test.describe("contact actions", () => {
     await expect(email).toBeFocused()
   })
 
-  test("does not duplicate the header's GitHub control by name", async ({ page }) => {
+  test("is the page's only GitHub control", async ({ page }) => {
     await page.goto("/")
 
-    // Two links sharing an accessible name is ambiguous for anyone navigating by
-    // link list, which is why the contact actions sit in their own landmark.
-    const contactGithub = page
-      .getByRole("navigation", { name: "Contact" })
-      .getByRole("link", { name: "GitHub profile" })
-
-    await expect(contactGithub).toHaveCount(1)
+    // The header used to carry a second "GitHub profile" link. Two links sharing
+    // an accessible name is ambiguous for anyone navigating by link list, so the
+    // contact row is now the single place the profile is offered.
+    await expect(page.getByRole("link", { name: "GitHub profile" })).toHaveCount(1)
   })
 })

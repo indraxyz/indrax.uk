@@ -20,9 +20,9 @@ export function ContactLinks() {
   const { email } = personalInfo
 
   return (
-    // A labelled landmark, not a bare row: the header already carries a "GitHub
-    // profile" control, and two links sharing an accessible name is ambiguous for
-    // anyone navigating by landmark or by link list.
+    // A labelled landmark, not a bare row: it gives the outbound profile links a
+    // name of their own in a landmark and link-list walk, where three unlabelled
+    // links floating in the hero would otherwise sit with no stated purpose.
     <nav
       aria-label="Contact"
       className="flex flex-wrap items-center justify-center gap-3 sm:justify-start"

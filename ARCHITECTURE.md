@@ -117,14 +117,19 @@ components/ui/ (Base UI Components)
 - **Print carries everything**: the sidebar lives in a drawer that unmounts while
   closed, so `resume-page.tsx` renders a print-only copy and `globals.css` drops the
   portalled drawer from the printed sheet
-- **Server-rendered assets resolve from disk**: react-pdf and Satori both pick how to
-  load a font or image from the shape of its `src` - a URL is fetched, anything else
-  is opened as a filesystem path. Browser-style paths such as `/fonts/x.ttf` fail
-  silently on the server, so `features/resume/pdf/theme.ts` and
-  `features/resume/social-card.tsx` resolve every asset against `process.cwd()`
-- **One PDF render path**: the document is drawn by `app/api/resume-pdf` at build
-  time and served as a static file. The footer control is a plain link, so the
-  renderer never reaches the browser bundle and the download survives without JS
+- **Asset paths follow the renderer, not the repo**: react-pdf and Satori both pick
+  how to load a font or image from the shape of its `src` - a URL is fetched,
+  anything else is opened as a filesystem path. The social card is drawn on the
+  server, so `features/resume/social-card.tsx` resolves every asset against
+  `process.cwd()`. The PDF is drawn in the browser, so `features/resume/pdf/theme.ts`
+  keeps browser-relative sources such as `/fonts/x.ttf`. Swapping either one for the
+  other's form breaks quietly: on the server a browser path is a silent ENOENT, and
+  in the browser a `process.cwd()` path is fetched as `/public/fonts/...` and 404s
+- **The PDF is drawn in the browser, on demand**: `download-resume-button.tsx`
+  imports react-pdf and the document dynamically, so the renderer is code-split out
+  of the initial bundle and only fetched when someone asks for the file. It stays a
+  client render because a server route would put a Node-native renderer, its font
+  loading, and a build-time prerender in the path of a file almost nobody requests
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
@@ -158,7 +163,7 @@ components/ui/ (Base UI Components)
 Potential enhancements:
 
 - [x] Add E2E tests with Playwright
-- [x] Add PDF generation API route - `/resume.pdf`
+- [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
 - [x] Add analytics - PostHog, key-gated
 - [x] Surface contact details in the hero (email, LinkedIn, GitHub)
 - [ ] Add unit tests with Vitest

@@ -1,4 +1,4 @@
-import { RESUME_CONFIG, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
+import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { DownloadResumeButton } from "@/features/resume/components/download-resume-button"
 import { ExperienceSection } from "@/features/resume/components/experience-section"
 import { HeroSection } from "@/features/resume/components/hero-section"
@@ -7,10 +7,7 @@ import { PortfolioSection } from "@/features/resume/components/portfolio-section
 import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { TechStackSection } from "@/features/resume/components/tech-stack-section"
 import { formatDate } from "@/lib/utils"
-import { GithubIcon } from "@/components/ui/github-icon"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 
 // Derived from the configured origin so the credit cannot drift from the
 // canonical URL the metadata advertises.
@@ -26,11 +23,6 @@ export function ResumePage() {
               {RESUME_CONFIG.title}
             </p>
             <div className="flex items-center gap-2 print:hidden">
-              <Button asChild variant="ghost" size="icon" aria-label="GitHub profile">
-                <Link href={SOCIAL_LINKS.github} target="_blank" rel="noopener noreferrer">
-                  <GithubIcon className="h-5 w-5" />
-                </Link>
-              </Button>
               <ThemeToggle />
               <PersonalInfoDrawer />
             </div>

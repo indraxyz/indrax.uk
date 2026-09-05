@@ -4,6 +4,21 @@ Status: approved for implementation
 Owner: Indra Cahya Edytya
 Target branch: `feat/tier-1-discoverability-and-contact` → `main`
 
+> **Revision — Workstream 4 (permanent CV URL) was reverted before merge.**
+> `/resume.pdf`, the `app/api/resume-pdf` route handler, the `next.config.ts`
+> rewrite and `serverExternalPackages` entry, and the `RESUME_PDF_PATH` /
+> `RESUME_PDF_FILE_NAME` config exports are all gone. The CV is downloaded the way
+> it was on `main` before this branch: react-pdf renders it in the browser on
+> click, behind a dynamic import. Two things carry over rather than revert - the
+> `resume_pdf_downloaded` event, now captured only after a successful render, and a
+> deferred `URL.revokeObjectURL` so the blob outlives the click in browsers that
+> read it late. Decisions **D1**, **D5**, and the parts of **D3**
+> and **D4** that assume a URL no longer describe the code, and acceptance criteria
+> **AC-4.1**–**AC-4.4** are withdrawn. Everything else in this document — the
+> structured data, the social card, the contact row, and the analytics — shipped as
+> written. The header's second "GitHub profile" control was also removed, so the
+> contact row is now the page's only GitHub link.
+
 ---
 
 ## 1. Context
