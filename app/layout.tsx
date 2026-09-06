@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
-import { JetBrains_Mono } from "next/font/google"
+import { Inter, JetBrains_Mono } from "next/font/google"
 
 import { PostHogAnalytics } from "@/components/posthog-analytics"
+import { BLOG_CONFIG } from "@/features/blog/config"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
@@ -11,6 +12,20 @@ const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
   display: "swap",
+})
+
+// Article bodies only - `.prose` is the sole consumer of `--font-prose`. The site
+// chrome, the resume and every code block stay monospace, so this face is loaded
+// for long-form reading and nothing else.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+  // The variable is declared on <html> so `.prose` can reach it, which would
+  // otherwise put a preload hint for this face on the resume page too - a page
+  // that never renders a glyph of it. The @font-face still resolves; only the
+  // eager fetch is dropped.
+  preload: false,
 })
 
 const TITLE = "Indra Cahya Edytya - Software Engineer"
@@ -81,8 +96,22 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={jetBrainsMono.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${jetBrainsMono.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        {/* Written here rather than through `metadata.alternates.types`, because a
+            route that declares its own canonical replaces the whole `alternates`
+            object and would drop the feed with it. Every page needs to advertise
+            it, so it belongs somewhere a page cannot override. */}
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title={BLOG_CONFIG.feedTitle}
+          href={BLOG_CONFIG.feedPath}
+        />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
