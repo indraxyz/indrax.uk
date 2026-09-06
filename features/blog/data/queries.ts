@@ -192,7 +192,39 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
 
   const [summary] = await attachTags([row])
 
-  return { ...summary, content: row.contentJson as PostDocument }
+  return {
+    ...summary,
+    content: row.contentJson as PostDocument,
+    status: row.status,
+    viewCount: row.viewCount,
+  }
+}
+
+/**
+ * One post by slug regardless of status, for a valid preview token only.
+ *
+ * Uncached, on purpose. A draft under review changes between refreshes - that is
+ * what the review is for - and caching it would also mean an unpublished body
+ * sitting in a cache keyed by nothing but the slug (threat T-4).
+ *
+ * Not exported through the public read layer's guarantees: the caller has already
+ * proved it holds a token for this exact slug.
+ */
+export async function getPostForPreview(slug: string): Promise<Post | null> {
+  const db = getDb()
+  if (!db) return null
+
+  const [row] = await db.select().from(schema.posts).where(eq(schema.posts.slug, slug)).limit(1)
+  if (!row?.contentJson) return null
+
+  const [summary] = await attachTags([row])
+
+  return {
+    ...summary,
+    content: row.contentJson as PostDocument,
+    status: row.status,
+    viewCount: row.viewCount,
+  }
 }
 
 async function readTagsInUse(): Promise<TagWithCount[]> {
@@ -225,6 +257,44 @@ async function readRecentPosts(limit: number): Promise<PostSummary[]> {
     .from(schema.posts)
     .where(isPublic)
     .orderBy(desc(schema.posts.publishedAt))
+    .limit(limit)
+
+  return attachTags(rows)
+}
+
+/**
+ * Other published posts sharing at least one tag with this one.
+ *
+ * Ranked by how many tags they share before how recent they are, so "also about
+ * Postgres and caching" beats "also about TypeScript, and newer". One query with
+ * a join and a count, rather than fetching this post's tags and then fetching
+ * each tag's posts - which is the same answer at several times the round trips.
+ */
+async function readRelatedPosts(postId: string, limit: number): Promise<PostSummary[]> {
+  const db = getDb()
+  if (!db) return []
+
+  const shared = db
+    .select({
+      postId: schema.postTags.postId,
+      shared: count(schema.postTags.tagId).as("shared"),
+    })
+    .from(schema.postTags)
+    .where(
+      sql`${schema.postTags.tagId} in (
+        select ${schema.postTags.tagId} from ${schema.postTags}
+        where ${schema.postTags.postId} = ${postId}
+      ) and ${schema.postTags.postId} <> ${postId}`
+    )
+    .groupBy(schema.postTags.postId)
+    .as("shared_tags")
+
+  const rows = await db
+    .select(summaryColumns)
+    .from(schema.posts)
+    .innerJoin(shared, eq(shared.postId, schema.posts.id))
+    .where(isPublic)
+    .orderBy(desc(shared.shared), desc(schema.posts.publishedAt))
     .limit(limit)
 
   return attachTags(rows)
@@ -290,6 +360,10 @@ const cachedRecentPosts = unstable_cache(readRecentPosts, ["blog", "recent-posts
   tags: [CACHE_TAGS.posts],
 })
 
+const cachedRelatedPosts = unstable_cache(readRelatedPosts, ["blog", "related-posts"], {
+  tags: [CACHE_TAGS.posts],
+})
+
 const cachedPublishedSlugs = unstable_cache(readPublishedSlugs, ["blog", "published-slugs"], {
   tags: [CACHE_TAGS.posts],
 })
@@ -307,6 +381,10 @@ export const getFeedPosts = () => safely("getFeedPosts", [] as PostSummary[], ca
 /** The newest published posts, for the homepage strip. */
 export const getRecentPosts = (limit: number) =>
   safely("getRecentPosts", [] as PostSummary[], () => cachedRecentPosts(limit))
+
+/** Published posts sharing a tag with this one. */
+export const getRelatedPosts = (postId: string, limit = 3) =>
+  safely("getRelatedPosts", [] as PostSummary[], () => cachedRelatedPosts(postId, limit))
 
 export const getPublishedSlugs = () =>
   safely("getPublishedSlugs", [] as { slug: string; updatedAt: string }[], cachedPublishedSlugs)

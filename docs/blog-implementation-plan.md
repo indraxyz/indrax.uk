@@ -1,6 +1,6 @@
 # Blog — Implementation Plan
 
-Status: Phases 0–2 reviewed and pushed; Phase 3 implemented, awaiting review
+Status: Phases 0–2 reviewed and pushed; Phases 3–4 implemented, awaiting review
 Owner: Indra Cahya Edytya
 
 | Branch                           | Covers                                        | State                                         |
@@ -582,3 +582,97 @@ throwaway config mirroring its options, then delete that file.
 - **Still no CSP.** `proxy.ts` now exists, which is what a nonce needs, so the
   blocker named in §11.6 is gone — but it was not attempted here, and a wrong CSP
   ships a site with no theme.
+
+---
+
+## 13. Phase 4 — polish
+
+Everything the spec lists under Phase 4: a table of contents, related posts, a
+code-copy button, signed draft previews and a view counter. Plus the gap Phase 3
+left open, which turned out to be worth closing first.
+
+### 13.1 The gap from Phase 3, closed — and what it was hiding
+
+Phase 3 shipped with the authenticated admin unverified, because minting a Better
+Auth session outside its own sign-in flow defeated a first attempt. It defeated a
+second and third too. The answer turned out to be two things, neither obvious and
+both failing as a silent `null` session:
+
+1. The cookie is **signed** — the value is `${token}.${signature}`, not the bare
+   token `createSession` returns.
+2. `npm run start` sets `NODE_ENV=production`, which turns on `useSecureCookies`,
+   which **renames the cookie** to `__Secure-better-auth.session_token`.
+
+The first request that got through returned **500**. `listAllPosts` used a raw
+``sql`… = any(${postIds})` `` where the rest of the codebase uses Drizzle's
+`inArray`, and Postgres rejected it with `42809`. So the admin list page — the
+first thing an author sees after signing in — had never worked, and nothing in
+the build, the type checker, the linter or the boundary tests could have said so.
+
+That is now `e2e/support/session.ts` and `e2e/admin-authoring.spec.ts`: the whole
+lifecycle, driven as the author. Write a post, save it as a draft, confirm it is
+absent from every public surface, share it by preview link, publish it, watch the
+feed and sitemap pick it up, unpublish it, watch them let it go, delete it after
+being asked. Seven tests.
+
+The session is minted through Better Auth's own internal adapter — the same code
+path the real GitHub callback uses once GitHub has answered — so everything after
+that point is the production path, unmodified. The GitHub round trip itself
+remains untested, for the reasons §12.6 gives.
+
+### 13.2 Departure: the preview is its own route
+
+The spec and PRD both specify `/blog/{slug}?preview={token}`, and it was built
+that way first. The build output showed why that is the wrong shape:
+
+```
+before:  ● /blog/a-database-that-is-allowed-to-be-absent   (prerendered)
+after:   ƒ /blog/[slug]                                    (on demand)
+```
+
+A page that reads `searchParams` cannot be static. Honouring the URL literally
+meant re-parsing, re-sanitising and re-highlighting every published article on
+every single read, forever, to support a feature used a handful of times a month
+— against NFR-1, and a standing cost on the runtime this deploys to.
+
+So the preview lives at `/blog/{slug}/preview?token={token}` and `/blog/[slug]`
+is prerendered again. **AC US-3.3's URL shape is not met as written**; everything
+else it asks for is: a signed, time-limited token, a visible "Draft preview"
+banner, `noindex`, uncached, and 404 for expired, tampered, absent, or
+minted-for-another-post.
+
+### 13.3 The view counter is an image
+
+An `<img>` request, not a script. The article page ships no JavaScript by design,
+and a beacon would have broken that as well as missing every reader with
+scripting off and every cached page — which between them are most of the reads
+worth counting.
+
+It is decorative and best-effort, exactly as the threat model already says:
+trivially inflatable by anyone willing to reload, never used for ranking or
+billing. Deduplicating would mean identifying readers, which is a far worse trade
+than an imprecise number.
+
+The code-copy buttons are the one thing on an article that needs a script, and
+they are attached after the page has rendered — so with JavaScript off there are
+no dead controls, just an article without copy buttons.
+
+### 13.4 Verification performed
+
+- `npm run check` clean; builds with everything configured and with nothing
+  configured.
+- `npm run test:e2e` — **55 passing**, up from 48: seven new authoring specs.
+- Preview tokens exercised through the real admin control, not a harness: valid,
+  expired, tampered, and minted-for-another-post, all four in a fresh browser
+  context with no session.
+- `/blog/[slug]` confirmed prerendered again after the route split.
+- The view counter confirmed to increment, and the pixel to be a 42-byte GIF
+  with `no-store`.
+
+### 13.5 What is left
+
+Phase 5 is the growth work: Postgres full-text search, then `pgvector` semantic
+search, Giscus comments, series support. Before any of that, the outstanding
+items from §11.6 and §12.6 are the higher-value ones — a CSP (now unblocked,
+since `proxy.ts` exists), Vitest for the pure logic, and axe in the committed
+suite.

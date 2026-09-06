@@ -14,6 +14,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
 - **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
 - **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
+- **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
+- **Reading aids**: an in-page contents list, related articles by tag, and copy buttons on code blocks - none of which cost a reader any JavaScript to read
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
@@ -37,10 +39,11 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── blog/                 # List, article, tag pages and per-article cards
+│   ├── blog/                 # List, article, tag, preview and per-article cards
 │   ├── admin/                # Authoring, behind the auth guard
 │   ├── api/auth/             # Better Auth endpoints
 │   ├── api/upload/           # Presigned cover uploads
+│   ├── api/views/            # View counter, served as a tracking pixel
 │   ├── rss.xml/              # RSS 2.0 feed
 │   ├── not-found.tsx         # Site-wide 404
 │   ├── robots.ts             # Generated /robots.txt

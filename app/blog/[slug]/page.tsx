@@ -1,20 +1,26 @@
+import { Eye } from "lucide-react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { BlogShell } from "@/features/blog/components/blog-shell"
+import { CopyCode } from "@/features/blog/components/copy-code"
 import { PostContent } from "@/features/blog/components/post-content"
 import { PostCover } from "@/features/blog/components/post-cover"
 import { PostMeta } from "@/features/blog/components/post-meta"
+import { RelatedPosts } from "@/features/blog/components/related-posts"
+import { TableOfContents } from "@/features/blog/components/table-of-contents"
 import { TagPill } from "@/features/blog/components/tag-pill"
+import { ViewBeacon } from "@/features/blog/components/view-beacon"
 import { BLOG_CONFIG } from "@/features/blog/config"
-import { getPostBySlug, getPublishedSlugs } from "@/features/blog/data/queries"
+import { getPostBySlug, getPublishedSlugs, getRelatedPosts } from "@/features/blog/data/queries"
+import { renderDocument } from "@/features/blog/utils/content"
 import {
   buildArticleStructuredData,
   buildBreadcrumbStructuredData,
 } from "@/features/blog/utils/structured-data"
-import { serialiseJsonLd } from "@/lib/utils"
 import { personalInfo } from "@/features/resume/data/resume"
+import { serialiseJsonLd } from "@/lib/utils"
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>
@@ -75,6 +81,13 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   if (!post) notFound()
 
+  // One render pass. It produces both the body and the headings the contents list
+  // is built from, so doing it twice would be paying twice for one answer.
+  const [article, related] = await Promise.all([
+    renderDocument(post.content),
+    getRelatedPosts(post.id),
+  ])
+
   const structuredData = [
     buildArticleStructuredData(post),
     buildBreadcrumbStructuredData([
@@ -99,14 +112,22 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           <PostCover post={post} priority />
 
           <CardHeader className="gap-4">
-            {/* The page's only h1. The markdown pipeline shifts body headings so the
+            {/* The page's only h1. The render pipeline shifts body headings so the
                 shallowest becomes an h2, which keeps this true whatever a post
                 contains and without skipping a level. */}
             <h1 className="text-3xl font-black uppercase leading-tight tracking-tight sm:text-4xl">
               {post.title}
             </h1>
 
-            <PostMeta post={post} />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <PostMeta post={post} />
+              {post.viewCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" aria-hidden />
+                  {post.viewCount.toLocaleString("en-US")} views
+                </span>
+              )}
+            </div>
 
             {post.tags.length > 0 && (
               <nav aria-label="Article tags" className="flex flex-wrap items-center gap-2">
@@ -118,10 +139,20 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           </CardHeader>
 
           <CardContent className="pt-2">
-            <PostContent content={post.content} />
+            <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
+            <PostContent html={article.html} />
           </CardContent>
         </Card>
       </article>
+
+      <RelatedPosts posts={related} />
+
+      {/* Both are decoration, and both are additive: the article above is complete
+          without either. The counter is an image so it works with JavaScript off;
+          the copy buttons are the one thing on this page that needs a script, and
+          they are attached only after the page has already rendered. */}
+      <ViewBeacon slug={post.slug} />
+      <CopyCode />
     </BlogShell>
   )
 }

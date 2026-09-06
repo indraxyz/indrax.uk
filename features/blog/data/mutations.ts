@@ -3,10 +3,12 @@
 import { and, eq, inArray, ne } from "drizzle-orm"
 import { updateTag } from "next/cache"
 
+import { BLOG_CONFIG } from "@/features/blog/config"
 import { CACHE_TAGS } from "@/features/blog/data/queries"
 import type { PostDocument } from "@/features/blog/types"
 import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
 import { computeReadingTime } from "@/features/blog/utils/reading-time"
+import { createPreviewToken } from "@/features/blog/utils/preview-token"
 import { slugify, uniqueSlug } from "@/features/blog/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard"
 import { getDb, schema } from "@/lib/db"
@@ -289,4 +291,33 @@ export async function deletePost(id: string): Promise<ActionResult> {
   revalidatePost(current.slug)
 
   return { ok: true }
+}
+
+/**
+ * A time-limited link that makes one unpublished post readable.
+ *
+ * Behind `requireAuthor` like every other action here: minting a token is exactly
+ * the ability to publish a draft to whoever holds the link, so it is not a read.
+ *
+ * The token names this slug and nothing else, so it cannot be repointed at
+ * another draft, and it expires on its own rather than needing to be revoked
+ * (PRD US-3.3).
+ */
+export async function createPreviewLink(id: string): Promise<ActionResult & { url?: string }> {
+  await requireAuthor()
+
+  const db = getDb()
+  if (!db) return failure("No database is configured for this deployment.")
+
+  const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
+  if (!current) return failure("That post no longer exists.")
+
+  const token = await createPreviewToken(current.slug)
+
+  return {
+    ok: true,
+    postId: id,
+    slug: current.slug,
+    url: `${BLOG_CONFIG.basePath}/${current.slug}/preview?token=${encodeURIComponent(token)}`,
+  }
 }

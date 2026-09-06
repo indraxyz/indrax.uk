@@ -34,6 +34,18 @@ export const POST_STATUSES = ["draft", "published", "archived"] as const
 
 export type PostStatus = (typeof POST_STATUSES)[number]
 
+/** One entry in an article's table of contents. */
+export interface TocEntry {
+  id: string
+  text: string
+  level: 2 | 3
+}
+
+export interface RenderedArticle {
+  html: string
+  headings: TocEntry[]
+}
+
 export interface Tag {
   id: string
   name: string
@@ -61,6 +73,10 @@ export interface PostSummary {
 /** A post as an article page sees it. */
 export interface Post extends PostSummary {
   content: PostDocument
+  status: PostStatus
+  // Decorative and best-effort, by design. Counted by an image request, so it is
+  // trivially inflatable and is never used for ranking or billing.
+  viewCount: number
 }
 
 export interface PaginatedPosts {

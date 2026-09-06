@@ -169,6 +169,16 @@ components/ui/ (Base UI Components)                  components/ui/
   exported constant. Removing an extension makes every document containing that
   node render wrong, silently, because an unknown node is dropped rather than
   raised
+- **Reading costs no JavaScript, and the extras keep it that way**: the contents
+  list is server-rendered anchors, the view counter is an `<img>` rather than a
+  beacon - so it counts cached pages and readers with scripting off, which a
+  beacon would miss - and the code-copy buttons are attached after load, so a
+  reader without JavaScript sees no dead controls rather than broken ones
+- **The draft preview is its own route, not a query parameter**: the spec asked
+  for `/blog/{slug}?preview=…`, and building it that way turned every article
+  from prerendered into on-demand, because a page that reads `searchParams`
+  cannot be static. That meant re-running the highlighter on every read of every
+  published article to support a feature used a few times a month
 - **`proxy.ts` is a redirect; `requireAuthor()` is the boundary**: a server action
   is a POST identified by a header, reachable without touching the routing the
   proxy sees. So every admin page, every mutating action and the upload route
@@ -220,9 +230,10 @@ Potential enhancements:
 - [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
 - [x] Add analytics - PostHog, key-gated
 - [x] Surface contact details in the hero (email, LinkedIn, GitHub)
-- [ ] Add unit tests with Vitest — slug collision, reading time, the markdown
-      pipeline and the Zod schemas are the pure logic worth covering
-- [ ] Blog authoring: Better Auth + GitHub allow-list, `/admin`, cover uploads
+- [ ] Add unit tests with Vitest — slug collision, reading time, the content
+      pipeline, preview tokens and the Zod schemas are the pure logic worth covering
+- [ ] A Content-Security-Policy with a nonce for the inline theme script
+- [ ] Full-text search, then `pgvector` semantic search
       (see `docs/blog-implementation-plan.md`)
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
