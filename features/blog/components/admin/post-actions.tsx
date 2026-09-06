@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
-import type { AdminPost } from "@/features/blog/data/admin-queries"
 import { createPreviewLink, deletePost, setPostStatus } from "@/features/blog/data/mutations"
+import type { AdminPost } from "@/features/blog/types"
 import { cn } from "@/lib/utils"
 
 /**

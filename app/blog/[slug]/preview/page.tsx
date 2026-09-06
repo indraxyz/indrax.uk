@@ -1,15 +1,10 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ArticleCard } from "@/features/blog/components/article-card"
 import { BlogShell } from "@/features/blog/components/blog-shell"
 import { CopyCode } from "@/features/blog/components/copy-code"
-import { PostContent } from "@/features/blog/components/post-content"
-import { PostCover } from "@/features/blog/components/post-cover"
-import { PostMeta } from "@/features/blog/components/post-meta"
 import { PreviewBanner } from "@/features/blog/components/preview-banner"
-import { TableOfContents } from "@/features/blog/components/table-of-contents"
-import { TagPill } from "@/features/blog/components/tag-pill"
 import { getPostForPreview } from "@/features/blog/data/queries"
 import { renderDocument } from "@/features/blog/utils/content"
 import { verifyPreviewToken } from "@/features/blog/utils/preview-token"
@@ -62,32 +57,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
       {/* No structured data, no Open Graph, no view beacon and no related posts:
           every one of those describes or advertises something public, and this is
           not. */}
-      <article>
-        <Card variant="card" className="variant-primary variant-border">
-          <PostCover post={post} priority />
-
-          <CardHeader className="gap-4">
-            <h1 className="text-3xl font-black uppercase leading-tight tracking-tight sm:text-4xl">
-              {post.title}
-            </h1>
-
-            <PostMeta post={post} />
-
-            {post.tags.length > 0 && (
-              <nav aria-label="Article tags" className="flex flex-wrap items-center gap-2">
-                {post.tags.map((tag) => (
-                  <TagPill key={tag.id} tag={tag} />
-                ))}
-              </nav>
-            )}
-          </CardHeader>
-
-          <CardContent className="pt-2">
-            <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
-            <PostContent html={article.html} />
-          </CardContent>
-        </Card>
-      </article>
+      <ArticleCard post={post} article={article} />
 
       <CopyCode />
     </BlogShell>

@@ -28,15 +28,34 @@ import * as schema from "@/lib/db/schema"
  *    token that `createSession` hands back.
  * 2. `npm run start` sets `NODE_ENV=production`, which turns on `useSecureCookies`
  *    - and that renames the cookie to `__Secure-better-auth.session_token`. Under
- *    `next dev` it is the unprefixed name.
+ *    `next dev` it is the unprefixed name, which is why the suite runs against a
+ *    production build and only the prefixed name is exported here.
  */
 export const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token"
-export const SESSION_COOKIE_PLAIN = "better-auth.session_token"
+
+// Loopback only. This module creates a real allow-listed author and a valid
+// signed session, so pointed at production it would provision an admin identity
+// there - one exported `DATABASE_URL` away. `lib/db/index.ts` guards its own
+// local-endpoint override the same way, and for the same reason.
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
+
+function assertLocal(databaseUrl: string) {
+  const { hostname } = new URL(databaseUrl)
+
+  if (!LOCAL_HOSTS.has(hostname)) {
+    throw new Error(
+      `Refusing to mint a session against ${hostname}. This helper creates a real ` +
+        "author and a valid session, and is for a local database only."
+    )
+  }
+}
 
 function client(databaseUrl: string) {
+  assertLocal(databaseUrl)
+
   // The local stack speaks Neon's protocol over plain HTTP; see lib/db/index.ts.
   const { hostname, port } = new URL(databaseUrl)
-  if (["localhost", "127.0.0.1"].includes(hostname)) {
+  if (LOCAL_HOSTS.has(hostname)) {
     neonConfig.fetchEndpoint = `http://${hostname}:${port || "4444"}/sql`
     neonConfig.useSecureWebSocket = false
     neonConfig.poolQueryViaFetch = true
@@ -48,13 +67,29 @@ function client(databaseUrl: string) {
 export interface MintedSession {
   cookieValue: string
   userId: string
+  token: string
+}
+
+export interface MintOptions {
+  /**
+   * Override the GitHub id the identity carries. Defaults to the allow-listed
+   * one; anything else must be refused by `requireAuthor`, which is the point of
+   * being able to set it.
+   */
+  githubId?: string
+  /**
+   * Backdate the session's creation. Better Auth slides `expiresAt` forward on
+   * use, so only `createdAt` can express "this session has existed too long" -
+   * which is what the absolute cap is checked against.
+   */
+  createdAtMsAgo?: number
 }
 
 /**
- * Creates the allow-listed author and a session for them, and returns the cookie
- * value a browser would carry.
+ * Creates an author and a session for them, and returns the cookie value a
+ * browser would carry.
  */
-export async function mintAuthorSession(): Promise<MintedSession> {
+export async function mintAuthorSession(options: MintOptions = {}): Promise<MintedSession> {
   const databaseUrl = process.env.DATABASE_URL
   const secret = process.env.BETTER_AUTH_SECRET
   const githubId = process.env.ALLOWED_GITHUB_ID
@@ -82,16 +117,44 @@ export async function mintAuthorSession(): Promise<MintedSession> {
       email: `author-${crypto.randomUUID()}@example.invalid`,
       // The allow-list key. A session for any other id must be refused by
       // `requireAuthor`, which is what `admin-boundary.spec.ts` asserts.
-      githubId,
+      githubId: options.githubId ?? githubId,
     },
     // The provisioning source the real GitHub callback would pass.
     { method: "oauth", oauth: { providerId: "github", profile: {} } }
   )
 
   const session = await internal.createSession(user.id, false)
+
+  if (options.createdAtMsAgo) {
+    // Written directly: the adapter has no way to say "created earlier", and
+    // waiting thirty days for the assertion is not an option.
+    await db
+      .update(schema.session)
+      .set({ createdAt: new Date(Date.now() - options.createdAtMsAgo) })
+      .where(eq(schema.session.token, session.token))
+  }
+
   const signature = await makeSignature(session.token, secret)
 
-  return { cookieValue: `${session.token}.${signature}`, userId: user.id }
+  return {
+    cookieValue: `${session.token}.${signature}`,
+    userId: user.id,
+    token: session.token,
+  }
+}
+
+/** Whether a session row still exists, for asserting that sign-out revoked it. */
+export async function sessionExists(token: string): Promise<boolean> {
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl) return false
+
+  const rows = await client(databaseUrl)
+    .select({ token: schema.session.token })
+    .from(schema.session)
+    .where(eq(schema.session.token, token))
+    .limit(1)
+
+  return rows.length > 0
 }
 
 /**

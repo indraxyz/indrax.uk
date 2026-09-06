@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext } from "@playwright/test"
 
-import { E2E_BASE_URL } from "./support/constants"
+import { E2E_BASE_URL, SEEDED_DRAFT_TITLE, SEEDED_SECOND_POST_SLUG } from "./support/constants"
 import { mintAuthorSession, revokeAuthorSession, SESSION_COOKIE_SECURE } from "./support/session"
 
 /**
@@ -64,9 +64,9 @@ test.describe("authoring", () => {
 
     await expect(page).toHaveURL(/\/admin$/)
     // The draft the seed creates is only visible here - it 404s everywhere public.
-    await expect(
-      page.getByText("notes-on-preview-tokens").or(page.getByText(/preview tokens/i))
-    ).toBeVisible()
+    // Matched on its exact title: each row renders the title as a link *and* an
+    // "Edit <title>" control, so a loose match finds both.
+    await expect(page.getByRole("link", { name: SEEDED_DRAFT_TITLE, exact: true })).toBeVisible()
     await page.close()
   })
 
@@ -108,7 +108,7 @@ test.describe("authoring", () => {
     expect(await (await request.get("/sitemap.xml")).text()).not.toContain(slug)
   })
 
-  test("shares a draft through a signed, expiring preview link", async () => {
+  test("shares a draft through a signed, expiring preview link", async ({ browser }) => {
     const page = await context.newPage()
 
     await page.goto(postPath)
@@ -123,7 +123,7 @@ test.describe("authoring", () => {
 
     // A fresh context: the link has to work for whoever it is sent to, and that
     // person has no session.
-    const anonymous = await page.context().browser()!.newContext()
+    const anonymous = await browser.newContext()
     const reader = await anonymous.newPage()
 
     const response = await reader.goto(previewUrl)
@@ -137,10 +137,13 @@ test.describe("authoring", () => {
     expect(html).not.toContain("/api/views/")
     await expect(reader.locator('head meta[name="robots"][content*="noindex"]')).toHaveCount(1)
 
-    // A token is for one post. Repointing it at another must fail.
-    const token = new URL(previewUrl).searchParams.get("token")!
+    // A token is for one post. Repointing it at another must fail - and the target
+    // has to be a post that exists, or a 404 would prove only that it is missing.
+    expect((await reader.goto(`/blog/${SEEDED_SECOND_POST_SLUG}`))?.status()).toBe(200)
+
+    const token = new URL(previewUrl).searchParams.get("token") ?? ""
     const replayed = await reader.goto(
-      `/blog/a-database-that-is-allowed-to-be-absent/preview?token=${encodeURIComponent(token)}`
+      `/blog/${SEEDED_SECOND_POST_SLUG}/preview?token=${encodeURIComponent(token)}`
     )
     expect(replayed?.status()).toBe(404)
 

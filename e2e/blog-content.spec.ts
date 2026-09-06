@@ -209,7 +209,7 @@ test.describe("a seeded blog", () => {
     expect(targets.length).toBeGreaterThan(0)
 
     for (const target of targets) {
-      await expect(page.locator(target!)).toHaveCount(1)
+      await expect(page.locator(String(target))).toHaveCount(1)
     }
   })
 
@@ -219,12 +219,12 @@ test.describe("a seeded blog", () => {
     const related = page.getByRole("heading", { level: 2, name: "Related" })
     await expect(related).toBeVisible()
 
-    const links = page.locator("a[href^='/blog/']", { hasNotText: "" })
     const hrefs = await page
       .locator("main a[href^='/blog/']")
       .evaluateAll((nodes) => nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")))
 
-    expect(links).toBeTruthy()
+    // There has to be something to recommend, or the assertion below is vacuous.
+    expect(hrefs.length).toBeGreaterThan(0)
     // Recommending the article you are already reading is the classic bug here.
     expect(hrefs.filter((href) => href === `/blog/${SEEDED_POST_SLUG}`)).toHaveLength(0)
   })

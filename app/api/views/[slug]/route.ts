@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, isNotNull, sql } from "drizzle-orm"
 
 import { getDb, schema } from "@/lib/db"
 
@@ -25,19 +25,36 @@ const PIXEL = Uint8Array.from(
  * used for ranking or billing. Deduplicating it would mean identifying readers,
  * which is a much worse trade than an imprecise number.
  *
- * Only published posts are counted, so a draft under preview cannot be probed for
- * existence by watching whether its counter moves (threat T-4).
+ * Only published posts are counted. The response is a byte-identical pixel either
+ * way, so this is not an oracle - but a draft's counter has no business quietly
+ * accumulating before anyone could have read it.
+ *
+ * Unauthenticated and unthrottled by nature, which makes it the one write endpoint
+ * on the site anybody can reach. The slug is bounded before it reaches the
+ * database and the response is trivial, so the exposure is a Worker invocation and
+ * one indexed update per request - real, and the reason a platform-level rate
+ * limit belongs in front of it (threat T-11).
  */
+// Long enough for any slug the validator will accept, short enough that a
+// megabyte of path never reaches the database.
+const MAX_SLUG_LENGTH = 120
+
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
   const db = getDb()
 
-  if (db) {
+  if (db && slug.length <= MAX_SLUG_LENGTH) {
     try {
       await db
         .update(schema.posts)
         .set({ viewCount: sql`${schema.posts.viewCount} + 1` })
-        .where(eq(schema.posts.slug, slug))
+        .where(
+          and(
+            eq(schema.posts.slug, slug),
+            eq(schema.posts.status, "published"),
+            isNotNull(schema.posts.publishedAt)
+          )
+        )
     } catch (error) {
       // A counter that cannot count must not break the page it sits on.
       console.error(`[blog] view count failed for ${slug}`, error)

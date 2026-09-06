@@ -663,7 +663,8 @@
   outline: none;
 }
 
-/* Without a minimum the caret has nowhere to sit in an empty document. */
+/* Block rhythm inside the canvas. Typography's own spacing applies to `.prose`
+   descendants, and the editor's top-level blocks sit outside that. */
 .ProseMirror > * + * {
   margin-top: 0.75em;
 }

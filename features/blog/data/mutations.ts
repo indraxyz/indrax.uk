@@ -5,14 +5,14 @@ import { updateTag } from "next/cache"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
 import { CACHE_TAGS } from "@/features/blog/data/queries"
-import type { PostDocument } from "@/features/blog/types"
+import type { ActionResult, PostDocument, PostStatus } from "@/features/blog/types"
 import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
 import { computeReadingTime } from "@/features/blog/utils/reading-time"
 import { createPreviewToken } from "@/features/blog/utils/preview-token"
 import { slugify, uniqueSlug } from "@/features/blog/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard"
 import { getDb, schema } from "@/lib/db"
-import { postInputSchema } from "@/lib/validators/blog"
+import { postIdSchema, postInputSchema } from "@/lib/validators/blog"
 
 /**
  * Everything that writes a post.
@@ -29,15 +29,6 @@ import { postInputSchema } from "@/lib/validators/blog"
  * `readingTime`, `publishedAt`, `createdAt` and `updatedAt` are all computed
  * server-side, because a client has no business asserting any of them.
  */
-
-export interface ActionResult {
-  ok: boolean
-  /** Field-level messages, keyed by field name. */
-  errors?: Record<string, string[]>
-  message?: string
-  postId?: string
-  slug?: string
-}
 
 const failure = (message: string, errors?: Record<string, string[]>): ActionResult => ({
   ok: false,
@@ -124,6 +115,15 @@ async function setPostTags(postId: string, names: string[]) {
   }
 }
 
+/**
+ * What a save accepts.
+ *
+ * `status` is the domain union rather than a bare string, so a caller cannot
+ * offer a value the schema will then reject at runtime - the form's `<select>` is
+ * built from the same list. Not derived wholesale from the Zod schema because
+ * that types the body as `{ type: "doc" }` exactly, which is narrower than the
+ * document a caller holds; validation still narrows it on the way through.
+ */
 interface SavePayload {
   id?: string
   title: string
@@ -132,7 +132,7 @@ interface SavePayload {
   content: PostDocument
   coverUrl?: string
   coverAlt?: string
-  status: string
+  status: PostStatus
   tags: string[]
 }
 
@@ -141,6 +141,10 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
 
   const db = getDb()
   if (!db) return failure("No database is configured for this deployment.")
+
+  if (payload.id && !postIdSchema.safeParse(payload.id).success) {
+    return failure("That post no longer exists.")
+  }
 
   const parsed = postInputSchema.safeParse(payload)
   if (!parsed.success) {
@@ -189,7 +193,10 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     }
   }
 
-  const document = input.content as PostDocument
+  // From the payload rather than the parse result: the Zod schema validates the
+  // body structurally and widens it, while the caller's type already says what it
+  // is. Same object either way.
+  const document = payload.content
   const text = plainText(document)
 
   if (text.length === 0) {
@@ -235,7 +242,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
 
   revalidatePost(saved.slug, current?.slug)
 
-  return { ok: true, postId: saved.id, slug: saved.slug }
+  return { ok: true, postId: saved.id }
 }
 
 export async function setPostStatus(id: string, status: string): Promise<ActionResult> {
@@ -272,7 +279,7 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
 
   revalidatePost(current.slug)
 
-  return { ok: true, postId: id, slug: current.slug }
+  return { ok: true, postId: id }
 }
 
 export async function deletePost(id: string): Promise<ActionResult> {
@@ -280,6 +287,10 @@ export async function deletePost(id: string): Promise<ActionResult> {
 
   const db = getDb()
   if (!db) return failure("No database is configured for this deployment.")
+
+  // Parsed before it reaches a uuid comparison, or Postgres raises rather than
+  // simply matching nothing.
+  if (!postIdSchema.safeParse(id).success) return failure("That post no longer exists.")
 
   const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
   if (!current) return failure("That post no longer exists.")
@@ -309,6 +320,10 @@ export async function createPreviewLink(id: string): Promise<ActionResult & { ur
   const db = getDb()
   if (!db) return failure("No database is configured for this deployment.")
 
+  // Parsed before it reaches a uuid comparison, or Postgres raises rather than
+  // simply matching nothing.
+  if (!postIdSchema.safeParse(id).success) return failure("That post no longer exists.")
+
   const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
   if (!current) return failure("That post no longer exists.")
 
@@ -317,7 +332,6 @@ export async function createPreviewLink(id: string): Promise<ActionResult & { ur
   return {
     ok: true,
     postId: id,
-    slug: current.slug,
     url: `${BLOG_CONFIG.basePath}/${current.slug}/preview?token=${encodeURIComponent(token)}`,
   }
 }

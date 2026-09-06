@@ -144,6 +144,9 @@ Set it up once:
 Enable 2FA on that GitHub account. It is now the only credential standing between
 anyone and the ability to publish here.
 
+Account linking is disabled, so only that one GitHub account can ever reach the
+admin - not any account that happens to share an email address with it.
+
 ### The blog database
 
 The blog reads from Postgres through `@neondatabase/serverless`, which speaks
@@ -185,6 +188,18 @@ social card are prerendered at build time and behave differently under `next dev
 npm run db:up && npm run db:migrate && npm run db:seed
 DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
 ```
+
+### A note on `overrides`
+
+`package.json` pins `esbuild` through an override. `better-auth` declares
+`drizzle-kit` as a **runtime** dependency rather than a peer or dev one, which
+drags `@esbuild-kit/esm-loader` and an `esbuild` carrying
+[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99) into the
+production dependency tree. Nothing in that path ever runs in a request, but it is
+in the tree, and `npm audit --omit=dev` is right to say so. The override takes both
+production and dev to zero advisories; `npm run db:generate`, `db:migrate`,
+`db:seed` and `npm run build` were all re-run to confirm nothing depended on the
+old version.
 
 ## 📜 Available Scripts
 

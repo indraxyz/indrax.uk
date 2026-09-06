@@ -7,9 +7,14 @@ import { useState, useTransition } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/blog/components/admin/image-upload"
-import { savePost, type ActionResult } from "@/features/blog/data/mutations"
-import type { AdminPost } from "@/features/blog/data/admin-queries"
-import { POST_STATUSES, type PostDocument, type PostStatus } from "@/features/blog/types"
+import { savePost } from "@/features/blog/data/mutations"
+import type { ActionResult } from "@/features/blog/types"
+import {
+  POST_STATUSES,
+  type AdminPost,
+  type PostDocument,
+  type PostStatus,
+} from "@/features/blog/types"
 import { slugify } from "@/features/blog/utils/slug"
 import { cn } from "@/lib/utils"
 
@@ -41,15 +46,31 @@ interface PostFormProps {
   post: AdminPost | null
 }
 
-function FieldError({ messages }: { messages?: string[] }) {
+/**
+ * A field-level message, tied to the field it belongs to.
+ *
+ * The `id` matters as much as the text: without `aria-describedby` pointing at it
+ * from the input, someone tabbing back to a rejected field is told nothing at all
+ * about why it was rejected. `role="alert"` announces it once, on arrival; the
+ * association is what makes it findable afterwards.
+ */
+function FieldError({ id, messages }: { id: string; messages?: string[] }) {
   if (!messages?.length) return null
 
   return (
-    <p role="alert" className="text-xs font-black uppercase tracking-[0.14em] text-destructive">
+    <p
+      id={id}
+      role="alert"
+      className="text-xs font-black uppercase tracking-[0.14em] text-destructive"
+    >
       {messages[0]}
     </p>
   )
 }
+
+/** Wires an input to its error message, or to nothing when there is none. */
+const describedBy = (field: string, messages?: string[]) =>
+  messages?.length ? { "aria-invalid": true, "aria-describedby": `${field}-error` } : {}
 
 export function PostForm({ post }: PostFormProps) {
   const router = useRouter()
@@ -63,7 +84,7 @@ export function PostForm({ post }: PostFormProps) {
   const [tags, setTags] = useState(post?.tags.map((tag) => tag.name).join(", ") ?? "")
   const [coverUrl, setCoverUrl] = useState(post?.coverUrl ?? "")
   const [coverAlt, setCoverAlt] = useState(post?.coverAlt ?? "")
-  const [document, setDocument] = useState<PostDocument | null>(post?.content ?? null)
+  const [body, setBody] = useState<PostDocument | null>(post?.content ?? null)
 
   // Changing the address of something already published breaks every link to it
   // that exists in the world. Worth saying out loud, at the moment it is being
@@ -80,7 +101,7 @@ export function PostForm({ post }: PostFormProps) {
         title: title.trim(),
         slug: slug.trim() || undefined,
         excerpt: excerpt.trim() || undefined,
-        content: document ?? { type: "doc", content: [] },
+        content: body ?? { type: "doc", content: [] },
         coverUrl: coverUrl.trim() || undefined,
         coverAlt: coverAlt.trim() || undefined,
         status,
@@ -125,6 +146,7 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <input
               id="title"
+              {...describedBy("title", result?.errors?.title)}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               onBlur={() => {
@@ -136,11 +158,11 @@ export function PostForm({ post }: PostFormProps) {
               className={cn(fieldClasses, "text-lg font-black")}
               required
             />
-            <FieldError messages={result?.errors?.title} />
+            <FieldError id="title-error" messages={result?.errors?.title} />
           </div>
 
-          <PostEditor value={document} onChange={setDocument} />
-          <FieldError messages={result?.errors?.content} />
+          <PostEditor value={body} onChange={setBody} />
+          <FieldError id="content-error" messages={result?.errors?.content} />
         </div>
 
         <div className="space-y-4">
@@ -168,12 +190,13 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <input
               id="slug"
+              {...describedBy("slug", result?.errors?.slug)}
               value={slug}
               onChange={(event) => setSlug(event.target.value)}
               placeholder="derived from the title"
               className={cn(fieldClasses, "font-mono")}
             />
-            <FieldError messages={result?.errors?.slug} />
+            <FieldError id="slug-error" messages={result?.errors?.slug} />
             {slugWillBreakLinks && (
               <p className="flex items-start gap-2 border-2 border-border bg-[var(--color-muted)] px-3 py-2 text-xs font-semibold leading-relaxed">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -189,6 +212,7 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <input
               id="tags"
+              {...describedBy("tags", result?.errors?.tags)}
               value={tags}
               onChange={(event) => setTags(event.target.value)}
               placeholder="Next.js, TypeScript"
@@ -197,7 +221,7 @@ export function PostForm({ post }: PostFormProps) {
             <p className="text-xs font-medium text-muted-foreground">
               Comma separated. Matching ignores case and punctuation.
             </p>
-            <FieldError messages={result?.errors?.tags} />
+            <FieldError id="tags-error" messages={result?.errors?.tags} />
           </div>
 
           <div className="space-y-1.5">
@@ -206,13 +230,14 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <textarea
               id="excerpt"
+              {...describedBy("excerpt", result?.errors?.excerpt)}
               value={excerpt}
               onChange={(event) => setExcerpt(event.target.value)}
               rows={4}
               placeholder="derived from the body"
               className={fieldClasses}
             />
-            <FieldError messages={result?.errors?.excerpt} />
+            <FieldError id="excerpt-error" messages={result?.errors?.excerpt} />
           </div>
 
           <div className="space-y-1.5">
@@ -221,12 +246,13 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <input
               id="coverUrl"
+              {...describedBy("coverUrl", result?.errors?.coverUrl)}
               value={coverUrl}
               onChange={(event) => setCoverUrl(event.target.value)}
               placeholder="https://..."
               className={cn(fieldClasses, "font-mono text-xs")}
             />
-            <FieldError messages={result?.errors?.coverUrl} />
+            <FieldError id="coverUrl-error" messages={result?.errors?.coverUrl} />
 
             <ImageUpload onUploaded={setCoverUrl} />
 
@@ -235,11 +261,12 @@ export function PostForm({ post }: PostFormProps) {
             </label>
             <input
               id="coverAlt"
+              {...describedBy("coverAlt", result?.errors?.coverAlt)}
               value={coverAlt}
               onChange={(event) => setCoverAlt(event.target.value)}
               className={fieldClasses}
             />
-            <FieldError messages={result?.errors?.coverAlt} />
+            <FieldError id="coverAlt-error" messages={result?.errors?.coverAlt} />
           </div>
         </div>
       </div>

@@ -89,3 +89,38 @@ export interface PaginatedPosts {
 export interface TagWithCount extends Tag {
   postCount: number
 }
+
+/**
+ * A post as the admin list sees it: every status, including the ones that 404
+ * publicly.
+ */
+export interface AdminPostSummary {
+  id: string
+  slug: string
+  title: string
+  status: PostStatus
+  publishedAt: string | null
+  updatedAt: string
+  tags: Tag[]
+}
+
+/** A post as the edit form sees it. */
+export interface AdminPost extends AdminPostSummary {
+  excerpt: string | null
+  content: PostDocument | null
+  coverUrl: string | null
+  coverAlt: string | null
+}
+
+/**
+ * What a mutating action tells its caller.
+ *
+ * `errors` is keyed by field name so a form can put each message beside the input
+ * that caused it, rather than dumping one line at the top.
+ */
+export interface ActionResult {
+  ok: boolean
+  errors?: Record<string, string[]>
+  message?: string
+  postId?: string
+}

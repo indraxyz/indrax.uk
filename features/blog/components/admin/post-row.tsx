@@ -4,8 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import type { VisualVariant } from "@/components/ui/variants"
 import { BLOG_CONFIG } from "@/features/blog/config"
-import type { AdminPostSummary } from "@/features/blog/data/admin-queries"
-import type { PostStatus } from "@/features/blog/types"
+import type { AdminPostSummary, PostStatus } from "@/features/blog/types"
 import { formatDate } from "@/lib/utils"
 
 // Published is the loud one, because it is the state where a mistake is public.

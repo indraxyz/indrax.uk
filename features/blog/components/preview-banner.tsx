@@ -1,6 +1,7 @@
 import { EyeOff } from "lucide-react"
 
 import type { PostStatus } from "@/features/blog/types"
+import { PREVIEW_TTL_MS } from "@/features/blog/utils/preview-token"
 
 interface PreviewBannerProps {
   status: PostStatus
@@ -22,7 +23,9 @@ export function PreviewBanner({ status }: PreviewBannerProps) {
       <EyeOff className="h-4 w-4" aria-hidden />
       Draft preview
       <span className="font-semibold normal-case tracking-normal opacity-80">
-        This post is {status} and is not publicly readable. The link expires within the hour.
+        This post is {status} and is not publicly readable. The link expires{" "}
+        {/* Derived, so changing the TTL cannot leave the copy claiming otherwise. */}
+        {PREVIEW_TTL_MS / 60_000} minutes after it was made.
       </span>
     </p>
   )

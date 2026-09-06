@@ -2,15 +2,10 @@ import { Eye } from "lucide-react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ArticleCard } from "@/features/blog/components/article-card"
 import { BlogShell } from "@/features/blog/components/blog-shell"
 import { CopyCode } from "@/features/blog/components/copy-code"
-import { PostContent } from "@/features/blog/components/post-content"
-import { PostCover } from "@/features/blog/components/post-cover"
-import { PostMeta } from "@/features/blog/components/post-meta"
 import { RelatedPosts } from "@/features/blog/components/related-posts"
-import { TableOfContents } from "@/features/blog/components/table-of-contents"
-import { TagPill } from "@/features/blog/components/tag-pill"
 import { ViewBeacon } from "@/features/blog/components/view-beacon"
 import { BLOG_CONFIG } from "@/features/blog/config"
 import { getPostBySlug, getPublishedSlugs, getRelatedPosts } from "@/features/blog/data/queries"
@@ -99,51 +94,26 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   return (
     <BlogShell>
-      {structuredData.map((data, index) => (
+      {structuredData.map((data) => (
         <script
-          key={index}
+          key={data["@type"]}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serialiseJsonLd(data) }}
         />
       ))}
 
-      <article>
-        <Card variant="card" className="variant-primary variant-border">
-          <PostCover post={post} priority />
-
-          <CardHeader className="gap-4">
-            {/* The page's only h1. The render pipeline shifts body headings so the
-                shallowest becomes an h2, which keeps this true whatever a post
-                contains and without skipping a level. */}
-            <h1 className="text-3xl font-black uppercase leading-tight tracking-tight sm:text-4xl">
-              {post.title}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <PostMeta post={post} />
-              {post.viewCount > 0 && (
-                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  <Eye className="h-3.5 w-3.5" aria-hidden />
-                  {post.viewCount.toLocaleString("en-US")} views
-                </span>
-              )}
-            </div>
-
-            {post.tags.length > 0 && (
-              <nav aria-label="Article tags" className="flex flex-wrap items-center gap-2">
-                {post.tags.map((tag) => (
-                  <TagPill key={tag.id} tag={tag} />
-                ))}
-              </nav>
-            )}
-          </CardHeader>
-
-          <CardContent className="pt-2">
-            <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
-            <PostContent html={article.html} />
-          </CardContent>
-        </Card>
-      </article>
+      <ArticleCard
+        post={post}
+        article={article}
+        meta={
+          post.viewCount > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+              {post.viewCount.toLocaleString("en-US")} views
+            </span>
+          )
+        }
+      />
 
       <RelatedPosts posts={related} />
 

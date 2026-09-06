@@ -4,14 +4,7 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
-import type {
-  PaginatedPosts,
-  Post,
-  PostDocument,
-  PostSummary,
-  Tag,
-  TagWithCount,
-} from "@/features/blog/types"
+import type { PaginatedPosts, Post, PostSummary, Tag, TagWithCount } from "@/features/blog/types"
 import { getDb, schema } from "@/lib/db"
 
 /**
@@ -55,7 +48,7 @@ const summaryColumns = {
 
 const EMPTY_PAGE: PaginatedPosts = { posts: [], page: 1, pageCount: 0 }
 
-const iso = (value: Date | null) => (value ? value.toISOString() : null)
+export const iso = (value: Date | null) => (value ? value.toISOString() : null)
 
 /**
  * Runs a read, and turns any failure into the empty result.
@@ -75,8 +68,15 @@ async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Pr
   }
 }
 
-/** Tags for a set of posts, in one round trip rather than one per card. */
-async function tagsByPost(postIds: string[]): Promise<Map<string, Tag[]>> {
+/**
+ * Tags for a set of posts, in one round trip rather than one per card.
+ *
+ * Shared with the admin reads. Those live in their own file because a *post*
+ * query that could return a draft must not sit next to one that must not - but
+ * this reads no post rows at all, so there is nothing here to get wrong by
+ * sharing.
+ */
+export async function tagsByPost(postIds: string[]): Promise<Map<string, Tag[]>> {
   const grouped = new Map<string, Tag[]>()
   if (postIds.length === 0) return grouped
 
@@ -194,7 +194,7 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
 
   return {
     ...summary,
-    content: row.contentJson as PostDocument,
+    content: row.contentJson,
     status: row.status,
     viewCount: row.viewCount,
   }
@@ -221,7 +221,7 @@ export async function getPostForPreview(slug: string): Promise<Post | null> {
 
   return {
     ...summary,
-    content: row.contentJson as PostDocument,
+    content: row.contentJson,
     status: row.status,
     viewCount: row.viewCount,
   }

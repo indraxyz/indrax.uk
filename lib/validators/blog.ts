@@ -26,6 +26,16 @@ export const slugSchema = z
 
 export const postStatusSchema = z.enum(POST_STATUSES)
 
+/**
+ * A post id, as the database will accept it.
+ *
+ * `posts.id` is a `uuid`, so a value that is not one makes Postgres raise 22P02 -
+ * a 500 - rather than simply matching nothing. Every action and admin read parses
+ * through this first, so `/admin/edit/anything` is a not-found rather than a
+ * crash.
+ */
+export const postIdSchema = z.uuid()
+
 export const tagNameSchema = z
   .string()
   .trim()

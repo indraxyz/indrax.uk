@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+// Matches both cookie names Better Auth uses: the plain one under `next dev`, and
+// the `__Secure-` prefixed one in production, where secure cookies are on.
+const SESSION_COOKIE_PATTERN = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/
+
 /**
  * Keeps a signed-out browser out of `/admin`, and keeps `/admin` out of search.
  *
@@ -17,14 +21,12 @@ import { NextResponse, type NextRequest } from "next/server"
  * on every matched request, and the value of doing that here is nil when the page
  * behind it verifies properly anyway.
  */
-const SESSION_COOKIE_PATTERN = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/
-
 export function proxy(request: NextRequest) {
-  const response = request.cookies.has("better-auth.session_token")
+  const hasSession = SESSION_COOKIE_PATTERN.test(request.headers.get("cookie") ?? "")
+
+  const response = hasSession
     ? NextResponse.next()
-    : SESSION_COOKIE_PATTERN.test(request.headers.get("cookie") ?? "")
-      ? NextResponse.next()
-      : NextResponse.redirect(new URL("/admin/login", request.url))
+    : NextResponse.redirect(new URL("/admin/login", request.url))
 
   // Belt and braces with robots.txt: a disallow asks a crawler not to fetch, this
   // tells one that did not ask not to index what it found (PRD US-4.2).
