@@ -51,6 +51,29 @@ const EMPTY_PAGE: PaginatedPosts = { posts: [], page: 1, pageCount: 0 }
 export const iso = (value: Date | null) => (value ? value.toISOString() : null)
 
 /**
+ * Whether an error is Next's own control flow rather than a failure.
+ *
+ * Next marks these with a `digest`: `DYNAMIC_SERVER_USAGE`, and the `NEXT_`
+ * prefixed signals behind `redirect()` and `notFound()`. They have to travel
+ * through any `catch` between where they are thrown and the framework.
+ */
+function isFrameworkSignal(error: unknown): boolean {
+  const digest = (error as { digest?: unknown } | null)?.digest
+
+  return (
+    typeof digest === "string" && (digest.startsWith("NEXT_") || digest === "DYNAMIC_SERVER_USAGE")
+  )
+}
+
+/**
+ * How long a read may take before it is treated as a failure.
+ *
+ * Generous against a Neon cold start, which is around half a second, and far
+ * short of a build timing out.
+ */
+const READ_TIMEOUT_MS = 10_000
+
+/**
  * Runs a read, and turns any failure into the empty result.
  *
  * A blog that cannot reach its database renders as a blog with nothing in it -
@@ -58,13 +81,49 @@ export const iso = (value: Date | null) => (value ? value.toISOString() : null)
  * That is a far better failure than an unhandled exception taking down the only
  * page this site has (PRD US-6.2). The reason is logged server-side with enough
  * context to find it; nothing about the failure reaches the reader.
+ *
+ * A timeout, not just a `catch`. A database that *hangs* never throws, so a plain
+ * try/catch degrades gracefully from errors and not at all from the failure mode
+ * that actually happens - a wedged host, a network partition, a connection pool
+ * with nothing left to give. Observed rather than theorised: a stuck local
+ * container did not fail the sitemap build, it stalled it until the build gave up.
+ *
+ * The timer does not cancel the query - there is nothing to cancel it with - so a
+ * slow read still finishes eventually and is simply ignored. What it bounds is how
+ * long anyone waits for it.
  */
 async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+
   try {
-    return await read()
+    return await Promise.race([
+      read(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`timed out after ${READ_TIMEOUT_MS}ms`)),
+          READ_TIMEOUT_MS
+        )
+      }),
+    ])
   } catch (error) {
+    // Next signals its own control flow by throwing: `DYNAMIC_SERVER_USAGE` to
+    // bail a route out of static rendering, `NEXT_REDIRECT` and the not-found
+    // fallback for `redirect()` and `notFound()`. Catching those and returning a
+    // fallback does not degrade gracefully - it eats the instruction, and the
+    // render fails somewhere further on with the cause thrown away.
+    //
+    // Found exactly that way: tag pages started answering 500 with a masked
+    // `DYNAMIC_SERVER_USAGE`, because this wrapper was swallowing the very error
+    // Next uses to say "this page is dynamic, render it that way".
+    if (isFrameworkSignal(error)) throw error
+
     console.error(`[blog] ${label} failed`, error)
+
     return fallback
+  } finally {
+    // Or the pending timer keeps the process alive for its full duration after an
+    // otherwise-instant read - which is exactly how a fast build becomes a slow one.
+    clearTimeout(timer)
   }
 }
 

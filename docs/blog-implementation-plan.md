@@ -803,7 +803,28 @@ not exist yet.
   schema. Exact on a UTC runtime, which Workers is; off by the local offset
   anywhere else, against a 30-day window.
 
-### 14.7 One more, found by re-auditing
+### 14.7 Two the review missed, found by running things
+
+**`safely()` was swallowing Next's control flow.** It wraps every public read and
+turned any thrown error into the empty result - including
+`DYNAMIC_SERVER_USAGE`, which is how Next says "this route uses a dynamic API,
+render it dynamically", and the `NEXT_` signals behind `redirect()` and
+`notFound()`. Eating those does not degrade gracefully; it discards an
+instruction and the render fails further on with the cause thrown away. Tag pages
+answered 500 with a masked digest. `safely()` now rethrows anything carrying a
+framework digest and catches only real failures.
+
+**A hung database blocked the build rather than degrading.** `safely()` caught
+errors, and a stalled connection is not an error - it is silence. Observed when
+the local container wedged: the sitemap did not fail, it stalled until the build
+gave up after three attempts. Reads are now bounded by a timeout, so the promise
+the wrapper makes is true for the failure mode that actually happens.
+
+Both are the same lesson from opposite ends: a catch-all has to be deliberate
+about what it catches, and a wrapper that promises resilience has to cover the
+way things really break.
+
+### 14.8 One more, found by re-auditing
 
 `npm audit --omit=dev` was clean before phase 3 and is the check that caught this:
 **`better-auth` declares `drizzle-kit` as a runtime dependency**, not a peer or a
