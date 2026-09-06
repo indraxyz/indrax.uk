@@ -1,7 +1,10 @@
 import { relations } from "drizzle-orm"
+
+import type { PostDocument } from "@/features/blog/types"
 import {
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -24,9 +27,16 @@ export const posts = pgTable(
     slug: text("slug").notNull().unique(),
     title: text("title").notNull(),
     excerpt: text("excerpt"),
-    // Markdown source, never HTML. Rendering sanitises on the way out, so what is
-    // stored here is untrusted for as long as it lives.
-    content: text("content").notNull(),
+    // The article body, as the editor's own ProseMirror document.
+    //
+    // Untrusted for as long as it lives: the renderer emits whatever attributes
+    // this carries, so sanitising happens on the way out, every time. Its meaning
+    // depends on `BLOG_EXTENSIONS` - see the note there.
+    contentJson: jsonb("content_json").$type<PostDocument>(),
+    // The markdown column this replaced. Expand/contract: it is written by nothing
+    // and read by nothing as of this release, and is dropped in the next one, so a
+    // rollback to the previous deploy still finds the data it expects (PRD US-6.1).
+    content: text("content"),
     coverUrl: text("cover_url"),
     coverAlt: text("cover_alt"),
     status: postStatus("status").notNull().default("draft"),

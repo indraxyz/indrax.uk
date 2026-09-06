@@ -9,7 +9,9 @@ export const LIMITS = {
   title: 200,
   slug: 120,
   excerpt: 300,
-  content: 200_000,
+  // Serialised JSON, so roughly a 30,000-word article once the node overhead is
+  // counted.
+  content: 400_000,
   tagName: 50,
   coverAlt: 300,
 } as const
@@ -45,7 +47,16 @@ export const postInputSchema = z
     title: z.string().trim().min(1, "A title is required.").max(LIMITS.title),
     slug: slugSchema.optional(),
     excerpt: z.string().trim().max(LIMITS.excerpt).optional(),
-    content: z.string().min(1, "An article needs a body.").max(LIMITS.content),
+    // The body is a ProseMirror document, validated structurally rather than as a
+    // string: its meaning comes from `BLOG_EXTENSIONS`, and an unknown node is
+    // dropped by the renderer rather than rendered. What is checked here is that
+    // it is a document at all, and that it is not unboundedly large.
+    content: z
+      .object({ type: z.literal("doc") })
+      .loose()
+      .refine((value) => JSON.stringify(value).length <= LIMITS.content, {
+        message: `An article cannot exceed ${LIMITS.content} characters.`,
+      }),
     coverUrl: z.url("A cover must be an absolute URL.").optional(),
     coverAlt: z.string().trim().max(LIMITS.coverAlt).optional(),
     status: postStatusSchema.default("draft"),

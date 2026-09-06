@@ -63,7 +63,7 @@ test.describe("a seeded blog", () => {
     expect(style).toContain("--shiki-dark")
   })
 
-  test("ships no markdown or highlighting library to the browser", async ({ page }) => {
+  test("ships neither the editor nor the highlighter to the browser", async ({ page }) => {
     const scripts: string[] = []
     page.on("response", (response) => {
       if (response.url().endsWith(".js")) scripts.push(response.url())
@@ -74,12 +74,16 @@ test.describe("a seeded blog", () => {
 
     for (const url of scripts) {
       const body = await (await page.request.get(url)).text()
+      // The article body is rendered on the server, so none of what renders it has
+      // any business in the browser. Matched on identifiers rather than bare words
+      // - "Tiptap" and "Drizzle" both appear in the resume's own tech-stack copy.
       for (const forbidden of [
-        "shiki",
-        "rehype-",
         "createHighlighter",
-        "drizzle",
-        "neondatabase",
+        "rehype-pretty-code",
+        "prosemirror",
+        "@tiptap/core",
+        "drizzle-orm",
+        "@neondatabase",
       ]) {
         expect(body, `${forbidden} reached the client in ${url}`).not.toContain(forbidden)
       }

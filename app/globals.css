@@ -1,11 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Emitted into the article body by remark-gfm, not written in any source file, so
-   Tailwind's scanner cannot find it and would otherwise drop the utility. It hides
-   the "Footnotes" heading that labels the footnote section for screen readers. */
-@source inline("sr-only");
-
 @theme {
   /* Custom breakpoints */
   --breakpoint-sm: 600px;
