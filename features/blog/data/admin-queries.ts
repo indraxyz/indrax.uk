@@ -1,6 +1,6 @@
 import "server-only"
 
-import { desc, eq, sql } from "drizzle-orm"
+import { desc, eq, inArray } from "drizzle-orm"
 
 import type { PostDocument, PostStatus, Tag } from "@/features/blog/types"
 import { requireAuthor } from "@/lib/auth-guard"
@@ -55,7 +55,7 @@ async function tagsFor(postIds: string[]): Promise<Map<string, Tag[]>> {
     })
     .from(schema.postTags)
     .innerJoin(schema.tags, eq(schema.tags.id, schema.postTags.tagId))
-    .where(sql`${schema.postTags.postId} = any(${postIds})`)
+    .where(inArray(schema.postTags.postId, postIds))
     .orderBy(schema.tags.name)
 
   for (const { postId, ...tag } of rows) {

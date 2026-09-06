@@ -3,6 +3,7 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import {
   Bold,
+  Braces,
   Code2,
   Heading2,
   Heading3,
@@ -149,7 +150,9 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Tool
         editor={editor}
         label="Code block"
-        icon={<Code2 className={icon} />}
+        // A different glyph from inline code: two controls sharing an icon is two
+        // controls a hurried author will confuse.
+        icon={<Braces className={icon} />}
         active={editor.isActive("codeBlock")}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       />

@@ -31,6 +31,16 @@ export default defineConfig({
       // serves either way. `blog-content.spec.ts` skips itself when it is missing,
       // so the suite is green on a clone with no database.
       ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
+      // Same again for the admin. `admin-authoring.spec.ts` mints a session
+      // against these, and skips itself when they are absent.
+      ...(process.env.BETTER_AUTH_SECRET
+        ? {
+            BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+            ALLOWED_GITHUB_ID: process.env.ALLOWED_GITHUB_ID ?? "",
+            GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID ?? "",
+            GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET ?? "",
+          }
+        : {}),
     },
   },
 })
