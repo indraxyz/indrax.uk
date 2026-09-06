@@ -1,6 +1,7 @@
 import Image from "next/image"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { ContactLinks } from "@/features/resume/components/contact-links"
 import { HighlightSkills } from "@/features/resume/components/highlight-skills"
 import { bio, personalInfo } from "@/features/resume/data/resume"
 
@@ -45,6 +46,7 @@ export function HeroSection() {
             <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground print:text-sm print:leading-snug sm:mx-0 md:text-lg">
               {bio}
             </p>
+            <ContactLinks />
           </div>
         </div>
       </CardContent>

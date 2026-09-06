@@ -48,5 +48,11 @@ next-env.d.ts
 # OS
 Thumbs.db
 
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Generated resume export
 *.pdf
