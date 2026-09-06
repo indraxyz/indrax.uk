@@ -1,8 +1,12 @@
-# Blog — Implementation Plan (Phases 0–2)
+# Blog — Implementation Plan
 
-Status: implemented, awaiting review
+Status: Phases 0–2 reviewed and pushed; Phase 3 implemented, awaiting review
 Owner: Indra Cahya Edytya
-Target branch: `feat/blog-data-and-public-read` → `develop`
+
+| Branch                           | Covers                                        | State                                         |
+| :------------------------------- | :-------------------------------------------- | :-------------------------------------------- |
+| `feat/blog-data-and-public-read` | Phases 0–2 — data layer, public read, SEO     | Pushed, reviewed, awaiting merge to `develop` |
+| `feat/blog-auth-and-admin`       | Phase 3 — content model, auth, admin, uploads | Stacked on the above; awaiting review         |
 
 Source documents, both committed alongside this one:
 
@@ -445,3 +449,136 @@ the rest are recorded in §11.6 as accepted.
   can write one — but it is a trade, not an oversight.
 - **Dependabot is not configured** (PRD T-13). It opens pull requests against the
   repository, which is the owner's call rather than a code change.
+
+---
+
+## 12. Phase 3 — auth and authoring
+
+Branched from `feat/blog-data-and-public-read` rather than from `develop`,
+because it depends on the data layer that branch adds. Review and merge them in
+order.
+
+### 12.1 The decision that reshaped the data layer
+
+The spec named Tiptap as the editor and markdown as the storage format, which do
+not fit together: Tiptap is a rich-text editor over a ProseMirror document, and
+serialising that to markdown on every save is a lossy round trip, not a format.
+Asked, the answer was **Tiptap with the document stored as JSON** — so the body
+column became `jsonb` and the article render path was rebuilt around it.
+
+The concern raised at the time, and still true: ProseMirror JSON only means
+anything against the extension set that produced it. Remove or change an
+extension and every document containing that node renders wrong — silently,
+because an unknown node is dropped rather than raised. Markdown does not have
+that property. `BLOG_EXTENSIONS` is therefore one exported constant with the
+consequence written next to it, and changing it is a migration, not a config edit.
+
+What did **not** change is the security and accessibility work from Phase 2. The
+document is rendered to HTML by Tiptap's DOM-free static renderer, and that HTML
+goes through the same rehype chain — sanitise, then slug, then highlight. If
+anything the sanitiser matters more: the renderer emits stored attributes without
+judging them, and a document carrying `src="javascript:alert(1)"` produces exactly
+that, which was confirmed by rendering one.
+
+`@tiptap/html` was not usable: it declares a `happy-dom` peer, and a Cloudflare
+Workers isolate has no way to provide one. `@tiptap/static-renderer` needs no DOM.
+
+Migration is expand/contract per US-6.1: `content_json` added, `content` relaxed
+to nullable and now written by nothing, dropped a release later. That leaves rows
+with a body in the old column and none in the new — a state the archive has to
+handle, so **being published now also requires having a document**. Found by
+leaving exactly such a row behind locally, where it sat in the feed and the
+sitemap while answering 404 when opened.
+
+### 12.2 The authorization boundary
+
+`proxy.ts` — `middleware.ts` under its Next 16 name — redirects a browser with no
+session cookie away from `/admin` and sets `X-Robots-Tag`. It checks presence
+only, never validity.
+
+That is deliberate, and the reason is worth stating: a server action is a POST
+identified by an id in a header, reachable without touching the routing a proxy
+sees. So the check that decides is `requireAuthor()` in `lib/auth-guard.ts`,
+called by every admin page, every mutating action, and the upload route. It
+re-tests four things on every call — session validity, absolute session age, the
+allow-list, and that the identity is GitHub's immutable numeric id rather than a
+username.
+
+The suite proves the two paths separately. One test sends no cookie and asserts
+the 307 to the login page. The other sends a **forged** cookie, which walks
+straight past the proxy, and asserts the action rejects it, returns only an error
+digest with no stack trace, and writes nothing. Both invoke a real action id
+lifted from the build's own manifest — an invented one is rejected by Next before
+any application code runs, which would make the test pass while proving nothing.
+
+### 12.3 What Phase 3 added
+
+| Area          | Files                                                                                                                                                         |
+| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Content model | `lib/db/schema.ts` (jsonb), `features/blog/editor/extensions.ts`, `features/blog/utils/content.ts`, migration `0001`                                          |
+| Auth          | `lib/auth.ts`, `lib/auth-guard.ts`, `lib/auth-client.ts`, `lib/db/auth-schema.ts` (generated), `app/api/auth/[...all]/route.ts`, `proxy.ts`, migration `0002` |
+| Admin         | `app/admin/**`, `features/blog/components/admin/**`, `features/blog/data/admin-queries.ts`, `features/blog/data/mutations.ts`                                 |
+| Uploads       | `app/api/upload/route.ts`, `features/blog/components/admin/image-upload.tsx`                                                                                  |
+| Tests         | `e2e/admin-boundary.spec.ts`                                                                                                                                  |
+
+`lib/db/auth-schema.ts` is generated by `@better-auth/cli`, which needs a
+statically-exported `auth` instance. `lib/auth.ts` deliberately has none — it is
+built lazily so an unconfigured deployment still builds — so regenerate it from a
+throwaway config mirroring its options, then delete that file.
+
+### 12.4 Decisions worth knowing about
+
+- **`updateTag`, not `revalidateTag`.** Next 16 made the latter take a cache-life
+  profile and expire lazily. The former is the server-action form and expires
+  immediately with read-your-own-writes, which matters because the author is
+  redirected to the page they just saved — being shown the previous version of
+  their own edit reads as data loss.
+- **`aws4fetch`, not the AWS SDK.** R2 presigning needs a SigV4 signer and nothing
+  else; the SDK is megabytes on a runtime with a bundle-size limit.
+- **The upload never passes through the application.** The server mints a
+  short-lived, single-key URL and the browser PUTs directly to storage. A Worker
+  has neither the memory nor the time budget to proxy a five-megabyte image.
+- **The key is generated, never taken from the client.** A caller-supplied name is
+  how an upload overwrites something else or escapes its prefix.
+- **Link `rel` and `target` are set at render, not read from the document.** The
+  sanitiser allows neither on an anchor, so whatever is stored for them is already
+  gone — which is what makes it safe to set them ourselves.
+- **`clobberPrefix` reverted to the default.** It was overridden in Phase 2 to
+  keep GFM footnote anchors intact. Tiptap has no footnotes, so the exception no
+  longer has a reason, and the safer default is back.
+
+### 12.5 Verification performed
+
+- `npm run check` clean; builds with the database and OAuth configured **and**
+  with nothing configured at all.
+- `npm run test:e2e` — **48 passing**, up from 40: eight new boundary specs plus
+  the existing suite unregressed.
+- Public route bundles were audited per route: no ProseMirror, no Tiptap, no
+  Shiki, no rehype, no Drizzle, no Neon driver and no Better Auth code reaches a
+  reader (NFR-5, NFR-6). The editor is behind `next/dynamic` with `ssr: false`.
+- The document render path was exercised against every seeded post: no `<h1>` in
+  a body, no level skipped, code tokenised in both themes, tables and task lists
+  in named scroll regions, inline styles stripped, links carrying `rel`.
+- A forged session cookie was driven end to end by hand before being written as a
+  test, and confirmed to leave the database unchanged.
+
+### 12.6 Gaps in Phase 3, stated plainly
+
+- **The authenticated admin UI has not been exercised.** Everything compiles,
+  every route builds, and the boundary is tested from the outside — but the post
+  list, the Tiptap editor, save, publish and delete have not been driven by a
+  signed-in session, because minting a valid Better Auth session outside its own
+  sign-in flow proved fiddly and the time was better spent on the boundary. **This
+  is the thing to check first on first sign-in.**
+- **The GitHub round trip is untested**, by design: testing it means either a mock
+  proving a mock behaves like a mock, or real credentials in the suite. The
+  allow-list logic those credentials would exercise is `requireAuthor()`, which
+  every boundary test runs through.
+- **The upload path is untested end to end.** No R2 bucket exists. The refusal
+  path — an unauthenticated caller gets nothing and no URL is minted — is tested.
+- **Session expiry is enforced but not tested.** Idle expiry is Better Auth's; the
+  absolute cap is checked against `session.createdAt` in `requireAuthor()`.
+  Covering it needs a session, so it is blocked on the same gap as the first item.
+- **Still no CSP.** `proxy.ts` now exists, which is what a nonce needs, so the
+  blocker named in §11.6 is gone — but it was not attempted here, and a wrong CSP
+  ships a site with no theme.

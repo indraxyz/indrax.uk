@@ -15,6 +15,13 @@
       "when": 1788668249646,
       "tag": "0001_content_as_prosemirror_json",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788672316535,
+      "tag": "0002_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

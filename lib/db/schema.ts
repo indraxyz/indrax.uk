@@ -1,6 +1,10 @@
 import { relations } from "drizzle-orm"
 
-import type { PostDocument } from "@/features/blog/types"
+import { POST_STATUSES, type PostDocument } from "@/features/blog/types"
+
+// Better Auth owns these; the Drizzle adapter is handed the whole schema object,
+// so they have to be reachable from here.
+export * from "./auth-schema"
 import {
   index,
   integer,
@@ -18,7 +22,7 @@ import {
  * post was and no longer is. Both 404 publicly, but only the second one needs its
  * old URL kept out of the sitemap deliberately rather than incidentally.
  */
-export const postStatus = pgEnum("post_status", ["draft", "published", "archived"])
+export const postStatus = pgEnum("post_status", POST_STATUSES)
 
 export const posts = pgTable(
   "posts",

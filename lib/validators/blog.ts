@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { POST_STATUSES } from "@/features/blog/types"
 import { SLUG_PATTERN } from "@/features/blog/utils/slug"
 
 // Caps exist so a single row cannot become a denial-of-service by itself. Sized
@@ -23,7 +24,7 @@ export const slugSchema = z
   .max(LIMITS.slug, `A slug cannot exceed ${LIMITS.slug} characters.`)
   .regex(SLUG_PATTERN, "Use lowercase letters, digits and single hyphens only.")
 
-export const postStatusSchema = z.enum(["draft", "published", "archived"])
+export const postStatusSchema = z.enum(POST_STATUSES)
 
 export const tagNameSchema = z
   .string()

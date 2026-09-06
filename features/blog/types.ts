@@ -24,6 +24,16 @@ export interface PostDocument {
   content?: PostDocument[]
 }
 
+/**
+ * The statuses a post can hold, as one source.
+ *
+ * The Postgres enum and the Zod schema both read this array, so the three copies
+ * that would otherwise exist - and the two that would silently disagree - are one.
+ */
+export const POST_STATUSES = ["draft", "published", "archived"] as const
+
+export type PostStatus = (typeof POST_STATUSES)[number]
+
 export interface Tag {
   id: string
   name: string
