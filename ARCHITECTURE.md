@@ -8,8 +8,11 @@ This document describes the architecture and design decisions for the Resume/CV 
 ├── app/                      # Next.js App Router
 │   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
 │   ├── page.tsx             # Server entry for the resume page
+│   ├── blog/                # Blog routes - list, article, tag, per-post OG card
+│   ├── rss.xml/             # RSS 2.0 feed
+│   ├── not-found.tsx        # Site-wide 404, also what a draft looks like
 │   ├── robots.ts            # Generated /robots.txt
-│   ├── sitemap.ts           # Generated /sitemap.xml
+│   ├── sitemap.ts           # Generated /sitemap.xml - async, queries the database
 │   └── globals.css          # Global styles with Tailwind v4
 │
 ├── components/              # Shared UI primitives
@@ -28,6 +31,13 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── variants.ts      # Visual variant tokens
 │
 ├── features/
+│   ├── blog/
+│   │   ├── components/      # Cards, list section, article body, chrome
+│   │   ├── data/            # Drizzle reads, cache-tagged
+│   │   ├── utils/           # Markdown pipeline, slug, reading time, JSON-LD
+│   │   ├── social-card.tsx  # Per-article link-preview banner
+│   │   ├── config.ts        # BLOG_CONFIG and section copy
+│   │   └── types.ts         # Post, Tag, PostStatus
 │   └── resume/
 │       ├── components/      # Feature UI, section cards, and drawer
 │       ├── data/            # Resume source content
@@ -36,10 +46,14 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── types.ts         # Resume domain types
 │
 ├── lib/                     # Shared, framework-level helpers
+│   ├── db/                 # Drizzle schema, client, seed
+│   ├── og/                 # Font loading for the server-drawn cards
+│   ├── validators/         # Zod schemas
 │   ├── theme.ts            # Theme storage key, event, and default
 │   └── utils/
 │       ├── cn.ts           # Class name utility (clsx + tailwind-merge)
 │       ├── date.ts         # Date formatting utilities
+│       ├── media.ts        # Cover-image host allow-list
 │       └── index.ts        # Barrel export
 │
 └── public/                  # Static assets
@@ -87,16 +101,20 @@ This document describes the architecture and design decisions for the Resume/CV 
 
 ## 🔄 Data Flow
 
+The site now has two sources of truth, one per feature slice. The resume is a
+committed file; the blog is a database. The shape of the two flows is deliberately
+identical below the source, so a route composes the same way either way.
+
 ```
-features/resume/data/resume.ts (Source of Truth)
-    ↓
-features/resume/types.ts (Type Definitions)
-    ↓
-features/resume/components/resume-page.tsx (Presentation Layer)
-    ↓
-features/resume/components/ (Feature Components)
-    ↓
-components/ui/ (Base UI Components)
+features/resume/data/resume.ts (Source of Truth)     Neon Postgres (Source of Truth)
+    ↓                                                     ↓  lib/db/schema.ts
+features/resume/types.ts (Type Definitions)               ↓  features/blog/data/queries.ts
+    ↓                                                     ↓  features/blog/types.ts
+features/resume/components/resume-page.tsx                ↓  app/blog/** (thin route entries)
+    ↓                                                     ↓
+features/resume/components/ (Feature Components)     features/blog/components/
+    ↓                                                     ↓
+components/ui/ (Base UI Components)                  components/ui/
 ```
 
 ## 📦 Key Design Decisions
@@ -133,6 +151,24 @@ components/ui/ (Base UI Components)
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
+- **Markdown is sanitised on the way out, not on the way in**: article bodies are
+  stored as untrusted markdown and pass through `rehype-sanitize` at render, before
+  the highlighter runs. Sanitising on save alone would be a check that stored
+  content can outlive; ordering it before `rehype-pretty-code` is what lets the
+  highlighter's own `style` attributes survive a filter the author cannot reach
+- **An absent database is a state, not an error**: `getDb()` returns `null` when
+  `DATABASE_URL` is unset and every query returns the empty result, so a fresh
+  clone, a CI build and a preview without a branch all build and serve the resume.
+  Query failures take the same path, so a database outage renders `/blog` empty
+  rather than crashing the only page the site has
+- **Article rendering ships no JavaScript**: the markdown pipeline and Shiki run in
+  a server component and the page receives finished HTML. That is what keeps the
+  article readable with JavaScript disabled, and why theme switching repaints code
+  from CSS custom properties rather than by re-highlighting
+- **Prose overrides are unlayered**: Tailwind Typography emits its `.prose` rule at
+  the same specificity as ours, so source order decides. Anything inside
+  `@layer base` is emitted first and silently loses — which showed up as correct
+  fonts and wrong colours
 - **UI Components** (`components/ui/`): Base design system components
 - **Resume Feature** (`features/resume/`): Domain-specific data, types, config, and components
 - **Page Components** (`app/`): Thin route entry points
@@ -166,7 +202,10 @@ Potential enhancements:
 - [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
 - [x] Add analytics - PostHog, key-gated
 - [x] Surface contact details in the hero (email, LinkedIn, GitHub)
-- [ ] Add unit tests with Vitest
+- [ ] Add unit tests with Vitest — slug collision, reading time, the markdown
+      pipeline and the Zod schemas are the pure logic worth covering
+- [ ] Blog authoring: Better Auth + GitHub allow-list, `/admin`, cover uploads
+      (see `docs/blog-implementation-plan.md`)
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
 - [ ] Enforce import ordering with an ESLint rule

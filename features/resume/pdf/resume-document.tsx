@@ -1,6 +1,6 @@
 import { Document, Image, Link, Page, Text, View } from "@react-pdf/renderer"
 
-import { RESUME_CONFIG, SECTION_COPY, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
+import { RESUME_CONFIG, SECTION_COPY, SITE_HOST, SOCIAL_LINKS } from "@/features/resume/config"
 import {
   achievements,
   bio,
@@ -15,8 +15,6 @@ import { certificationGroups, techStackGroups } from "@/features/resume/utils/gr
 import { formatBirthDetails, getCurrentAge } from "@/features/resume/utils/personal-info"
 import { registerPdfFonts, styles } from "@/features/resume/pdf/theme"
 import { formatDate } from "@/lib/utils"
-
-const SITE_HOST = new URL(SITE_URL).host
 
 function Card({
   title,

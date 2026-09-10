@@ -79,15 +79,28 @@ const CardHeader = React.forwardRef<HTMLDivElement, CardPartProps>(
 )
 CardHeader.displayName = "CardHeader"
 
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3
+export type CardTitleLevel = 2 | 3
+
+const CardTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement> & {
+    // A card title sits one level under whatever heading introduces its group.
+    // That is h3 under the resume's h2 sections, which stays the default, and h2
+    // under the blog list pages, whose section header is the page h1 - h1 followed
+    // by h3 skips a level.
+    level?: CardTitleLevel
+  }
+>(({ className, level = 3, ...props }, ref) => {
+  const Heading = level === 2 ? "h2" : "h3"
+
+  return (
+    <Heading
       ref={ref}
       className={cn("text-2xl font-black uppercase leading-none tracking-tight", className)}
       {...props}
     />
   )
-)
+})
 CardTitle.displayName = "CardTitle"
 
 const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(

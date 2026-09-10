@@ -12,6 +12,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
 - **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
+- **Blog**: markdown articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
@@ -22,6 +23,9 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Styling**: Tailwind CSS v4
 - **UI Components**: shadcn/ui
 - **Icons**: Lucide React
+- **Database**: Neon Postgres via Drizzle ORM (optional — the site builds and serves without one)
+- **Markdown**: unified / remark / rehype, with Shiki highlighting at render time
+- **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
 - **Package Manager**: npm
 
 ## 📁 Project Structure
@@ -31,6 +35,9 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
+│   ├── blog/                 # List, article, tag pages and per-article cards
+│   ├── rss.xml/              # RSS 2.0 feed
+│   ├── not-found.tsx         # Site-wide 404
 │   ├── robots.ts             # Generated /robots.txt
 │   ├── sitemap.ts            # Generated /sitemap.xml
 │   └── globals.css           # Global styles
@@ -39,7 +46,9 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── theme-toggle.tsx     # Light / dark / system switcher
 │   └── ui/                  # shadcn/ui components
 ├── e2e/                      # Playwright end-to-end specs
+├── drizzle/                  # Generated database migrations
 ├── features/
+│   ├── blog/                 # Blog slice - components, queries, markdown, config
 │   └── resume/
 │       ├── components/      # Resume feature components
 │       ├── data/            # Resume data
@@ -48,9 +57,12 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │       ├── config.ts        # Resume config
 │       ├── social-card.tsx  # Link-preview banner composition
 │       └── types.ts         # Resume types
-├── docs/                     # Feature specs
+├── docs/                     # Feature specs and implementation plans
 └── lib/                      # Utility functions
     ├── analytics.ts         # PostHog init and event capture
+    ├── db/                  # Drizzle schema, client and seed
+    ├── og/                  # Font loading for server-drawn cards
+    ├── validators/          # Zod schemas
     └── utils/
 ```
 
@@ -88,11 +100,38 @@ npm run dev
 
 Every variable is optional; copy `.env.example` to `.env.local` to set them.
 
-| Variable                   | Default                    | Purpose                                                         |
-| :------------------------- | :------------------------- | :-------------------------------------------------------------- |
-| `NEXT_PUBLIC_POSTHOG_KEY`  | unset                      | PostHog project key. Unset means analytics never initialises.   |
-| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com` | Ingestion host.                                                 |
-| `NEXT_PUBLIC_SITE_URL`     | `https://indrax.uk`        | Origin advertised in metadata, the sitemap and the social card. |
+| Variable                   | Default                      | Purpose                                                                                                       |
+| :------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com`   | Ingestion host.                                                                                               |
+| `NEXT_PUBLIC_SITE_URL`     | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
+| `DATABASE_URL`             | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
+| `DIRECT_DATABASE_URL`      | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
+| `NEXT_PUBLIC_MEDIA_ORIGIN` | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                         |
+
+### The blog database
+
+The blog reads from Postgres through `@neondatabase/serverless`, which speaks
+Neon's HTTP protocol — the only driver that works on Cloudflare Workers, which
+cannot open raw TCP sockets. A stock Postgres does not speak that protocol, so
+local development runs one behind a Neon-compatible proxy. The application then
+uses a single driver everywhere and only `DATABASE_URL` differs.
+
+```bash
+npm run db:up        # Postgres + Neon proxy, via docker compose
+npm run db:migrate   # apply drizzle/*.sql
+npm run db:seed      # three posts, one of them a draft
+npm run db:studio    # browse the data
+npm run db:down      # stop the stack
+```
+
+Copy `.env.example` to `.env.local` and uncomment the two local connection
+strings it documents. Postgres is published on **55432**, not 5432, so the stack
+does not collide with a Postgres already running on the machine.
+
+Against Neon, set `DATABASE_URL` to the pooled connection string and run
+`npm run db:migrate`. Migrate a Neon branch before production — see §13 of
+`docs/blog-spec.md`.
 
 ### Testing
 
@@ -103,6 +142,14 @@ npm run test:e2e
 
 The suite builds the site and runs against `next start`, because the CV and the
 social card are prerendered at build time and behave differently under `next dev`.
+
+`e2e/blog-content.spec.ts` needs content, so it skips itself unless
+`DATABASE_URL` is set. To run it, bring the local stack up and seed it first:
+
+```bash
+npm run db:up && npm run db:migrate && npm run db:seed
+DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
+```
 
 ## 📜 Available Scripts
 
@@ -118,6 +165,11 @@ social card are prerendered at build time and behave differently under `next dev
 - `npm run check` - Format check, lint and type-check in one pass
 - `npm run test:e2e` - Run the Playwright suite against a production build
 - `npm run test:e2e:ui` - The same suite in Playwright's UI mode
+- `npm run db:up` / `db:down` - Start or stop the local Postgres + Neon proxy
+- `npm run db:generate` / `db:migrate` / `db:seed` / `db:studio` - Database tooling
+- `npm run preview` - Build with `@opennextjs/cloudflare` and run it in workerd
+- `npm run deploy` - Build and deploy to Cloudflare Workers
+- `npm run cf-typegen` - Regenerate the Cloudflare binding types
 
 ## 🎨 Customization
 
@@ -138,13 +190,25 @@ Edit `features/resume/data/resume.ts` to update your personal information, exper
 
 ## 📦 Deployment
 
-### Vercel (Recommended)
+### Cloudflare Workers
 
-1. Push your code to GitHub
-2. Import your repository on [Vercel](https://vercel.com)
-3. Deploy!
+`@opennextjs/cloudflare` adapts the Next build for workerd. `wrangler.jsonc` and
+`open-next.config.ts` are inert until one of these is run, so `npm run build`
+and `npm run start` behave exactly as they always have.
 
-### Other Platforms
+```bash
+npm run preview   # build and run locally in workerd
+npm run deploy    # build and deploy
+```
+
+Secrets are never committed. Set them with `wrangler secret put DATABASE_URL`,
+and put local ones in `.dev.vars`, which is gitignored.
+
+The `workerd` package needs its install script to run to fetch its binary. If
+`npm install` was run with install scripts blocked, approve it once with
+`npm install-scripts approve workerd` before `npm run preview`.
+
+### Other platforms
 
 Build the project:
 

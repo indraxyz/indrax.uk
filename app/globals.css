@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Emitted into the article body by remark-gfm, not written in any source file, so
+   Tailwind's scanner cannot find it and would otherwise drop the utility. It hides
+   the "Footnotes" heading that labels the footnote section for screen readers. */
+@source inline("sr-only");
 
 @theme {
   /* Custom breakpoints */
@@ -31,6 +37,10 @@
 
   --font-sans: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Article bodies only. The chrome, the nav, the headings and every code block
+     stay monospace, so the site keeps its identity and only long-form reading
+     gets a face built for it. Applied by `.prose`, nowhere else. */
+  --font-prose: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 @layer base {
@@ -149,6 +159,16 @@
       var(--primitive-brand-950) 38%,
       transparent
     );
+
+    /* Article prose. Derived from the semantics above rather than authored as new
+       colours, so both themes stay in step for free and the palette keeps one
+       source of truth. */
+    --component-prose-code-bg: var(--semantic-surface-muted);
+    --component-prose-inline-code-bg: color-mix(
+      in oklab,
+      var(--semantic-action-tertiary) 26%,
+      white
+    );
   }
 
   .dark {
@@ -183,6 +203,13 @@
       in oklab,
       var(--primitive-brand-300) 38%,
       transparent
+    );
+
+    --component-prose-code-bg: var(--semantic-surface-overlay);
+    --component-prose-inline-code-bg: color-mix(
+      in oklab,
+      var(--semantic-action-tertiary) 46%,
+      var(--semantic-surface-page)
     );
 
     --component-variant-primary-soft: color-mix(
@@ -264,6 +291,18 @@
       28px 28px,
       auto;
     background-attachment: fixed;
+  }
+
+  /* Someone who has asked their system to stop moving things means it here too. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -473,4 +512,111 @@
   .shadow-soft-lg {
     box-shadow: none !important;
   }
+}
+
+/* Article prose.
+ *
+ * Deliberately unlayered, and it has to be. Tailwind Typography emits its own
+ * `.prose` rule at the same specificity as these, so which one wins is decided by
+ * source order alone - and anything inside `@layer base` is emitted before the
+ * plugin's output, which means it loses. That failure is quiet: the font-family
+ * override still applied, so only the colours were wrong, and only in one theme.
+ *
+ * Unlayered rules win over every layer regardless of order, which is also where
+ * the shadow and gradient utilities below already live.
+ */
+/* Nothing here is a new colour. Tailwind Typography reads these variables, and
+   each one is pointed at a semantic token that already flips under `.dark` - so
+   dark mode needs no second block and no `prose-invert`. */
+.prose {
+  --tw-prose-body: var(--semantic-text-secondary);
+  --tw-prose-headings: var(--semantic-text-primary);
+  --tw-prose-lead: var(--semantic-text-secondary);
+  --tw-prose-links: var(--semantic-action-secondary);
+  --tw-prose-bold: var(--semantic-text-primary);
+  --tw-prose-counters: var(--semantic-text-secondary);
+  --tw-prose-bullets: var(--semantic-action-secondary);
+  --tw-prose-hr: var(--semantic-border-default);
+  --tw-prose-quotes: var(--semantic-text-primary);
+  --tw-prose-quote-borders: var(--semantic-border-default);
+  --tw-prose-captions: var(--semantic-text-secondary);
+  --tw-prose-code: var(--semantic-text-primary);
+  --tw-prose-pre-code: var(--semantic-text-primary);
+  --tw-prose-pre-bg: var(--component-prose-code-bg);
+  --tw-prose-th-borders: var(--semantic-border-default);
+  --tw-prose-td-borders: var(--semantic-border-default);
+
+  /* The one place on the site that is not monospace. Long-form reading is what
+     this face is for; everything around it stays JetBrains Mono. */
+  font-family: var(--font-prose);
+  /* Typography's default measure is 65ch, inside the 60-80 the spec asks for. */
+  max-width: 68ch;
+}
+
+/* The site's headings are heavy and uppercase; article headings inherit that so
+   a post reads as part of the same page, while the body does not. */
+.prose :is(h2, h3, h4) {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.prose :is(code, kbd, samp, pre) {
+  font-family: var(--font-mono);
+}
+
+/* Typography wraps inline code in backticks by default, which reads as literal
+   punctuation once the code has a background of its own. */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none;
+}
+
+.prose :not(pre) > code {
+  border: 1px solid var(--semantic-border-default);
+  background-color: var(--component-prose-inline-code-bg);
+  padding: 0.15em 0.4em;
+  font-weight: 600;
+}
+
+/* A block wider than the viewport scrolls inside its own box rather than pushing
+   the page sideways. `rehype-pretty-code` makes it focusable and the pipeline
+   names it, so the scroller is reachable and describable (PRD US-1.2). */
+.prose pre {
+  border: 2px solid var(--semantic-border-default);
+  border-radius: 0;
+  overflow-x: auto;
+}
+
+/* Wraps a table, which Tailwind Typography leaves unconstrained. Wide content
+   scrolls inside its own box so the page itself never does. */
+.prose .prose-scroll {
+  overflow-x: auto;
+}
+
+.prose .prose-scroll > table {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.prose :is(pre, .prose-scroll):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-background),
+    0 0 0 4px var(--semantic-focus-ring);
+}
+
+/* Shiki emits both palettes in one pass as custom properties on every token, so
+   changing theme repaints the code with no second render and no highlighter in
+   the browser. */
+.prose pre span {
+  color: var(--shiki-light);
+}
+
+.dark .prose pre span {
+  color: var(--shiki-dark);
+}
+
+.prose :where(a):hover {
+  text-decoration-thickness: 2px;
 }

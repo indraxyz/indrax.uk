@@ -1,0 +1,27 @@
+/**
+ * Cloudflare Workers deployment, via @opennextjs/cloudflare.
+ *
+ * Nothing here affects `npm run build` or `npm run start`. The adapter only runs
+ * when `npm run preview` or `npm run deploy` is invoked explicitly, so adding it
+ * leaves the existing build path untouched.
+ *
+ * Secrets are never listed here. `DATABASE_URL` is set with
+ * `wrangler secret put DATABASE_URL`, and locally in `.dev.vars`, which is
+ * gitignored.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "indrax",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  // The Next.js server and the Neon driver both need Node built-ins. `nodejs_compat`
+  // supplies them; without it the Worker fails at import time, not at request time.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

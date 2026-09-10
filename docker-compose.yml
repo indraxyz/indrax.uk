@@ -1,0 +1,53 @@
+# Local development database.
+#
+# Production is Neon, reached over Neon's HTTP protocol by
+# `@neondatabase/serverless` - the only Postgres driver that works on Cloudflare
+# Workers, which cannot open raw TCP sockets. A stock Postgres does not speak that
+# protocol, so this stack puts a Neon-compatible proxy in front of one. The
+# application therefore runs a single driver in every environment and only
+# `DATABASE_URL` changes.
+#
+#   npm run db:up && npm run db:migrate && npm run db:seed
+#
+# See .env.example for the connection string this stack expects.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: indrax
+      POSTGRES_PASSWORD: indrax
+      POSTGRES_DB: indrax
+    ports:
+      # Exposed so `drizzle-kit studio` and psql can reach it directly. The
+      # application never uses this port - it goes through the proxy below.
+      #
+      # 55432 rather than 5432: a development machine is likely to already be
+      # running a Postgres of its own, and a stack that refuses to start because
+      # it collided with one is a worse default than an unfamiliar port number.
+      # Bound to loopback: the default binds every interface, which would put a
+      # database with a two-word password on whatever network the laptop is on.
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indrax -d indrax"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Speaks Neon's HTTP/WebSocket protocol and forwards to the Postgres above.
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    restart: unless-stopped
+    environment:
+      PG_CONNECTION_STRING: postgres://indrax:indrax@postgres:5432/indrax
+    ports:
+      - "127.0.0.1:4444:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

@@ -9,3 +9,10 @@ export const E2E_POSTHOG_KEY = "phc_e2e_dummy_key"
 // nothing reaches a real project; if an interception is ever missed the request
 // fails fast instead of quietly posting test traffic somewhere real.
 export const E2E_POSTHOG_HOST = "https://posthog.e2e.invalid"
+
+// The seeded fixtures from `lib/db/seed.ts`. Named here so a spec asserting on
+// them reads as a reference to the fixture rather than a magic string, and so
+// renaming one is a single edit.
+export const SEEDED_POST_SLUG = "rendering-markdown-without-shipping-a-highlighter"
+export const SEEDED_DRAFT_SLUG = "notes-on-preview-tokens"
+export const SEEDED_TAG_SLUG = "typescript"

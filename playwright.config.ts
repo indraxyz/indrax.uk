@@ -27,6 +27,10 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_POSTHOG_KEY: E2E_POSTHOG_KEY,
       NEXT_PUBLIC_POSTHOG_HOST: E2E_POSTHOG_HOST,
+      // Passed through when it is set, and absent otherwise - the site builds and
+      // serves either way. `blog-content.spec.ts` skips itself when it is missing,
+      // so the suite is green on a clone with no database.
+      ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
     },
   },
 })

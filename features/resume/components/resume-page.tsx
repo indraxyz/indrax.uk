@@ -1,4 +1,4 @@
-import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
+import { RESUME_CONFIG, SITE_HOST } from "@/features/resume/config"
 import { DownloadResumeButton } from "@/features/resume/components/download-resume-button"
 import { ExperienceSection } from "@/features/resume/components/experience-section"
 import { HeroSection } from "@/features/resume/components/hero-section"
@@ -6,12 +6,9 @@ import { PersonalInfoDrawer } from "@/features/resume/components/personal-info-d
 import { PortfolioSection } from "@/features/resume/components/portfolio-section"
 import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { TechStackSection } from "@/features/resume/components/tech-stack-section"
+import { WritingSection } from "@/features/resume/components/writing-section"
 import { formatDate } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
-
-// Derived from the configured origin so the credit cannot drift from the
-// canonical URL the metadata advertises.
-const SITE_HOST = new URL(SITE_URL).host
 
 export function ResumePage() {
   return (
@@ -44,6 +41,9 @@ export function ResumePage() {
           <ExperienceSection />
           <TechStackSection />
           <PortfolioSection />
+          {/* Renders nothing when nothing is published, so the page is unchanged
+              until there is an article to point at. */}
+          <WritingSection />
         </div>
       </main>
 

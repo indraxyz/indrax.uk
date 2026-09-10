@@ -3,39 +3,27 @@ import { join } from "node:path"
 
 import { ImageResponse } from "next/og"
 
-import { SITE_URL } from "@/features/resume/config"
+import { SITE_HOST } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
+import { loadBrandFonts } from "@/lib/og/brand-fonts"
+import { OG_CARD_CONTENT_TYPE, OG_CARD_SIZE, OG_COLORS } from "@/lib/og/brand"
 
-export const SOCIAL_CARD_SIZE = { width: 1200, height: 630 }
-export const SOCIAL_CARD_CONTENT_TYPE = "image/png"
+export const SOCIAL_CARD_SIZE = OG_CARD_SIZE
+export const SOCIAL_CARD_CONTENT_TYPE = OG_CARD_CONTENT_TYPE
 export const SOCIAL_CARD_ALT = `${personalInfo.name} - ${personalInfo.title}`
-
-const PUBLIC_DIR = join(process.cwd(), "public")
-const SITE_HOST = new URL(SITE_URL).host
-
-// The page's own tokens, so a shared link and the site it points at read as one
-// product rather than two. Mirrors `--primitive-brand-950` / `--primitive-brand-300`
-// in `app/globals.css`.
-const COLORS = {
-  background: "#063b00",
-  foreground: "#ffffff",
-  accent: "#e1e100",
-} as const
 
 // The banner is a fixed 1200x630, so the copy is sized against a known width rather
 // than left to wrap: two skills is what fits beside the photo at a legible size.
 const SKILLS_ON_CARD = 2
 
 async function loadAssets() {
-  const [regular, extraBold, photo] = await Promise.all([
-    readFile(join(PUBLIC_DIR, "fonts", "JetBrainsMono-Regular.ttf")),
-    readFile(join(PUBLIC_DIR, "fonts", "JetBrainsMono-ExtraBold.ttf")),
-    readFile(join(PUBLIC_DIR, "foto-profile.jpg")),
+  const [fonts, photo] = await Promise.all([
+    loadBrandFonts(),
+    readFile(join(process.cwd(), "public", "foto-profile.jpg")),
   ])
 
   return {
-    regular,
-    extraBold,
+    ...fonts,
     // Satori has no network and no public path; the photo has to travel inline.
     photoSrc: `data:image/jpeg;base64,${photo.toString("base64")}`,
   }
@@ -62,12 +50,12 @@ export async function renderSocialCard() {
         flexDirection: "column",
         justifyContent: "space-between",
         padding: 60,
-        backgroundColor: COLORS.background,
-        color: COLORS.foreground,
+        backgroundColor: OG_COLORS.background,
+        color: OG_COLORS.foreground,
         fontFamily: "JetBrains Mono",
       }}
     >
-      <div style={{ display: "flex", width: 180, height: 12, backgroundColor: COLORS.accent }} />
+      <div style={{ display: "flex", width: 180, height: 12, backgroundColor: OG_COLORS.accent }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 48 }}>
         {/* Satori draws this card, not a browser: `next/image` has no runtime here
@@ -79,7 +67,7 @@ export async function renderSocialCard() {
           width={220}
           height={220}
           alt=""
-          style={{ objectFit: "cover", border: `8px solid ${COLORS.accent}` }}
+          style={{ objectFit: "cover", border: `8px solid ${OG_COLORS.accent}` }}
         />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -102,7 +90,7 @@ export async function renderSocialCard() {
               fontSize: 24,
               fontWeight: 800,
               letterSpacing: 5,
-              color: COLORS.accent,
+              color: OG_COLORS.accent,
               textTransform: "uppercase",
             }}
           >
@@ -117,7 +105,7 @@ export async function renderSocialCard() {
                   display: "flex",
                   fontSize: 15,
                   padding: "8px 16px",
-                  border: `3px solid ${COLORS.accent}`,
+                  border: `3px solid ${OG_COLORS.accent}`,
                 }}
               >
                 {skill}
@@ -132,14 +120,14 @@ export async function renderSocialCard() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderTop: `4px solid ${COLORS.accent}`,
+          borderTop: `4px solid ${OG_COLORS.accent}`,
           paddingTop: 24,
         }}
       >
         <div style={{ display: "flex", fontSize: 26, fontWeight: 800, letterSpacing: 3 }}>
           {SITE_HOST}
         </div>
-        <div style={{ display: "flex", fontSize: 20, letterSpacing: 3, color: COLORS.accent }}>
+        <div style={{ display: "flex", fontSize: 20, letterSpacing: 3, color: OG_COLORS.accent }}>
           RESUME / CV
         </div>
       </div>
