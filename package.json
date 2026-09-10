@@ -69,6 +69,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@opennextjs/cloudflare": "^1.20.6",
     "@playwright/test": "^1.62.1",
     "@types/hast": "^3.0.5",
@@ -84,5 +85,10 @@
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "wrangler": "^4.129.0"
+  },
+  "overrides": {
+    "esbuild": "^0.25.10",
+    "sharp": "^0.35.4",
+    "js-yaml": "^4.3.2"
   }
 }

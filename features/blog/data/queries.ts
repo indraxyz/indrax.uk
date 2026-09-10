@@ -4,14 +4,7 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
-import type {
-  PaginatedPosts,
-  Post,
-  PostDocument,
-  PostSummary,
-  Tag,
-  TagWithCount,
-} from "@/features/blog/types"
+import type { PaginatedPosts, Post, PostSummary, Tag, TagWithCount } from "@/features/blog/types"
 import { getDb, schema } from "@/lib/db"
 
 /**
@@ -55,7 +48,30 @@ const summaryColumns = {
 
 const EMPTY_PAGE: PaginatedPosts = { posts: [], page: 1, pageCount: 0 }
 
-const iso = (value: Date | null) => (value ? value.toISOString() : null)
+export const iso = (value: Date | null) => (value ? value.toISOString() : null)
+
+/**
+ * Whether an error is Next's own control flow rather than a failure.
+ *
+ * Next marks these with a `digest`: `DYNAMIC_SERVER_USAGE`, and the `NEXT_`
+ * prefixed signals behind `redirect()` and `notFound()`. They have to travel
+ * through any `catch` between where they are thrown and the framework.
+ */
+function isFrameworkSignal(error: unknown): boolean {
+  const digest = (error as { digest?: unknown } | null)?.digest
+
+  return (
+    typeof digest === "string" && (digest.startsWith("NEXT_") || digest === "DYNAMIC_SERVER_USAGE")
+  )
+}
+
+/**
+ * How long a read may take before it is treated as a failure.
+ *
+ * Generous against a Neon cold start, which is around half a second, and far
+ * short of a build timing out.
+ */
+const READ_TIMEOUT_MS = 10_000
 
 /**
  * Runs a read, and turns any failure into the empty result.
@@ -65,18 +81,61 @@ const iso = (value: Date | null) => (value ? value.toISOString() : null)
  * That is a far better failure than an unhandled exception taking down the only
  * page this site has (PRD US-6.2). The reason is logged server-side with enough
  * context to find it; nothing about the failure reaches the reader.
+ *
+ * A timeout, not just a `catch`. A database that *hangs* never throws, so a plain
+ * try/catch degrades gracefully from errors and not at all from the failure mode
+ * that actually happens - a wedged host, a network partition, a connection pool
+ * with nothing left to give. Observed rather than theorised: a stuck local
+ * container did not fail the sitemap build, it stalled it until the build gave up.
+ *
+ * The timer does not cancel the query - there is nothing to cancel it with - so a
+ * slow read still finishes eventually and is simply ignored. What it bounds is how
+ * long anyone waits for it.
  */
 async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+
   try {
-    return await read()
+    return await Promise.race([
+      read(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`timed out after ${READ_TIMEOUT_MS}ms`)),
+          READ_TIMEOUT_MS
+        )
+      }),
+    ])
   } catch (error) {
+    // Next signals its own control flow by throwing: `DYNAMIC_SERVER_USAGE` to
+    // bail a route out of static rendering, `NEXT_REDIRECT` and the not-found
+    // fallback for `redirect()` and `notFound()`. Catching those and returning a
+    // fallback does not degrade gracefully - it eats the instruction, and the
+    // render fails somewhere further on with the cause thrown away.
+    //
+    // Found exactly that way: tag pages started answering 500 with a masked
+    // `DYNAMIC_SERVER_USAGE`, because this wrapper was swallowing the very error
+    // Next uses to say "this page is dynamic, render it that way".
+    if (isFrameworkSignal(error)) throw error
+
     console.error(`[blog] ${label} failed`, error)
+
     return fallback
+  } finally {
+    // Or the pending timer keeps the process alive for its full duration after an
+    // otherwise-instant read - which is exactly how a fast build becomes a slow one.
+    clearTimeout(timer)
   }
 }
 
-/** Tags for a set of posts, in one round trip rather than one per card. */
-async function tagsByPost(postIds: string[]): Promise<Map<string, Tag[]>> {
+/**
+ * Tags for a set of posts, in one round trip rather than one per card.
+ *
+ * Shared with the admin reads. Those live in their own file because a *post*
+ * query that could return a draft must not sit next to one that must not - but
+ * this reads no post rows at all, so there is nothing here to get wrong by
+ * sharing.
+ */
+export async function tagsByPost(postIds: string[]): Promise<Map<string, Tag[]>> {
   const grouped = new Map<string, Tag[]>()
   if (postIds.length === 0) return grouped
 
@@ -192,7 +251,39 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
 
   const [summary] = await attachTags([row])
 
-  return { ...summary, content: row.contentJson as PostDocument }
+  return {
+    ...summary,
+    content: row.contentJson,
+    status: row.status,
+    viewCount: row.viewCount,
+  }
+}
+
+/**
+ * One post by slug regardless of status, for a valid preview token only.
+ *
+ * Uncached, on purpose. A draft under review changes between refreshes - that is
+ * what the review is for - and caching it would also mean an unpublished body
+ * sitting in a cache keyed by nothing but the slug (threat T-4).
+ *
+ * Not exported through the public read layer's guarantees: the caller has already
+ * proved it holds a token for this exact slug.
+ */
+export async function getPostForPreview(slug: string): Promise<Post | null> {
+  const db = getDb()
+  if (!db) return null
+
+  const [row] = await db.select().from(schema.posts).where(eq(schema.posts.slug, slug)).limit(1)
+  if (!row?.contentJson) return null
+
+  const [summary] = await attachTags([row])
+
+  return {
+    ...summary,
+    content: row.contentJson,
+    status: row.status,
+    viewCount: row.viewCount,
+  }
 }
 
 async function readTagsInUse(): Promise<TagWithCount[]> {
@@ -225,6 +316,44 @@ async function readRecentPosts(limit: number): Promise<PostSummary[]> {
     .from(schema.posts)
     .where(isPublic)
     .orderBy(desc(schema.posts.publishedAt))
+    .limit(limit)
+
+  return attachTags(rows)
+}
+
+/**
+ * Other published posts sharing at least one tag with this one.
+ *
+ * Ranked by how many tags they share before how recent they are, so "also about
+ * Postgres and caching" beats "also about TypeScript, and newer". One query with
+ * a join and a count, rather than fetching this post's tags and then fetching
+ * each tag's posts - which is the same answer at several times the round trips.
+ */
+async function readRelatedPosts(postId: string, limit: number): Promise<PostSummary[]> {
+  const db = getDb()
+  if (!db) return []
+
+  const shared = db
+    .select({
+      postId: schema.postTags.postId,
+      shared: count(schema.postTags.tagId).as("shared"),
+    })
+    .from(schema.postTags)
+    .where(
+      sql`${schema.postTags.tagId} in (
+        select ${schema.postTags.tagId} from ${schema.postTags}
+        where ${schema.postTags.postId} = ${postId}
+      ) and ${schema.postTags.postId} <> ${postId}`
+    )
+    .groupBy(schema.postTags.postId)
+    .as("shared_tags")
+
+  const rows = await db
+    .select(summaryColumns)
+    .from(schema.posts)
+    .innerJoin(shared, eq(shared.postId, schema.posts.id))
+    .where(isPublic)
+    .orderBy(desc(shared.shared), desc(schema.posts.publishedAt))
     .limit(limit)
 
   return attachTags(rows)
@@ -290,6 +419,10 @@ const cachedRecentPosts = unstable_cache(readRecentPosts, ["blog", "recent-posts
   tags: [CACHE_TAGS.posts],
 })
 
+const cachedRelatedPosts = unstable_cache(readRelatedPosts, ["blog", "related-posts"], {
+  tags: [CACHE_TAGS.posts],
+})
+
 const cachedPublishedSlugs = unstable_cache(readPublishedSlugs, ["blog", "published-slugs"], {
   tags: [CACHE_TAGS.posts],
 })
@@ -307,6 +440,10 @@ export const getFeedPosts = () => safely("getFeedPosts", [] as PostSummary[], ca
 /** The newest published posts, for the homepage strip. */
 export const getRecentPosts = (limit: number) =>
   safely("getRecentPosts", [] as PostSummary[], () => cachedRecentPosts(limit))
+
+/** Published posts sharing a tag with this one. */
+export const getRelatedPosts = (postId: string, limit = 3) =>
+  safely("getRelatedPosts", [] as PostSummary[], () => cachedRelatedPosts(postId, limit))
 
 export const getPublishedSlugs = () =>
   safely("getPublishedSlugs", [] as { slug: string; updatedAt: string }[], cachedPublishedSlugs)

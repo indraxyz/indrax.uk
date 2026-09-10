@@ -100,9 +100,9 @@ test.describe("the admin boundary", () => {
       entry.filename?.includes("features/blog/data/mutations")
     )?.[0]
 
-    expect(id, "no mutation action found in the build manifest").toBeTruthy()
+    if (!id) throw new Error("No mutation action found in the build manifest.")
 
-    return id as string
+    return id
   }
 
   const INJECTED_TITLE = "Injected by an unauthenticated caller"

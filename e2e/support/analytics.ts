@@ -81,5 +81,7 @@ export async function recordAnalytics(page: Page) {
   return {
     sent,
     captured: (event: string) => sent.some((body) => body.includes(event)),
+    /** Everything sent, flattened - for asserting on what a payload must NOT hold. */
+    everything: () => sent.join("\n"),
   }
 }

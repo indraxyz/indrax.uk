@@ -28,9 +28,12 @@ test.describe("a seeded blog", () => {
     // author writing `#` cannot produce a second one.
     await expect(page.locator("h1")).toHaveCount(1)
 
-    const published = page.locator("time").first()
-    await expect(published).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/)
-    await expect(page.getByText(/\d+ min read/i)).toBeVisible()
+    // Scoped to the article itself: the related-posts strip is a sibling of
+    // `<article>` and carries its own dates and reading times, so an unscoped
+    // match finds several.
+    const article = page.locator("article")
+    await expect(article.locator("time").first()).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/)
+    await expect(article.getByText(/\d+ min read/i)).toBeVisible()
   })
 
   test("does not skip a heading level in the body", async ({ page }) => {
@@ -190,6 +193,87 @@ test.describe("a seeded blog", () => {
       "href",
       /\/blog\?page=2$/
     )
+  })
+
+  test("builds a contents list from the article's own headings", async ({ page }) => {
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`)
+
+    const toc = page.getByRole("navigation", { name: /on this page/i })
+    await expect(toc).toBeVisible()
+
+    // Every entry must point at a heading that exists, or the list is decoration
+    // that lies.
+    const targets = await toc
+      .getByRole("link")
+      .evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).getAttribute("href")))
+    expect(targets.length).toBeGreaterThan(0)
+
+    for (const target of targets) {
+      await expect(page.locator(String(target))).toHaveCount(1)
+    }
+  })
+
+  test("offers other articles sharing a tag, and never itself", async ({ page }) => {
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`)
+
+    const related = page.getByRole("heading", { level: 2, name: "Related" })
+    await expect(related).toBeVisible()
+
+    const hrefs = await page
+      .locator("main a[href^='/blog/']")
+      .evaluateAll((nodes) => nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")))
+
+    // There has to be something to recommend, or the assertion below is vacuous.
+    expect(hrefs.length).toBeGreaterThan(0)
+    // Recommending the article you are already reading is the classic bug here.
+    expect(hrefs.filter((href) => href === `/blog/${SEEDED_POST_SLUG}`)).toHaveLength(0)
+  })
+
+  test("renders task lists as one item each, not two", async ({ page }) => {
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`)
+
+    const item = page.locator('.prose ul[data-type="taskList"] > li').first()
+    await expect(item).toBeVisible()
+
+    // The checkbox sits beside its text rather than above it. Without the flex
+    // layout Typography draws a bullet too and wraps the text underneath, so each
+    // item reads as two - which is how it first shipped.
+    await expect(item).toHaveCSS("display", "flex")
+    await expect(item.locator("input[type=checkbox]")).toHaveAttribute("aria-label", /.+/)
+  })
+
+  test("counts a read without shipping a script to do it", async ({ page }) => {
+    const pixels: string[] = []
+    page.on("request", (request) => {
+      if (request.url().includes("/api/views/")) pixels.push(request.url())
+    })
+
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`, { waitUntil: "networkidle" })
+
+    expect(pixels.length).toBeGreaterThan(0)
+    // An image, so it fires on a cached page and for a reader with JavaScript off.
+    const beacon = page.locator(`img[src*="/api/views/"]`)
+    await expect(beacon).toHaveCount(1)
+    await expect(beacon).toHaveAttribute("aria-hidden", "true")
+  })
+
+  test("adds copy buttons to code blocks only after the page has rendered", async ({
+    browser,
+    page,
+  }) => {
+    // With scripting off there must be no dead controls - the enhancement is
+    // additive, and the article is complete without it.
+    const noScript = await browser.newContext({ javaScriptEnabled: false })
+    const plain = await noScript.newPage()
+    await plain.goto(`/blog/${SEEDED_POST_SLUG}`)
+    await expect(plain.locator(".prose pre")).not.toHaveCount(0)
+    await expect(plain.locator(".prose figure button")).toHaveCount(0)
+    await noScript.close()
+
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`, { waitUntil: "networkidle" })
+    const buttons = page.locator(".prose figure button")
+    await expect(buttons.first()).toHaveText(/copy/i)
+    expect(await buttons.count()).toBe(await page.locator(".prose pre").count())
   })
 
   test("surfaces the blog from the resume page", async ({ page }) => {

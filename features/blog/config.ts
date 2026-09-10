@@ -7,6 +7,7 @@ export const BLOG_CONFIG = {
     "Notes on building and operating software: TypeScript, React, backend APIs, cloud deployment, and agentic workflows.",
   basePath: "/blog",
   feedPath: "/rss.xml",
+  viewPath: "/api/views",
   // Cards per list page. Small enough that page two is reachable early, which is
   // what makes the pagination crawlable rather than decorative.
   pageSize: 10,

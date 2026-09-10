@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { recordAnalytics } from "./support/analytics"
+import { SEEDED_POST_SLUG } from "./support/constants"
 
 const EMAIL = "indracahyae@gmail.com"
 
@@ -79,5 +80,25 @@ test.describe("analytics", () => {
     ]).then(([event]) => event)
 
     expect(download.suggestedFilename()).toBe("Indra-Cahya-Edytya-Resume.pdf")
+  })
+
+  test("never sends a draft preview token to the tracker", async ({ page }) => {
+    const analytics = await recordAnalytics(page)
+
+    // PostHog's automatic pageview capture records the whole URL. A draft preview
+    // carries its access token there, so without redaction every preview would
+    // ship a live bearer credential to a third party and park it in an event store
+    // - where anyone with read access could replay it inside its window and read
+    // unpublished work. That is the outcome the token's signing and expiry exist to
+    // prevent (threat T-4).
+    const token = "a-token-that-must-not-be-transmitted"
+    await page.goto(`/blog/${SEEDED_POST_SLUG}/preview?token=${token}`)
+
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+
+    const payloads = analytics.everything()
+    expect(payloads).not.toContain(token)
+    // Redacted rather than dropped, so the page is still countable.
+    expect(payloads).toContain("redacted")
   })
 })

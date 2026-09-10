@@ -3,6 +3,7 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import {
   Bold,
+  Braces,
   Code2,
   Heading2,
   Heading3,
@@ -32,7 +33,6 @@ interface EditorProps {
 }
 
 interface ToolProps {
-  editor: Editor
   label: string
   icon: ReactNode
   active?: boolean
@@ -70,28 +70,24 @@ function Toolbar({ editor }: { editor: Editor }) {
       className="flex flex-wrap gap-1 border-b-2 border-border bg-[var(--color-muted)] p-2"
     >
       <Tool
-        editor={editor}
         label="Bold"
         icon={<Bold className={icon} />}
         active={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <Tool
-        editor={editor}
         label="Italic"
         icon={<Italic className={icon} />}
         active={editor.isActive("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       />
       <Tool
-        editor={editor}
         label="Strikethrough"
         icon={<Strikethrough className={icon} />}
         active={editor.isActive("strike")}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       />
       <Tool
-        editor={editor}
         label="Inline code"
         icon={<Code2 className={icon} />}
         active={editor.isActive("code")}
@@ -102,14 +98,12 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       {/* Level 1 is absent on purpose: the page's h1 is the post title. */}
       <Tool
-        editor={editor}
         label="Heading 2"
         icon={<Heading2 className={icon} />}
         active={editor.isActive("heading", { level: 2 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       />
       <Tool
-        editor={editor}
         label="Heading 3"
         icon={<Heading3 className={icon} />}
         active={editor.isActive("heading", { level: 3 })}
@@ -119,42 +113,38 @@ function Toolbar({ editor }: { editor: Editor }) {
       <span className="mx-1 w-px bg-border" aria-hidden />
 
       <Tool
-        editor={editor}
         label="Bullet list"
         icon={<List className={icon} />}
         active={editor.isActive("bulletList")}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <Tool
-        editor={editor}
         label="Numbered list"
         icon={<ListOrdered className={icon} />}
         active={editor.isActive("orderedList")}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <Tool
-        editor={editor}
         label="Task list"
         icon={<ListTodo className={icon} />}
         active={editor.isActive("taskList")}
         onClick={() => editor.chain().focus().toggleTaskList().run()}
       />
       <Tool
-        editor={editor}
         label="Quote"
         icon={<Quote className={icon} />}
         active={editor.isActive("blockquote")}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       />
       <Tool
-        editor={editor}
         label="Code block"
-        icon={<Code2 className={icon} />}
+        // A different glyph from inline code: two controls sharing an icon is two
+        // controls a hurried author will confuse.
+        icon={<Braces className={icon} />}
         active={editor.isActive("codeBlock")}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       />
       <Tool
-        editor={editor}
         label="Table"
         icon={<TableIcon className={icon} />}
         onClick={() =>
@@ -165,7 +155,6 @@ function Toolbar({ editor }: { editor: Editor }) {
       <span className="mx-1 w-px bg-border" aria-hidden />
 
       <Tool
-        editor={editor}
         label={editor.isActive("link") ? "Remove link" : "Add link"}
         icon={<Link2 className={icon} />}
         active={editor.isActive("link")}
@@ -193,14 +182,12 @@ function Toolbar({ editor }: { editor: Editor }) {
       <span className="mx-1 w-px bg-border" aria-hidden />
 
       <Tool
-        editor={editor}
         label="Undo"
         icon={<Undo2 className={icon} />}
         disabled={!editor.can().undo()}
         onClick={() => editor.chain().focus().undo().run()}
       />
       <Tool
-        editor={editor}
         label="Redo"
         icon={<Redo2 className={icon} />}
         disabled={!editor.can().redo()}

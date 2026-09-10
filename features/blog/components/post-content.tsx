@@ -1,26 +1,23 @@
-import type { PostDocument } from "@/features/blog/types"
-import { renderDocument } from "@/features/blog/utils/content"
-
 interface PostContentProps {
-  content: PostDocument
+  html: string
 }
 
 /**
  * The article body.
  *
- * A server component, and it has to stay one. Everything expensive - rendering
- * the document, sanitising, highlighting - happens here during the render, so the
- * reader receives finished HTML and the browser downloads no editor, no
- * highlighter, and no theme (NFR-5). It is also why the body is readable with
- * JavaScript disabled (PRD US-1.1).
+ * A presenter: `renderDocument` runs once in the route, because the same pass
+ * that produces this HTML also produces the headings the table of contents needs,
+ * and rendering twice to get both would be paying twice for one answer.
  *
  * `dangerouslySetInnerHTML` is the honest interface for a string of HTML, and the
  * danger has already been dealt with: `renderDocument` sanitises against an
  * explicit allow-list at render time, so what arrives here has been through the
  * filter that stands between the database and the reader (threat T-2).
+ *
+ * Nothing about this is a client component, which is what keeps the editor, the
+ * highlighter and the theme out of the browser (NFR-5) and the body readable with
+ * JavaScript disabled (PRD US-1.1).
  */
-export async function PostContent({ content }: PostContentProps) {
-  const html = await renderDocument(content)
-
+export function PostContent({ html }: PostContentProps) {
   return <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
 }

@@ -1,6 +1,6 @@
 # Blog — Implementation Plan
 
-Status: Phases 0–2 reviewed and pushed; Phase 3 implemented, awaiting review
+Status: Phases 0–4 implemented and reviewed; awaiting merge
 Owner: Indra Cahya Edytya
 
 | Branch                           | Covers                                        | State                                         |
@@ -582,3 +582,257 @@ throwaway config mirroring its options, then delete that file.
 - **Still no CSP.** `proxy.ts` now exists, which is what a nonce needs, so the
   blocker named in §11.6 is gone — but it was not attempted here, and a wrong CSP
   ships a site with no theme.
+
+---
+
+## 13. Phase 4 — polish
+
+Everything the spec lists under Phase 4: a table of contents, related posts, a
+code-copy button, signed draft previews and a view counter. Plus the gap Phase 3
+left open, which turned out to be worth closing first.
+
+### 13.1 The gap from Phase 3, closed — and what it was hiding
+
+Phase 3 shipped with the authenticated admin unverified, because minting a Better
+Auth session outside its own sign-in flow defeated a first attempt. It defeated a
+second and third too. The answer turned out to be two things, neither obvious and
+both failing as a silent `null` session:
+
+1. The cookie is **signed** — the value is `${token}.${signature}`, not the bare
+   token `createSession` returns.
+2. `npm run start` sets `NODE_ENV=production`, which turns on `useSecureCookies`,
+   which **renames the cookie** to `__Secure-better-auth.session_token`.
+
+The first request that got through returned **500**. `listAllPosts` used a raw
+``sql`… = any(${postIds})` `` where the rest of the codebase uses Drizzle's
+`inArray`, and Postgres rejected it with `42809`. So the admin list page — the
+first thing an author sees after signing in — had never worked, and nothing in
+the build, the type checker, the linter or the boundary tests could have said so.
+
+That is now `e2e/support/session.ts` and `e2e/admin-authoring.spec.ts`: the whole
+lifecycle, driven as the author. Write a post, save it as a draft, confirm it is
+absent from every public surface, share it by preview link, publish it, watch the
+feed and sitemap pick it up, unpublish it, watch them let it go, delete it after
+being asked. Seven tests.
+
+The session is minted through Better Auth's own internal adapter — the same code
+path the real GitHub callback uses once GitHub has answered — so everything after
+that point is the production path, unmodified. The GitHub round trip itself
+remains untested, for the reasons §12.6 gives.
+
+### 13.2 Departure: the preview is its own route
+
+The spec and PRD both specify `/blog/{slug}?preview={token}`, and it was built
+that way first. The build output showed why that is the wrong shape:
+
+```
+before:  ● /blog/a-database-that-is-allowed-to-be-absent   (prerendered)
+after:   ƒ /blog/[slug]                                    (on demand)
+```
+
+A page that reads `searchParams` cannot be static. Honouring the URL literally
+meant re-parsing, re-sanitising and re-highlighting every published article on
+every single read, forever, to support a feature used a handful of times a month
+— against NFR-1, and a standing cost on the runtime this deploys to.
+
+So the preview lives at `/blog/{slug}/preview?token={token}` and `/blog/[slug]`
+is prerendered again. **AC US-3.3's URL shape is not met as written**; everything
+else it asks for is: a signed, time-limited token, a visible "Draft preview"
+banner, `noindex`, uncached, and 404 for expired, tampered, absent, or
+minted-for-another-post.
+
+### 13.3 The view counter is an image
+
+An `<img>` request, not a script. The article page ships no JavaScript by design,
+and a beacon would have broken that as well as missing every reader with
+scripting off and every cached page — which between them are most of the reads
+worth counting.
+
+It is decorative and best-effort, exactly as the threat model already says:
+trivially inflatable by anyone willing to reload, never used for ranking or
+billing. Deduplicating would mean identifying readers, which is a far worse trade
+than an imprecise number.
+
+The code-copy buttons are the one thing on an article that needs a script, and
+they are attached after the page has rendered — so with JavaScript off there are
+no dead controls, just an article without copy buttons.
+
+### 13.4 Verification performed
+
+- `npm run check` clean; builds with everything configured and with nothing
+  configured.
+- `npm run test:e2e` — **55 passing**, up from 48: seven new authoring specs.
+- Preview tokens exercised through the real admin control, not a harness: valid,
+  expired, tampered, and minted-for-another-post, all four in a fresh browser
+  context with no session.
+- `/blog/[slug]` confirmed prerendered again after the route split.
+- The view counter confirmed to increment, and the pixel to be a 42-byte GIF
+  with `no-store`.
+
+### 13.5 What is left
+
+Phase 5 is the growth work: Postgres full-text search, then `pgvector` semantic
+search, Giscus comments, series support. Before any of that, the outstanding
+items from §11.6 and §12.6 are the higher-value ones — a CSP (now unblocked,
+since `proxy.ts` exists), Vitest for the pure logic, and axe in the committed
+suite.
+
+---
+
+## 14. Review round — phases 3 and 4
+
+Reviewed the same way phases 0–2 were: a security pass and a conventions pass
+against the threat model and the existing code, plus axe, `npm audit` and a
+per-route bundle audit. Twenty-two findings acted on. The two that matter most
+were not in either report — one came out of writing a test, the other out of
+running one.
+
+### 14.1 The account-linking hole
+
+**The allow-list could be walked around entirely, and the code that was supposed
+to stop it never ran.**
+
+Better Auth links an incoming OAuth account to an existing user row **matched by
+verified email**, and that path calls `linkAccount` + `createSession` directly —
+never `createUser`. So `databaseHooks.user.create.before`, which is where the
+allow-list lives, was never reached. `requireAuthor()` then read `githubId` off
+the _stored row_, which is the author's, not the identity that had just
+authenticated.
+
+Anyone who could get GitHub to verify the author's email address on an account of
+their own would have signed in as the author, past a hook that never fired and a
+check looking at the wrong record. The email is in this repository's own commit
+metadata.
+
+`account: { accountLinking: { enabled: false } }`. One line, and the property
+T-1 claims — identity pinned to an immutable numeric id — is now actually true,
+because there is only one path to a session and the hook is on it.
+
+### 14.2 Sign-out looked like it worked
+
+`authClient.signOut()` returns `{ error }` rather than throwing, and the button
+ignored it and redirected to the login page regardless. Someone told they had
+signed out while their session stayed live on the server is the worst possible
+shape for that bug: the failure is invisible precisely when it matters.
+
+Found by writing the test, not by reading the code. The button now reports the
+failure and stays put. The suite gives the test server a `BETTER_AUTH_URL` that
+matches its own origin, because Better Auth checks the request `Origin` before it
+will sign anyone out — with the wrong value it answers 403 and the session
+survives, which is a real failure worth catching rather than a quirk to configure
+around.
+
+### 14.3 The rest, by severity
+
+| #   | Finding                                                                                                     | Fix                                                                                                                                                                                                                                                       |
+| :-- | :---------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H   | OAuth account linking bypassed the allow-list                                                               | §14.1                                                                                                                                                                                                                                                     |
+| H   | Sign-out failure silently ignored                                                                           | §14.2                                                                                                                                                                                                                                                     |
+| M   | Preview tokens were sent to PostHog in `$current_url` — a live bearer credential to a third party, retained | `before_send` redacts any property whose value is a URL carrying `token`. The first attempt listed property names and still leaked via `$session_entry_url`; checking the value is a property that stays true, checking the key is a list that goes stale |
+| M   | The view counter incremented drafts, and its comment claimed it did not                                     | `isPublic` filter added, slug length bounded, comment rewritten to describe the code                                                                                                                                                                      |
+| M   | A half-configured deployment answered 500 rather than behaving as if it had no admin                        | `create()` checks `isAuthConfigured()` up front, so `requiredEnv` is unreachable by construction                                                                                                                                                          |
+| M   | The presigned URL constrains neither size nor content type — `aws4fetch` treats both headers as unsignable  | Cannot be fixed in the app; the comment claiming otherwise was replaced with what the control actually is, and R2 bucket policy named as where the rest belongs                                                                                           |
+| M   | A malformed post id reached a `uuid` column and raised 22P02, so `/admin/edit/anything` was a 500           | `postIdSchema` parsed in every action and admin read; a bad id is now "no such post"                                                                                                                                                                      |
+| L   | The absolute session cap **failed open** on an unparseable `createdAt`                                      | Inverted: a guard that cannot evaluate its input denies                                                                                                                                                                                                   |
+| L   | `e2e/support/session.ts` would provision a real admin identity against any database it was pointed at       | Loopback-only assertion, throwing                                                                                                                                                                                                                         |
+| L   | Better Auth's rate limiter defaulted to per-isolate memory, which on Workers resets constantly              | `storage: "database"`, with the table it needs                                                                                                                                                                                                            |
+| L   | No CSP                                                                                                      | Added — see §14.4                                                                                                                                                                                                                                         |
+| L   | Upload refused an unauthenticated caller with a 500                                                         | 401, like every other refusal in that handler                                                                                                                                                                                                             |
+| Q   | Form errors were announced but never associated with their fields                                           | `aria-invalid` + `aria-describedby` on every input                                                                                                                                                                                                        |
+| Q   | `document` shadowed the DOM global for a whole client component                                             | Renamed                                                                                                                                                                                                                                                   |
+| Q   | The article card was written twice and the copies had already drifted                                       | One `ArticleCard`, used by the published page and the preview                                                                                                                                                                                             |
+| Q   | The admin's tag fetch was a byte-for-byte copy of the public one                                            | Shared; the argument for separate _post_ queries does not extend to a helper that reads no post rows                                                                                                                                                      |
+| Q   | Domain types declared in data files                                                                         | Moved to `features/blog/types.ts`                                                                                                                                                                                                                         |
+| Q   | Dead code: a prop never destructured, two fields written and never read, an unused export                   | Removed                                                                                                                                                                                                                                                   |
+| Q   | No-op casts and a non-narrowing assertion                                                                   | Removed                                                                                                                                                                                                                                                   |
+| Q   | Four comments describing something other than the code beneath them                                         | Rewritten or deleted                                                                                                                                                                                                                                      |
+| Q   | `expect(links).toBeTruthy()` — a Locator is always truthy                                                   | Replaced with an assertion that can fail                                                                                                                                                                                                                  |
+| Q   | The token-replay test used a hardcoded slug, so a renamed fixture would make it pass for the wrong reason   | Asserts the target is reachable first, and names the fixture in `constants.ts`                                                                                                                                                                            |
+
+### 14.4 The CSP, and what it deliberately omits
+
+`script-src` and `style-src` are **not** in it. Next inlines its own bootstrap and
+RSC payload, and the theme script has to run before first paint, so any useful
+`script-src` needs a per-request nonce — and a nonce cannot be baked into a
+prerendered page. Adding one would turn every article dynamic, which is the same
+trade already refused for the draft preview.
+
+`default-src` is also absent, and that is load-bearing: it is the fallback for
+`script-src`, so setting it to `'self'` blocks Next's inline bootstrap and the
+site renders unstyled and unthemed. That was tried, caught in a browser, and is
+now asserted against in the suite so nobody adds it back by reflex.
+
+What is there needs no nonce and costs nothing: `frame-ancestors 'none'`,
+`base-uri 'none'`, `object-src 'none'`, `form-action 'self'`, `img-src`,
+`font-src`, `upgrade-insecure-requests`. Verified in a real browser across four
+routes: the theme script runs, styles apply, zero violations.
+
+### 14.5 Tests added
+
+Twenty-six, in three files:
+
+- **`e2e/accessibility.spec.ts`** — axe across six routes in **both themes**,
+  failing on `serious` or `critical`. It had been run by hand for two phases; it
+  had already caught four things nothing else did. Falsified before being trusted:
+  a planted `<img>` with no alt is reported as `critical`.
+- **`e2e/admin-session.spec.ts`** — the criteria under US-4.1 and US-4.2 that were
+  unreachable until a session could be minted to be _wrong_ with: a real signed
+  session for a non-allow-listed account is refused; one past its absolute age is
+  refused and one inside it is not; sign-out destroys the row and the cookie
+  cannot be replayed; upload limits hold for a signed-in caller.
+- **`e2e/analytics.spec.ts`** — a draft preview token never reaches the tracker.
+
+### 14.6 What is still open, and whose call it is
+
+Nothing here is a code decision left hanging; all of it needs something that does
+not exist yet.
+
+- **Nothing is deployed.** The Cloudflare adapter is wired and inert.
+  `npm run preview` has never run: `workerd`'s install script is blocked by this
+  machine's npm settings (`npm install-scripts approve workerd`).
+- **No Neon project, no GitHub OAuth app, no R2 bucket.** Until the OAuth app
+  exists the GitHub round trip is untested — deliberately, since the alternative
+  is a mock proving a mock behaves like a mock. Until the bucket exists the upload
+  happy path is untested; the refusal path is covered.
+- **Vitest is still not introduced.** The pure logic worth unit-testing has grown:
+  preview-token signing and verification, slug collision, reading time, the
+  content pipeline, the Zod schemas. All are currently covered only indirectly.
+- **Dependabot is not configured** (T-13). It opens pull requests against the
+  repository, which is the owner's call rather than a code change.
+- **`session.created_at` has no timezone**, because Better Auth generates that
+  schema. Exact on a UTC runtime, which Workers is; off by the local offset
+  anywhere else, against a 30-day window.
+
+### 14.7 Two the review missed, found by running things
+
+**`safely()` was swallowing Next's control flow.** It wraps every public read and
+turned any thrown error into the empty result - including
+`DYNAMIC_SERVER_USAGE`, which is how Next says "this route uses a dynamic API,
+render it dynamically", and the `NEXT_` signals behind `redirect()` and
+`notFound()`. Eating those does not degrade gracefully; it discards an
+instruction and the render fails further on with the cause thrown away. Tag pages
+answered 500 with a masked digest. `safely()` now rethrows anything carrying a
+framework digest and catches only real failures.
+
+**A hung database blocked the build rather than degrading.** `safely()` caught
+errors, and a stalled connection is not an error - it is silence. Observed when
+the local container wedged: the sitemap did not fail, it stalled until the build
+gave up after three attempts. Reads are now bounded by a timeout, so the promise
+the wrapper makes is true for the failure mode that actually happens.
+
+Both are the same lesson from opposite ends: a catch-all has to be deliberate
+about what it catches, and a wrapper that promises resilience has to cover the
+way things really break.
+
+### 14.8 One more, found by re-auditing
+
+`npm audit --omit=dev` was clean before phase 3 and is the check that caught this:
+**`better-auth` declares `drizzle-kit` as a runtime dependency**, not a peer or a
+dev one, which pulled `@esbuild-kit/esm-loader` and a vulnerable `esbuild`
+(GHSA-67mh-4wv8-2f99) into the _production_ tree. The advisory is a dev-server
+issue that cannot occur here - nothing on that path runs in a request - but it was
+in the tree, and a scanner would rightly flag it.
+
+Fixed with an `overrides` entry pinning `esbuild`. Both audits are now zero, and
+`db:generate`, `db:migrate`, `db:seed` and `next build` were re-run to prove
+nothing depended on the version it replaced. The clean fix is upstream.

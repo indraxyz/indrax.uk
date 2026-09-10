@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { AdminShell } from "@/features/blog/components/admin/admin-shell"
 import { SignInButton } from "@/features/blog/components/admin/sign-in-button"
@@ -9,10 +9,7 @@ export default async function LoginPage() {
   // No OAuth application means there is no admin to sign in to. 404 rather than a
   // sign-in button that cannot work, and rather than an error page that would
   // advertise a half-configured deployment.
-  if (!isAuthConfigured()) {
-    const { notFound } = await import("next/navigation")
-    notFound()
-  }
+  if (!isAuthConfigured()) notFound()
 
   if (await getAuthor()) redirect("/admin")
 

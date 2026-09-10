@@ -1,12 +1,12 @@
 "use client"
 
-import { Eye, EyeOff, Loader2, Trash2 } from "lucide-react"
+import { Check, Eye, EyeOff, Link2, Loader2, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
-import type { AdminPost } from "@/features/blog/data/admin-queries"
-import { deletePost, setPostStatus } from "@/features/blog/data/mutations"
+import { createPreviewLink, deletePost, setPostStatus } from "@/features/blog/data/mutations"
+import type { AdminPost } from "@/features/blog/types"
 import { cn } from "@/lib/utils"
 
 /**
@@ -20,6 +20,8 @@ export function PostActions({ post }: { post: AdminPost }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const published = post.status === "published"
 
@@ -37,11 +39,52 @@ export function PostActions({ post }: { post: AdminPost }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {error && (
         <p role="alert" className="text-xs font-black uppercase tracking-[0.14em] text-destructive">
           {error}
         </p>
+      )}
+
+      {/* Only useful while there is no public page to link to instead. */}
+      {!published && (
+        <button
+          type="button"
+          disabled={pending}
+          className={cn(controlClassNames, "px-3 py-2 disabled:opacity-60")}
+          onClick={() => {
+            setError(null)
+            startTransition(async () => {
+              const result = await createPreviewLink(post.id)
+              if (!result.ok || !result.url) {
+                setError(result.message ?? "That did not work.")
+                return
+              }
+
+              const absolute = new URL(result.url, location.origin).toString()
+
+              // Shown either way. Clipboard access can be refused - by a policy, a
+              // browser, or a permissions prompt nobody answered - and a link that
+              // was silently not copied is worse than one that was never offered.
+              setPreviewUrl(absolute)
+
+              try {
+                await navigator.clipboard.writeText(absolute)
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 3000)
+              } catch {
+                // Nothing to do: the field below already has it.
+              }
+            })
+          }}
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <Link2 className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {copied ? "Copied" : "Preview link"}
+        </button>
       )}
 
       <button
@@ -85,6 +128,19 @@ export function PostActions({ post }: { post: AdminPost }) {
         <Trash2 className="h-3.5 w-3.5" aria-hidden />
         Delete
       </button>
+
+      {previewUrl && (
+        <label className="flex w-full items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+          Preview link
+          <input
+            readOnly
+            value={previewUrl}
+            aria-label="Preview link"
+            onFocus={(event) => event.currentTarget.select()}
+            className="min-w-0 flex-1 border-2 border-border bg-card px-2 py-1 font-mono text-[11px] normal-case tracking-normal"
+          />
+        </label>
+      )}
     </div>
   )
 }

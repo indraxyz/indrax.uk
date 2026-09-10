@@ -33,17 +33,32 @@ export async function getAuthor(): Promise<Author | null> {
   const allowed = allowedGithubId()
   if (!allowed) return null
 
-  const session = await auth.api.getSession({ headers: await headers() })
+  // Read once and reused: `headers()` is a request-scoped async call and there is
+  // no reason to make it twice.
+  const requestHeaders = await headers()
+
+  const session = await auth.api.getSession({ headers: requestHeaders })
   if (!session) return null
 
   const createdAt = new Date(session.session.createdAt).getTime()
-  if (Number.isFinite(createdAt) && Date.now() - createdAt > SESSION_ABSOLUTE_MS) {
-    // Past its absolute life. Revoke rather than merely refuse, so the next
-    // request does not have to make the same decision again.
-    await auth.api.revokeSession({
-      headers: await headers(),
-      body: { token: session.session.token },
-    })
+
+  // `!Number.isFinite`, not `&&`. A guard that cannot evaluate its input has to
+  // deny: an unparseable `createdAt` previously *skipped* the absolute cap and
+  // admitted the session, which is the opposite of what this function promises
+  // three paragraphs above.
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > SESSION_ABSOLUTE_MS) {
+    try {
+      // Revoke rather than merely refuse, so the next request does not have to
+      // make the same decision again.
+      await auth.api.revokeSession({
+        headers: requestHeaders,
+        body: { token: session.session.token },
+      })
+    } catch (error) {
+      // Refusing is the job; tidying up is a courtesy. Letting a failed revoke
+      // throw would turn a redirect-to-login into a 500.
+      console.error("[auth] could not revoke an over-age session", error)
+    }
 
     return null
   }

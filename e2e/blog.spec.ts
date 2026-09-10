@@ -92,5 +92,16 @@ test.describe("the blog's public surface", () => {
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin")
     expect(headers["x-frame-options"]).toBe("DENY")
     expect(headers["strict-transport-security"]).toContain("max-age=")
+
+    const csp = headers["content-security-policy"] ?? ""
+    expect(csp).toContain("frame-ancestors 'none'")
+    expect(csp).toContain("base-uri 'none'")
+    expect(csp).toContain("object-src 'none'")
+    expect(csp).toContain("form-action 'self'")
+
+    // `default-src` is the fallback for `script-src`, so setting it would block
+    // Next's own inline bootstrap and the theme script - the page would render
+    // unstyled and unthemed. Asserted so nobody adds it without meaning to.
+    expect(csp).not.toContain("default-src")
   })
 })

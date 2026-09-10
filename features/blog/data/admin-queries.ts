@@ -1,9 +1,11 @@
 import "server-only"
 
-import { desc, eq, sql } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 
-import type { PostDocument, PostStatus, Tag } from "@/features/blog/types"
+import type { AdminPost, AdminPostSummary } from "@/features/blog/types"
+import { iso, tagsByPost } from "@/features/blog/data/queries"
 import { requireAuthor } from "@/lib/auth-guard"
+import { postIdSchema } from "@/lib/validators/blog"
 import { getDb, schema } from "@/lib/db"
 
 /**
@@ -18,54 +20,6 @@ import { getDb, schema } from "@/lib/db"
  * None of these are cached. The admin is `force-dynamic` because an author who
  * has just saved must see what they saved.
  */
-
-export interface AdminPostSummary {
-  id: string
-  slug: string
-  title: string
-  status: PostStatus
-  publishedAt: string | null
-  updatedAt: string
-  readingTime: number | null
-  tags: Tag[]
-}
-
-export interface AdminPost extends AdminPostSummary {
-  excerpt: string | null
-  content: PostDocument | null
-  coverUrl: string | null
-  coverAlt: string | null
-}
-
-const iso = (value: Date | null) => (value ? value.toISOString() : null)
-
-async function tagsFor(postIds: string[]): Promise<Map<string, Tag[]>> {
-  const grouped = new Map<string, Tag[]>()
-  if (postIds.length === 0) return grouped
-
-  const db = getDb()
-  if (!db) return grouped
-
-  const rows = await db
-    .select({
-      postId: schema.postTags.postId,
-      id: schema.tags.id,
-      name: schema.tags.name,
-      slug: schema.tags.slug,
-    })
-    .from(schema.postTags)
-    .innerJoin(schema.tags, eq(schema.tags.id, schema.postTags.tagId))
-    .where(sql`${schema.postTags.postId} = any(${postIds})`)
-    .orderBy(schema.tags.name)
-
-  for (const { postId, ...tag } of rows) {
-    const existing = grouped.get(postId)
-    if (existing) existing.push(tag)
-    else grouped.set(postId, [tag])
-  }
-
-  return grouped
-}
 
 /** Every post, whatever its status, newest activity first. */
 export async function listAllPosts(): Promise<AdminPostSummary[]> {
@@ -82,14 +36,13 @@ export async function listAllPosts(): Promise<AdminPostSummary[]> {
       status: schema.posts.status,
       publishedAt: schema.posts.publishedAt,
       updatedAt: schema.posts.updatedAt,
-      readingTime: schema.posts.readingTime,
     })
     .from(schema.posts)
     // Drafts have no publication date, so ordering by that would bury exactly the
     // posts an author is most likely to be working on.
     .orderBy(desc(schema.posts.updatedAt))
 
-  const grouped = await tagsFor(rows.map((row) => row.id))
+  const grouped = await tagsByPost(rows.map((row) => row.id))
 
   return rows.map((row) => ({
     ...row,
@@ -106,10 +59,15 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
   const db = getDb()
   if (!db) return null
 
+  // A uuid column will not simply fail to match a non-uuid - it raises. Treating
+  // a malformed id as "no such post" is what turns `/admin/edit/anything` from a
+  // 500 into a 404.
+  if (!postIdSchema.safeParse(id).success) return null
+
   const [row] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
   if (!row) return null
 
-  const grouped = await tagsFor([row.id])
+  const grouped = await tagsByPost([row.id])
 
   return {
     id: row.id,
@@ -122,7 +80,6 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
     coverAlt: row.coverAlt,
     publishedAt: iso(row.publishedAt),
     updatedAt: row.updatedAt.toISOString(),
-    readingTime: row.readingTime,
     tags: grouped.get(row.id) ?? [],
   }
 }

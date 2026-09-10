@@ -34,6 +34,22 @@ const DAY_IN_SECONDS = 60 * 60 * 24
  */
 const allowedGithubId = () => process.env.ALLOWED_GITHUB_ID?.trim()
 
+/**
+ * Whether this deployment has an admin at all.
+ *
+ * Trimmed, because a variable set to whitespace is a variable that is not set -
+ * and the difference between "no admin" and "an admin nobody can sign in to" is
+ * one a half-finished `.env` file will produce.
+ */
+export const isAuthConfigured = () =>
+  Boolean(
+    process.env.DATABASE_URL?.trim() &&
+    process.env.BETTER_AUTH_SECRET?.trim() &&
+    process.env.GITHUB_CLIENT_ID?.trim() &&
+    process.env.GITHUB_CLIENT_SECRET?.trim() &&
+    allowedGithubId()
+  )
+
 function requiredEnv(name: string): string {
   const value = process.env[name]
 
@@ -58,12 +74,39 @@ let instance: ReturnType<typeof create> | null | undefined
 
 function create() {
   const db = getDb()
-  if (!db) return null
+
+  // Every check up front, so `requiredEnv` below is unreachable by construction.
+  // Without this a deployment with a database but no OAuth application threw from
+  // inside the object literal on every call - which meant `/admin` and the whole
+  // auth surface answered 500 rather than behaving as if there were no admin,
+  // exactly contradicting the comment above.
+  if (!db || !isAuthConfigured()) return null
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg", schema }),
     baseURL: process.env.BETTER_AUTH_URL ?? SITE_URL,
     secret: requiredEnv("BETTER_AUTH_SECRET"),
+
+    account: {
+      /**
+       * No implicit account linking. This is the single most important line in
+       * the file.
+       *
+       * Better Auth's default is to link an incoming OAuth account to an existing
+       * user row **matched by verified email**. That path calls `linkAccount` and
+       * `createSession` directly - it never calls `createUser`, so the allow-list
+       * hook below never runs. And `requireAuthor` then reads `githubId` off the
+       * *stored row*, which is the author's, not the identity that just
+       * authenticated.
+       *
+       * So: anyone who could get GitHub to verify the author's email address on
+       * an account of their own would sign in as the author, past a hook that
+       * never fired and a check that was looking at the wrong record. The
+       * "immutable numeric id" property T-1 claims only holds if every path to a
+       * session goes through the hook, and this is the one that did not.
+       */
+      accountLinking: { enabled: false },
+    },
 
     // GitHub only. There is no password to hash, rotate, reset or leak, and the
     // account it federates to is one the author already protects with 2FA.
@@ -88,6 +131,18 @@ function create() {
       // Refresh the window when a session is used inside its last day, so an
       // active author is never signed out mid-edit.
       updateAge: DAY_IN_SECONDS,
+    },
+
+    rateLimit: {
+      /**
+       * Counted in the database, not in memory.
+       *
+       * Better Auth's default store is per-process, and on Workers "per process"
+       * means per isolate - so the counter resets constantly and the limit reads
+       * far stronger than it is. The database is the only shared thing here
+       * (threat T-11).
+       */
+      storage: "database",
     },
 
     advanced: {
@@ -141,15 +196,6 @@ export function getAuth() {
 
   return instance
 }
-
-export const isAuthConfigured = () =>
-  Boolean(
-    process.env.DATABASE_URL &&
-    process.env.BETTER_AUTH_SECRET &&
-    process.env.GITHUB_CLIENT_ID &&
-    process.env.GITHUB_CLIENT_SECRET &&
-    process.env.ALLOWED_GITHUB_ID
-  )
 
 export interface Author {
   id: string

@@ -7,11 +7,20 @@ import { requireAuthor } from "@/lib/auth-guard"
 export const dynamic = "force-dynamic"
 
 /**
- * What may be uploaded, enforced here rather than in the browser.
+ * What may be uploaded.
  *
- * A client-side check is a courtesy to the author; it is not a control, because
- * the request that matters is the one that skips the form entirely. Both the type
- * and the size are decided server-side before any URL is minted (threat T-5).
+ * These decide whether a URL is minted at all, which is a real gate: a caller who
+ * asks for `text/html` or fifty megabytes gets nothing. What they do **not** do is
+ * constrain the upload itself. `aws4fetch` treats `content-type` and
+ * `content-length` as unsignable, so a presigned URL authorises any body of any
+ * length to that one key - the signature covers the method and the object, and
+ * nothing else.
+ *
+ * So the honest description of the control is: only an authenticated author can
+ * obtain a URL, it dies in five minutes, and it can only ever write one generated
+ * key. Enforcing the size and type of what actually lands is R2's job, via a
+ * bucket policy - and until that exists this is the gap in T-5, stated rather than
+ * papered over.
  */
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const
 const MAX_BYTES = 5 * 1024 * 1024
@@ -27,8 +36,9 @@ const URL_TTL_SECONDS = 300
 
 const requestSchema = z.object({
   contentType: z.enum(ALLOWED_TYPES),
-  // Advisory: the browser reports it, and it is checked against the cap before a
-  // URL exists. The bucket's own limits are the backstop for a client that lies.
+  // The browser reports this and it is checked before a URL exists. A client that
+  // lies gets a URL anyway - see the note above - so this bounds the honest case,
+  // not the hostile one.
   size: z.number().int().positive().max(MAX_BYTES),
   fileName: z.string().min(1).max(200),
 })
@@ -66,7 +76,14 @@ function config() {
 export async function POST(request: Request) {
   // Before anything else, and independently of `proxy.ts`: this is a route
   // handler, so nothing about routing has authorised the caller (threat T-3).
-  await requireAuthor()
+  //
+  // Answered as a 401 rather than allowed to throw, so an unauthenticated caller
+  // gets the same shape of response as every other refusal here instead of a 500.
+  try {
+    await requireAuthor()
+  } catch {
+    return NextResponse.json({ error: "Not authorised." }, { status: 401 })
+  }
 
   const settings = config()
   if (!settings) {
@@ -108,14 +125,15 @@ export async function POST(request: Request) {
   )
 
   return NextResponse.json({
-    // Scoped to this one key and this one content type, and expiring in minutes.
+    // Scoped to this one key and this one method, and expiring in minutes.
     uploadUrl: signed.url,
     contentType,
     // Where it will be readable once uploaded. Must match NEXT_PUBLIC_MEDIA_ORIGIN
     // or `isAllowedMediaUrl` will refuse to render it - which is the same check
     // twice on purpose (threat T-6).
     publicUrl: new URL(`/${key}`, settings.publicUrl).toString(),
-    // So the author is told the same thing the server would enforce.
+    // Echoed back for display only. The key above is generated; nothing the client
+    // sent is used to build it.
     originalName: fileName,
   })
 }

@@ -14,6 +14,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
 - **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
 - **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
+- **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
+- **Reading aids**: an in-page contents list, related articles by tag, and copy buttons on code blocks - none of which cost a reader any JavaScript to read
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
@@ -37,10 +39,11 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── blog/                 # List, article, tag pages and per-article cards
+│   ├── blog/                 # List, article, tag, preview and per-article cards
 │   ├── admin/                # Authoring, behind the auth guard
 │   ├── api/auth/             # Better Auth endpoints
 │   ├── api/upload/           # Presigned cover uploads
+│   ├── api/views/            # View counter, served as a tracking pixel
 │   ├── rss.xml/              # RSS 2.0 feed
 │   ├── not-found.tsx         # Site-wide 404
 │   ├── robots.ts             # Generated /robots.txt
@@ -141,6 +144,9 @@ Set it up once:
 Enable 2FA on that GitHub account. It is now the only credential standing between
 anyone and the ability to publish here.
 
+Account linking is disabled, so only that one GitHub account can ever reach the
+admin - not any account that happens to share an email address with it.
+
 ### The blog database
 
 The blog reads from Postgres through `@neondatabase/serverless`, which speaks
@@ -182,6 +188,28 @@ social card are prerendered at build time and behave differently under `next dev
 npm run db:up && npm run db:migrate && npm run db:seed
 DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
 ```
+
+### A note on `overrides`
+
+`package.json` pins three transitive dependencies through overrides.
+
+`esbuild`: `better-auth` declares
+`drizzle-kit` as a **runtime** dependency rather than a peer or dev one, which
+drags `@esbuild-kit/esm-loader` and an `esbuild` carrying
+[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99) into the
+production dependency tree. Nothing in that path ever runs in a request, but it is
+in the tree, and `npm audit --omit=dev` is right to say so. The override takes it out of the tree; `npm run db:generate`, `db:migrate`,
+`db:seed` and `npm run build` were re-run to confirm nothing depended on the old
+version.
+
+`sharp` is an optional dependency of Next used for image optimisation, pinned
+past [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)
+(libheif). `js-yaml` reaches the tree through ESLint, pinned to the patched 4.x
+rather than the 5.x major, which `@eslint/eslintrc` does not accept.
+
+Both audits report zero. Re-run `npm audit` and `npm audit --omit=dev` after any
+dependency change: these pins exist because an advisory was published against a
+tree that was clean a few days earlier, and that will happen again.
 
 ## 📜 Available Scripts
 

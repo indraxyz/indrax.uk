@@ -1,7 +1,7 @@
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string"
 import rehypeParse from "rehype-parse"
 import rehypePrettyCode from "rehype-pretty-code"
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
+import rehypeSanitize, { defaultSchema, type Options as Schema } from "rehype-sanitize"
 import rehypeSlug from "rehype-slug"
 import rehypeStringify from "rehype-stringify"
 import { unified } from "unified"
@@ -11,7 +11,7 @@ import type { Element, Root as HastRoot } from "hast"
 import { SITE_URL } from "@/features/resume/config"
 
 import { BLOG_EXTENSIONS } from "@/features/blog/editor/extensions"
-import type { PostDocument } from "@/features/blog/types"
+import type { PostDocument, RenderedArticle, TocEntry } from "@/features/blog/types"
 
 // Shiki themes for the two site themes. Both are emitted in one pass as
 // `--shiki-light` / `--shiki-dark` custom properties, and `app/globals.css`
@@ -118,6 +118,36 @@ function rehypeLabelTaskLists() {
           const box = findCheckbox(child)
           const label = textOf(child)
           if (box && label) box.properties["aria-label"] = label
+        }
+
+        walk(child)
+      }
+    }
+
+    walk(tree)
+  }
+}
+
+/**
+ * Collect the headings a table of contents is built from.
+ *
+ * Done as a plugin rather than by re-parsing the finished HTML, because the tree
+ * is already here and `rehype-slug` has already assigned the ids the links need.
+ * Levels 2 and 3 only: level 4 is detail an author wants in the body, not a fourth
+ * tier of navigation, and the editor offers nothing deeper.
+ */
+function rehypeCollectHeadings(into: TocEntry[]) {
+  return (tree: HastRoot) => {
+    const walk = (node: HastRoot | Element) => {
+      for (const child of node.children) {
+        if (child.type !== "element") continue
+
+        const level = child.tagName === "h2" ? 2 : child.tagName === "h3" ? 3 : null
+        const id = child.properties.id
+
+        if (level && typeof id === "string") {
+          const text = textOf(child)
+          if (text) into.push({ id, text, level })
         }
 
         walk(child)
@@ -250,8 +280,18 @@ function rehypeScrollRegions() {
  * the schema withholds, add that one attribute with a comment saying which
  * construct needs it - do not swap in a permissive schema.
  */
-const schema = {
+const schema: Schema = {
   ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    // Task lists. Tiptap marks them with `data-type="taskList"` and nothing else
+    // distinguishes them from an ordinary bullet list, so without this the
+    // checkbox gets a bullet beside it and its text wraps underneath - each item
+    // reading as two. Restricted to that one value on those two elements; the
+    // attribute is inert, styling keys off it and no behaviour does.
+    ul: [...(defaultSchema.attributes?.ul ?? []), ["dataType", "taskList"] as [string, string]],
+    li: [...(defaultSchema.attributes?.li ?? []), ["dataType", "taskItem"] as [string, string]],
+  },
   protocols: {
     ...defaultSchema.protocols,
     // The default allows `http:` here. An article is served over HTTPS, so a plain
@@ -291,8 +331,9 @@ const schema = {
  * Workers isolate has no way to provide - and neither it nor the highlighter ever
  * reaches a client bundle (NFR-5).
  */
-export async function renderDocument(document: PostDocument): Promise<string> {
+export async function renderDocument(document: PostDocument): Promise<RenderedArticle> {
   const html = renderToHTMLString({ content: document, extensions: BLOG_EXTENSIONS })
+  const headings: TocEntry[] = []
 
   const file = await unified()
     // A fragment: this is article body, not a whole document, so no <html> or
@@ -306,6 +347,7 @@ export async function renderDocument(document: PostDocument): Promise<string> {
     .use(rehypeSlug, { prefix: "user-content-" })
     .use(rehypeLabelTaskLists)
     .use(rehypeExternalLinks)
+    .use(rehypeCollectHeadings, headings)
     .use(rehypePrettyCode, {
       theme: CODE_THEMES,
       // Keeps the wrapper's own background off, so the block inherits the
@@ -316,7 +358,7 @@ export async function renderDocument(document: PostDocument): Promise<string> {
     .use(rehypeStringify)
     .process(html)
 
-  return String(file)
+  return { html: String(file), headings }
 }
 
 /** Every text node in a stored document, in order. */

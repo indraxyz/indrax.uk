@@ -34,6 +34,18 @@ export const POST_STATUSES = ["draft", "published", "archived"] as const
 
 export type PostStatus = (typeof POST_STATUSES)[number]
 
+/** One entry in an article's table of contents. */
+export interface TocEntry {
+  id: string
+  text: string
+  level: 2 | 3
+}
+
+export interface RenderedArticle {
+  html: string
+  headings: TocEntry[]
+}
+
 export interface Tag {
   id: string
   name: string
@@ -61,6 +73,10 @@ export interface PostSummary {
 /** A post as an article page sees it. */
 export interface Post extends PostSummary {
   content: PostDocument
+  status: PostStatus
+  // Decorative and best-effort, by design. Counted by an image request, so it is
+  // trivially inflatable and is never used for ranking or billing.
+  viewCount: number
 }
 
 export interface PaginatedPosts {
@@ -72,4 +88,39 @@ export interface PaginatedPosts {
 /** A tag with the number of published posts carrying it. */
 export interface TagWithCount extends Tag {
   postCount: number
+}
+
+/**
+ * A post as the admin list sees it: every status, including the ones that 404
+ * publicly.
+ */
+export interface AdminPostSummary {
+  id: string
+  slug: string
+  title: string
+  status: PostStatus
+  publishedAt: string | null
+  updatedAt: string
+  tags: Tag[]
+}
+
+/** A post as the edit form sees it. */
+export interface AdminPost extends AdminPostSummary {
+  excerpt: string | null
+  content: PostDocument | null
+  coverUrl: string | null
+  coverAlt: string | null
+}
+
+/**
+ * What a mutating action tells its caller.
+ *
+ * `errors` is keyed by field name so a form can put each message beside the input
+ * that caused it, rather than dumping one line at the top.
+ */
+export interface ActionResult {
+  ok: boolean
+  errors?: Record<string, string[]>
+  message?: string
+  postId?: string
 }
