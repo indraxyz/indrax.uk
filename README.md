@@ -191,15 +191,25 @@ DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' np
 
 ### A note on `overrides`
 
-`package.json` pins `esbuild` through an override. `better-auth` declares
+`package.json` pins three transitive dependencies through overrides.
+
+`esbuild`: `better-auth` declares
 `drizzle-kit` as a **runtime** dependency rather than a peer or dev one, which
 drags `@esbuild-kit/esm-loader` and an `esbuild` carrying
 [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99) into the
 production dependency tree. Nothing in that path ever runs in a request, but it is
-in the tree, and `npm audit --omit=dev` is right to say so. The override takes both
-production and dev to zero advisories; `npm run db:generate`, `db:migrate`,
-`db:seed` and `npm run build` were all re-run to confirm nothing depended on the
-old version.
+in the tree, and `npm audit --omit=dev` is right to say so. The override takes it out of the tree; `npm run db:generate`, `db:migrate`,
+`db:seed` and `npm run build` were re-run to confirm nothing depended on the old
+version.
+
+`sharp` is an optional dependency of Next used for image optimisation, pinned
+past [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)
+(libheif). `js-yaml` reaches the tree through ESLint, pinned to the patched 4.x
+rather than the 5.x major, which `@eslint/eslintrc` does not accept.
+
+Both audits report zero. Re-run `npm audit` and `npm audit --omit=dev` after any
+dependency change: these pins exist because an advisory was published against a
+tree that was clean a few days earlier, and that will happen again.
 
 ## 📜 Available Scripts
 
