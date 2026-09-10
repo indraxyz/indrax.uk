@@ -9,13 +9,14 @@
  * alongside them survives.
  *
  * The set is chosen to exercise the read path rather than to read well: one
- * published post with code blocks and every GFM construct, one published post
+ * published post using every node type the renderer handles, one published post
  * that shares a tag with it, one draft that must never appear anywhere public.
  */
 import { eq, inArray } from "drizzle-orm"
 
+import type { PostDocument } from "@/features/blog/types"
+import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
 import { computeReadingTime } from "@/features/blog/utils/reading-time"
-import { deriveExcerpt } from "@/features/blog/utils/markdown"
 import { slugify } from "@/features/blog/utils/slug"
 import { getDb, schema } from "@/lib/db"
 import { postInputSchema, type PostInput } from "@/lib/validators/blog"
@@ -24,74 +25,147 @@ import { loadLocalEnv } from "./dev-env"
 
 loadLocalEnv()
 
-const SEED: (PostInput & { publishedAt?: string })[] = [
+/*
+ * Terse constructors for ProseMirror nodes.
+ *
+ * Authoring these documents as literals is unreadable at any length, and pulling
+ * in a markdown-to-ProseMirror converter would add a dependency to make a
+ * dev-only script shorter. These also serve as a compact statement of the node
+ * shapes `BLOG_EXTENSIONS` produces.
+ */
+type Inline = PostDocument
+
+const text = (value: string, ...marks: string[]): Inline => ({
+  type: "text",
+  text: value,
+  ...(marks.length > 0 ? { marks: marks.map((type) => ({ type })) } : {}),
+})
+
+const link = (value: string, href: string): Inline => ({
+  type: "text",
+  text: value,
+  marks: [{ type: "link", attrs: { href } }],
+})
+
+const p = (...content: Inline[]): PostDocument => ({ type: "paragraph", content })
+const h = (level: 2 | 3 | 4, value: string): PostDocument => ({
+  type: "heading",
+  attrs: { level },
+  content: [text(value)],
+})
+const code = (language: string, value: string): PostDocument => ({
+  type: "codeBlock",
+  attrs: { language },
+  content: [text(value)],
+})
+const quote = (value: string): PostDocument => ({
+  type: "blockquote",
+  content: [p(text(value))],
+})
+const bullets = (...items: string[]): PostDocument => ({
+  type: "bulletList",
+  content: items.map((item) => ({ type: "listItem", content: [p(text(item))] })),
+})
+const tasks = (...items: [string, boolean][]): PostDocument => ({
+  type: "taskList",
+  content: items.map(([label, checked]) => ({
+    type: "taskItem",
+    attrs: { checked },
+    content: [p(text(label))],
+  })),
+})
+const cell = (kind: "tableHeader" | "tableCell", value: string): PostDocument => ({
+  type: kind,
+  attrs: { colspan: 1, rowspan: 1 },
+  content: [p(text(value))],
+})
+const table = (head: string[], ...rows: string[][]): PostDocument => ({
+  type: "table",
+  content: [
+    { type: "tableRow", content: head.map((value) => cell("tableHeader", value)) },
+    ...rows.map((row) => ({
+      type: "tableRow",
+      content: row.map((value) => cell("tableCell", value)),
+    })),
+  ],
+})
+const doc = (...content: PostDocument[]): PostDocument => ({ type: "doc", content })
+
+const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?: string })[] = [
   {
-    title: "Rendering markdown without shipping a highlighter",
-    slug: "rendering-markdown-without-shipping-a-highlighter",
+    title: "Rendering an article without shipping a renderer",
+    slug: "rendering-an-article-without-shipping-a-renderer",
     status: "published",
     publishedAt: "2026-08-14T09:00:00.000Z",
     tags: ["Next.js", "Performance", "TypeScript"],
-    content: `Syntax highlighting is the easiest place on a blog to accidentally
-ship a hundred kilobytes of JavaScript to a reader who only wanted to read a
-paragraph. The usual setup runs a highlighter in the browser: the page arrives
-with plain code in it, the bundle loads, and the code repaints. It works, and it
-costs every reader the download.
+    content: doc(
+      p(
+        text(
+          "Syntax highlighting is the easiest place on a blog to accidentally ship a hundred kilobytes of JavaScript to a reader who only wanted to read a paragraph. The usual setup runs a highlighter in the browser: the page arrives with plain code in it, the bundle loads, and the code repaints. It works, and it costs every reader the download."
+        )
+      ),
+      h(2, "Move it to the server"),
+      p(
+        text(
+          "The article body never changes between requests. That makes highlighting a build concern, not a runtime one - so it belongs in the same pipeline that turns the stored document into HTML."
+        )
+      ),
+      code(
+        "ts",
+        `const html = renderToHTMLString({ content: document, extensions: BLOG_EXTENSIONS })
 
-## Move it to the server
-
-The article body never changes between requests. That makes highlighting a build
-concern, not a runtime one - so it belongs in the same pipeline that turns
-markdown into HTML.
-
-\`\`\`ts
-const html = await unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkRehype)
+const file = await unified()
+  .use(rehypeParse, { fragment: true })
   .use(rehypeSanitize, schema)
-  .use(rehypePrettyCode, { theme: { light: "github-light", dark: "github-dark" } })
+  .use(rehypePrettyCode, { theme: { light: "github-light-high-contrast", dark: "github-dark" } })
   .use(rehypeStringify)
-  .process(markdown)
-\`\`\`
-
-The reader gets HTML with the colours already in it. No highlighter reaches the
-browser at all, which is the only reliable way to keep it out.
-
-## Order is the security argument
-
-Sanitising runs *before* the highlighter, not after. That ordering is not a
-detail:
-
-| Stage | Input | Trusted? |
-| :--- | :--- | :--- |
-| \`remarkParse\` | author's markdown | no |
-| \`rehypeSanitize\` | parsed tree | no |
-| \`rehypePrettyCode\` | sanitised tree | yes - we generated it |
-
-Run them the other way around and the sanitiser strips the very attributes the
-highlighter just added. Run them this way and untrusted input stays constrained
-while our own output passes through untouched.
-
-### Two themes, one pass
-
-A dual theme emits both palettes as custom properties on the same markup:
-
-\`\`\`css
-.prose pre span {
+  .process(html)`
+      ),
+      p(
+        text(
+          "The reader gets HTML with the colours already in it. No highlighter reaches the browser at all, which is the only reliable way to keep it out."
+        )
+      ),
+      h(2, "Order is the security argument"),
+      p(
+        text("Sanitising runs "),
+        text("before", "italic"),
+        text(" the highlighter, not after. That ordering is not a detail:")
+      ),
+      table(
+        ["Stage", "Input", "Trusted?"],
+        ["renderToHTMLString", "the stored document", "no"],
+        ["rehypeSanitize", "parsed tree", "no"],
+        ["rehypePrettyCode", "sanitised tree", "yes - we generated it"]
+      ),
+      p(
+        text(
+          "Run them the other way around and the sanitiser strips the very attributes the highlighter just added. Run them this way and untrusted input stays constrained while our own output passes through untouched."
+        )
+      ),
+      h(3, "Two themes, one pass"),
+      p(text("A dual theme emits both palettes as custom properties on the same markup:")),
+      code(
+        "css",
+        `.prose pre span {
   color: var(--shiki-light);
 }
 
 .dark .prose pre span {
   color: var(--shiki-dark);
-}
-\`\`\`
-
-Switching theme repaints the code without a second render and without a byte of
-JavaScript.
-
-- [x] No client-side highlighter
-- [x] Correct in both themes
-- [ ] A copy button, eventually - which *will* cost a few bytes`,
+}`
+      ),
+      p(
+        text(
+          "Switching theme repaints the code without a second render and without a byte of JavaScript."
+        )
+      ),
+      tasks(
+        ["No client-side highlighter", true],
+        ["Correct in both themes", true],
+        ["A copy button, eventually - which will cost a few bytes", false]
+      )
+    ),
   },
   {
     title: "A database that is allowed to be absent",
@@ -99,16 +173,16 @@ JavaScript.
     status: "published",
     publishedAt: "2026-08-28T09:00:00.000Z",
     tags: ["Architecture", "Postgres", "TypeScript"],
-    content: `Adding a database to a site that did not have one usually means the
-site now requires one. A fresh clone fails to build. CI fails to build. A preview
-deployment that has not been handed a connection string fails to build. None of
-that is inherent - it is just what happens when the client is constructed at
-import time and throws when its configuration is missing.
-
-## Make absence a state, not an error
-
-\`\`\`ts
-export function getDb(): Database | null {
+    content: doc(
+      p(
+        text(
+          "Adding a database to a site that did not have one usually means the site now requires one. A fresh clone fails to build. CI fails to build. A preview deployment that has not been handed a connection string fails to build. None of that is inherent - it is just what happens when the client is constructed at import time and throws when its configuration is missing."
+        )
+      ),
+      h(2, "Make absence a state, not an error"),
+      code(
+        "ts",
+        `export function getDb(): Database | null {
   if (client) return client
 
   const url = process.env.DATABASE_URL
@@ -116,41 +190,59 @@ export function getDb(): Database | null {
 
   client = createClient(url)
   return client
-}
-\`\`\`
-
-A null database is not a failure to handle. It is a database with nothing in it,
-which is a state the application already has to render correctly - the empty
-state on the first day, before anything is written.
-
-## The same argument covers the failure case
-
-If reading can return "nothing" when there is no database, it can return
-"nothing" when the database is unreachable too:
-
-> A blog that cannot reach Postgres renders as a blog with nothing in it. That is
-> a far better failure than an unhandled exception taking down the only page the
-> site has.
-
-The error still gets logged, with enough context to find it. What changes is who
-pays for it.
-
-## What this is not
-
-It is not a substitute for monitoring, and it deliberately hides a real problem
-from the reader. That trade is only correct when the content is supplementary. On
-a checkout page it would be indefensible.`,
+}`
+      ),
+      p(
+        text(
+          "A null database is not a failure to handle. It is a database with nothing in it, which is a state the application already has to render correctly - the empty state on the first day, before anything is written."
+        )
+      ),
+      h(2, "The same argument covers the failure case"),
+      p(
+        text("If reading can return "),
+        text("nothing", "italic"),
+        text(
+          " when there is no database, it can return nothing when the database is unreachable too:"
+        )
+      ),
+      quote(
+        "A blog that cannot reach Postgres renders as a blog with nothing in it. That is a far better failure than an unhandled exception taking down the only page the site has."
+      ),
+      p(
+        text(
+          "The error still gets logged, with enough context to find it. What changes is who pays for it. There is one exception, and it matters: a single article that cannot be loaded answers 500, not 404, because a 404 tells a crawler it was deleted."
+        )
+      ),
+      h(2, "What this is not"),
+      bullets(
+        "It is not a substitute for monitoring.",
+        "It deliberately hides a real problem from the reader.",
+        "On a checkout page it would be indefensible."
+      ),
+      p(
+        text("The reasoning is written up in "),
+        link("the implementation plan", "https://github.com/indraxyz/indrax.uk"),
+        text(", alongside the rest of the branch.")
+      )
+    ),
   },
   {
     title: "Notes on preview tokens",
     slug: "notes-on-preview-tokens",
     status: "draft",
     tags: ["Security"],
-    content: `This post is a draft and exists so the test suite has something that
-must never be publicly reachable.
-
-If you can read this at a public URL, something is wrong: drafts are expected to
-404, and to be absent from the sitemap and the feed.`,
+    content: doc(
+      p(
+        text(
+          "This post is a draft and exists so the test suite has something that must never be publicly reachable."
+        )
+      ),
+      p(
+        text(
+          "If you can read this at a public URL, something is wrong: drafts are expected to 404, and to be absent from the sitemap and the feed."
+        )
+      )
+    ),
   },
 ]
 
@@ -163,10 +255,11 @@ async function main() {
     )
   }
 
-  // Validated with the same schema the authoring path will use, so a malformed
-  // seed fails here rather than becoming a row nothing else can explain.
+  // Validated with the same schema the authoring path uses, so a malformed seed
+  // fails here rather than becoming a row nothing else can explain.
   const posts = SEED.map((entry) => ({
     ...postInputSchema.parse(entry),
+    content: entry.content,
     publishedAt: entry.publishedAt ? new Date(entry.publishedAt) : null,
   }))
 
@@ -194,14 +287,14 @@ async function main() {
       slug,
       title: post.title,
       excerpt: post.excerpt ?? deriveExcerpt(post.content),
-      content: post.content,
+      contentJson: post.content,
       coverUrl: post.coverUrl ?? null,
       coverAlt: post.coverAlt ?? null,
       status: post.status,
       publishedAt: post.publishedAt,
       // Stored, never accepted from input - the same rule the authoring path
       // follows, exercised here so the seeded rows are honest.
-      readingTime: computeReadingTime(post.content),
+      readingTime: computeReadingTime(plainText(post.content)),
       updatedAt: new Date(),
     }
 

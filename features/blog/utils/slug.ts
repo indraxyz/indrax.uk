@@ -20,3 +20,27 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 }
+
+/**
+ * A slug that no existing post holds.
+ *
+ * `taken` is the set of slugs already in use. On collision a numeric suffix is
+ * appended and incremented until the result is free, so a second "Hello World"
+ * becomes "hello-world-2" rather than failing the unique constraint at insert
+ * time (PRD US-3.1).
+ *
+ * The uniqueness this gives is advisory - two writers racing would still collide
+ * at the database, which is where the real constraint lives. With one author that
+ * race does not exist, and the constraint is the backstop either way.
+ */
+export function uniqueSlug(input: string, taken: Iterable<string>): string {
+  const base = slugify(input) || "post"
+  const used = new Set(taken)
+
+  if (!used.has(base)) return base
+
+  let suffix = 2
+  while (used.has(`${base}-${suffix}`)) suffix += 1
+
+  return `${base}-${suffix}`
+}

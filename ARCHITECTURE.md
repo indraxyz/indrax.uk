@@ -9,6 +9,8 @@ This document describes the architecture and design decisions for the Resume/CV 
 │   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
 │   ├── page.tsx             # Server entry for the resume page
 │   ├── blog/                # Blog routes - list, article, tag, per-post OG card
+│   ├── admin/               # Authoring, behind the auth guard
+│   ├── api/                 # Better Auth endpoints and presigned uploads
 │   ├── rss.xml/             # RSS 2.0 feed
 │   ├── not-found.tsx        # Site-wide 404, also what a draft looks like
 │   ├── robots.ts            # Generated /robots.txt
@@ -34,7 +36,8 @@ This document describes the architecture and design decisions for the Resume/CV 
 │   ├── blog/
 │   │   ├── components/      # Cards, list section, article body, chrome
 │   │   ├── data/            # Drizzle reads, cache-tagged
-│   │   ├── utils/           # Markdown pipeline, slug, reading time, JSON-LD
+│   │   ├── editor/          # The frozen Tiptap extension set
+│   │   ├── utils/           # Content pipeline, slug, reading time, JSON-LD
 │   │   ├── social-card.tsx  # Per-article link-preview banner
 │   │   ├── config.ts        # BLOG_CONFIG and section copy
 │   │   └── types.ts         # Post, Tag, PostStatus
@@ -46,6 +49,8 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── types.ts         # Resume domain types
 │
 ├── lib/                     # Shared, framework-level helpers
+│   ├── auth.ts             # Better Auth instance and the allow-list
+│   ├── auth-guard.ts       # requireAuthor() - the authorization boundary
 │   ├── db/                 # Drizzle schema, client, seed
 │   ├── og/                 # Font loading for the server-drawn cards
 │   ├── validators/         # Zod schemas
@@ -151,11 +156,24 @@ components/ui/ (Base UI Components)                  components/ui/
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
-- **Markdown is sanitised on the way out, not on the way in**: article bodies are
-  stored as untrusted markdown and pass through `rehype-sanitize` at render, before
-  the highlighter runs. Sanitising on save alone would be a check that stored
-  content can outlive; ordering it before `rehype-pretty-code` is what lets the
-  highlighter's own `style` attributes survive a filter the author cannot reach
+- **Content is sanitised on the way out, not on the way in**: article bodies are
+  stored as the editor's own ProseMirror document and pass through
+  `rehype-sanitize` at render, before the highlighter runs. Sanitising on save
+  alone would be a check that stored content can outlive; ordering it before
+  `rehype-pretty-code` is what lets the highlighter's own `style` attributes
+  survive a filter the author cannot reach. The renderer emits stored attributes
+  without judging them - a document carrying `src="javascript:..."` produces
+  exactly that - so this is the only thing between the database and the reader
+- **The extension set is a compatibility surface**: a stored document only means
+  anything against the extensions that produced it, so `BLOG_EXTENSIONS` is one
+  exported constant. Removing an extension makes every document containing that
+  node render wrong, silently, because an unknown node is dropped rather than
+  raised
+- **`proxy.ts` is a redirect; `requireAuthor()` is the boundary**: a server action
+  is a POST identified by a header, reachable without touching the routing the
+  proxy sees. So every admin page, every mutating action and the upload route
+  re-check authorisation for themselves, and the suite proves it by forging a
+  session cookie - which walks past the proxy and must still be refused
 - **An absent database is a state, not an error**: `getDb()` returns `null` when
   `DATABASE_URL` is unset and every query returns the empty result, so a fresh
   clone, a CI build and a preview without a branch all build and serve the resume.

@@ -7,6 +7,33 @@
  * cache hit. And these objects cross the server/client boundary into components.
  * A string is the honest type for both, and `<time datetime>` wants one anyway.
  */
+/**
+ * A stored article body: the editor's ProseMirror document.
+ *
+ * Deliberately structural rather than an exhaustive union of the node types.
+ * Enumerating them here would be a third copy of the schema - after
+ * `BLOG_EXTENSIONS` and the editor itself - and the one most likely to drift,
+ * since nothing would fail when it did. What the pipeline actually needs is the
+ * shape every node shares.
+ */
+export interface PostDocument {
+  type: string
+  text?: string
+  attrs?: Record<string, unknown>
+  marks?: { type: string; attrs?: Record<string, unknown> }[]
+  content?: PostDocument[]
+}
+
+/**
+ * The statuses a post can hold, as one source.
+ *
+ * The Postgres enum and the Zod schema both read this array, so the three copies
+ * that would otherwise exist - and the two that would silently disagree - are one.
+ */
+export const POST_STATUSES = ["draft", "published", "archived"] as const
+
+export type PostStatus = (typeof POST_STATUSES)[number]
+
 export interface Tag {
   id: string
   name: string
@@ -33,7 +60,7 @@ export interface PostSummary {
 
 /** A post as an article page sees it. */
 export interface Post extends PostSummary {
-  content: string
+  content: PostDocument
 }
 
 export interface PaginatedPosts {

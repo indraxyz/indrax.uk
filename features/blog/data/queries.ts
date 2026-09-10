@@ -4,7 +4,14 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
-import type { PaginatedPosts, Post, PostSummary, Tag, TagWithCount } from "@/features/blog/types"
+import type {
+  PaginatedPosts,
+  Post,
+  PostDocument,
+  PostSummary,
+  Tag,
+  TagWithCount,
+} from "@/features/blog/types"
 import { getDb, schema } from "@/lib/db"
 
 /**
@@ -17,10 +24,20 @@ export const CACHE_TAGS = {
   post: (slug: string) => `post:${slug}`,
 } as const
 
-// A published post is one that is marked published *and* has a publication date.
-// Both halves matter: the second is what keeps a row that was flipped to
-// published without a date from appearing with a blank byline.
-const isPublic = and(eq(schema.posts.status, "published"), isNotNull(schema.posts.publishedAt))
+// A published post is one that is marked published, has a publication date, and
+// has a body. All three matter.
+//
+// The date keeps a row flipped to published without one from appearing with a
+// blank byline. The body closes a gap the expand/contract migration opens: a row
+// carrying the old markdown column but no document renders nothing, and without
+// this clause it would still be listed in the archive, the feed and the sitemap
+// while answering 404 when opened - the archive advertising a link it cannot
+// honour. Found by leaving exactly such a row behind locally.
+const isPublic = and(
+  eq(schema.posts.status, "published"),
+  isNotNull(schema.posts.publishedAt),
+  isNotNull(schema.posts.contentJson)
+)
 
 // Everything a card needs. `content` is absent on purpose - a list page that
 // selects article bodies pays for every word it does not show (PRD US-2.1).
@@ -169,11 +186,13 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
     .where(and(eq(schema.posts.slug, slug), isPublic))
     .limit(1)
 
-  if (!row) return null
+  // A published row with no document is not a post anyone can read. Treating it
+  // as absent keeps the failure at the boundary rather than inside the renderer.
+  if (!row?.contentJson) return null
 
   const [summary] = await attachTags([row])
 
-  return { ...summary, content: row.content }
+  return { ...summary, content: row.contentJson as PostDocument }
 }
 
 async function readTagsInUse(): Promise<TagWithCount[]> {

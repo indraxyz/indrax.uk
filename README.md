@@ -12,7 +12,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
 - **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
-- **Blog**: markdown articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
+- **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
+- **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
 
@@ -24,7 +25,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **UI Components**: shadcn/ui
 - **Icons**: Lucide React
 - **Database**: Neon Postgres via Drizzle ORM (optional — the site builds and serves without one)
-- **Markdown**: unified / remark / rehype, with Shiki highlighting at render time
+- **Content**: Tiptap documents rendered server-side through rehype, with Shiki highlighting
+- **Auth**: Better Auth, GitHub OAuth, database-backed sessions
 - **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
 - **Package Manager**: npm
 
@@ -36,6 +38,9 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
 │   ├── blog/                 # List, article, tag pages and per-article cards
+│   ├── admin/                # Authoring, behind the auth guard
+│   ├── api/auth/             # Better Auth endpoints
+│   ├── api/upload/           # Presigned cover uploads
 │   ├── rss.xml/              # RSS 2.0 feed
 │   ├── not-found.tsx         # Site-wide 404
 │   ├── robots.ts             # Generated /robots.txt
@@ -48,7 +53,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ├── e2e/                      # Playwright end-to-end specs
 ├── drizzle/                  # Generated database migrations
 ├── features/
-│   ├── blog/                 # Blog slice - components, queries, markdown, config
+│   ├── blog/                 # Blog slice - components, queries, content, editor
 │   └── resume/
 │       ├── components/      # Resume feature components
 │       ├── data/            # Resume data
@@ -60,6 +65,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ├── docs/                     # Feature specs and implementation plans
 └── lib/                      # Utility functions
     ├── analytics.ts         # PostHog init and event capture
+    ├── auth.ts              # Better Auth instance, allow-list
+    ├── auth-guard.ts        # requireAuthor() - the authorization boundary
     ├── db/                  # Drizzle schema, client and seed
     ├── og/                  # Font loading for server-drawn cards
     ├── validators/          # Zod schemas
@@ -100,14 +107,39 @@ npm run dev
 
 Every variable is optional; copy `.env.example` to `.env.local` to set them.
 
-| Variable                   | Default                      | Purpose                                                                                                       |
-| :------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_POSTHOG_KEY`  | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
-| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com`   | Ingestion host.                                                                                               |
-| `NEXT_PUBLIC_SITE_URL`     | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
-| `DATABASE_URL`             | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
-| `DIRECT_DATABASE_URL`      | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
-| `NEXT_PUBLIC_MEDIA_ORIGIN` | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                         |
+| Variable                       | Default                      | Purpose                                                                                                       |
+| :----------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_POSTHOG_KEY`      | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
+| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host.                                                                                               |
+| `NEXT_PUBLIC_SITE_URL`         | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
+| `DATABASE_URL`                 | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
+| `DIRECT_DATABASE_URL`          | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
+| `NEXT_PUBLIC_MEDIA_ORIGIN`     | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                         |
+| `BETTER_AUTH_SECRET`           | unset                        | Session signing key. **Server-only.**                                                                         |
+| `BETTER_AUTH_URL`              | `NEXT_PUBLIC_SITE_URL`       | Origin OAuth callbacks return to.                                                                             |
+| `GITHUB_CLIENT_ID` / `_SECRET` | unset                        | GitHub OAuth App. **Secret is server-only.**                                                                  |
+| `ALLOWED_GITHUB_ID`            | unset                        | The one numeric GitHub user id allowed to sign in.                                                            |
+| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501.                                                               |
+
+### The admin
+
+`/admin` exists only when all five auth variables are set. Without them the auth
+endpoints answer 404 and there is nothing to sign in to - an unconfigured
+deployment is closed rather than half-open.
+
+Set it up once:
+
+1. Create a GitHub OAuth App with the callback URL
+   `https://<your-origin>/api/auth/callback/github`.
+2. Put its client id and secret in the environment.
+3. Set `ALLOWED_GITHUB_ID` to your numeric GitHub user id - not your username,
+   which can be changed and reclaimed:
+   `curl -s https://api.github.com/users/<you> | jq .id`
+4. `openssl rand -base64 32` for `BETTER_AUTH_SECRET`.
+5. Run `npm run db:migrate` so the session tables exist.
+
+Enable 2FA on that GitHub account. It is now the only credential standing between
+anyone and the ability to publish here.
 
 ### The blog database
 
