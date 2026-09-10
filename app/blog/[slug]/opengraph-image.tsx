@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 
 import { getPostBySlug } from "@/features/blog/data/queries"
 import { POST_CARD_CONTENT_TYPE, POST_CARD_SIZE, renderPostCard } from "@/features/blog/social-card"
+import { logServerError } from "@/lib/observability"
 
 // The filename is a Next.js metadata convention, not a description: this route is
 // what populates `og:image` for one article, and Next derives `twitter:image` from
@@ -34,7 +35,7 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
     // Drawing this card needs fonts, and fetching them can fail in a way that
     // rendering the article itself does not. A broken image response is worse
     // than a generic one, so the site card stands in.
-    console.error(`[blog] opengraph-image failed for ${slug}`, error)
+    logServerError(error, { scope: "blog.opengraphImage", slug })
     redirect("/opengraph-image")
   }
 }

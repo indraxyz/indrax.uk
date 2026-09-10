@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { E2E_POSTHOG_HOST } from "./support/constants"
+
 /**
  * The blog's public surface, asserted without a database.
  *
@@ -98,6 +100,17 @@ test.describe("the blog's public surface", () => {
     expect(csp).toContain("base-uri 'none'")
     expect(csp).toContain("object-src 'none'")
     expect(csp).toContain("form-action 'self'")
+    expect(csp).toContain("frame-src 'none'")
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+
+    // With no `script-src` this is what bounds an injected script: it may still
+    // run, but only this origin and the analytics endpoint will accept what it
+    // tries to send.
+    expect(csp).toContain("connect-src 'self' ")
+    // Derived from the same constant the tracker uses. A policy naming a
+    // different host blocks every event, which looks like an outage rather than
+    // a typo - so the two are asserted to agree.
+    expect(csp).toContain(E2E_POSTHOG_HOST)
 
     // `default-src` is the fallback for `script-src`, so setting it would block
     // Next's own inline bootstrap and the theme script - the page would render

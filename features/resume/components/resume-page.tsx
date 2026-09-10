@@ -8,6 +8,7 @@ import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { TechStackSection } from "@/features/resume/components/tech-stack-section"
 import { WritingSection } from "@/features/resume/components/writing-section"
 import { formatDate } from "@/lib/utils"
+import { ConsentControl } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function ResumePage() {
@@ -53,6 +54,7 @@ export function ResumePage() {
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
             Updated {formatDate(RESUME_CONFIG.updatedAt)} &middot; {SITE_HOST}
           </p>
+          <ConsentControl />
         </div>
       </footer>
     </div>

@@ -38,10 +38,13 @@ const headingLevel = (tagName: string) => HEADING_LEVELS.find((level) => tagName
  * document written with `h2` into `h3`, and `h1` to `h3` skips a level, which is
  * the other half of the same criterion (PRD US-1.1).
  *
- * The editor does not offer level 1 at all, so in practice this is a guard rather
- * than a transformation - but a stored document can predate that setting, or be
- * written by something other than the editor, and neither is a reason to emit a
- * second `<h1>`.
+ * In practice this never fires. `BLOG_EXTENSIONS` does not offer level 1, so the
+ * renderer already clamps a stored `h1` to `h2` before this sees the tree -
+ * confirmed by rendering one. It stays because the extension set is explicitly a
+ * thing that can change (see the note on `BLOG_EXTENSIONS`), and a document
+ * written against a different one must still not produce a second `<h1>`. The
+ * property is asserted in `content.test.ts` rather than the mechanism, so either
+ * line of defence satisfies it.
  */
 function rehypeNormaliseHeadings() {
   return (tree: HastRoot) => {

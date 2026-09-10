@@ -11,7 +11,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Downloadable CV**: react-pdf draws the resume in the browser on request, lazily loaded
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
-- **Measured**: optional PostHog analytics for pageviews, CV downloads, and contact clicks
+- **Measured, with permission**: optional PostHog analytics for pageviews, CV downloads and contact clicks, behind a consent gate that starts nothing until the visitor says yes
 - **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
 - **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
 - **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
@@ -50,9 +50,11 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── sitemap.ts            # Generated /sitemap.xml
 │   └── globals.css           # Global styles
 ├── components/               # Shared UI primitives
-│   ├── posthog-analytics.tsx # Starts the tracker; renders nothing
+│   ├── consent-banner.tsx    # Asks before anything is measured; withdrawal control
+│   ├── posthog-analytics.tsx # Starts the tracker once consent allows; renders nothing
 │   ├── theme-toggle.tsx     # Light / dark / system switcher
 │   └── ui/                  # shadcn/ui components
+├── instrumentation.ts        # onRequestError - logs what never reaches a try
 ├── e2e/                      # Playwright end-to-end specs
 ├── drizzle/                  # Generated database migrations
 ├── features/
@@ -66,8 +68,12 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │       ├── social-card.tsx  # Link-preview banner composition
 │       └── types.ts         # Resume types
 ├── docs/                     # Feature specs and implementation plans
+├── .github/                  # Dependabot and the CI gate
 └── lib/                      # Utility functions
     ├── analytics.ts         # PostHog init and event capture
+    ├── analytics-host.ts    # Shared by the tracker and the CSP, so they cannot drift
+    ├── consent.ts           # The stored decision; nothing is tracked without it
+    ├── observability.ts     # One JSON line per server error, keyed on Next's digest
     ├── auth.ts              # Better Auth instance, allow-list
     ├── auth-guard.ts        # requireAuthor() - the authorization boundary
     ├── db/                  # Drizzle schema, client and seed
@@ -113,7 +119,7 @@ Every variable is optional; copy `.env.example` to `.env.local` to set them.
 | Variable                       | Default                      | Purpose                                                                                                       |
 | :----------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
 | `NEXT_PUBLIC_POSTHOG_KEY`      | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
-| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host.                                                                                               |
+| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host. Also named in `connect-src`, so the two cannot drift.                                         |
 | `NEXT_PUBLIC_SITE_URL`         | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
 | `DATABASE_URL`                 | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
 | `DIRECT_DATABASE_URL`          | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
@@ -173,6 +179,21 @@ Against Neon, set `DATABASE_URL` to the pooled connection string and run
 
 ### Testing
 
+Two suites, and they answer different questions.
+
+**Vitest** covers what a browser cannot cheaply reach: the exact expiry boundary
+of a preview token, a signature altered by one character, the sanitiser's
+response to a `javascript:` URL the renderer will happily emit. Fast enough to
+sit on the same gate as the linter, so `npm run check` runs it.
+
+```bash
+npm run test          # once
+npm run test:watch    # while working
+```
+
+**Playwright** proves the system works in place — the authorization boundary, the
+draft that stays invisible, the PDF that really downloads.
+
 ```bash
 npx playwright install chromium   # once
 npm run test:e2e
@@ -188,6 +209,32 @@ social card are prerendered at build time and behave differently under `next dev
 npm run db:up && npm run db:migrate && npm run db:seed
 DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
 ```
+
+### Privacy and consent
+
+PostHog sets first-party cookies, so for UK and EU visitors PECR wants consent
+_before_ they are set rather than an opt-out afterwards. The tracker therefore
+does not initialise at all until the visitor agrees - not
+initialised-then-opted-out, never started, so nothing is written and nothing is
+sent. Declining and ignoring produce the same state.
+
+The decision lives in `localStorage`, not a cookie, which means the site sets no
+cookies whatsoever before consent. It can be withdrawn from the **Cookies**
+control in the footer of every page, which stops the tracker and clears what it
+stored.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs `npm run check` and a production build on every
+pull request. The build runs with no `DATABASE_URL` on purpose: every read
+degrades to an empty result rather than throwing, so the site builds without one,
+and asserting that in CI keeps it true.
+
+Playwright is deliberately not in CI yet - it needs Postgres, the Neon proxy, a
+production build and a browser download. Run it locally before anything ships.
+
+`.github/dependabot.yml` raises weekly npm and Actions updates, minor and patch
+grouped into one pull request so majors stay separate and get read.
 
 ### A note on `overrides`
 
@@ -222,7 +269,9 @@ tree that was clean a few days earlier, and that will happen again.
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 - `npm run clean` - Clean build artifacts
-- `npm run check` - Format check, lint and type-check in one pass
+- `npm run check` - Format check, lint, type-check and unit tests in one pass
+- `npm run test` - Run the Vitest unit suite
+- `npm run test:watch` - The same suite, in watch mode
 - `npm run test:e2e` - Run the Playwright suite against a production build
 - `npm run test:e2e:ui` - The same suite in Playwright's UI mode
 - `npm run db:up` / `db:down` - Start or stop the local Postgres + Neon proxy

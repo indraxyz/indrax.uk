@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 
+import { ConsentBanner } from "@/components/consent-banner"
 import { PostHogAnalytics } from "@/components/posthog-analytics"
 import { BLOG_CONFIG } from "@/features/blog/config"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
@@ -116,6 +117,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
+        <ConsentBanner />
         <PostHogAnalytics />
       </body>
     </html>

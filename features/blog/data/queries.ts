@@ -6,6 +6,7 @@ import { unstable_cache } from "next/cache"
 import { BLOG_CONFIG } from "@/features/blog/config"
 import type { PaginatedPosts, Post, PostSummary, Tag, TagWithCount } from "@/features/blog/types"
 import { getDb, schema } from "@/lib/db"
+import { logServerError } from "@/lib/observability"
 
 /**
  * Cache tags. Every read declares them, and the authoring phase invalidates the
@@ -117,7 +118,7 @@ async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Pr
     // Next uses to say "this page is dynamic, render it that way".
     if (isFrameworkSignal(error)) throw error
 
-    console.error(`[blog] ${label} failed`, error)
+    logServerError(error, { scope: `blog.${label}` })
 
     return fallback
   } finally {

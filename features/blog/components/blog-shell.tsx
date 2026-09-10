@@ -2,6 +2,7 @@ import { ArrowLeft, Rss } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
 
+import { ConsentControl } from "@/components/consent-banner"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BLOG_CONFIG } from "@/features/blog/config"
 import { RESUME_CONFIG, SITE_HOST } from "@/features/resume/config"
@@ -56,10 +57,11 @@ export function BlogShell({ children }: BlogShellProps) {
       </main>
 
       <footer className="container mx-auto max-w-5xl px-4">
-        <div className="mt-12 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
+        <div className="mt-12 flex items-center justify-center gap-3 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
             {SITE_HOST}
           </p>
+          <ConsentControl />
         </div>
       </footer>
     </div>
