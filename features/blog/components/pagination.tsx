@@ -7,13 +7,29 @@ import { cn } from "@/lib/utils"
 interface PaginationProps {
   page: number
   pageCount: number
-  // The path pages hang off, e.g. "/blog" or "/blog/tag/typescript".
+  // The path pages hang off, e.g. "/blog", "/blog/tag/typescript", or
+  // "/blog/search?q=postgres".
   basePath: string
   label: string
+  /**
+   * What the two directions are called.
+   *
+   * The archive and the tag pages are in date order, so "Newer" and "Older" say
+   * something true about where a link leads. Search results are ranked by
+   * relevance, where the same words would be a lie - page two is less relevant,
+   * not older.
+   */
+  previousLabel?: string
+  nextLabel?: string
 }
 
+/**
+ * `basePath` may already carry a query string - search hangs its pages off
+ * `?q=`. Appending a second `?` would produce a URL whose page number is part of
+ * the search term, so the separator is chosen rather than assumed.
+ */
 const hrefFor = (basePath: string, page: number) =>
-  page <= 1 ? basePath : `${basePath}?page=${page}`
+  page <= 1 ? basePath : `${basePath}${basePath.includes("?") ? "&" : "?"}page=${page}`
 
 /**
  * Ordinary links, deliberately.
@@ -22,7 +38,14 @@ const hrefFor = (basePath: string, page: number) =>
  * button that fetches the next page on click is invisible to a crawler, so the
  * archive past page one would never be indexed (PRD US-2.1).
  */
-export function Pagination({ page, pageCount, basePath, label }: PaginationProps) {
+export function Pagination({
+  page,
+  pageCount,
+  basePath,
+  label,
+  previousLabel = "Newer",
+  nextLabel = "Older",
+}: PaginationProps) {
   if (pageCount <= 1) return null
 
   const previous = page > 1 ? hrefFor(basePath, page - 1) : null
@@ -33,7 +56,7 @@ export function Pagination({ page, pageCount, basePath, label }: PaginationProps
       {previous ? (
         <Link href={previous} rel="prev" className={cn(controlClassNames, "px-4 py-2")}>
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-          Newer
+          {previousLabel}
         </Link>
       ) : (
         <span
@@ -44,7 +67,7 @@ export function Pagination({ page, pageCount, basePath, label }: PaginationProps
           aria-hidden
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          Newer
+          {previousLabel}
         </span>
       )}
 
@@ -54,7 +77,7 @@ export function Pagination({ page, pageCount, basePath, label }: PaginationProps
 
       {next ? (
         <Link href={next} rel="next" className={cn(controlClassNames, "px-4 py-2")}>
-          Older
+          {nextLabel}
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       ) : (
@@ -65,7 +88,7 @@ export function Pagination({ page, pageCount, basePath, label }: PaginationProps
           )}
           aria-hidden
         >
-          Older
+          {nextLabel}
           <ChevronRight className="h-3.5 w-3.5" />
         </span>
       )}

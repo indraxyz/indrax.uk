@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
-import { SEEDED_POST_SLUG, SEEDED_TAG_SLUG } from "./support/constants"
+import { SEEDED_POST_SLUG, SEEDED_SERIES_SLUG, SEEDED_TAG_SLUG } from "./support/constants"
 
 /**
  * The accessibility floor, enforced rather than remembered.
@@ -23,6 +23,10 @@ const PATHS = [
   { name: "archive", path: "/blog" },
   { name: "article", path: `/blog/${SEEDED_POST_SLUG}` },
   { name: "tag", path: `/blog/tag/${SEEDED_TAG_SLUG}` },
+  { name: "series", path: `/blog/series/${SEEDED_SERIES_SLUG}` },
+  // Both states: the search box on its own, and the box with results under it.
+  { name: "search", path: "/blog/search" },
+  { name: "search results", path: "/blog/search?q=postgres" },
   { name: "not found", path: "/blog/no-such-article" },
   { name: "sign in", path: "/admin/login" },
 ]

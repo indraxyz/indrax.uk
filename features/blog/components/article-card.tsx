@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { PostContent } from "@/features/blog/components/post-content"
+import { SeriesNav } from "@/features/blog/components/series-nav"
 import { PostCover } from "@/features/blog/components/post-cover"
 import { PostMeta } from "@/features/blog/components/post-meta"
 import { TableOfContents } from "@/features/blog/components/table-of-contents"
@@ -54,6 +55,15 @@ export function ArticleCard({ post, article, meta }: ArticleCardProps) {
         </CardHeader>
 
         <CardContent className="pt-2">
+          {/* Above the contents list, because someone arriving at part four from a
+              search result needs to know there are three articles before it
+              before they read it, not after. */}
+          {post.seriesContext && (
+            <div className="mb-8">
+              <SeriesNav context={post.seriesContext} />
+            </div>
+          )}
+
           <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
           <PostContent html={article.html} />
         </CardContent>

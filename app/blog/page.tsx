@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import { EmptyState } from "@/features/blog/components/empty-state"
 import { PostListSection } from "@/features/blog/components/post-list-section"
+import { SearchForm } from "@/features/blog/components/search-form"
 import { TagPill } from "@/features/blog/components/tag-pill"
 import { BLOG_CONFIG, EMPTY_COPY, SECTION_COPY } from "@/features/blog/config"
 import { getPublishedPosts, getTagsInUse } from "@/features/blog/data/queries"
@@ -66,7 +67,14 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         results={results}
         basePath={BLOG_CONFIG.basePath}
         emptyState={<EmptyState message={EMPTY_COPY.blog} />}
-      />
+      >
+        {/* A GET form, so this is a link to `/blog/search?q=...` by another name -
+            it works with no JavaScript, and the result it reaches is a URL
+            somebody can share. */}
+        <div className="pb-2">
+          <SearchForm query="" />
+        </div>
+      </PostListSection>
     </BlogShell>
   )
 }

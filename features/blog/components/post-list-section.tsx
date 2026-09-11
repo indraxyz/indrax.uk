@@ -12,6 +12,11 @@ interface PostListSectionProps {
   results: PaginatedPosts
   basePath: string
   emptyState: ReactNode
+  /** Passed through to `Pagination`; see the note on its own props. */
+  previousLabel?: string
+  nextLabel?: string
+  /** Rendered above the list, for the search box. */
+  children?: ReactNode
 }
 
 /**
@@ -27,6 +32,9 @@ export function PostListSection({
   results,
   basePath,
   emptyState,
+  previousLabel,
+  nextLabel,
+  children,
 }: PostListSectionProps) {
   return (
     <SectionCard
@@ -39,6 +47,8 @@ export function PostListSection({
       // and which leaves heading navigation with no entry point.
       headingLevel={1}
     >
+      {children}
+
       {results.posts.length === 0 ? (
         emptyState
       ) : (
@@ -56,6 +66,8 @@ export function PostListSection({
             pageCount={results.pageCount}
             basePath={basePath}
             label={`${title} pages`}
+            previousLabel={previousLabel}
+            nextLabel={nextLabel}
           />
         </div>
       )}

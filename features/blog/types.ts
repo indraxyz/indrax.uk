@@ -70,6 +70,56 @@ export interface PostSummary {
   tags: Tag[]
 }
 
+/** An ordered run of posts meant to be read in sequence. */
+export interface Series {
+  id: string
+  slug: string
+  title: string
+  description: string | null
+}
+
+/** One part of a series, as the series page and the article footer list it. */
+export interface SeriesPart {
+  slug: string
+  title: string
+  order: number
+  /** False for a part that is written but not yet published. */
+  published: boolean
+}
+
+/**
+ * Where an article sits in its series, and what is on either side of it.
+ *
+ * `position` and `total` count published parts only, so a reader is never told
+ * they are on "part 2 of 7" with five of them unreachable. That makes `position`
+ * different from the post's stored `seriesOrder`, which is the author's ordering
+ * and keeps its gaps.
+ */
+export interface SeriesContext {
+  series: Series
+  parts: SeriesPart[]
+  position: number
+  total: number
+  previous: SeriesPart | null
+  next: SeriesPart | null
+}
+
+/** One part as the series page lists it: enough to draw a row, no body. */
+export interface SeriesPartDetail {
+  slug: string
+  title: string
+  order: number
+  excerpt: string | null
+  readingTime: number | null
+  publishedAt: string | null
+}
+
+/** A series and the parts of it a reader can actually open. */
+export interface SeriesWithParts {
+  series: Series
+  parts: SeriesPartDetail[]
+}
+
 /** A post as an article page sees it. */
 export interface Post extends PostSummary {
   content: PostDocument
@@ -77,6 +127,8 @@ export interface Post extends PostSummary {
   // Decorative and best-effort, by design. Counted by an image request, so it is
   // trivially inflatable and is never used for ranking or billing.
   viewCount: number
+  /** Null for a standalone post, which is most of them. */
+  seriesContext: SeriesContext | null
 }
 
 export interface PaginatedPosts {
@@ -88,6 +140,20 @@ export interface PaginatedPosts {
 /** A tag with the number of published posts carrying it. */
 export interface TagWithCount extends Tag {
   postCount: number
+}
+
+/**
+ * What a search asked for and what came back.
+ *
+ * `query` is echoed so the page can say what it searched for without re-reading
+ * `searchParams`, and so a rejected query - too long, or nothing but punctuation
+ * - is reported as the empty result it produced rather than as an error.
+ */
+export interface SearchResults {
+  query: string
+  posts: PostSummary[]
+  page: number
+  pageCount: number
 }
 
 /**
@@ -110,6 +176,11 @@ export interface AdminPost extends AdminPostSummary {
   content: PostDocument | null
   coverUrl: string | null
   coverAlt: string | null
+  // The title rather than the id, because the title is what the form's text box
+  // holds and what `resolveSeries` matches on.
+  seriesTitle: string | null
+  seriesDescription: string | null
+  seriesOrder: number | null
 }
 
 /**
