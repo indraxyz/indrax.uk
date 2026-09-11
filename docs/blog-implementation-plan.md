@@ -981,7 +981,32 @@ The build runs with **no `DATABASE_URL`** on purpose. Every read degrades to an
 empty result rather than throwing, so the site builds without one — asserting it
 in CI keeps that true, and it is also what a fresh clone gets.
 
-### 15.6 Still open
+### 15.6 What the first full run of the logger showed
+
+The logger was written, and then the end-to-end suite was run against a real
+database with it watching. Five of the six error lines it produced were the same
+thing: `The destination stream closed early.`, from `render:/blog/tag/[tag]`.
+
+Next prefetches a link's RSC payload on hover and cancels it the moment the
+pointer moves on. The render is already in flight, so it finishes into a socket
+nobody is holding and throws. Nothing is wrong - the page was served, or was
+never wanted. But five in one scripted run means a real tag list produces them
+steadily, and at `error` they bury the failures the digest exists to make
+findable. Any alert keyed on the level would fire constantly and then be muted,
+which is the worst of both.
+
+They are now recorded at `info`, on the info stream, without a stack. Demoted
+rather than dropped: a flood of them is itself a signal.
+
+Matched on message, because Next throws a plain `Error` with no code or name to
+check - so `observability.test.ts` asserts both directions, including that
+"The upload was aborted by the storage backend" stays an error. A loose match
+would silently reclassify real failures as noise, which is worse than the noise.
+
+Worth recording as a method rather than a fix: the logger earned its place by
+being run, not by being reviewed. The same is true of every bug in §11 and §14.7.
+
+### 15.7 Still open
 
 - **The nonce**, per §15.4 — a decision, not an oversight.
 - **`session.created_at` has no timezone**, still, because Better Auth generates
