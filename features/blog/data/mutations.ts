@@ -11,6 +11,7 @@ import { computeReadingTime } from "@/features/blog/utils/reading-time"
 import { createPreviewToken } from "@/features/blog/utils/preview-token"
 import { slugify, uniqueSlug } from "@/features/blog/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard"
+import { isSeriesOrderClash } from "@/features/blog/data/db-errors"
 import { getDb, schema } from "@/lib/db"
 import { postIdSchema, postInputSchema } from "@/lib/validators/blog"
 
@@ -35,27 +36,6 @@ const failure = (message: string, errors?: Record<string, string[]>): ActionResu
   message,
   errors,
 })
-
-/**
- * Whether a write failed because two parts claimed the same position.
- *
- * `idx_posts_series_order_unique` is what actually enforces the ordering, and it
- * has to: a check in application code loses the race between two saves, and the
- * author is the only person who could ever hit it. But an unhandled 23505 reaches
- * the reader as a 500 with a masked digest, which says nothing about the one
- * field that needs changing - so it is translated here rather than caught by the
- * error boundary.
- */
-function isSeriesOrderClash(error: unknown): boolean {
-  const cause = (error as { cause?: unknown })?.cause ?? error
-  const code = (cause as { code?: unknown })?.code
-  const message = error instanceof Error ? error.message : ""
-
-  return (
-    (code === "23505" || message.includes("23505")) &&
-    message.includes("idx_posts_series_order_unique")
-  )
-}
 
 /**
  * Invalidate everything a change to one post can be seen through.

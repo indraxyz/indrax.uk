@@ -1,6 +1,11 @@
 import { expect, test, type BrowserContext } from "@playwright/test"
 
-import { E2E_BASE_URL, SEEDED_DRAFT_TITLE, SEEDED_SECOND_POST_SLUG } from "./support/constants"
+import {
+  E2E_BASE_URL,
+  SEEDED_DRAFT_TITLE,
+  SEEDED_SECOND_POST_SLUG,
+  SEEDED_SERIES_TITLE,
+} from "./support/constants"
 import { mintAuthorSession, revokeAuthorSession, SESSION_COOKIE_SECURE } from "./support/session"
 
 /**
@@ -78,7 +83,9 @@ test.describe("authoring", () => {
     await page.goto("/admin/new")
     await page.waitForSelector(".ProseMirror")
 
-    await page.getByLabel("Title").fill(TITLE)
+    // Exact, because the series fieldset adds a "Series title" field and the
+    // default substring match resolves to both.
+    await page.getByLabel("Title", { exact: true }).fill(TITLE)
     await page.locator(".ProseMirror").click()
     await page.keyboard.type("The opening paragraph, typed by the suite.")
     await page.keyboard.press("Enter")
@@ -192,6 +199,33 @@ test.describe("authoring", () => {
 
     expect((await request.get(`/blog/${slug}`)).status()).toBe(404)
     expect(await (await request.get("/rss.xml")).text()).not.toContain(TITLE)
+  })
+
+  test("refuses a part number another article already holds", async () => {
+    const page = await context.newPage()
+
+    await page.goto(postPath)
+    await page.getByLabel("Series title").fill(SEEDED_SERIES_TITLE)
+    // Part one of the seeded series is taken. A partial unique index is what
+    // actually enforces that - an application check would lose the race between
+    // two saves - so this is really asking whether the 23505 it raises reaches
+    // the author as a field error rather than as a 500 with a masked digest.
+    await page.getByLabel("Part number").fill("1")
+    await page.getByRole("button", { name: /^save$/i }).click()
+
+    await expect(page.getByText(/part 1 of that series already exists/i)).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // Put it back, so the lifecycle below is unaffected by this detour.
+    await page.getByLabel("Series title").fill("")
+    await page.getByLabel("Part number").fill("")
+    await page.getByRole("button", { name: /^save$/i }).click()
+    await expect(page.getByText(/part 1 of that series already exists/i)).toHaveCount(0, {
+      timeout: 15_000,
+    })
+
+    await page.close()
   })
 
   test("deletes it, after asking", async () => {
