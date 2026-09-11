@@ -262,4 +262,5 @@ Potential enhancements:
       never starts until the visitor agrees, and no cookie is set before then
 - [x] Correlation ids on server errors, keyed on the digest the reader is shown
 - [x] Dependabot, and the CI gate that makes its pull requests verifiable
-- [ ] Playwright in CI — needs Postgres, the Neon proxy and a browser download
+- [x] Playwright in CI — the repository's own compose stack, so the runner and a
+      laptop cannot drift apart

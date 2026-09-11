@@ -5,12 +5,10 @@
 # unread or it rots. So the same `npm run check` that runs before a commit here
 # runs on the branch, and the bump either survives it or says why not.
 #
-# What it deliberately does not run is the Playwright suite. That needs a
-# Postgres, the Neon HTTP proxy in front of it, a production build and a browser
-# download, and it takes minutes rather than seconds - a follow-up worth doing,
-# but not one to hold a dependency bump behind. `npm run build` is here instead:
-# it catches the type and prerender failures that make up most of what would
-# break, in a fraction of the time.
+# Two jobs rather than one, running in parallel. `check` is seconds and catches
+# most of what breaks; `e2e` is minutes and catches the rest. Separating them
+# means a type error reports in a minute instead of waiting behind a browser
+# download.
 name: CI
 
 on:
@@ -58,3 +56,97 @@ jobs:
       # finding, hence the guard.
       - name: Audit
         run: npm audit --audit-level=high || true
+
+  # The suite that actually opens the site.
+  #
+  # Phase 5 is the argument for this job existing. Two real defects shipped past
+  # a green local run and a code review, and both were caught only when the suite
+  # ran against a database: search would have indexed every `href` in an article,
+  # making an injected spam link a search term, and the series clash check matched
+  # nothing so every duplicate part number would have reached the author as a 500.
+  # Forty-seven of the specs skip themselves without a database, and those
+  # forty-seven are where both bugs lived.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # The same stack `npm run db:up` starts locally, on the same ports, from the
+      # same docker-compose.yml - so CI and a laptop cannot drift apart. The
+      # application reaches Postgres through the Neon HTTP proxy on 4444, because
+      # that is the only protocol Workers can speak; drizzle-kit speaks the wire
+      # protocol and goes to 55432 directly.
+      DATABASE_URL: postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require
+      DIRECT_DATABASE_URL: postgres://indrax:indrax@127.0.0.1:55432/indrax
+
+      # Throwaway, and safe to have in the open. Nothing here authenticates
+      # against anything real: the OAuth values are never exercised, because the
+      # admin specs mint a session directly against the database rather than
+      # round-tripping GitHub. This secret signs cookies for a Postgres that is
+      # created and destroyed inside one job, so it protects nothing that outlives
+      # the run. A repository secret would be worse - a real credential in a place
+      # it is not needed.
+      BETTER_AUTH_SECRET: ci-only-secret-for-an-ephemeral-database-0000
+      ALLOWED_GITHUB_ID: "1"
+      GITHUB_CLIENT_ID: ci-only
+      GITHUB_CLIENT_SECRET: ci-only
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # `--wait` blocks until the healthchecks pass, so the migration below never
+      # races a Postgres that is still starting.
+      - name: Start Postgres and the Neon proxy
+        run: npm run db:up
+
+      - name: Migrate and seed
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      # Browsers are ~150MB and change only with the Playwright version, which
+      # moves with the lockfile.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright
+        # The system libraries a browser links against live outside that cache, so
+        # they are installed either way; only the download is skipped on a hit.
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # Builds and starts the site itself - see `webServer` in
+      # playwright.config.ts. Nothing here sets PLAYWRIGHT_CHANNEL: the runner can
+      # run Playwright's own pinned Chromium, which is the browser everyone should
+      # be tested against. The override exists for developer machines on an OS it
+      # no longer builds for.
+      - name: Run the suite
+        run: npx playwright test
+
+      # Only on failure, and only for a fortnight. A passing run's report is
+      # noise; a failing one holds the trace, the screenshot and the accessibility
+      # snapshot that says which element was actually on top.
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
