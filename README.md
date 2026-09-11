@@ -240,8 +240,12 @@ pull request. The build runs with no `DATABASE_URL` on purpose: every read
 degrades to an empty result rather than throwing, so the site builds without one,
 and asserting that in CI keeps it true.
 
-Playwright is deliberately not in CI yet - it needs Postgres, the Neon proxy, a
-production build and a browser download. Run it locally before anything ships.
+Playwright runs there too, in a second job: it brings up the same
+`docker-compose.yml` stack this repository uses locally, migrates, seeds, and
+runs the whole suite against Playwright's own pinned Chromium. The auth and
+database values in that job are throwaway literals rather than repository
+secrets - nothing in the suite authenticates against anything real, and a real
+credential placed where it is not needed is the worse option.
 
 `.github/dependabot.yml` raises weekly npm and Actions updates, minor and patch
 grouped into one pull request so majors stay separate and get read.

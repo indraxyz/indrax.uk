@@ -1034,8 +1034,8 @@ twice each, on the loaded machine that produced the failure.
 - **The nonce**, per §15.4 — a decision, not an oversight.
 - **`session.created_at` has no timezone**, still, because Better Auth generates
   that schema (§14.6).
-- **Playwright in CI**, which is what would make a Dependabot bump fully
-  verifiable rather than mostly.
+- ~~**Playwright in CI**~~ — done, and §17 is the argument that made it worth
+  doing rather than merely nice.
 
 ## 16. Phase 5 — search and series
 
@@ -1194,3 +1194,65 @@ each is unambiguous.
 - Accessibility, both themes, on the series page and both states of the search
   page. Zero serious or critical.
 - 102 unit tests, 108 end-to-end.
+
+## 17. Playwright in CI
+
+§15.5 left this open as "worth doing, not worth holding a dependency bump
+behind". Phase 5 settled the argument in the other direction.
+
+Two real defects shipped past a green local run and a review, and both were
+caught only when the suite ran against a database:
+
+- the spec's search SQL would have indexed every `href` in an article, so an
+  injected spam link becomes a searchable term — the archive's own search
+  surfacing the payload of an XSS the sanitiser otherwise neutralises
+- `isSeriesOrderClash` read `error.code` and `error.message`, and Drizzle puts
+  neither where they were looked for — so the predicate matched nothing and every
+  duplicate part number would have reached the author as a 500
+
+Forty-seven of the specs skip themselves without `DATABASE_URL`. Those
+forty-seven are exactly where both bugs lived. A gate that cannot run them is a
+gate that would have passed both.
+
+### 17.1 The stack is the repository's own
+
+CI runs `npm run db:up` — the same `docker-compose.yml`, the same ports, the same
+Neon HTTP proxy. A second definition written for the runner would drift from the
+one on a laptop, and the first sign of it would be a test that passes in one place
+and not the other.
+
+### 17.2 The credentials are deliberately in the open
+
+`BETTER_AUTH_SECRET`, `ALLOWED_GITHUB_ID` and the two GitHub OAuth values are
+literals in the workflow, not repository secrets. Nothing there authenticates
+against anything real: the admin specs mint a session directly against the
+database rather than round-tripping GitHub, so the OAuth values are only ever
+checked for presence. The secret signs cookies for a Postgres created and
+destroyed inside one job.
+
+A repository secret would be _worse_ — a real credential placed somewhere it is
+not needed, and one more thing that can leak from a log.
+
+### 17.3 Two jobs, not one
+
+`check` is seconds; `e2e` is minutes. Run as one job a type error waits behind a
+browser download before it is reported. Run as two they start together and the
+fast answer arrives first.
+
+The browser is cached on the lockfile hash, since it moves with the Playwright
+version. The system libraries it links against live outside that cache, so they
+are installed on a hit as well as a miss.
+
+No `PLAYWRIGHT_CHANNEL` in CI: the runner can run Playwright's own pinned
+Chromium, which is the browser everyone should be tested against. The override
+exists for a developer machine on an OS Playwright no longer builds for.
+
+### 17.4 Verified before pushing
+
+The migration chain was applied to an empty database — the condition CI runs
+under and the one a laptop never repeats after the first time. All six migrations
+applied, and the resulting schema carried the generated `search_vector`, the GIN
+index, the partial unique index, the `series` table, and no `content` column.
+
+Done in a scratch database rather than by destroying the local volume, because
+the fresh-start path can be proved without taking anything away.
