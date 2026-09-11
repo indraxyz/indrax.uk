@@ -67,7 +67,16 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
   const [row] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
   if (!row) return null
 
-  const grouped = await tagsByPost([row.id])
+  const [grouped, series] = await Promise.all([
+    tagsByPost([row.id]),
+    row.seriesId
+      ? db
+          .select({ title: schema.series.title, description: schema.series.description })
+          .from(schema.series)
+          .where(eq(schema.series.id, row.seriesId))
+          .limit(1)
+      : Promise.resolve([]),
+  ])
 
   return {
     id: row.id,
@@ -81,5 +90,8 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
     publishedAt: iso(row.publishedAt),
     updatedAt: row.updatedAt.toISOString(),
     tags: grouped.get(row.id) ?? [],
+    seriesTitle: series[0]?.title ?? null,
+    seriesDescription: series[0]?.description ?? null,
+    seriesOrder: row.seriesOrder,
   }
 }

@@ -11,6 +11,7 @@ import { computeReadingTime } from "@/features/blog/utils/reading-time"
 import { createPreviewToken } from "@/features/blog/utils/preview-token"
 import { slugify, uniqueSlug } from "@/features/blog/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard"
+import { isSeriesOrderClash } from "@/features/blog/data/db-errors"
 import { getDb, schema } from "@/lib/db"
 import { postIdSchema, postInputSchema } from "@/lib/validators/blog"
 
@@ -116,6 +117,47 @@ async function setPostTags(postId: string, names: string[]) {
 }
 
 /**
+ * Resolve a series title to a row, creating it if it is new.
+ *
+ * Matched on the slug for the same reason tags are: "Building a Blog" and
+ * "building a blog" are one series, not two, and an author who retypes the title
+ * slightly on part five should not silently start a second one.
+ *
+ * A description is only written when given, so re-saving part five with the box
+ * empty does not erase the description entered on part one.
+ */
+async function resolveSeries(
+  title: string | undefined,
+  description: string | undefined
+): Promise<string | null> {
+  const db = getDb()
+  if (!db || !title?.trim()) return null
+
+  const slug = slugify(title)
+  if (!slug) return null
+
+  await db
+    .insert(schema.series)
+    .values({ slug, title: title.trim(), description: description?.trim() || null })
+    .onConflictDoNothing({ target: schema.series.slug })
+
+  const [row] = await db
+    .select({ id: schema.series.id })
+    .from(schema.series)
+    .where(eq(schema.series.slug, slug))
+    .limit(1)
+
+  if (row && description?.trim()) {
+    await db
+      .update(schema.series)
+      .set({ description: description.trim(), updatedAt: new Date() })
+      .where(eq(schema.series.id, row.id))
+  }
+
+  return row?.id ?? null
+}
+
+/**
  * What a save accepts.
  *
  * `status` is the domain union rather than a bare string, so a caller cannot
@@ -134,6 +176,9 @@ interface SavePayload {
   coverAlt?: string
   status: PostStatus
   tags: string[]
+  seriesTitle?: string
+  seriesDescription?: string
+  seriesOrder?: number
 }
 
 export async function savePost(payload: SavePayload): Promise<ActionResult> {
@@ -211,6 +256,10 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
       (current?.publishedAt ?? new Date())
     : (current?.publishedAt ?? null)
 
+  // Resolved before the write, so a save that would create a series but then fail
+  // on a slug clash has already been turned away above.
+  const seriesId = await resolveSeries(input.seriesTitle, input.seriesDescription)
+
   const row = {
     slug,
     title: input.title,
@@ -220,6 +269,10 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     coverAlt: input.coverAlt ?? null,
     status: input.status,
     publishedAt,
+    // Both or neither. Clearing the series title has to clear the order too, or
+    // the row keeps a position within a series it no longer belongs to.
+    seriesId,
+    seriesOrder: seriesId ? (input.seriesOrder ?? null) : null,
     // Computed, never accepted: it is a pure function of the body, so a submitted
     // value could only be a duplicate or a lie (PRD US-3.1).
     readingTime: computeReadingTime(text),
@@ -227,16 +280,28 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     updatedAt: new Date(),
   }
 
-  const [saved] = current
-    ? await db
-        .update(schema.posts)
-        .set(row)
-        .where(eq(schema.posts.id, current.id))
-        .returning({ id: schema.posts.id, slug: schema.posts.slug })
-    : await db
-        .insert(schema.posts)
-        .values(row)
-        .returning({ id: schema.posts.id, slug: schema.posts.slug })
+  let saved: { id: string; slug: string }
+
+  try {
+    const [written] = current
+      ? await db
+          .update(schema.posts)
+          .set(row)
+          .where(eq(schema.posts.id, current.id))
+          .returning({ id: schema.posts.id, slug: schema.posts.slug })
+      : await db
+          .insert(schema.posts)
+          .values(row)
+          .returning({ id: schema.posts.id, slug: schema.posts.slug })
+
+    saved = written
+  } catch (error) {
+    if (!isSeriesOrderClash(error)) throw error
+
+    return failure("That could not be saved.", {
+      seriesOrder: [`Part ${input.seriesOrder} of that series already exists.`],
+    })
+  }
 
   await setPostTags(saved.id, input.tags)
 

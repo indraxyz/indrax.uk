@@ -249,8 +249,12 @@ Potential enhancements:
       request, at ~430ms of CPU per cold article, which worsens T-11 (denial of
       wallet) to buy defence-in-depth behind an already-tested sanitiser. See
       §15.4 of `docs/blog-implementation-plan.md`
-- [ ] Full-text search, then `pgvector` semantic search
-      (see `docs/blog-implementation-plan.md`)
+- [x] Full-text search — Postgres `tsvector`, generated from the Tiptap document
+      and weighted so titles outrank body text
+- [x] Series — an ordered run of posts, with an index page and article navigation
+      that counts only the parts a reader can actually open
+- [ ] `pgvector` semantic search (see `docs/blog-implementation-plan.md` §16)
+- [ ] Giscus comments
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
 - [ ] Enforce import ordering with an ESLint rule

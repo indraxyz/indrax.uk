@@ -13,6 +13,8 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
 - **Measured, with permission**: optional PostHog analytics for pageviews, CV downloads and contact clicks, behind a consent gate that starts nothing until the visitor says yes
 - **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
+- **Search**: Postgres full-text search over titles, summaries and article bodies, weighted so a title match wins — a plain GET form, so it needs no JavaScript
+- **Series**: an ordered run of posts with its own page and article-to-article navigation, counting only the parts a reader can open
 - **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
 - **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
 - **Reading aids**: an in-page contents list, related articles by tag, and copy buttons on code blocks - none of which cost a reader any JavaScript to read
@@ -39,7 +41,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── blog/                 # List, article, tag, preview and per-article cards
+│   ├── blog/                 # List, article, tag, search, series, preview and cards
 │   ├── admin/                # Authoring, behind the auth guard
 │   ├── api/auth/             # Better Auth endpoints
 │   ├── api/upload/           # Presigned cover uploads

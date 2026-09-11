@@ -4,7 +4,17 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
-import type { PaginatedPosts, Post, PostSummary, Tag, TagWithCount } from "@/features/blog/types"
+import type {
+  PaginatedPosts,
+  Post,
+  PostSummary,
+  SearchResults,
+  SeriesContext,
+  SeriesPart,
+  SeriesWithParts,
+  Tag,
+  TagWithCount,
+} from "@/features/blog/types"
 import { getDb, schema } from "@/lib/db"
 import { logServerError } from "@/lib/observability"
 
@@ -233,6 +243,166 @@ async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedP
   return { posts: await attachTags(rows), page: current, pageCount }
 }
 
+/**
+ * Reduces whatever arrived in `?q=` to something worth running.
+ *
+ * Returns the empty string for anything that is not a search, and the caller
+ * treats that as "no results" without touching the database. That covers the
+ * blank box, whitespace, and a query long enough to be an attempt at spending
+ * someone else's CPU rather than at finding an article.
+ *
+ * No escaping happens here and none is needed: the value is bound as a parameter
+ * and handed to `websearch_to_tsquery`, which is the one tsquery parser that
+ * treats its input as a search box rather than as syntax. `to_tsquery` would
+ * throw on an unbalanced quote - turning a stray apostrophe into a 500.
+ */
+export function normaliseQuery(raw: string | undefined): string {
+  const trimmed = (raw ?? "").replace(/\s+/g, " ").trim()
+
+  return trimmed.length > BLOG_CONFIG.maxQueryLength ? "" : trimmed
+}
+
+const EMPTY_SEARCH = (query: string): SearchResults => ({ query, posts: [], page: 1, pageCount: 0 })
+
+async function readSearchResults(query: string, page: number): Promise<SearchResults> {
+  const db = getDb()
+  if (!db) return EMPTY_SEARCH(query)
+
+  // Built once and reused by both statements so the count and the page can never
+  // disagree about what was asked.
+  const tsquery = sql`websearch_to_tsquery('english', ${query})`
+  const matches = and(isPublic, sql`${schema.posts.searchVector} @@ ${tsquery}`)
+
+  const [{ total }] = await db.select({ total: count() }).from(schema.posts).where(matches)
+
+  const pageCount = Math.ceil(total / BLOG_CONFIG.searchPageSize)
+  const current = Math.min(Math.max(page, 1), Math.max(pageCount, 1))
+
+  const rows = await db
+    .select(summaryColumns)
+    .from(schema.posts)
+    .where(matches)
+    // `ts_rank_cd` over `ts_rank`: it accounts for how close the matched words are
+    // to each other, which is what makes a two-word search find the article that
+    // discusses both together rather than the one that mentions each once.
+    // Publication date breaks ties, so equally relevant articles read newest-first.
+    .orderBy(
+      sql`ts_rank_cd(${schema.posts.searchVector}, ${tsquery}) desc`,
+      desc(schema.posts.publishedAt)
+    )
+    .limit(BLOG_CONFIG.searchPageSize)
+    .offset((current - 1) * BLOG_CONFIG.searchPageSize)
+
+  return { query, posts: await attachTags(rows), page: current, pageCount }
+}
+
+/**
+ * Where a post sits in its series, and what is on either side.
+ *
+ * Published parts only, and that is the whole subtlety: the author's ordering has
+ * gaps while a series is being written, so "part 2 of 7" would send a reader
+ * looking for five articles that answer 404. Position and total are counted over
+ * what is actually readable, while `seriesOrder` decides the sequence.
+ */
+async function readSeriesContext(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  seriesId: string,
+  slug: string
+): Promise<SeriesContext | null> {
+  const [row] = await db.select().from(schema.series).where(eq(schema.series.id, seriesId)).limit(1)
+
+  if (!row) return null
+
+  const parts = await db
+    .select({
+      slug: schema.posts.slug,
+      title: schema.posts.title,
+      order: schema.posts.seriesOrder,
+      status: schema.posts.status,
+      publishedAt: schema.posts.publishedAt,
+      contentJson: schema.posts.contentJson,
+    })
+    .from(schema.posts)
+    .where(eq(schema.posts.seriesId, seriesId))
+    .orderBy(schema.posts.seriesOrder)
+
+  const readable: SeriesPart[] = parts.map((part, fallbackOrder) => ({
+    slug: part.slug,
+    title: part.title,
+    order: part.order ?? fallbackOrder + 1,
+    published:
+      part.status === "published" && part.publishedAt !== null && part.contentJson !== null,
+  }))
+
+  const published = readable.filter((part) => part.published)
+  const index = published.findIndex((part) => part.slug === slug)
+
+  // The post is in the series but not itself published - a draft being previewed.
+  // It has no position among published parts, so it is given none.
+  if (index === -1) return null
+
+  return {
+    series: { id: row.id, slug: row.slug, title: row.title, description: row.description },
+    parts: readable,
+    position: index + 1,
+    total: published.length,
+    previous: published[index - 1] ?? null,
+    next: published[index + 1] ?? null,
+  }
+}
+
+async function readSeriesBySlug(slug: string): Promise<SeriesWithParts | null> {
+  const db = getDb()
+  if (!db) return null
+
+  const [row] = await db.select().from(schema.series).where(eq(schema.series.slug, slug)).limit(1)
+
+  if (!row) return null
+
+  const parts = await db
+    .select({
+      slug: schema.posts.slug,
+      title: schema.posts.title,
+      order: schema.posts.seriesOrder,
+      excerpt: schema.posts.excerpt,
+      readingTime: schema.posts.readingTime,
+      publishedAt: schema.posts.publishedAt,
+    })
+    .from(schema.posts)
+    .where(and(eq(schema.posts.seriesId, row.id), isPublic))
+    .orderBy(schema.posts.seriesOrder)
+
+  return {
+    series: { id: row.id, slug: row.slug, title: row.title, description: row.description },
+    parts: parts.map((part, index) => ({
+      slug: part.slug,
+      title: part.title,
+      order: part.order ?? index + 1,
+      excerpt: part.excerpt,
+      readingTime: part.readingTime,
+      publishedAt: iso(part.publishedAt),
+    })),
+  }
+}
+
+async function readSeriesSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
+  const db = getDb()
+  if (!db) return []
+
+  // A series is only worth listing once something in it is readable, and its
+  // freshness is that of its newest part.
+  const rows = await db
+    .select({
+      slug: schema.series.slug,
+      updatedAt: sql<Date>`max(${schema.posts.updatedAt})`.as("updated_at"),
+    })
+    .from(schema.series)
+    .innerJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic))
+    .groupBy(schema.series.slug)
+
+  return rows.map((row) => ({ slug: row.slug, updatedAt: new Date(row.updatedAt).toISOString() }))
+}
+
 async function readPostBySlug(slug: string): Promise<Post | null> {
   const db = getDb()
   if (!db) return null
@@ -257,6 +427,7 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
     content: row.contentJson,
     status: row.status,
     viewCount: row.viewCount,
+    seriesContext: row.seriesId ? await readSeriesContext(db, row.seriesId, slug) : null,
   }
 }
 
@@ -284,6 +455,10 @@ export async function getPostForPreview(slug: string): Promise<Post | null> {
     content: row.contentJson,
     status: row.status,
     viewCount: row.viewCount,
+    // Null while the draft itself is unpublished: it has no place among the
+    // parts a reader can reach, and inventing one would show the author a
+    // position the published article will not have.
+    seriesContext: row.seriesId ? await readSeriesContext(db, row.seriesId, slug) : null,
   }
 }
 
@@ -448,6 +623,56 @@ export const getRelatedPosts = (postId: string, limit = 3) =>
 
 export const getPublishedSlugs = () =>
   safely("getPublishedSlugs", [] as { slug: string; updatedAt: string }[], cachedPublishedSlugs)
+
+/**
+ * Search, deliberately uncached.
+ *
+ * Every other read here is wrapped in `unstable_cache`, and this one must not be.
+ * The cache key would include the query, and the query is a string a stranger
+ * chooses: `?q=aaaa`, `?q=aaab`, and so on are unbounded distinct keys, each one
+ * a miss that runs two statements and then writes an entry that will never be
+ * read again. That is the same unbounded-key-space problem `maxPage` exists to
+ * close, except free-text rather than numeric, so clamping cannot fix it - and on
+ * a runtime that bills for storage writes it is a way to spend money rather than
+ * merely CPU (threat T-11).
+ *
+ * What bounds it instead: `normaliseQuery` refuses anything over
+ * `maxQueryLength`, the page is clamped to `maxSearchPage`, and the GIN index
+ * makes the statement itself cheap. An uncached indexed lookup is the right shape
+ * for a query nobody repeats.
+ */
+export const searchPosts = (rawQuery: string | undefined, page = 1) => {
+  const query = normaliseQuery(rawQuery)
+
+  // Never reaches the database. An empty box is not a search.
+  if (!query) return Promise.resolve(EMPTY_SEARCH(query))
+
+  const bounded = Math.min(Math.max(page, 1), BLOG_CONFIG.maxSearchPage)
+
+  return safely("searchPosts", EMPTY_SEARCH(query), () => readSearchResults(query, bounded))
+}
+
+const cachedSeriesBySlug = unstable_cache(readSeriesBySlug, ["blog", "series-by-slug"], {
+  tags: [CACHE_TAGS.posts],
+})
+
+const cachedSeriesSlugs = unstable_cache(readSeriesSlugs, ["blog", "series-slugs"], {
+  tags: [CACHE_TAGS.posts],
+})
+
+/**
+ * One series and its published parts.
+ *
+ * Wrapped in `safely` unlike `getPostBySlug`, and for the opposite reason: a
+ * series page with nothing on it is a list that degraded, not a URL that stopped
+ * existing. `null` here means "no such series", which the route turns into a 404,
+ * and a database outage returns the empty list instead so the page stays a page.
+ */
+export const getSeriesBySlug = (slug: string) =>
+  safely("getSeriesBySlug", null as SeriesWithParts | null, () => cachedSeriesBySlug(slug))
+
+export const getSeriesSlugs = () =>
+  safely("getSeriesSlugs", [] as { slug: string; updatedAt: string }[], cachedSeriesSlugs)
 
 /**
  * Deliberately NOT wrapped in `safely`.

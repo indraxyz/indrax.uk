@@ -29,6 +29,20 @@
       "when": 1788685066650,
       "tag": "0003_auth_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789129146943,
+      "tag": "0004_search_and_series",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789129159848,
+      "tag": "0005_drop_markdown_content",
+      "breakpoints": true
     }
   ]
 }

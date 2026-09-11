@@ -12,7 +12,7 @@
  * published post using every node type the renderer handles, one published post
  * that shares a tag with it, one draft that must never appear anywhere public.
  */
-import { eq, inArray } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 
 import type { PostDocument } from "@/features/blog/types"
 import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
@@ -98,6 +98,10 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
     status: "published",
     publishedAt: "2026-08-14T09:00:00.000Z",
     tags: ["Next.js", "Performance", "TypeScript"],
+    seriesTitle: "Building this blog",
+    seriesDescription:
+      "How the blog you are reading was built, in the order the decisions were actually made.",
+    seriesOrder: 1,
     content: doc(
       p(
         text(
@@ -173,6 +177,8 @@ const file = await unified()
     status: "published",
     publishedAt: "2026-08-28T09:00:00.000Z",
     tags: ["Architecture", "Postgres", "TypeScript"],
+    seriesTitle: "Building this blog",
+    seriesOrder: 2,
     content: doc(
       p(
         text(
@@ -231,6 +237,10 @@ const file = await unified()
     slug: "notes-on-preview-tokens",
     status: "draft",
     tags: ["Security"],
+    // Part three, and unpublished. Deliberate: it is what proves a reader is told
+    // "part 1 of 2" rather than "part 1 of 3" with one of them answering 404.
+    seriesTitle: "Building this blog",
+    seriesOrder: 3,
     content: doc(
       p(
         text(
@@ -281,6 +291,47 @@ async function main() {
     )
   const tagIdBySlug = new Map(existingTags.map((tag) => [tag.slug, tag.id]))
 
+  // Series, resolved the same way tags are: matched on the slug, so one title
+  // spelled two ways is still one row. The description is taken from whichever
+  // entry supplies one.
+  const seriesRows = [
+    ...new Map(
+      posts
+        .filter((post) => post.seriesTitle)
+        .map((post) => [
+          slugify(post.seriesTitle as string),
+          {
+            slug: slugify(post.seriesTitle as string),
+            title: (post.seriesTitle as string).trim(),
+            description: post.seriesDescription?.trim() ?? null,
+          },
+        ])
+    ).values(),
+  ]
+
+  if (seriesRows.length > 0) {
+    await db
+      .insert(schema.series)
+      .values(seriesRows)
+      .onConflictDoUpdate({
+        target: schema.series.slug,
+        set: { title: sql`excluded.title`, updatedAt: new Date() },
+      })
+  }
+
+  const existingSeries = seriesRows.length
+    ? await db
+        .select()
+        .from(schema.series)
+        .where(
+          inArray(
+            schema.series.slug,
+            seriesRows.map((row) => row.slug)
+          )
+        )
+    : []
+  const seriesIdBySlug = new Map(existingSeries.map((row) => [row.slug, row.id]))
+
   for (const post of posts) {
     const slug = post.slug ?? slugify(post.title)
     const row = {
@@ -295,6 +346,8 @@ async function main() {
       // Stored, never accepted from input - the same rule the authoring path
       // follows, exercised here so the seeded rows are honest.
       readingTime: computeReadingTime(plainText(post.content)),
+      seriesId: post.seriesTitle ? (seriesIdBySlug.get(slugify(post.seriesTitle)) ?? null) : null,
+      seriesOrder: post.seriesTitle ? (post.seriesOrder ?? null) : null,
       updatedAt: new Date(),
     }
 

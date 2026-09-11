@@ -1036,3 +1036,161 @@ twice each, on the loaded machine that produced the failure.
   that schema (§14.6).
 - **Playwright in CI**, which is what would make a Dependabot bump fully
   verifiable rather than mostly.
+
+## 16. Phase 5 — search and series
+
+The growth work from the spec's §10, minus `pgvector` and Giscus. Two features
+that look unrelated and share one property: both are ways of finding an article
+that is not the front page.
+
+### 16.1 The spec's search SQL could not be used as written
+
+`docs/blog-spec.md` §3 proposes a generated `tsvector` over
+`title || excerpt || content`. `content` is the markdown column, and phase 2
+replaced it with `content_json` - so the expression names a column that, as of
+this branch, no longer exists.
+
+The obvious repair is `jsonb_to_tsvector`, and it is wrong. It indexes every
+string _value_ in the document, which for a Tiptap document means the node type
+names, every `href`, and every code block's `language`. Three consequences,
+verified rather than assumed:
+
+- a search for `paragraph` would match every article ever written
+- an injected spam link becomes a search term, so the archive's own search
+  surfaces the payload of an XSS that the sanitiser otherwise neutralises
+- `typescript` matches a code fence's language attribute, not prose about
+  TypeScript
+
+What is used instead extracts only text nodes:
+
+```sql
+jsonb_path_query_array(content_json, '$.**.text')::text
+```
+
+Proved against a document carrying all four cases before it was written into a
+migration: `href` not indexed, `language` not indexed, node types not indexed,
+body and title indexed.
+
+It is a **generated** column, not one the write path maintains. A column the
+application has to remember to update goes stale the first time a row is edited
+from anywhere else - psql, a migration, a future admin - and stale search results
+are the kind of bug nobody reports.
+
+Weighted `A`/`B`/`C` over title, excerpt and body, so a word in a title outranks
+the same word buried in prose. `to_tsvector` is only `IMMUTABLE` in its
+two-argument form, which is why the configuration is named explicitly rather than
+left to `default_text_search_config` - the single-argument form is `STABLE` and a
+generated column will not accept it.
+
+### 16.2 Search is the one read that must not be cached
+
+Every other public read goes through `unstable_cache`. This one deliberately does
+not, and the reason is the same one behind `maxPage`, in a worse form.
+
+The cache key would contain the query, and the query is a string a stranger
+chooses. `?q=aaaa`, `?q=aaab`, `?q=aaac` are unbounded distinct keys, each a miss
+that runs two statements and then writes an entry nothing will ever read again.
+`maxPage` closes the numeric version of this by clamping; there is nothing to
+clamp in free text. On a runtime that bills for storage writes, that is a way to
+spend money rather than merely CPU (threat T-11).
+
+What bounds it instead:
+
+| Guard                        | Where                                        |
+| :--------------------------- | :------------------------------------------- |
+| Query length, 120 chars      | `normaliseQuery`, before any statement runs  |
+| Empty query never reaches DB | `searchPosts` returns without calling        |
+| Page clamped to 20           | `searchPosts`, before the offset is computed |
+| Result set to 10             | `LIMIT` in the statement                     |
+| Statement cost               | GIN index on the vector                      |
+
+`websearch_to_tsquery` rather than `to_tsquery`: the latter throws on an
+unbalanced quote, which would turn a stray apostrophe in a search box into a 500.
+No escaping happens anywhere on this path and none should - the value is bound as
+a parameter, and a hand-rolled sanitiser would be a second, weaker defence that
+hid the first one failing.
+
+### 16.3 `/blog/search` is `noindex`, and that is why it is its own route
+
+A search page is an infinite URL space: every distinct `?q=` is a page as far as a
+crawler is concerned, all thin, all duplicating content that already has a
+canonical home on the article. `noindex, follow` keeps the results out of the
+index while still letting a crawler walk through to the articles, and it is
+absent from the sitemap for the same reason.
+
+It also removes the incentive to point a crawler at expensive queries, since there
+is nothing to be gained by having them indexed.
+
+The box itself is a plain GET form. Submitting navigates, which is what makes a
+result a URL that can be linked, bookmarked and shared - and it means search works
+before hydration and in a browser that never runs the bundle, the same property
+the rest of the reading experience has. A fetch-per-keystroke box would be
+smoother, would produce nothing anyone could send to anyone, and would put a
+database query behind every keypress rather than behind every search.
+
+### 16.4 A series counts only the parts a reader can open
+
+The subtle half of the feature. An author writes a series out of order and
+publishes it out of order, so the stored `seriesOrder` has gaps for as long as the
+series is unfinished.
+
+Telling a reader they are on "part 2 of 7" when five of those answer 404 is worse
+than not mentioning the series at all: it sends them looking for articles that do
+not exist. So `position` and `total` are counted over _published_ parts, while
+`seriesOrder` decides only the sequence. The two are different numbers and the
+type says so.
+
+The seeded fixture exists to hold this: three parts, two published. Nearly every
+assertion in `e2e/blog-series.spec.ts` is really asking whether the third one
+leaked - into the count, into a `rel="next"`, into the series page, into the
+sitemap.
+
+`series` is its own table rather than a string on `posts`, because a series has a
+title and a description that belong in one place. Spelled across rows they drift,
+and renaming one becomes an update of every member. Resolution is by slug, exactly
+as tags are, so retyping the title slightly on part five joins the same series
+rather than starting a second one.
+
+### 16.5 The ordering is enforced by the database, and translated for the author
+
+`idx_posts_series_order_unique` is a partial unique index on
+`(series_id, series_order)` where `series_id is not null` - partial because `null`
+means "not in a series" and any number of posts may be that.
+
+It has to be the database rather than a check in the action: a check loses the
+race between two saves. But an unhandled 23505 reaches the author as a 500 with a
+masked digest, which says nothing about the one field that needs changing - so
+`isSeriesOrderClash` translates it into a field error beside the part number.
+
+Clearing the series title clears the order too. Otherwise the row keeps a position
+within a series it no longer belongs to, and that position blocks the part that
+should have it.
+
+### 16.6 The contract half of expand/contract
+
+§12.1 recorded that `content` was "written by nothing and read by nothing as of
+this release, and dropped in the next one". This is the next one, so
+`0005_peaceful_moondragon.sql` drops it.
+
+Checked before dropping rather than after: three rows, all three carrying
+`content_json`, two still carrying the old markdown. Nothing readable is lost, and
+the site has never been deployed, so there is no production data behind it.
+
+The two migrations are separate on purpose. Generated together, drizzle-kit sees a
+dropped column alongside three added ones and stops to ask whether it is looking
+at a rename - a prompt that cannot be answered in a non-interactive shell. Split,
+each is unambiguous.
+
+### 16.7 Verified
+
+- The generated column, against a document carrying an `href`, a code `language`,
+  a node type and prose: only the prose is indexed.
+- The GIN index is used, shown with `enable_seqscan=off`. The planner declines it
+  at three rows, which is correct and not a defect.
+- Ranking: a title match scores 2.4 against 0.8 for a body-only match on the same
+  word.
+- The echoed query is escaped in all three places it appears - heading, empty
+  state, and the box's own value - checked with a `<script>` payload.
+- Accessibility, both themes, on the series page and both states of the search
+  page. Zero serious or critical.
+- 102 unit tests, 108 end-to-end.

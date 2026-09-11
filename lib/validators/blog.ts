@@ -15,6 +15,16 @@ export const LIMITS = {
   content: 400_000,
   tagName: 50,
   coverAlt: 300,
+  seriesTitle: 200,
+  seriesDescription: 500,
+  /**
+   * The highest position a part may claim.
+   *
+   * Not a limit on how long a series may be - it is what stops a stored order of
+   * 2^31 from existing at all. The number is only ever used to sort, so a large
+   * one buys nothing and an absurd one is a value nobody meant to type.
+   */
+  seriesOrder: 999,
 } as const
 
 export const slugSchema = z
@@ -35,6 +45,26 @@ export const postStatusSchema = z.enum(POST_STATUSES)
  * crash.
  */
 export const postIdSchema = z.uuid()
+
+export const seriesTitleSchema = z
+  .string()
+  .trim()
+  .min(1, "A series needs a title.")
+  .max(LIMITS.seriesTitle, `A series title cannot exceed ${LIMITS.seriesTitle} characters.`)
+
+/**
+ * Where a post sits in a series.
+ *
+ * Both halves are optional and they travel together: a post is either in a series
+ * at a position, or in no series at all. `seriesOrder` without `seriesTitle` is
+ * an ordering within nothing, and the refinement below rejects it rather than
+ * storing a number that can never be read.
+ */
+export const seriesOrderSchema = z
+  .number()
+  .int("A part number must be a whole number.")
+  .min(1, "Parts are numbered from 1.")
+  .max(LIMITS.seriesOrder, `A part number cannot exceed ${LIMITS.seriesOrder}.`)
 
 export const tagNameSchema = z
   .string()
@@ -72,6 +102,21 @@ export const postInputSchema = z
     coverAlt: z.string().trim().max(LIMITS.coverAlt).optional(),
     status: postStatusSchema.default("draft"),
     tags: z.array(tagNameSchema).max(10).default([]),
+    // The title is what an author types; the slug it normalises to is derived
+    // server-side, so two spellings of one series cannot become two rows.
+    seriesTitle: seriesTitleSchema.optional(),
+    seriesDescription: z.string().trim().max(LIMITS.seriesDescription).optional(),
+    seriesOrder: seriesOrderSchema.optional(),
+  })
+  .refine((post) => !post.seriesOrder || Boolean(post.seriesTitle), {
+    path: ["seriesTitle"],
+    message: "A part number needs a series to be part of.",
+  })
+  .refine((post) => !post.seriesTitle || Boolean(post.seriesOrder), {
+    path: ["seriesOrder"],
+    // Without one the series has no order, which is the only thing that
+    // distinguishes it from a tag.
+    message: "A series needs a part number.",
   })
   .refine((post) => !post.coverUrl || Boolean(post.coverAlt), {
     // An image with no alternative text is invisible to anyone who cannot see it,

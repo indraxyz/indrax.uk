@@ -85,6 +85,13 @@ export function PostForm({ post }: PostFormProps) {
   const [coverUrl, setCoverUrl] = useState(post?.coverUrl ?? "")
   const [coverAlt, setCoverAlt] = useState(post?.coverAlt ?? "")
   const [body, setBody] = useState<PostDocument | null>(post?.content ?? null)
+  const [seriesTitle, setSeriesTitle] = useState(post?.seriesTitle ?? "")
+  const [seriesDescription, setSeriesDescription] = useState(post?.seriesDescription ?? "")
+  // A string, not a number: an empty box is "" and `Number("")` is 0, which would
+  // silently claim part zero of a series nobody named.
+  const [seriesOrder, setSeriesOrder] = useState(
+    post?.seriesOrder === null || post?.seriesOrder === undefined ? "" : String(post.seriesOrder)
+  )
 
   // Changing the address of something already published breaks every link to it
   // that exists in the world. Worth saying out loud, at the moment it is being
@@ -109,6 +116,12 @@ export function PostForm({ post }: PostFormProps) {
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
+        seriesTitle: seriesTitle.trim() || undefined,
+        seriesDescription: seriesDescription.trim() || undefined,
+        // Undefined rather than NaN for an empty or unparseable box - the schema
+        // reads "absent", which with no series title is the standalone post that
+        // most articles are.
+        seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : undefined,
       })
 
       setResult(outcome)
@@ -223,6 +236,58 @@ export function PostForm({ post }: PostFormProps) {
             </p>
             <FieldError id="tags-error" messages={result?.errors?.tags} />
           </div>
+
+          <fieldset className="space-y-1.5 border-2 border-border p-3">
+            <legend className={`${labelClasses} px-1`}>Series</legend>
+
+            <label htmlFor="seriesTitle" className="sr-only">
+              Series title
+            </label>
+            <input
+              id="seriesTitle"
+              {...describedBy("seriesTitle", result?.errors?.seriesTitle)}
+              value={seriesTitle}
+              onChange={(event) => setSeriesTitle(event.target.value)}
+              placeholder="Building a blog"
+              className={fieldClasses}
+            />
+            <FieldError id="seriesTitle-error" messages={result?.errors?.seriesTitle} />
+
+            <label htmlFor="seriesOrder" className="sr-only">
+              Part number
+            </label>
+            <input
+              id="seriesOrder"
+              type="number"
+              min={1}
+              max={999}
+              {...describedBy("seriesOrder", result?.errors?.seriesOrder)}
+              value={seriesOrder}
+              onChange={(event) => setSeriesOrder(event.target.value)}
+              placeholder="Part number"
+              className={fieldClasses}
+            />
+            <FieldError id="seriesOrder-error" messages={result?.errors?.seriesOrder} />
+
+            <label htmlFor="seriesDescription" className="sr-only">
+              Series description
+            </label>
+            <textarea
+              id="seriesDescription"
+              {...describedBy("seriesDescription", result?.errors?.seriesDescription)}
+              value={seriesDescription}
+              onChange={(event) => setSeriesDescription(event.target.value)}
+              rows={2}
+              placeholder="Series description (optional)"
+              className={fieldClasses}
+            />
+            <FieldError id="seriesDescription-error" messages={result?.errors?.seriesDescription} />
+
+            <p className="text-xs font-medium text-muted-foreground">
+              Both or neither. Matching ignores case and punctuation, so retyping the title slightly
+              joins the same series rather than starting a second one.
+            </p>
+          </fieldset>
 
           <div className="space-y-1.5">
             <label htmlFor="excerpt" className={labelClasses}>

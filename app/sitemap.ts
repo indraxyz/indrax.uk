@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 
 import { BLOG_CONFIG } from "@/features/blog/config"
-import { getPublishedSlugs, getTagsInUse } from "@/features/blog/data/queries"
+import { getPublishedSlugs, getSeriesSlugs, getTagsInUse } from "@/features/blog/data/queries"
 import { RESUME_CONFIG, absoluteUrl, SITE_URL } from "@/features/resume/config"
 
 // The sitemap is prerendered, so without this it would keep whatever the archive
@@ -20,9 +20,17 @@ export const revalidate = 3600
  *
  * With no database configured this degrades to what it was before the blog
  * existed: the root URL, and nothing else.
+ *
+ * `/blog/search` is deliberately absent. It is `noindex` by design - every `?q=`
+ * is a distinct thin page and listing it would invite exactly the crawl it is
+ * trying to avoid.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [posts, tags] = await Promise.all([getPublishedSlugs(), getTagsInUse()])
+  const [posts, tags, series] = await Promise.all([
+    getPublishedSlugs(),
+    getTagsInUse(),
+    getSeriesSlugs(),
+  ])
 
   const root: MetadataRoute.Sitemap = [
     {
@@ -56,6 +64,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: absoluteUrl(`${BLOG_CONFIG.basePath}/tag/${tag.slug}`),
       changeFrequency: "weekly" as const,
       priority: 0.4,
+    })),
+    // Only series with something published in them - `getSeriesSlugs` joins
+    // through to published posts, so a series being written has nothing here and
+    // the page it would point at 404s anyway.
+    ...series.map((entry) => ({
+      url: absoluteUrl(`${BLOG_CONFIG.seriesPath}/${entry.slug}`),
+      lastModified: new Date(entry.updatedAt),
+      changeFrequency: "weekly" as const,
+      // Above a tag page: a series is an authored reading order, not an
+      // automatic grouping.
+      priority: 0.5,
     })),
   ]
 }
