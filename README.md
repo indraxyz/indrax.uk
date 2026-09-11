@@ -199,6 +199,14 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
+On an OS Playwright no longer builds Chromium for - it answers
+`does not support chromium on mac13` outright - borrow an installed browser
+instead of editing the config:
+
+```bash
+PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
+```
+
 The suite builds the site and runs against `next start`, because the CV and the
 social card are prerendered at build time and behave differently under `next dev`.
 
