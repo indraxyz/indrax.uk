@@ -1,0 +1,46 @@
+# Keeps the dependency tree patched without anyone having to remember to look.
+#
+# Threat T-13 is supply chain, and this session alone saw three advisories land
+# in transitive dependencies that nothing here imports directly - esbuild through
+# drizzle-kit, then sharp and js-yaml. Each was found by running `npm audit` at
+# the right moment, which is not a control. This is the control.
+#
+# Security updates need no configuration: GitHub raises those as soon as an
+# advisory matches the lockfile, regardless of the schedule below. What this file
+# adds is the routine upkeep that stops the tree drifting so far behind that the
+# security bump is a major version with breaking changes attached.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # One PR for the routine churn rather than fifteen. Majors stay separate,
+    # because those are the ones that need reading rather than merging.
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
+
+  # The workflow below pins actions by major version, which still moves under
+  # foot; this is what surfaces it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

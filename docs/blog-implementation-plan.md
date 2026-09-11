@@ -836,3 +836,203 @@ in the tree, and a scanner would rightly flag it.
 Fixed with an `overrides` entry pinning `esbuild`. Both audits are now zero, and
 `db:generate`, `db:migrate`, `db:seed` and `next build` were re-run to prove
 nothing depended on the version it replaced. The clean fix is upstream.
+
+## 15. Production readiness — branch `chore/production-readiness`
+
+Everything in §14.6 that was left open as "worth doing, not worth blocking a
+phase on", plus the two items the review deferred to the repository owner. Not a
+feature branch: nothing here changes what the site does, only what can be known
+about it when it misbehaves and what it refuses to do when attacked.
+
+### 15.1 Unit tests, for the things a browser cannot reach
+
+Vitest, 76 tests across six files. The end-to-end suite proves the system works
+in place; it cannot cheaply prove the boundaries of a pure function. So these
+cover exactly what Playwright is bad at:
+
+- **`preview-token`** — the expiry boundary in both directions, a signature
+  altered by one character, a payload re-encoded with a longer life and the old
+  signature attached, and eight shapes of malformed input that must all collapse
+  to the same `false`. This is the only thing between an unpublished draft and
+  anyone holding a URL (T-4).
+- **`content`** — the render pipeline, and mostly the sanitiser: a `javascript:`
+  image source the renderer will happily emit, a `javascript:` href, an `http:`
+  image, the inline styles Tiptap stores on tables, and the `rel` an anchor gets
+  whatever the stored document asked for (T-2). Plus the heading-shift property
+  that five silent bugs in phase 2 came out of.
+- **`slug`, `reading-time`, `media`, `validators/blog`** — the ordinary edges.
+
+`vitest.config.mts` aliases `server-only` to an empty stub, because the modules
+under test import it and Vitest is not a server. `test/support/server-only.ts`
+says so in a comment, so the next person does not go looking for the real one.
+
+`npm run check` now runs them, so they are on the same gate as the linter.
+
+### 15.2 Correlation ids: `lib/observability.ts` and `instrumentation.ts`
+
+PRD US-6.2 asks that a server error be findable from what the reader was shown,
+and that the reader be shown nothing more than that.
+
+Next already supplies the identifier — it hashes every server error into a
+`digest`, renders that on `app/error.tsx`, and withholds the message and the
+stack. So the digest _is_ the correlation id, and inventing a second one would
+produce a request id the reader never sees and could never quote. `logServerError`
+emits one JSON line keyed on it; `onRequestError` in `instrumentation.ts` catches
+what never reaches a `try`.
+
+Deliberately **not** logged: the request headers. They carry the session cookie.
+
+### 15.3 The consent gate
+
+The tier-1 spec recorded this as the one open item that made the site
+non-compliant rather than merely imperfect: PostHog sets first-party cookies, and
+for a `.uk` site PECR wants consent _before_ they are set.
+
+The tracker now does not initialise at all until the answer is yes — not
+initialised-then-opted-out, never started, so nothing is written and nothing is
+sent. Declining and ignoring produce the same state. Refusing is the same size
+and prominence as accepting. It can be withdrawn from the footer of every page,
+which stops the tracker and clears what it stored.
+
+The decision itself lives in `localStorage` rather than a cookie, so the site
+sets **no cookies at all** before consent — a simpler thing to be sure of than an
+exemption argument about a strictly-necessary one.
+
+#### The defect the gate introduced, found by running it
+
+The banner is `fixed inset-x-0 bottom-0`. The resume download — the site's main
+call to action — is in the footer, at the bottom of the page. So the notice
+landed directly on top of it, and the button was **unclickable for exactly as
+long as the question went unanswered**: a first-time visitor could not download
+the CV without first dismissing a cookie bar. The control for withdrawing consent
+sits in the same footer, so that was covered too.
+
+Two Playwright tests failed on it and the accessibility snapshot is what gave it
+away — the button appeared in the tree without the `[active]` marker the other
+runs had, meaning the click never landed rather than the download being slow.
+
+Fixed by having the banner also render an in-flow spacer of its own measured
+height, so the page grows by exactly what the fixed bar covers. Measured with a
+`ResizeObserver` rather than hard-coded, because the text wraps to two and three
+lines as the viewport narrows. `e2e/analytics.spec.ts` now asks the browser which
+element is on top at the middle of the button, and then downloads the file to
+prove it is clickable and not merely uncovered. Falsified by zeroing the spacer:
+the test fails.
+
+#### And one in the test harness
+
+`recordAnalytics(page, { consent: null })` cleared the stored decision in an
+init script — which runs on **every** document, so a test that declined and then
+reloaded to check the answer had stuck was wiping the answer on the way. It now
+only ever seeds a value; `null` is the empty storage a fresh context already has.
+
+### 15.4 Content-Security-Policy: what was added, and why `script-src` still is not
+
+Added, all of them free: `connect-src`, `style-src`, `frame-src`, `media-src`,
+`worker-src`, `manifest-src`. Without a `script-src`, `connect-src` is the
+directive doing the real work against T-2 — an injected script still runs, but
+this origin and the analytics endpoint are the only places it can send what it
+read.
+
+Its host comes from `lib/analytics-host.ts`, which exists solely so the policy
+and the tracker cannot drift. A policy naming a different host blocks every event
+and looks like an outage rather than a typo, so `e2e/blog.spec.ts` asserts the
+two agree.
+
+**`script-src` is still absent, and this was measured rather than assumed.** A
+useful one needs a per-request nonce: Next inlines its own bootstrap and the RSC
+payload, and hashing cannot substitute because that payload differs per page and
+per build. A nonce must come from middleware, and a nonce cannot be baked into a
+prerendered page — the HTML then holds a per-request value, so Next renders on
+every request instead of serving a file.
+
+Ten routes are prerendered today. An article body costs **~430ms of CPU on a cold
+isolate** (Shiki loading its grammars and both themes) and ~40ms warm, against
+zero now, because now it is a static file. On a per-request-billed runtime that
+converts the site's most linkable URLs into paid compute anyone can invoke in a
+loop — **T-11, denial of wallet, made materially worse** in exchange for
+defence-in-depth behind a sanitiser that is itself the control for T-2 and now
+has unit tests standing over it.
+
+That is a trade worth taking only with the render cached per-URL behind the
+nonce, or on a runtime where the billing reads differently. Recorded here so the
+absence is a decision with a number attached rather than an oversight.
+
+### 15.5 Dependabot, and the CI it needs to be worth anything
+
+`.github/dependabot.yml`, weekly, npm and GitHub Actions, minor and patch grouped
+into one pull request so majors stay separate and get read. Security updates need
+no schedule — GitHub raises those as soon as an advisory matches the lockfile.
+
+This session alone saw three advisories land in transitive dependencies nothing
+here imports directly: `esbuild` through `drizzle-kit` (§14.8), then `sharp` and
+`js-yaml`. Each was caught by running `npm audit` at the right moment, which is
+luck, not a control.
+
+A bot that raises bumps nobody can verify is worse than no bot, and this
+repository had no CI at all — so `.github/workflows/ci.yml` runs the same
+`npm run check` plus a build on every pull request. It deliberately does not run
+Playwright: that needs Postgres, the Neon proxy, a production build and a browser
+download, and holding a dependency bump behind minutes of that is the wrong
+trade. `npm audit` reports there rather than blocks, because advisories appear
+between commits rather than because of them.
+
+The build runs with **no `DATABASE_URL`** on purpose. Every read degrades to an
+empty result rather than throwing, so the site builds without one — asserting it
+in CI keeps that true, and it is also what a fresh clone gets.
+
+### 15.6 What the first full run of the logger showed
+
+The logger was written, and then the end-to-end suite was run against a real
+database with it watching. Five of the six error lines it produced were the same
+thing: `The destination stream closed early.`, from `render:/blog/tag/[tag]`.
+
+Next prefetches a link's RSC payload on hover and cancels it the moment the
+pointer moves on. The render is already in flight, so it finishes into a socket
+nobody is holding and throws. Nothing is wrong - the page was served, or was
+never wanted. But five in one scripted run means a real tag list produces them
+steadily, and at `error` they bury the failures the digest exists to make
+findable. Any alert keyed on the level would fire constantly and then be muted,
+which is the worst of both.
+
+They are now recorded at `info`, on the info stream, without a stack. Demoted
+rather than dropped: a flood of them is itself a signal.
+
+Matched on message, because Next throws a plain `Error` with no code or name to
+check - so `observability.test.ts` asserts both directions, including that
+"The upload was aborted by the storage backend" stays an error. A loose match
+would silently reclassify real failures as noise, which is worse than the noise.
+
+Worth recording as a method rather than a fix: the logger earned its place by
+being run, not by being reviewed. The same is true of every bug in §11 and §14.7.
+
+### 15.7 A click that never happened
+
+One CV-download test failed at 90s against a 6s operation, and the accessibility
+snapshot again said why: the button carried focus from the click but was still in
+its resting state, so the handler had never run.
+
+The resume page is server-rendered, so every control is present, focusable and
+clickable well before it does anything. Playwright's actionability checks are
+satisfied by that markup - visible, stable, enabled, uncovered - and it will
+happily click a button whose `onClick` does not exist yet. The click is then
+silently lost: no error, no state change, and a `waitForEvent` that sits there
+until the test gives up. It only appears under load, which is the worst way for
+it to appear, because it reads as flakiness rather than as a race.
+
+`whenHydrated()` waits for the consent UI, which is the one thing on the page
+that _cannot_ be server-rendered: the decision lives in `localStorage`, so both
+`ConsentBanner` and `ConsentControl` return `null` until an effect has run.
+Exactly one of them is on the page once it has. Waiting for either proves the
+effect fired, which proves hydration.
+
+Verified by repetition rather than by one green run - the four download tests,
+twice each, on the loaded machine that produced the failure.
+
+### 15.8 Still open
+
+- **The nonce**, per §15.4 — a decision, not an oversight.
+- **`session.created_at` has no timezone**, still, because Better Auth generates
+  that schema (§14.6).
+- **Playwright in CI**, which is what would make a Dependabot bump fully
+  verifiable rather than mostly.

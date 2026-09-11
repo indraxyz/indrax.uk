@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm"
 
 import { getDb, schema } from "@/lib/db"
+import { logServerError } from "@/lib/observability"
 
 // Counting is the whole job; there is nothing here to cache.
 export const dynamic = "force-dynamic"
@@ -57,7 +58,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
         )
     } catch (error) {
       // A counter that cannot count must not break the page it sits on.
-      console.error(`[blog] view count failed for ${slug}`, error)
+      logServerError(error, { scope: "blog.viewCount", slug })
     }
   }
 

@@ -47,13 +47,37 @@ function readableBody(request: Request) {
   return parts.join("\n")
 }
 
+export interface RecordOptions {
+  /**
+   * The stored consent decision the page should start with.
+   *
+   * Defaults to `granted`, because most of these specs are about what the
+   * tracker does once it is allowed to run. Pass `null` to start with no
+   * decision made, which is what a first-time visitor has.
+   */
+  consent?: "granted" | "denied" | null
+}
+
 /**
  * Intercepts everything the page tries to send to PostHog and records it.
  *
  * Call before navigating.
  */
-export async function recordAnalytics(page: Page) {
+export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
   const sent: string[] = []
+  const consent = options.consent === undefined ? "granted" : options.consent
+
+  // Nothing initialises until this is set, so it has to be in place before the
+  // first paint rather than after navigation.
+  //
+  // Seeded only, never cleared. An init script runs on every document, so
+  // clearing here would also wipe a decision the test itself made and then
+  // reloaded to check - `null` is the empty storage a fresh context already has.
+  if (consent) {
+    await page.addInitScript((value) => {
+      window.localStorage.setItem("indrax-analytics-consent", value)
+    }, consent)
+  }
 
   // PostHog drops events from anything that looks automated - a `navigator.webdriver`
   // flag, or a "HeadlessChrome" entry in `userAgentData.brands` - and does so

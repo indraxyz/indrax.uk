@@ -1,0 +1,60 @@
+# The gate every pull request has to pass.
+#
+# This exists mostly for the Dependabot pull requests next door. A bot that
+# raises a bump nobody can verify is worse than no bot: it either gets merged
+# unread or it rots. So the same `npm run check` that runs before a commit here
+# runs on the branch, and the bump either survives it or says why not.
+#
+# What it deliberately does not run is the Playwright suite. That needs a
+# Postgres, the Neon HTTP proxy in front of it, a production build and a browser
+# download, and it takes minutes rather than seconds - a follow-up worth doing,
+# but not one to hold a dependency bump behind. `npm run build` is here instead:
+# it catches the type and prerender failures that make up most of what would
+# break, in a fraction of the time.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+# A second push supersedes the first; no point finishing a run for a commit that
+# has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      # `ci` rather than `install`: it fails on a lockfile that disagrees with
+      # package.json instead of quietly rewriting it, which is the property that
+      # makes the lockfile worth reviewing.
+      - run: npm ci
+
+      - run: npm run check
+
+      # No DATABASE_URL here on purpose. Every read degrades to an empty result
+      # rather than throwing, so the site builds without one - and asserting that
+      # keeps the property true, since it is also what a fresh clone gets.
+      - run: npm run build
+
+      # Advisories appear between commits, not because of them, so this reports
+      # rather than blocks - a high finding in a transitive dependency should not
+      # stop an unrelated fix from merging. `npm audit` exits non-zero on any
+      # finding, hence the guard.
+      - name: Audit
+        run: npm audit --audit-level=high || true

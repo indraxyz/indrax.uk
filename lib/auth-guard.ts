@@ -3,6 +3,7 @@ import "server-only"
 import { headers } from "next/headers"
 
 import { allowedGithubId, getAuth, SESSION_ABSOLUTE_MS, type Author } from "@/lib/auth"
+import { logServerError } from "@/lib/observability"
 
 /**
  * The signed-in author, or null.
@@ -57,7 +58,7 @@ export async function getAuthor(): Promise<Author | null> {
     } catch (error) {
       // Refusing is the job; tidying up is a courtesy. Letting a failed revoke
       // throw would turn a redirect-to-login into a 500.
-      console.error("[auth] could not revoke an over-age session", error)
+      logServerError(error, { scope: "auth.revokeOverAgeSession" })
     }
 
     return null

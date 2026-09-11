@@ -2,6 +2,24 @@ import { defineConfig, devices } from "@playwright/test"
 
 import { E2E_BASE_URL, E2E_PORT, E2E_POSTHOG_HOST, E2E_POSTHOG_KEY } from "./e2e/support/constants"
 
+/**
+ * The browser both projects run in.
+ *
+ * Playwright's own Chromium is the default and the right one: it is pinned to the
+ * runner, so everyone gets the same engine. But it no longer builds for every OS
+ * Playwright still runs on - `playwright install chromium` answers "does not
+ * support chromium on mac13" outright - and on such a machine the suite cannot
+ * start at all.
+ *
+ * `PLAYWRIGHT_CHANNEL=chrome` borrows an installed browser instead. An
+ * environment variable rather than an edit, because the alternative is a local
+ * change to a tracked file that has to be remembered and stripped before every
+ * commit - and one day will not be.
+ */
+const CHANNEL = process.env.PLAYWRIGHT_CHANNEL
+
+const browser = { ...devices["Desktop Chrome"], ...(CHANNEL ? { channel: CHANNEL } : {}) }
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -30,12 +48,12 @@ export default defineConfig({
   projects: [
     {
       name: "reads",
-      use: { ...devices["Desktop Chrome"] },
+      use: browser,
       testIgnore: [/admin-authoring\.spec\.ts/, /admin-session\.spec\.ts/],
     },
     {
       name: "writes",
-      use: { ...devices["Desktop Chrome"] },
+      use: browser,
       testMatch: [/admin-authoring\.spec\.ts/, /admin-session\.spec\.ts/],
       fullyParallel: false,
       dependencies: ["reads"],

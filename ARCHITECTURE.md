@@ -238,16 +238,24 @@ Potential enhancements:
 
 - [x] Add E2E tests with Playwright
 - [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
-- [x] Add analytics - PostHog, key-gated
+- [x] Add analytics - PostHog, key-gated and consent-gated
 - [x] Surface contact details in the hero (email, LinkedIn, GitHub)
-- [ ] Add unit tests with Vitest — slug collision, reading time, the content
-      pipeline, preview tokens and the Zod schemas are the pure logic worth covering
-- [ ] Complete the Content-Security-Policy: `script-src` and `style-src` need a
-      per-request nonce, which needs middleware and would make every prerendered
-      page dynamic. The nonce-free directives are already in place
+- [x] Add unit tests with Vitest — 76 covering slug collision, reading time, the
+      content pipeline, preview tokens and the Zod schemas
+- [x] `style-src`, `connect-src`, `frame-src`, `media-src`, `worker-src` and
+      `manifest-src` added to the Content-Security-Policy
+- [ ] `script-src`, which needs a per-request nonce. Deferred with a measurement
+      rather than a shrug: the nonce forces every prerendered page to render per
+      request, at ~430ms of CPU per cold article, which worsens T-11 (denial of
+      wallet) to buy defence-in-depth behind an already-tested sanitiser. See
+      §15.4 of `docs/blog-implementation-plan.md`
 - [ ] Full-text search, then `pgvector` semantic search
       (see `docs/blog-implementation-plan.md`)
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
 - [ ] Enforce import ordering with an ESLint rule
-- [ ] Cookie-consent gate before analytics runs for UK/EU visitors
+- [x] Cookie-consent gate before analytics runs for UK/EU visitors — the tracker
+      never starts until the visitor agrees, and no cookie is set before then
+- [x] Correlation ids on server errors, keyed on the digest the reader is shown
+- [x] Dependabot, and the CI gate that makes its pull requests verifiable
+- [ ] Playwright in CI — needs Postgres, the Neon proxy and a browser download
