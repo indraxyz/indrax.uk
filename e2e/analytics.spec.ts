@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 
 import { recordAnalytics } from "./support/analytics"
 import { SEEDED_POST_SLUG } from "./support/constants"
+import { whenHydrated } from "./support/hydration"
 
 const EMAIL = "indracahyae@gmail.com"
 
@@ -34,6 +35,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page)
     await page.goto("/")
 
+    await whenHydrated(page)
     await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: "Download resume as PDF" }).click(),
@@ -70,6 +72,7 @@ test.describe("analytics", () => {
     })
 
     await page.goto("/")
+    await whenHydrated(page)
     await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: "Download resume as PDF" }).click(),
@@ -87,6 +90,7 @@ test.describe("analytics", () => {
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
 
+    await whenHydrated(page)
     const download = await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: "Download resume as PDF" }).click(),

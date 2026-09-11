@@ -1006,7 +1006,30 @@ would silently reclassify real failures as noise, which is worse than the noise.
 Worth recording as a method rather than a fix: the logger earned its place by
 being run, not by being reviewed. The same is true of every bug in §11 and §14.7.
 
-### 15.7 Still open
+### 15.7 A click that never happened
+
+One CV-download test failed at 90s against a 6s operation, and the accessibility
+snapshot again said why: the button carried focus from the click but was still in
+its resting state, so the handler had never run.
+
+The resume page is server-rendered, so every control is present, focusable and
+clickable well before it does anything. Playwright's actionability checks are
+satisfied by that markup - visible, stable, enabled, uncovered - and it will
+happily click a button whose `onClick` does not exist yet. The click is then
+silently lost: no error, no state change, and a `waitForEvent` that sits there
+until the test gives up. It only appears under load, which is the worst way for
+it to appear, because it reads as flakiness rather than as a race.
+
+`whenHydrated()` waits for the consent UI, which is the one thing on the page
+that _cannot_ be server-rendered: the decision lives in `localStorage`, so both
+`ConsentBanner` and `ConsentControl` return `null` until an effect has run.
+Exactly one of them is on the page once it has. Waiting for either proves the
+effect fired, which proves hydration.
+
+Verified by repetition rather than by one green run - the four download tests,
+twice each, on the loaded machine that produced the failure.
+
+### 15.8 Still open
 
 - **The nonce**, per §15.4 — a decision, not an oversight.
 - **`session.created_at` has no timezone**, still, because Better Auth generates
