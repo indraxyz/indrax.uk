@@ -18,8 +18,7 @@ export const revalidate = 3600
  * (threat T-4). The same is true of tag pages: `getTagsInUse` joins through to
  * published posts, so a tag whose articles are all drafts has nothing here.
  *
- * With no database configured this degrades to what it was before the blog
- * existed: the root URL, and nothing else.
+ * With no database configured this lists home, resume and tech stack pages.
  *
  * `/blog/search` is deliberately absent. It is `noindex` by design - every `?q=`
  * is a distinct thin page and listing it would invite exactly the crawl it is
@@ -38,6 +37,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(RESUME_CONFIG.updatedAt),
       changeFrequency: "monthly",
       priority: 1,
+    },
+    {
+      url: absoluteUrl("/resume"),
+      lastModified: new Date(RESUME_CONFIG.updatedAt),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl("/tech-stack"),
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   ]
 

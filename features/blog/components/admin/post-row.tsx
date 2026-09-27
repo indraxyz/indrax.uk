@@ -20,14 +20,16 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-4 border-2 border-border bg-card px-4 py-3">
       <div className="min-w-0 space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-2">
           <Badge variant={STATUS_TONE[post.status]}>{post.status}</Badge>
-          <Link
-            href={`/admin/edit/${post.id}`}
-            className="text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            {post.title}
-          </Link>
+          <div>
+            <Link
+              href={`/admin/edit/${post.id}`}
+              className="text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {post.title}
+            </Link>
+          </div>
         </div>
 
         <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">

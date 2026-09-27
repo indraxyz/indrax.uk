@@ -16,7 +16,7 @@ export default async function LoginPage() {
   return (
     <AdminShell title="Sign in" signedIn={false}>
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 border-2 border-border bg-card px-6 py-16 text-center shadow-soft">
-        <h1 className="text-2xl font-black uppercase tracking-tight">Author access</h1>
+        <h2 className="text-2xl font-black uppercase tracking-tight">Author access</h2>
 
         <p className="text-sm font-semibold leading-relaxed text-muted-foreground">
           One GitHub account can sign in here. Anything else is refused before a session exists.

@@ -29,6 +29,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-popover": "^1.1.23",

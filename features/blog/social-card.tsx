@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og"
 
+import { BLOG_CONFIG } from "@/features/blog/config"
 import type { Post } from "@/features/blog/types"
 import { SITE_HOST } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
@@ -59,7 +60,7 @@ export async function renderPostCard(post: Post) {
             textTransform: "uppercase",
           }}
         >
-          Writing
+          {BLOG_CONFIG.title}
         </div>
       </div>
 

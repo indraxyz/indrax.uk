@@ -1,8 +1,8 @@
 export const BLOG_CONFIG = {
-  title: "Writing",
+  title: "Articles",
   // Used as the feed title and in per-page metadata, so the blog names itself the
   // same way everywhere it is listed.
-  feedTitle: "Indra Cahya Edytya - Writing",
+  feedTitle: "Indra Cahya Edytya - Articles",
   feedDescription:
     "Notes on building and operating software: TypeScript, React, backend APIs, cloud deployment, and agentic workflows.",
   basePath: "/blog",

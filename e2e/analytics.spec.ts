@@ -50,10 +50,8 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page)
     await page.goto("/")
 
-    await page
-      .getByRole("navigation", { name: "Contact" })
-      .getByRole("link", { name: `Email ${EMAIL}` })
-      .click()
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("link", { name: EMAIL }).click()
 
     await expect.poll(() => analytics.captured("contact_clicked"), { timeout: 20_000 }).toBe(true)
     expect(analytics.sent.join("\n")).toContain("email")
@@ -165,14 +163,11 @@ test.describe("analytics", () => {
       await expect(page.getByRole("region", { name: /analytics consent/i })).toHaveCount(0)
     })
 
-    test("never covers the footer it is asking in front of", async ({ page }) => {
+    test("keeps the hero download usable while the consent bar is visible", async ({ page }) => {
       test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
-      // The bar is fixed to the bottom of the viewport and the resume download
-      // lives in the footer at the bottom of the page, so before the page
-      // reserved the bar's height the notice sat directly on top of the site's
-      // main call to action - unclickable for as long as the question went
-      // unanswered.
+      // The download now sits beside the hero title. It remains available while
+      // the fixed consent bar is visible, including after scrolling into view.
       await recordAnalytics(page, { consent: null })
       await page.goto("/")
 
@@ -205,6 +200,11 @@ test.describe("analytics", () => {
       for (const path of ["/", "/blog"]) {
         await test.step(path, async () => {
           await page.goto(path)
+
+          if (path === "/") {
+            await expect(page.locator("footer")).toContainText(/Updated .*·Cookies/)
+            await expect(page.locator("footer")).not.toContainText("indrax.uk")
+          }
 
           // Withdrawing has to be as reachable as granting was.
           await page.getByRole("button", { name: "Cookies" }).click()

@@ -1,6 +1,6 @@
 # Indra Cahya Edytya - Resume/CV Website
 
-A modern, responsive resume/curriculum vitae website built with Next.js 16, TypeScript, Tailwind CSS v4, and shadcn/ui components.
+A modern personal site with a home page, resume, and blog, built with Next.js 16, TypeScript, Tailwind CSS v4, and shadcn/ui components.
 
 ## 🚀 Features
 
@@ -8,6 +8,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Fully Typed**: Complete TypeScript implementation
 - **Responsive**: Mobile-first design that works on all devices
 - **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
+- **Focused routes**: `/` introduces the author, process, and recent writing; `/resume` contains the full CV; `/blog` lists articles; `/tech-stack` explains this site's implementation
 - **Downloadable CV**: react-pdf draws the resume in the browser on request, lazily loaded
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
@@ -33,6 +34,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 - **Auth**: Better Auth, GitHub OAuth, database-backed sessions
 - **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
 - **Package Manager**: npm
+- **Home interaction**: An SVG sequence diagram uses CSS to animate workflow arrows and respects reduced-motion preferences
 
 ## 📁 Project Structure
 
@@ -40,6 +42,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ├── app/                       # Next.js app directory
 │   ├── layout.tsx            # Root layout and metadata
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
+│   ├── resume/               # Full CV page
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
 │   ├── blog/                 # List, article, tag, search, series, preview and cards
 │   ├── admin/                # Authoring, behind the auth guard
@@ -61,6 +64,7 @@ A modern, responsive resume/curriculum vitae website built with Next.js 16, Type
 ├── drizzle/                  # Generated database migrations
 ├── features/
 │   ├── blog/                 # Blog slice - components, queries, content, editor
+│   ├── home/                 # Home page composition and recent writing
 │   └── resume/
 │       ├── components/      # Resume feature components
 │       ├── data/            # Resume data
@@ -137,6 +141,11 @@ Every variable is optional; copy `.env.example` to `.env.local` to set them.
 `/admin` exists only when all five auth variables are set. Without them the auth
 endpoints answer 404 and there is nothing to sign in to - an unconfigured
 deployment is closed rather than half-open.
+
+`/admin` is the author dashboard: it shows live post counts, the latest draft,
+and which optional services are configured. `/admin/posts` holds the complete
+post list, including drafts and archived posts. The editor stays at
+`/admin/new` and `/admin/edit/[id]`.
 
 Set it up once:
 

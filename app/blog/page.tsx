@@ -53,14 +53,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <BlogShell>
-      {tags.length > 0 && (
-        <nav aria-label="Tags" className="flex flex-wrap items-center gap-2">
-          {tags.map((tag) => (
-            <TagPill key={tag.id} tag={tag} count={tag.postCount} />
-          ))}
-        </nav>
-      )}
-
       <PostListSection
         title={BLOG_CONFIG.title}
         subtitle={SECTION_COPY.blog}
@@ -71,8 +63,15 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         {/* A GET form, so this is a link to `/blog/search?q=...` by another name -
             it works with no JavaScript, and the result it reaches is a URL
             somebody can share. */}
-        <div className="pb-2">
+        <div className="space-y-4 pb-2">
           <SearchForm query="" />
+          {tags.length > 0 && (
+            <nav aria-label="Tags" className="flex flex-wrap items-center gap-2">
+              {tags.map((tag) => (
+                <TagPill key={tag.id} tag={tag} count={tag.postCount} />
+              ))}
+            </nav>
+          )}
         </div>
       </PostListSection>
     </BlogShell>

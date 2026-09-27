@@ -32,10 +32,6 @@
 
   --font-sans: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
-  /* Article bodies only. The chrome, the nav, the headings and every code block
-     stay monospace, so the site keeps its identity and only long-form reading
-     gets a face built for it. Applied by `.prose`, nowhere else. */
-  --font-prose: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 @layer base {
@@ -541,11 +537,8 @@
   --tw-prose-th-borders: var(--semantic-border-default);
   --tw-prose-td-borders: var(--semantic-border-default);
 
-  /* The one place on the site that is not monospace. Long-form reading is what
-     this face is for; everything around it stays JetBrains Mono. */
-  font-family: var(--font-prose);
-  /* Typography's default measure is 65ch, inside the 60-80 the spec asks for. */
-  max-width: 68ch;
+  font-family: var(--font-sans);
+  max-width: none;
 }
 
 /* The site's headings are heavy and uppercase; article headings inherit that so

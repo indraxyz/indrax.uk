@@ -20,6 +20,16 @@ test.describe("a seeded blog", () => {
     "needs a seeded database - see npm run db:up / db:migrate / db:seed"
   )
 
+  test("puts archive tags after the search form", async ({ page }) => {
+    await page.goto("/blog")
+
+    const search = await page.getByRole("search").boundingBox()
+    const tags = await page.getByRole("navigation", { name: "Tags" }).boundingBox()
+    expect(search).not.toBeNull()
+    expect(tags).not.toBeNull()
+    expect(tags!.y).toBeGreaterThan(search!.y + search!.height)
+  })
+
   test("renders an article, its dates and its reading time", async ({ page }) => {
     await page.goto(`/blog/${SEEDED_POST_SLUG}`)
 
@@ -276,12 +286,81 @@ test.describe("a seeded blog", () => {
     expect(await buttons.count()).toBe(await page.locator(".prose pre").count())
   })
 
-  test("surfaces the blog from the resume page", async ({ page }) => {
+  test("surfaces the blog from the home page", async ({ page }) => {
     await page.goto("/")
 
     const link = page.getByRole("link", { name: /all articles/i })
     await expect(link).toBeVisible()
     // Same-site, so it must not steal the tab.
     await expect(link).not.toHaveAttribute("target", "_blank")
+  })
+
+  test("matches the main site width and lays out article lists for each screen size", async ({
+    page,
+  }) => {
+    for (const { width, columns } of [
+      { width: 390, columns: 1 },
+      { width: 768, columns: 2 },
+      { width: 1440, columns: 3 },
+    ]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto("/")
+      const homeWidth = await page
+        .locator("main")
+        .evaluate((main) => main.getBoundingClientRect().width)
+      const homeContent = await page.locator("main > :not(script)").first().boundingBox()
+      expect(homeContent).not.toBeNull()
+
+      for (const path of [
+        "/",
+        "/resume",
+        "/tech-stack",
+        "/blog",
+        "/blog/search?q=renderer",
+        `/blog/tag/${SEEDED_TAG_SLUG}`,
+        `/blog/${SEEDED_POST_SLUG}`,
+      ]) {
+        await page.goto(path)
+        if (
+          ["/", "/blog", "/blog/search?q=renderer", `/blog/tag/${SEEDED_TAG_SLUG}`].includes(path)
+        ) {
+          const grid = page.locator("[data-post-grid]").first()
+          await expect(grid).toBeVisible()
+
+          const templateColumns = await grid.evaluate(
+            (element) => getComputedStyle(element).gridTemplateColumns
+          )
+          expect(templateColumns.split(" ")).toHaveLength(columns)
+        }
+
+        const mainWidth = await page
+          .locator("main")
+          .evaluate((main) => main.getBoundingClientRect().width)
+        expect(Math.abs(mainWidth - homeWidth)).toBeLessThanOrEqual(1)
+        const content = await page.locator("main > :not(script)").first().boundingBox()
+        expect(content).not.toBeNull()
+        expect(Math.abs(content!.x - homeContent!.x)).toBeLessThanOrEqual(1)
+        expect(Math.abs(content!.y - homeContent!.y)).toBeLessThanOrEqual(1)
+        expect(Math.abs(content!.width - homeContent!.width)).toBeLessThanOrEqual(1)
+      }
+    }
+
+    await page.goto("/")
+    const homeWidth = await page
+      .locator("main")
+      .evaluate((main) => main.getBoundingClientRect().width)
+    await page.goto(`/blog/${SEEDED_POST_SLUG}`)
+    const articleWidth = await page
+      .locator("main")
+      .evaluate((main) => main.getBoundingClientRect().width)
+    const bodyWidth = await page
+      .locator("article .prose")
+      .evaluate((body) => body.getBoundingClientRect().width)
+    expect(Math.abs(articleWidth - homeWidth)).toBeLessThanOrEqual(1)
+    expect(bodyWidth).toBeGreaterThan(articleWidth * 0.8)
+    const bodyFont = await page
+      .locator("article .prose")
+      .evaluate((body) => getComputedStyle(body).fontFamily)
+    expect(bodyFont).toContain("JetBrains")
   })
 })

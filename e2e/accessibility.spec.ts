@@ -19,7 +19,9 @@ import { SEEDED_POST_SLUG, SEEDED_SERIES_SLUG, SEEDED_TAG_SLUG } from "./support
  * blocking a merge over.
  */
 const PATHS = [
-  { name: "resume", path: "/" },
+  { name: "home", path: "/" },
+  { name: "resume", path: "/resume" },
+  { name: "tech stack", path: "/tech-stack" },
   { name: "archive", path: "/blog" },
   { name: "article", path: `/blog/${SEEDED_POST_SLUG}` },
   { name: "tag", path: `/blog/tag/${SEEDED_TAG_SLUG}` },

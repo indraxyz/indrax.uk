@@ -1,8 +1,8 @@
-import { ResumePage } from "@/features/resume/components/resume-page"
+import { HomePage } from "@/features/home/components/home-page"
 import { buildProfileStructuredData } from "@/features/resume/utils/structured-data"
 import { serialiseJsonLd } from "@/lib/utils"
 
-export default function HomePage() {
+export default function HomeRoute() {
   const structuredData = buildProfileStructuredData()
 
   return (
@@ -11,7 +11,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serialiseJsonLd(structuredData) }}
       />
-      <ResumePage />
+      <HomePage />
     </>
   )
 }
