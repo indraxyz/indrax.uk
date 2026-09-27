@@ -19,7 +19,11 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
   if (!post) notFound()
 
   return (
-    <AdminShell title="Edit post" actions={<PostActions post={post} />}>
+    <AdminShell
+      title="Edit post"
+      backLink={{ href: "/admin/posts", label: "Posts" }}
+      actions={<PostActions post={post} />}
+    >
       <PostForm post={post} />
     </AdminShell>
   )

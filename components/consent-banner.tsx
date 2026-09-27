@@ -44,12 +44,9 @@ export function ConsentBanner() {
   }, [])
 
   // The bar is fixed, so it is out of flow and sits on top of whatever the page
-  // ends with - which here is the footer holding the resume download and the
-  // control for withdrawing this very consent. Covering the site's main call to
-  // action with the cookie notice is the failure mode every one of these banners
-  // has, so the page grows by exactly the bar's height and the footer stays
-  // reachable. Measured rather than hard-coded because the text wraps to two and
-  // three lines as the viewport narrows.
+  // ends with - including the footer control for withdrawing consent. The page
+  // grows by exactly the bar's height so that control stays reachable. Measured
+  // rather than hard-coded because the text wraps as the viewport narrows.
   useEffect(() => {
     const element = bar.current
 
@@ -126,7 +123,13 @@ export function ConsentBanner() {
  * listens for the same event - and brings the banner back so a different answer
  * can be given.
  */
-export function ConsentControl({ className }: { className?: string }) {
+export function ConsentControl({
+  className,
+  separator = false,
+}: {
+  className?: string
+  separator?: boolean
+}) {
   const [decided, setDecided] = useState(false)
 
   useEffect(() => {
@@ -143,15 +146,22 @@ export function ConsentControl({ className }: { className?: string }) {
   if (!decided) return null
 
   return (
-    <button
-      type="button"
-      onClick={clearConsent}
-      className={cn(
-        "text-sm font-black uppercase tracking-[0.14em] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
-        className
+    <>
+      {separator && (
+        <span aria-hidden="true" className="text-sm text-muted-foreground print:hidden">
+          ·
+        </span>
       )}
-    >
-      Cookies
-    </button>
+      <button
+        type="button"
+        onClick={clearConsent}
+        className={cn(
+          "text-sm font-black uppercase tracking-[0.14em] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
+          className
+        )}
+      >
+        Cookies
+      </button>
+    </>
   )
 }

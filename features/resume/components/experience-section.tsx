@@ -4,6 +4,7 @@ import { SectionCard } from "@/components/ui/section-card"
 import { Timeline, TimelineContent, TimelineItem } from "@/components/ui/timeline"
 import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { experiences } from "@/features/resume/data/resume"
+import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { Briefcase } from "lucide-react"
 
 type Experience = (typeof experiences)[number]
@@ -48,7 +49,7 @@ function ExperienceCard({ company, period, timing, role, description }: Experien
   return (
     <Card
       height="2xl"
-      className="variant-secondary variant-border max-w-96 shrink-0 bg-[var(--variant-soft)]"
+      className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
     >
       <CardHeader className="variant-surface-header border-b-2 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">

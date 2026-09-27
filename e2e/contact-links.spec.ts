@@ -3,17 +3,20 @@ import { expect, test } from "@playwright/test"
 const EMAIL = "indracahyae@gmail.com"
 
 test.describe("contact actions", () => {
-  test("offers an email action carrying the address", async ({ page }) => {
-    await page.goto("/")
+  test("offers an email action in personal information", async ({ page }) => {
+    for (const path of ["/", "/resume"]) {
+      await page.goto(path)
+      await expect(
+        page.getByRole("navigation", { name: "Contact" }).getByRole("link", { name: /email/i })
+      ).toHaveCount(0)
+      await page.getByRole("button", { name: "Open personal information" }).click()
 
-    const contact = page.getByRole("navigation", { name: "Contact" })
-    const email = contact.getByRole("link", { name: `Email ${EMAIL}` })
+      const email = page.getByRole("link", { name: EMAIL })
 
-    await expect(email).toBeVisible()
-    await expect(email).toHaveAttribute("href", `mailto:${EMAIL}`)
-    // Rendered as text, not only as a link target: a printed sheet has no link to
-    // follow, and before this neither the page nor the print copy carried an email.
-    await expect(email).toContainText(EMAIL)
+      await expect(email).toBeVisible()
+      await expect(email).toHaveAttribute("href", `mailto:${EMAIL}`)
+      await expect(email).toContainText(EMAIL)
+    }
   })
 
   test("links out to LinkedIn and GitHub safely", async ({ page }) => {
@@ -35,9 +38,8 @@ test.describe("contact actions", () => {
   test("is reachable by keyboard", async ({ page }) => {
     await page.goto("/")
 
-    const email = page
-      .getByRole("navigation", { name: "Contact" })
-      .getByRole("link", { name: `Email ${EMAIL}` })
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    const email = page.getByRole("link", { name: EMAIL })
 
     await email.focus()
     await expect(email).toBeFocused()

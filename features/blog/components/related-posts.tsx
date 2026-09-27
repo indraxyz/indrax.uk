@@ -1,5 +1,6 @@
 import { SectionCard } from "@/components/ui/section-card"
 import { PostCard } from "@/features/blog/components/post-card"
+import { PostGrid } from "@/features/blog/components/post-grid"
 import type { PostSummary } from "@/features/blog/types"
 import { Newspaper } from "lucide-react"
 
@@ -24,11 +25,11 @@ export function RelatedPosts({ posts }: RelatedPostsProps) {
       subtitle="Other articles sharing a tag with this one."
       className="print:hidden"
     >
-      <div className="grid gap-6 md:grid-cols-3">
+      <PostGrid>
         {posts.map((post) => (
           <PostCard key={post.id} post={post} headingLevel={3} />
         ))}
-      </div>
+      </PostGrid>
     </SectionCard>
   )
 }

@@ -55,17 +55,19 @@ export function ArticleCard({ post, article, meta }: ArticleCardProps) {
         </CardHeader>
 
         <CardContent className="pt-2">
-          {/* Above the contents list, because someone arriving at part four from a
-              search result needs to know there are three articles before it
-              before they read it, not after. */}
-          {post.seriesContext && (
-            <div className="mb-8">
-              <SeriesNav context={post.seriesContext} />
-            </div>
-          )}
+          <div className="min-w-0">
+            {/* Above the contents list, because someone arriving at part four from a
+                search result needs to know there are three articles before it
+                before they read it, not after. */}
+            {post.seriesContext && (
+              <div className="mb-8">
+                <SeriesNav context={post.seriesContext} />
+              </div>
+            )}
 
-          <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
-          <PostContent html={article.html} />
+            <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
+            <PostContent html={article.html} />
+          </div>
         </CardContent>
       </Card>
     </article>

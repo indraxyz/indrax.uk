@@ -10,8 +10,8 @@ import type { PostSummary } from "@/features/blog/types"
 interface PostCardProps {
   post: PostSummary
   priority?: boolean
-  // h2 on the list pages, whose section header is the page h1. h3 on the resume,
-  // where the "Writing" section header is itself an h2.
+  // h2 on the list pages, whose section header is the page h1. h3 on home,
+  // where the "Articles" section header is itself an h2.
   headingLevel?: CardTitleLevel
 }
 

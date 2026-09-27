@@ -3,6 +3,17 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition, type ReactNode } from "react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { authClient } from "@/lib/auth-client"
 
 interface SignOutButtonProps {
@@ -21,40 +32,55 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [failed, setFailed] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  function signOut() {
+    setFailed(false)
+    startTransition(async () => {
+      try {
+        const result = await authClient.signOut()
+        if (result?.error) {
+          setFailed(true)
+          return
+        }
+
+        setOpen(false)
+        router.replace("/admin/login")
+        router.refresh()
+      } catch {
+        setFailed(true)
+      }
+    })
+  }
 
   return (
-    <>
-      <button
-        type="button"
-        disabled={pending}
-        className={className}
-        onClick={() => {
-          setFailed(false)
-          startTransition(async () => {
-            const result = await authClient.signOut()
-
-            // The client returns `{ error }` rather than throwing, so this used to
-            // redirect to the login page whatever happened - showing someone they
-            // were signed out while their session was still live on the server.
-            // Being told it did not work is the only honest option.
-            if (result?.error) {
-              setFailed(true)
-              return
-            }
-
-            router.replace("/admin/login")
-            router.refresh()
-          })
-        }}
-      >
-        {children}
-      </button>
-
-      {failed && (
-        <p role="alert" className="text-xs font-black uppercase tracking-[0.14em] text-destructive">
-          Sign-out failed. Your session is still active.
-        </p>
-      )}
-    </>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) setFailed(false)
+      }}
+    >
+      <AlertDialogTrigger className={className}>{children}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Sign out?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to end your admin session?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {failed && (
+          <p role="alert" className="mt-4 text-sm font-semibold text-destructive">
+            Sign-out failed. Your session is still active.
+          </p>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction disabled={pending} onClick={signOut}>
+            {pending ? "Signing out…" : "Sign out"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

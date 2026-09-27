@@ -1,9 +1,10 @@
 import { Separator } from "@/components/ui/separator"
 import { personalInfo } from "@/features/resume/data/resume"
 import { InfoItem } from "@/features/resume/components/info-item"
+import { EmailLink } from "@/features/resume/components/email-link"
 import { SectionCard } from "@/components/ui/section-card"
 import { formatBirthDetails, getCurrentAge } from "@/features/resume/utils/personal-info"
-import { Calendar, MapPin, User, UserSearch } from "lucide-react"
+import { Calendar, Mail, MapPin, User, UserSearch } from "lucide-react"
 
 export function PersonalCard() {
   const currentAge = getCurrentAge(personalInfo.birthDate)
@@ -31,6 +32,16 @@ export function PersonalCard() {
           label="Address"
           value={personalInfo.address}
         />
+        {personalInfo.email && (
+          <>
+            <Separator className="my-2" />
+            <InfoItem
+              icon={<Mail className="h-4 w-4" />}
+              label="Email"
+              value={<EmailLink email={personalInfo.email} />}
+            />
+          </>
+        )}
       </div>
     </SectionCard>
   )

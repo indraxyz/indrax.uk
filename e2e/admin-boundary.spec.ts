@@ -23,7 +23,7 @@ import { expect, test } from "@playwright/test"
  * deployment must be *more* closed than a configured one, never less.
  */
 test.describe("the admin boundary", () => {
-  const GUARDED = ["/admin", "/admin/new", "/admin/edit/some-id"]
+  const GUARDED = ["/admin", "/admin/posts", "/admin/new", "/admin/edit/some-id"]
 
   test("sends a signed-out visitor to the login page", async ({ page }) => {
     for (const path of GUARDED) {

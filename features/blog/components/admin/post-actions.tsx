@@ -121,7 +121,7 @@ export function PostActions({ post }: { post: AdminPost }) {
 
           run(
             () => deletePost(post.id),
-            () => router.replace("/admin")
+            () => router.replace("/admin/posts")
           )
         }}
       >

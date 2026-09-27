@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { SectionCard } from "@/components/ui/section-card"
 import { portfolioItems } from "@/features/resume/data/resume"
+import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { Code, ExternalLink } from "lucide-react"
 import Link from "next/link"
 
@@ -19,7 +20,7 @@ export function PortfolioSection() {
         <Card
           key={`${item.title}-${item.year}`}
           height="2xl"
-          className="variant-secondary variant-border w-[350px] max-w-[85vw] shrink-0 bg-[var(--variant-soft)]"
+          className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <div className="flex items-start justify-between gap-4">

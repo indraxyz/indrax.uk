@@ -1,0 +1,50 @@
+.lifeline {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+  opacity: 0.42;
+}
+
+.baseLine {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.trace {
+  fill: none;
+  stroke: var(--semantic-action-tertiary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-sequence 24s linear infinite;
+}
+
+@keyframes draw-sequence {
+  0%,
+  1% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+
+  11%,
+  88% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  95%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trace {
+    animation: none;
+    opacity: 0;
+  }
+}

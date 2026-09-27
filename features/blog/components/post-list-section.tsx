@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { SectionCard } from "@/components/ui/section-card"
 import { Pagination } from "@/features/blog/components/pagination"
 import { PostCard } from "@/features/blog/components/post-card"
+import { PostGrid } from "@/features/blog/components/post-grid"
 import type { PaginatedPosts } from "@/features/blog/types"
 
 interface PostListSectionProps {
@@ -53,13 +54,13 @@ export function PostListSection({
         emptyState
       ) : (
         <div className="space-y-8">
-          <div className="grid gap-6 md:grid-cols-2">
+          <PostGrid>
             {results.posts.map((post, index) => (
               // The first card is the largest thing above the fold on this page,
               // so its cover - when there is one - is what LCP is measured on.
               <PostCard key={post.id} post={post} priority={index === 0} />
             ))}
-          </div>
+          </PostGrid>
 
           <Pagination
             page={results.page}

@@ -21,7 +21,7 @@ test.describe("the blog's public surface", () => {
 
     expect(response?.status()).toBe(200)
     // The list page has no hero, so its section header is the page h1.
-    await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "Articles" })).toBeVisible()
     await expect(page.getByRole("main")).toBeVisible()
     expect(errors).toEqual([])
   })

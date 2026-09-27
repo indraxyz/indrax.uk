@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test"
 /**
  * Waits until React has attached its event listeners.
  *
- * The resume page is server-rendered, so every control is present, focusable and
+ * The public pages are server-rendered, so every control is present, focusable and
  * clickable well before it does anything. Playwright's actionability checks are
  * satisfied by that markup - visible, stable, enabled, not covered - and will
  * happily click a button whose `onClick` does not exist yet. The click is then

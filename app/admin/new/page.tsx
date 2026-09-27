@@ -8,7 +8,7 @@ export default async function NewPostPage() {
   if (!(await getAuthor())) redirect("/admin/login")
 
   return (
-    <AdminShell title="New post">
+    <AdminShell title="New post" backLink={{ href: "/admin/posts", label: "Posts" }}>
       <PostForm post={null} />
     </AdminShell>
   )

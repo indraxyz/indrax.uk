@@ -88,7 +88,7 @@ const READ_TIMEOUT_MS = 10_000
  * Runs a read, and turns any failure into the empty result.
  *
  * A blog that cannot reach its database renders as a blog with nothing in it -
- * an empty state on `/blog`, no articles in the feed, the resume page untouched.
+ * an empty state on `/blog`, no articles in the feed, and no Articles section on home.
  * That is a far better failure than an unhandled exception taking down the only
  * page this site has (PRD US-6.2). The reason is logged server-side with enough
  * context to find it; nothing about the failure reaches the reader.

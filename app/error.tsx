@@ -51,7 +51,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             Try again
           </button>
           <Link href="/" className={cn(controlClassNames, "px-5 py-3")}>
-            Resume
+            Home
           </Link>
           <Link href={BLOG_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
             {BLOG_CONFIG.title}

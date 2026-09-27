@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { SECTION_COPY } from "@/features/resume/config"
+import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { techStackGroups } from "@/features/resume/utils/groups"
 import { Code } from "lucide-react"
 
@@ -17,7 +18,7 @@ export function TechStackSection() {
         <Card
           key={groupName}
           height="2xl"
-          className="variant-secondary variant-border w-[350px] max-w-[85vw] shrink-0 bg-[var(--variant-soft)]"
+          className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <CardTitle className="text-base font-black uppercase tracking-tight">

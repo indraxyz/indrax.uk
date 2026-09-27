@@ -125,6 +125,14 @@ test.describe("sessions", () => {
     const sessionCookie = cookies.find((cookie) => cookie.name === SESSION_COOKIE_SECURE)!
 
     await page.getByRole("button", { name: /sign out/i }).click()
+    const confirmation = page.getByRole("alertdialog")
+    await expect(confirmation.getByRole("heading", { name: "Sign out?" })).toBeVisible()
+    await confirmation.getByRole("button", { name: "Cancel" }).click()
+    await expect(confirmation).toHaveCount(0)
+    expect(await sessionExists(token)).toBe(true)
+
+    await page.getByRole("button", { name: /sign out/i }).click()
+    await confirmation.getByRole("button", { name: "Sign out" }).click()
     await page.waitForURL(/\/admin\/login/)
 
     expect(await sessionExists(token)).toBe(false)

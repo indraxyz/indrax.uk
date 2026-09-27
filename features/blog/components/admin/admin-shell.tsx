@@ -1,49 +1,74 @@
-import { ArrowLeft, LogOut } from "lucide-react"
+import { ArrowLeft, House, LogOut } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
 
+import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { controlClassNames } from "@/components/ui/variants"
 import { SignOutButton } from "@/features/blog/components/admin/sign-out-button"
-import { BLOG_CONFIG } from "@/features/blog/config"
 import { cn } from "@/lib/utils"
 
 interface AdminShellProps {
   title: string
   children: ReactNode
   actions?: ReactNode
-  /** Omitted on the login page, which has nobody to sign out. */
+  pageNavigation?: ReactNode
+  backLink?: { href: string; label: string }
+  activePage?: "home" | "posts"
+  /** The login page has no protected navigation or sign-out control. */
   signedIn?: boolean
 }
 
-/**
- * The chrome every admin page sits in.
- *
- * Deliberately plainer than `BlogShell`: this is a workbench, not a published
- * page, and the difference should be visible at a glance so there is never a
- * question about which one is being looked at.
- */
-export function AdminShell({ title, children, actions, signedIn = true }: AdminShellProps) {
+/** Shared admin navigation and page framing. Page controls live beside the page title. */
+export function AdminShell({
+  title,
+  children,
+  actions,
+  pageNavigation,
+  backLink,
+  activePage,
+  signedIn = true,
+}: AdminShellProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85">
-        <div className="container mx-auto max-w-6xl px-4 py-4">
+        <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-baseline gap-3">
-              <p className="text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
-                {title}
-              </p>
-              <Link
-                href={BLOG_CONFIG.basePath}
-                className="flex items-center gap-1 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3 w-3" aria-hidden />
-                View site
-              </Link>
-            </div>
+            <Link
+              href="/admin"
+              aria-current={activePage === "home" ? "page" : undefined}
+              className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
+            >
+              Indra&apos;s Admin
+            </Link>
 
-            <div className="flex items-center gap-2">
-              {actions}
+            <div className="flex flex-wrap items-center gap-2">
+              {signedIn && (
+                <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
+                  <Link
+                    href="/admin"
+                    aria-label="Admin home"
+                    title="Admin home"
+                    aria-current={activePage === "home" ? "page" : undefined}
+                    className="text-foreground hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    <House className="h-4 w-4" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/posts"
+                    aria-current={activePage === "posts" ? "page" : undefined}
+                    className="text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    Posts
+                  </Link>
+                  <Link
+                    href="/resume"
+                    className="text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    Resume
+                  </Link>
+                </nav>
+              )}
               <ThemeToggle />
               {signedIn && (
                 <SignOutButton className={cn(controlClassNames, "px-3 py-2")}>
@@ -56,7 +81,35 @@ export function AdminShell({ title, children, actions, signedIn = true }: AdminS
         </div>
       </header>
 
-      <main className="container mx-auto max-w-6xl space-y-6 px-4 py-10">{children}</main>
+      <main className={`${SITE_CONTAINER_CLASS} flex-1 space-y-8 py-10 lg:py-14`}>
+        <div className="space-y-4">
+          {pageNavigation}
+          {backLink && (
+            <Link
+              href={backLink.href}
+              className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+              {backLink.label}
+            </Link>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-foreground sm:text-3xl">
+              {title}
+            </h1>
+            {actions}
+          </div>
+        </div>
+        {children}
+      </main>
+
+      <footer className={SITE_CONTAINER_CLASS}>
+        <div className="mt-12 flex items-center justify-center border-t-2 border-border py-10 text-center">
+          <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
+            Administrator of indrax.uk
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

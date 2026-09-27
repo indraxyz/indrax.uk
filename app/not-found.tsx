@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <BlogShell>
+    <BlogShell activePage={null}>
       <div className="flex flex-col items-center gap-6 border-2 border-border bg-card px-6 py-20 text-center shadow-soft">
         <FileQuestion className="h-10 w-10 text-muted-foreground" aria-hidden />
 
@@ -34,7 +34,7 @@ export default function NotFound() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link href="/" className={cn(controlClassNames, "px-5 py-3")}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-            Resume
+            Home
           </Link>
           <Link href={BLOG_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
             {BLOG_CONFIG.title}
