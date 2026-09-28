@@ -22,9 +22,9 @@ export function SearchForm({ query }: { query: string }) {
       action={BLOG_CONFIG.searchPath}
       method="get"
       role="search"
-      className="flex flex-col gap-3 sm:flex-row"
+      className="flex items-stretch gap-3"
     >
-      <div className="relative flex-1">
+      <div className="relative min-w-0 flex-1">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
@@ -48,8 +48,13 @@ export function SearchForm({ query }: { query: string }) {
         />
       </div>
 
-      <button type="submit" className={cn(controlClassNames, "px-4 py-2")}>
-        Search
+      <button
+        type="submit"
+        aria-label="Search"
+        className={cn(controlClassNames, "shrink-0 justify-center px-3 py-2 sm:px-4")}
+      >
+        <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
+        <span className="hidden sm:inline">Search</span>
       </button>
     </form>
   )

@@ -202,12 +202,15 @@ test.describe("analytics", () => {
           await page.goto(path)
 
           if (path === "/") {
-            await expect(page.locator("footer")).toContainText(/Updated .*·Cookies/)
+            await expect(page.locator("footer")).toContainText(/Updated /)
+            await expect(
+              page.locator('footer button[aria-label="Cookie preferences"] svg')
+            ).toBeVisible()
             await expect(page.locator("footer")).not.toContainText("indrax.uk")
           }
 
           // Withdrawing has to be as reachable as granting was.
-          await page.getByRole("button", { name: "Cookies" }).click()
+          await page.getByRole("button", { name: "Cookie preferences" }).click()
           await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
 
           // Put it back for the next iteration.
