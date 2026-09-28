@@ -24,7 +24,9 @@ import type { Page } from "@playwright/test"
  */
 export async function whenHydrated(page: Page) {
   await page
-    .locator('[role="region"][aria-label="Analytics consent"], footer button:text-is("Cookies")')
+    .locator(
+      '[role="region"][aria-label="Analytics consent"], footer button[aria-label="Cookie preferences"]'
+    )
     .first()
     .waitFor({ state: "attached" })
 }

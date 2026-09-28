@@ -54,7 +54,7 @@ export const SECTION_COPY = {
 } as const
 
 export const EMPTY_COPY = {
-  blog: "Nothing published yet. The first article is being written - check back, or subscribe to the feed.",
+  blog: "No articles published yet. Check back soon for new writing.",
   tag: (name: string) => `Nothing published under ${name} yet.`,
   // Two different empty states. Arriving at the search page has no result to
   // report; searching and finding nothing does, and saying which term failed is

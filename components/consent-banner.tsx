@@ -155,12 +155,14 @@ export function ConsentControl({
       <button
         type="button"
         onClick={clearConsent}
+        aria-label="Cookie preferences"
+        title="Cookie preferences"
         className={cn(
-          "text-sm font-black uppercase tracking-[0.14em] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
+          "inline-flex min-h-10 min-w-10 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
           className
         )}
       >
-        Cookies
+        <Cookie className="h-5 w-5" aria-hidden="true" />
       </button>
     </>
   )

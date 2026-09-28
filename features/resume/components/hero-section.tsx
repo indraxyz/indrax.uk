@@ -36,8 +36,8 @@ export function HeroSection() {
           </div>
 
           <div className="space-y-6 text-center print:space-y-3 sm:text-left">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 space-y-2 print:space-y-1">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-2 print:space-y-1 sm:flex-1">
                 <h1 className="text-4xl font-black uppercase tracking-tight text-foreground print:text-3xl md:text-5xl">
                   {firstName}
                 </h1>
@@ -45,7 +45,7 @@ export function HeroSection() {
                   {personalInfo.title}
                 </p>
               </div>
-              <div className="flex items-center gap-2 print:hidden">
+              <div className="flex items-center justify-center gap-2 print:hidden">
                 <PersonalInfoDrawer />
                 <DownloadResumeButton />
               </div>

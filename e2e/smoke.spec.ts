@@ -14,6 +14,54 @@ test.describe("the public pages", () => {
     expect(errors).toEqual([])
   })
 
+  test("stacks hero actions below the title on mobile home and resume", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    for (const path of ["/", "/resume"]) {
+      await page.goto(path)
+
+      const title = await page.getByRole("heading", { level: 1 }).boundingBox()
+      const profile = await page
+        .getByRole("button", { name: "Open personal information" })
+        .boundingBox()
+      const download = await page
+        .getByRole("button", { name: "Download resume as PDF" })
+        .boundingBox()
+
+      expect(title).not.toBeNull()
+      expect(profile).not.toBeNull()
+      expect(download).not.toBeNull()
+      expect(profile!.y).toBeGreaterThan(title!.y + title!.height)
+      expect(download!.y).toBe(profile!.y)
+    }
+  })
+
+  test("keeps blog search on one line and submits from mobile", async ({ page }) => {
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+
+      for (const path of ["/blog", "/blog/search"]) {
+        await page.goto(path)
+
+        const searchbox = page.getByRole("searchbox", { name: "Search articles" })
+        const search = await searchbox.boundingBox()
+        const button = page.getByRole("button", { name: "Search" })
+        const action = await button.boundingBox()
+
+        expect(search).not.toBeNull()
+        expect(action).not.toBeNull()
+        expect(action!.x).toBeGreaterThan(search!.x + search!.width)
+        expect(action!.y).toBeLessThan(search!.y + search!.height)
+        expect(action!.x + action!.width).toBeLessThanOrEqual(width)
+        await expect(button.locator("svg")).toBeVisible()
+
+        await searchbox.fill("typescript")
+        await button.click()
+        await expect(page).toHaveURL(/\/blog\/search\?q=typescript/)
+      }
+    }
+  })
+
   test("uses the same site navigation on every public page", async ({ page }) => {
     for (const path of ["/", "/resume", "/blog", "/tech-stack"]) {
       await page.goto(path)
