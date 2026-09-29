@@ -86,7 +86,7 @@
     "pg": "^8.23.0",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11",
     "wrangler": "^4.141.0"
   },
