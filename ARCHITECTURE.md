@@ -8,8 +8,13 @@ This document describes the architecture and design decisions for the Resume/CV 
 ├── app/                      # Next.js App Router
 │   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
 │   ├── page.tsx             # Server entry for the resume page
+│   ├── blog/                # Blog routes - list, article, tag, per-post OG card
+│   ├── admin/               # Authoring, behind the auth guard
+│   ├── api/                 # Better Auth endpoints and presigned uploads
+│   ├── rss.xml/             # RSS 2.0 feed
+│   ├── not-found.tsx        # Site-wide 404, also what a draft looks like
 │   ├── robots.ts            # Generated /robots.txt
-│   ├── sitemap.ts           # Generated /sitemap.xml
+│   ├── sitemap.ts           # Generated /sitemap.xml - async, queries the database
 │   └── globals.css          # Global styles with Tailwind v4
 │
 ├── components/              # Shared UI primitives
@@ -28,6 +33,14 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── variants.ts      # Visual variant tokens
 │
 ├── features/
+│   ├── blog/
+│   │   ├── components/      # Cards, list section, article body, chrome
+│   │   ├── data/            # Drizzle reads, cache-tagged
+│   │   ├── editor/          # The frozen Tiptap extension set
+│   │   ├── utils/           # Content pipeline, slug, reading time, JSON-LD
+│   │   ├── social-card.tsx  # Per-article link-preview banner
+│   │   ├── config.ts        # BLOG_CONFIG and section copy
+│   │   └── types.ts         # Post, Tag, PostStatus
 │   └── resume/
 │       ├── components/      # Feature UI, section cards, and drawer
 │       ├── data/            # Resume source content
@@ -36,10 +49,16 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── types.ts         # Resume domain types
 │
 ├── lib/                     # Shared, framework-level helpers
+│   ├── auth.ts             # Better Auth instance and the allow-list
+│   ├── auth-guard.ts       # requireAuthor() - the authorization boundary
+│   ├── db/                 # Drizzle schema, client, seed
+│   ├── og/                 # Font loading for the server-drawn cards
+│   ├── validators/         # Zod schemas
 │   ├── theme.ts            # Theme storage key, event, and default
 │   └── utils/
 │       ├── cn.ts           # Class name utility (clsx + tailwind-merge)
 │       ├── date.ts         # Date formatting utilities
+│       ├── media.ts        # Cover-image host allow-list
 │       └── index.ts        # Barrel export
 │
 └── public/                  # Static assets
@@ -87,16 +106,20 @@ This document describes the architecture and design decisions for the Resume/CV 
 
 ## 🔄 Data Flow
 
+The site now has two sources of truth, one per feature slice. The resume is a
+committed file; the blog is a database. The shape of the two flows is deliberately
+identical below the source, so a route composes the same way either way.
+
 ```
-features/resume/data/resume.ts (Source of Truth)
-    ↓
-features/resume/types.ts (Type Definitions)
-    ↓
-features/resume/components/resume-page.tsx (Presentation Layer)
-    ↓
-features/resume/components/ (Feature Components)
-    ↓
-components/ui/ (Base UI Components)
+features/resume/data/resume.ts (Source of Truth)     Neon Postgres (Source of Truth)
+    ↓                                                     ↓  lib/db/schema.ts
+features/resume/types.ts (Type Definitions)               ↓  features/blog/data/queries.ts
+    ↓                                                     ↓  features/blog/types.ts
+features/resume/components/resume-page.tsx                ↓  app/blog/** (thin route entries)
+    ↓                                                     ↓
+features/resume/components/ (Feature Components)     features/blog/components/
+    ↓                                                     ↓
+components/ui/ (Base UI Components)                  components/ui/
 ```
 
 ## 📦 Key Design Decisions
@@ -133,6 +156,57 @@ components/ui/ (Base UI Components)
 - **Section composition**: Every section — the six drawer cards and the three main
   sections — renders through `components/ui/section-card.tsx`, which owns the card
   frame, the header bar, and the `card` / `ghost` variants
+- **Content is sanitised on the way out, not on the way in**: article bodies are
+  stored as the editor's own ProseMirror document and pass through
+  `rehype-sanitize` at render, before the highlighter runs. Sanitising on save
+  alone would be a check that stored content can outlive; ordering it before
+  `rehype-pretty-code` is what lets the highlighter's own `style` attributes
+  survive a filter the author cannot reach. The renderer emits stored attributes
+  without judging them - a document carrying `src="javascript:..."` produces
+  exactly that - so this is the only thing between the database and the reader
+- **The extension set is a compatibility surface**: a stored document only means
+  anything against the extensions that produced it, so `BLOG_EXTENSIONS` is one
+  exported constant. Removing an extension makes every document containing that
+  node render wrong, silently, because an unknown node is dropped rather than
+  raised
+- **Reading costs no JavaScript, and the extras keep it that way**: the contents
+  list is server-rendered anchors, the view counter is an `<img>` rather than a
+  beacon - so it counts cached pages and readers with scripting off, which a
+  beacon would miss - and the code-copy buttons are attached after load, so a
+  reader without JavaScript sees no dead controls rather than broken ones
+- **The draft preview is its own route, not a query parameter**: the spec asked
+  for `/blog/{slug}?preview=…`, and building it that way turned every article
+  from prerendered into on-demand, because a page that reads `searchParams`
+  cannot be static. That meant re-running the highlighter on every read of every
+  published article to support a feature used a few times a month
+- **One path to a session, and the allow-list is on it**: OAuth account linking is
+  disabled, because Better Auth's default links an incoming account to an existing
+  user matched by verified email - and that path never calls `createUser`, so the
+  hook the allow-list lives in would never have run. Any future auth change has to
+  keep that property: if there is a second way to get a session, the allow-list has
+  to be on that one too
+- **A guard that cannot evaluate its input denies**: the absolute session cap used
+  to skip itself when `createdAt` was unparseable. Failing open is the default
+  shape of a mistake like that, and the only defence is writing the condition the
+  other way round
+- **`proxy.ts` is a redirect; `requireAuthor()` is the boundary**: a server action
+  is a POST identified by a header, reachable without touching the routing the
+  proxy sees. So every admin page, every mutating action and the upload route
+  re-check authorisation for themselves, and the suite proves it by forging a
+  session cookie - which walks past the proxy and must still be refused
+- **An absent database is a state, not an error**: `getDb()` returns `null` when
+  `DATABASE_URL` is unset and every query returns the empty result, so a fresh
+  clone, a CI build and a preview without a branch all build and serve the resume.
+  Query failures take the same path, so a database outage renders `/blog` empty
+  rather than crashing the only page the site has
+- **Article rendering ships no JavaScript**: the markdown pipeline and Shiki run in
+  a server component and the page receives finished HTML. That is what keeps the
+  article readable with JavaScript disabled, and why theme switching repaints code
+  from CSS custom properties rather than by re-highlighting
+- **Prose overrides are unlayered**: Tailwind Typography emits its `.prose` rule at
+  the same specificity as ours, so source order decides. Anything inside
+  `@layer base` is emitted first and silently loses — which showed up as correct
+  fonts and wrong colours
 - **UI Components** (`components/ui/`): Base design system components
 - **Resume Feature** (`features/resume/`): Domain-specific data, types, config, and components
 - **Page Components** (`app/`): Thin route entry points
@@ -164,10 +238,29 @@ Potential enhancements:
 
 - [x] Add E2E tests with Playwright
 - [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
-- [x] Add analytics - PostHog, key-gated
+- [x] Add analytics - PostHog, key-gated and consent-gated
 - [x] Surface contact details in the hero (email, LinkedIn, GitHub)
-- [ ] Add unit tests with Vitest
+- [x] Add unit tests with Vitest — 76 covering slug collision, reading time, the
+      content pipeline, preview tokens and the Zod schemas
+- [x] `style-src`, `connect-src`, `frame-src`, `media-src`, `worker-src` and
+      `manifest-src` added to the Content-Security-Policy
+- [ ] `script-src`, which needs a per-request nonce. Deferred with a measurement
+      rather than a shrug: the nonce forces every prerendered page to render per
+      request, at ~430ms of CPU per cold article, which worsens T-11 (denial of
+      wallet) to buy defence-in-depth behind an already-tested sanitiser. See
+      §15.4 of `docs/blog-implementation-plan.md`
+- [x] Full-text search — Postgres `tsvector`, generated from the Tiptap document
+      and weighted so titles outrank body text
+- [x] Series — an ordered run of posts, with an index page and article navigation
+      that counts only the parts a reader can actually open
+- [ ] `pgvector` semantic search (see `docs/blog-implementation-plan.md` §16)
+- [ ] Giscus comments
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
 - [ ] Enforce import ordering with an ESLint rule
-- [ ] Cookie-consent gate before analytics runs for UK/EU visitors
+- [x] Cookie-consent gate before analytics runs for UK/EU visitors — the tracker
+      never starts until the visitor agrees, and no cookie is set before then
+- [x] Correlation ids on server errors, keyed on the digest the reader is shown
+- [x] Dependabot, and the CI gate that makes its pull requests verifiable
+- [x] Playwright in CI — the repository's own compose stack, so the runner and a
+      laptop cannot drift apart

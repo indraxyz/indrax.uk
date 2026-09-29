@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { JetBrains_Mono } from "next/font/google"
 
+import { ConsentBanner } from "@/components/consent-banner"
 import { PostHogAnalytics } from "@/components/posthog-analytics"
+import { BLOG_CONFIG } from "@/features/blog/config"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
@@ -83,10 +85,21 @@ export default function RootLayout({
   return (
     <html lang="en" className={jetBrainsMono.variable} suppressHydrationWarning>
       <head>
+        {/* Written here rather than through `metadata.alternates.types`, because a
+            route that declares its own canonical replaces the whole `alternates`
+            object and would drop the feed with it. Every page needs to advertise
+            it, so it belongs somewhere a page cannot override. */}
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title={BLOG_CONFIG.feedTitle}
+          href={BLOG_CONFIG.feedPath}
+        />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
+        <ConsentBanner />
         <PostHogAnalytics />
       </body>
     </html>

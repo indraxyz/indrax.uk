@@ -8,7 +8,11 @@ import {
   type CardHeight,
   type CardVariant,
 } from "@/components/ui/card"
-import { SectionHeader, type SectionLink } from "@/components/ui/section-header"
+import {
+  SectionHeader,
+  type SectionHeadingLevel,
+  type SectionLink,
+} from "@/components/ui/section-header"
 import { variantClassNames, type VisualVariant } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
@@ -19,6 +23,9 @@ interface SectionCardProps {
   subtitle?: string
   link?: SectionLink
   tone?: VisualVariant
+  // Promotes the header to the page's h1. For a page whose section header is its
+  // only top-level heading - the blog list and tag pages, which have no hero.
+  headingLevel?: SectionHeadingLevel
   variant?: CardVariant
   height?: CardHeight
   // Lays the children out as a horizontal rail of cards. Owned here rather than
@@ -36,6 +43,7 @@ export function SectionCard({
   subtitle,
   link,
   tone = "primary",
+  headingLevel = 2,
   variant = "card",
   height = "auto",
   carousel = false,
@@ -63,6 +71,7 @@ export function SectionCard({
           subtitle={subtitle}
           link={link}
           tone={tone}
+          headingLevel={headingLevel}
           size={isGhost ? "lg" : "sm"}
         />
       </CardHeader>

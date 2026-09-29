@@ -1,13 +1,16 @@
 import { expect, test } from "@playwright/test"
 
+import { whenHydrated } from "./support/hydration"
+
 const EXPECTED_FILE_NAME = "Indra-Cahya-Edytya-Resume.pdf"
 
 // The document is drawn in the browser, on demand: the renderer is code-split out
 // of the initial bundle and only fetched once someone asks for the file. There is
 // no URL to request, so everything here goes through the control itself.
 test.describe("the CV download", () => {
-  test("hands over a real PDF when the footer control is used", async ({ page }) => {
+  test("hands over a real PDF when the hero control is used", async ({ page }) => {
     await page.goto("/")
+    await whenHydrated(page)
 
     const download = await Promise.all([
       page.waitForEvent("download"),
