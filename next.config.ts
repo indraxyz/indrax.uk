@@ -1,6 +1,6 @@
 import type { NextConfig } from "next"
 
-import { POSTHOG_HOST } from "./lib/analytics-host"
+import { POSTHOG_ASSET_HOST, POSTHOG_HOST } from "./lib/analytics-host"
 
 // Applied to every response. These four are cheap, have no configuration surface,
 // and none of them can break a page - which is exactly why there is no reason for
@@ -56,11 +56,11 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self'",
   // Where the page may send data. Without `script-src` this is the directive
   // doing the real work against T-2: an injected script still runs, but it can
-  // only talk to this origin and the analytics endpoint, so it cannot post what
+  // only talk to this origin and PostHog's endpoints, so it cannot post what
   // it scraped to a collector of its own. The host is the same constant the
   // tracker is pointed at, because a policy that disagrees with the client
   // blocks every event and looks like an outage rather than a typo.
-  `connect-src 'self' ${POSTHOG_HOST}`,
+  `connect-src 'self' ${POSTHOG_HOST}${POSTHOG_ASSET_HOST ? ` ${POSTHOG_ASSET_HOST}` : ""}`,
   // Next inlines critical CSS, so `'unsafe-inline'` is unavoidable here - but
   // naming the directive still stops a stylesheet being pulled from anywhere
   // else, which is how injected CSS exfiltrates via selective background-image

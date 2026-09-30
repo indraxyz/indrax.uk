@@ -37,3 +37,13 @@ function originOf(value: string | undefined): string {
 }
 
 export const POSTHOG_HOST = originOf(process.env.NEXT_PUBLIC_POSTHOG_HOST)
+
+// DevTools fetches source maps from PostHog's asset host using `connect-src`.
+// Keep this allowlist limited to the matching Cloud region; do not guess at an
+// asset origin for custom ingestion hosts.
+const ASSET_HOSTS: Record<string, string | undefined> = {
+  "https://us.i.posthog.com": "https://us-assets.i.posthog.com",
+  "https://eu.i.posthog.com": "https://eu-assets.i.posthog.com",
+}
+
+export const POSTHOG_ASSET_HOST = ASSET_HOSTS[POSTHOG_HOST]
