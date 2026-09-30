@@ -151,6 +151,53 @@ test.describe("analytics", () => {
       await page.getByRole("button", { name: "Accept" }).click()
 
       await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+      await expect
+        .poll(() => analytics.sent.some((request) => request.includes("/config.js")), {
+          timeout: 20_000,
+        })
+        .toBe(true)
+    })
+
+    test("resumes pageviews after consent is withdrawn and granted again", async ({ page }) => {
+      const analytics = await recordAnalytics(page, { consent: null })
+
+      await page.goto("/")
+      await page.getByRole("button", { name: "Accept" }).click()
+      await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+
+      await page.getByRole("button", { name: "Cookie preferences" }).click()
+      await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
+      expect(
+        (await page.context().cookies()).filter((cookie) => cookie.name.startsWith("ph_"))
+      ).toEqual([])
+      const sentBeforeRegrant = analytics.sent.length
+
+      await page.getByRole("button", { name: "Accept" }).click()
+      await page.getByRole("link", { name: /blog/i }).first().click()
+      await expect
+        .poll(() => analytics.sent.length, { timeout: 20_000 })
+        .toBeGreaterThan(sentBeforeRegrant)
+      expect(analytics.sent.slice(sentBeforeRegrant).join("\n")).toContain("$pageview")
+    })
+
+    test("resumes capture when consent is granted after a reload", async ({ page }) => {
+      const analytics = await recordAnalytics(page, { consent: null })
+
+      await page.goto("/")
+      await page.getByRole("button", { name: "Accept" }).click()
+      await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+
+      await page.getByRole("button", { name: "Cookie preferences" }).click()
+      await page.reload()
+      await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
+
+      const sentBeforeRegrant = analytics.sent.length
+      await page.getByRole("button", { name: "Accept" }).click()
+      await page.getByRole("link", { name: /blog/i }).first().click()
+
+      await expect
+        .poll(() => analytics.sent.slice(sentBeforeRegrant).join("\n"), { timeout: 20_000 })
+        .toContain("$pageview")
     })
 
     test("remembers the answer, so it is asked once", async ({ page }) => {

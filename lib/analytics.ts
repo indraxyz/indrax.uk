@@ -51,6 +51,7 @@ function redactUrl(value: unknown): unknown {
 export type ContactChannel = "email" | "linkedin" | "github"
 
 let started = false
+let initialized = false
 
 /**
  * Start the tracker, if there is a key and the visitor has agreed.
@@ -66,18 +67,27 @@ export function startAnalytics() {
   started = true
 
   try {
+    if (initialized) {
+      // init() is a no-op on an existing PostHog instance. Re-enable the
+      // instance that was opted out when consent was withdrawn.
+      posthog.opt_in_capturing({ captureEventName: false })
+      return
+    }
+
+    // Session replay needs remote configuration to learn whether this project
+    // records sessions.
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
-      // Opts into PostHog's current defaults - pageview and pageleave capture
-      // among them - rather than pinning behaviour this file would have to track.
+      // Enables history-change pageviews and pageleave capture. Keep this date
+      // pinned: the guide's 2026-05-30 defaults tag localhost as an internal/test
+      // host, hiding local visits when that dashboard filter is enabled.
       defaults: "2025-05-24",
       // Nobody signs in here, so there is no person to profile and no reason to
       // store one. Visitors stay anonymous.
       person_profiles: "identified_only",
       respect_dnt: true,
-      // There are no feature flags, experiments or surveys on a static resume, so
-      // the flag request PostHog would otherwise make on every load is pure latency.
-      advanced_disable_flags: true,
+      // Withdrawing consent must remove PostHog's persisted identifiers too.
+      opt_out_persistence_by_default: true,
       // Runs on every event, including the automatic pageviews, before anything
       // is sent.
       before_send: (event) => {
@@ -106,6 +116,14 @@ export function startAnalytics() {
         return event
       },
     })
+    initialized = true
+
+    // PostHog persists its own opt-out across reloads. If consent was withdrawn
+    // in an earlier page load, init() reads that opt-out and suppresses captures
+    // even though our consent store now says granted.
+    if (posthog.has_opted_out_capturing()) {
+      posthog.opt_in_capturing({ captureEventName: false })
+    }
   } catch (error) {
     // Analytics is the least important thing on the page; it does not get to break
     // the render.
@@ -131,10 +149,8 @@ export function captureEvent(
 /**
  * Stop tracking and discard what the tracker stored.
  *
- * Withdrawing consent has to undo the thing consent allowed, not merely stop
- * adding to it: `opt_out_capturing` ends the session and clears the cookies and
- * stored identifiers PostHog set. `started` is reset so a later re-grant starts
- * cleanly rather than assuming an initialised client.
+ * Withdrawing consent stops capture and clears stored identifiers. PostHog's
+ * reset() clears its own consent state, so opt out again after resetting it.
  */
 export function stopAnalytics() {
   if (!started) return
@@ -142,6 +158,7 @@ export function stopAnalytics() {
   try {
     posthog.opt_out_capturing()
     posthog.reset()
+    posthog.opt_out_capturing()
   } catch (error) {
     console.error("Analytics failed to stop", error)
   } finally {
