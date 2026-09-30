@@ -329,12 +329,43 @@ Edit `features/resume/data/resume.ts` to update your personal information, exper
 and `npm run start` behave exactly as they always have.
 
 ```bash
-npm run preview   # build and run locally in workerd
-npm run deploy    # build and deploy
+npm run preview      # build and run locally in workerd
+npm run deploy       # deploy indrax to indrax.uk
+npm run preview:dev  # build the dev.indrax.uk variant and run it locally
+npm run deploy:dev   # deploy indrax-dev to dev.indrax.uk
 ```
 
 Secrets are never committed. Set them with `wrangler secret put DATABASE_URL`,
 and put local ones in `.dev.vars`, which is gitignored.
+
+When enabled, pushes to `develop` deploy the `dev` Wrangler environment after
+the CI checks pass. This uses the GitHub `Preview` environment and publishes
+`indrax-dev` at `dev.indrax.uk`. Pushes to `main` deploy the default Wrangler
+environment (`indrax` at `indrax.uk` and `www.indrax.uk`) using GitHub
+`Production`. Both site URLs are set at build time and at Worker runtime, so
+metadata, sitemap links, and auth callbacks use the right origin. Cloudflare
+must own the `indrax.uk` zone; these hostnames cannot have conflicting CNAME
+records.
+
+`CLOUDFLARE_ACCOUNT_ID` is already configured in both GitHub environments.
+Before enabling deployments, add `CLOUDFLARE_API_TOKEN` as a secret to each
+environment (`Preview` and `Production`). Scope each token to the Worker and
+zone it needs. Then set
+the repository variable `CLOUDFLARE_DEPLOY_ENABLED` to `true`. Until that
+variable is set, the deploy job is skipped; once enabled, it fails clearly if
+either credential is missing. Set optional build variables
+`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, and
+`NEXT_PUBLIC_MEDIA_ORIGIN` separately in each GitHub environment. These are
+embedded into the Next.js build. Local manual deploys require
+`npx wrangler login` or the same Cloudflare credentials in the shell.
+
+Set server-side secrets on each Worker separately, for example
+`npx wrangler secret put DATABASE_URL --env dev` for staging and
+`npx wrangler secret put DATABASE_URL` for production. Use separate databases
+if you need data isolation; Wrangler environments do not share secrets. If a
+`NEXT_PUBLIC_` variable is also read by the Worker at runtime, configure it
+there as well. For GitHub OAuth, set `BETTER_AUTH_URL` to the matching origin
+and register `<origin>/api/auth/callback/github` in its OAuth app.
 
 The `workerd` package needs its install script to run to fetch its binary. If
 `npm install` was run with install scripts blocked, approve it once with

@@ -12,6 +12,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "indrax",
+  "routes": [
+    { "pattern": "indrax.uk", "custom_domain": true },
+    { "pattern": "www.indrax.uk", "custom_domain": true }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://indrax.uk"
+  },
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
   // The Next.js server and the Neon driver both need Node built-ins. `nodejs_compat`
@@ -23,5 +30,17 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "dev": {
+      "routes": [{ "pattern": "dev.indrax.uk", "custom_domain": true }],
+      "vars": {
+        "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk"
+      },
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS"
+      }
+    }
   }
 }
