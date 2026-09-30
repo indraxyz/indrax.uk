@@ -338,6 +338,13 @@ npm run deploy:dev   # deploy indrax-dev to dev.indrax.uk
 Secrets are never committed. Set them with `wrangler secret put DATABASE_URL`,
 and put local ones in `.dev.vars`, which is gitignored.
 
+For local Worker previews, copy `config/worker-env.dev.example` to
+`.dev.vars.dev`, or `config/worker-env.production.example` to `.dev.vars` and
+fill in the values you need. These local files are ignored by git. Wrangler
+loads the matching file at runtime; Next.js build variables still come from
+the build process or `.env.local`. Remote Workers use their own secrets and
+the GitHub environment variables described below.
+
 When enabled, pushes to `develop` deploy the `dev` Wrangler environment after
 the CI checks pass. This uses the GitHub `Preview` environment and publishes
 `indrax-dev` at `dev.indrax.uk`. Pushes to `main` deploy the default Wrangler
