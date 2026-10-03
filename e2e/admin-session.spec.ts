@@ -68,6 +68,28 @@ test.describe("sessions", () => {
     await context.close()
   })
 
+  test("uses a Lax state cookie for the GitHub OAuth callback", async ({ request }) => {
+    test.skip(
+      !process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET,
+      "needs GitHub OAuth configuration - see README"
+    )
+
+    const response = await request.post(`${E2E_BASE_URL}/api/auth/sign-in/social`, {
+      headers: { origin: E2E_BASE_URL },
+      data: { provider: "github", callbackURL: "/admin" },
+    })
+
+    expect(response.ok()).toBe(true)
+
+    const stateCookie = (await response.headersArray()).find(
+      ({ name, value }) =>
+        name.toLowerCase() === "set-cookie" && /(?:__Secure-)?better-auth\.state=/i.test(value)
+    )
+
+    expect(stateCookie?.value).toMatch(/;\s*SameSite=Lax(?:;|$)/i)
+    expect(stateCookie?.value).toMatch(/;\s*HttpOnly(?:;|$)/i)
+  })
+
   test("refuses a session belonging to a different GitHub account", async ({ browser }) => {
     // A real, signed, unexpired session - for someone who is not on the list.
     // Nothing about the cookie is wrong, which is exactly why the check has to
