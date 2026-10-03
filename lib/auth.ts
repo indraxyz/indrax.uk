@@ -147,13 +147,6 @@ function create() {
 
     advanced: {
       useSecureCookies: process.env.NODE_ENV === "production",
-      defaultCookieAttributes: {
-        httpOnly: true,
-        // `strict`, not `lax`. Nothing links into the admin from outside, so
-        // there is no navigation this breaks - and it is a second lock on CSRF
-        // behind the server actions' own (threat T-9).
-        sameSite: "strict",
-      },
     },
 
     databaseHooks: {
