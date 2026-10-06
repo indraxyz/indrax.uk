@@ -138,7 +138,9 @@ components/ui/ (Base UI Components)                  components/ui/
 - **Shared page framing**: `WritingShell` composes `PublicShell`; the Stack page
   uses the same `SectionHeader` as Writing and resume sections. The home hero
   surface meets the navigation and spans the viewport without a shadow, while its content and other home
-  sections retain `SITE_CONTAINER_CLASS`.
+  sections retain `SITE_CONTAINER_CLASS`. `HeroSection` exposes `showSkills` so home
+  can omit the skill badges while resume retains them. Experience content comes
+  from shared resume data consumed by both the public page and PDF.
 - **Breadcrumbs are explicit ancestry**: the shared server component renders a
   labelled navigation landmark, an ordered list, ancestor links, and an unlinked
   current page with `aria-current`. Routes supply article, tag, and series labels

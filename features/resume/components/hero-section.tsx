@@ -9,7 +9,13 @@ import { bio, personalInfo } from "@/features/resume/data/resume"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { cn } from "@/lib/utils"
 
-export function HeroSection({ fullWidth = false }: { fullWidth?: boolean }) {
+export function HeroSection({
+  fullWidth = false,
+  showSkills = true,
+}: {
+  fullWidth?: boolean
+  showSkills?: boolean
+}) {
   const firstName = personalInfo.name.trim().split(/\s+/)[0]
 
   return (
@@ -63,7 +69,7 @@ export function HeroSection({ fullWidth = false }: { fullWidth?: boolean }) {
                 <DownloadResumeButton />
               </div>
             </div>
-            <HighlightSkills skills={personalInfo.highlightSkills ?? []} />
+            {showSkills && <HighlightSkills skills={personalInfo.highlightSkills ?? []} />}
             <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground print:text-sm print:leading-snug sm:mx-0 md:text-lg">
               {bio}
             </p>

@@ -7,7 +7,7 @@ import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 export function HomePage() {
   return (
     <PublicShell activePage="home" fullWidth>
-      <HeroSection fullWidth />
+      <HeroSection fullWidth showSkills={false} />
       <div className={SITE_CONTAINER_CLASS}>
         <BuildProcessSection />
         <WritingSection />

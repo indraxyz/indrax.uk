@@ -11,6 +11,7 @@ test.describe("the public pages", () => {
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
     await expect(page).toHaveTitle(/Indra Cahya Edytya/)
+    await expect(page.getByText("Full-stack, APIs & Integrations", { exact: true })).toHaveCount(0)
     expect(errors).toEqual([])
   })
 
@@ -223,7 +224,18 @@ test.describe("the public pages", () => {
     }
 
     const stack = page.getByRole("region", { name: /tech stack/i })
-    await expect(stack.getByText(/Payload CMS \(headless CMS built on Next\.js\)/)).toBeVisible()
+    await expect(stack.getByText(/Payload CMS/)).toBeVisible()
+    await expect(page.getByText("Full-stack, APIs & Integrations", { exact: true })).toBeVisible()
+
+    const juicebox = page.getByRole("listitem").filter({
+      has: page.getByRole("heading", { level: 3, name: "Juicebox ID/AU, Bali" }),
+    })
+    await expect(juicebox.getByText(/Next\.js, Payload CMS, Vue\.js/)).toBeVisible()
+    await expect(
+      juicebox.getByText(
+        /daily standups, progress reporting, ticket tracking, and weekly and monthly team meetings/
+      )
+    ).toBeVisible()
   })
 
   test("uses a timeline and full-width horizontal stack rail on mobile and desktop", async ({

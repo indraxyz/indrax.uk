@@ -42,11 +42,12 @@ export const experiences: ExperienceItem[] = [
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
-      "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, Vue.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
+      "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, Payload CMS, Vue.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
-      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration, n8n workflow automation, and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintains code quality/ conventions.",
+      "Follow a delivery workflow with daily standups, progress reporting, ticket tracking, and weekly and monthly team meetings.",
+      "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration, n8n workflow automation, and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintain code quality and conventions.",
       "Projects: Pirate Journey, Capitaliz, Ehrenberg-Bass Institute, XV Premium, MySharePlan, and Kent Removals & Storage.",
-      "Website growth and operations: HubSpot forms and automation, n8n integrations across CRM, notifications, and reporting, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and hospitality booking, membership, event, and lead-generation funnels.",
+      "Website growth and operations: HubSpot forms and automation, n8n integrations across CRM, notifications, and reporting, Google Tag Manager, GA4 event and conversion tracking, Google Search Console, Microsoft Clarity, technical SEO, Core Web Vitals, PageSpeed optimization, Elementor Pro, CRO and A/B testing, security and performance, and lead-generation funnels.",
     ],
   },
   {
@@ -589,7 +590,7 @@ export const techStacks: TechStack[] = [
     group: "Website Operations",
     category: "CMS & Website Platforms",
     items:
-      "Payload CMS (headless CMS built on Next.js), Shopify, WordPress, Elementor Pro, Statamic, Laravel, Next.js, PHP, headless CMS patterns, theme & template development, custom blocks and field types, plugin & extension development, multisite management, content modelling, editorial workflows, landing pages, content publishing",
+      "Payload CMS, Shopify, WordPress, Elementor Pro, Statamic, Laravel, Next.js, PHP, headless CMS patterns, theme & template development, custom blocks and field types, plugin & extension development, multisite management, content modelling, editorial workflows, landing pages, content publishing",
   },
   {
     group: "Website Operations",
