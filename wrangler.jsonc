@@ -14,10 +14,10 @@
   "name": "indrax",
   "routes": [
     { "pattern": "indrax.uk", "custom_domain": true },
-    { "pattern": "www.indrax.uk", "custom_domain": true }
+    { "pattern": "www.indrax.uk", "custom_domain": true },
   ],
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://indrax.uk"
+    "NEXT_PUBLIC_SITE_URL": "https://indrax.uk",
   },
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
@@ -26,21 +26,36 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1,
+    // OAuth callbacks carry codes and state in the URL query string.
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true,
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+    },
+    "issues": {
+      "enabled": true,
+    },
   },
   "env": {
     "dev": {
       "routes": [{ "pattern": "dev.indrax.uk", "custom_domain": true }],
       "vars": {
-        "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk"
+        "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk",
       },
       "assets": {
         "directory": ".open-next/assets",
-        "binding": "ASSETS"
-      }
-    }
-  }
+        "binding": "ASSETS",
+      },
+    },
+  },
 }

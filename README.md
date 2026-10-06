@@ -317,6 +317,45 @@ npm run preview:dev  # build the dev.indrax.uk variant and run it locally
 npm run deploy:dev   # deploy indrax-dev to dev.indrax.uk
 ```
 
+Production explicitly selects the top-level environment; its empty `--env` is
+passed through to Wrangler because the OpenNext adapter omits empty named options.
+
+#### Deployment ownership
+
+GitHub Actions owns releases and runs checks before deployment. Keep the Git
+connection disconnected under **Workers & Pages → Worker → Settings → Builds**
+for both Workers to prevent a second deployment pipeline.
+
+| Worker       | Branch    | Deploy command       | Custom domains               |
+| ------------ | --------- | -------------------- | ---------------------------- |
+| `indrax-dev` | `develop` | `npm run deploy:dev` | `dev.indrax.uk`              |
+| `indrax`     | `main`    | `npm run deploy`     | `indrax.uk`, `www.indrax.uk` |
+
+The deploy scripts include the OpenNext build and set the matching public site URL.
+Cloudflare's CI Worker-name override does **not** select `env.dev`; without an
+explicit environment, a staging Worker can take over the production custom domains.
+See [Workers Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+
+After a deployment, verify domain ownership against the table above. Successful
+asset upload alone does not verify this. Build settings are remote dashboard
+configuration and are not changed by editing this repository.
+
+#### Worker observability
+
+Both Workers inherit the observability settings in `wrangler.jsonc`: persisted
+invocation/application logs, automatic traces, and Issues detection. The shared
+head sampling rate is `1` (100%); reduce it if telemetry volume grows. Query
+strings are redacted from request URLs in logs and traces so OAuth codes/state
+are not retained there. This does not redact values explicitly written by
+application logging, which must continue to exclude credentials and tokens.
+
+Use each Worker's **Observability** pages to inspect logs, traces, and issues,
+or `npx wrangler tail --env dev` for live staging logs (`--env=""` for production).
+Configuration changes take effect after the matching Worker is deployed through
+the release pipeline. Issues processes new failures rather than historical ones.
+See [Workers Issues](https://developers.cloudflare.com/workers/observability/issues/)
+and [Workers traces](https://developers.cloudflare.com/workers/observability/traces/).
+
 Secrets are never committed. Set them with `wrangler secret put DATABASE_URL`,
 and put local ones in `.dev.vars`, which is gitignored.
 
