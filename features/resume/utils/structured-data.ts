@@ -26,7 +26,7 @@ export function buildProfileStructuredData() {
   return {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    dateModified: RESUME_CONFIG.updatedAt,
+    dateModified: RESUME_CONFIG.updatedAt ?? undefined,
     mainEntity: {
       "@type": "Person",
       name: personalInfo.name,

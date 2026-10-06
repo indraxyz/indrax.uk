@@ -293,3 +293,14 @@ Potential enhancements:
 ### Sign-in failures
 
 GitHub account rejection throws a coded `APIError` (`account_not_permitted`) before any user is created. Better Auth redirects OAuth failures to `/admin/login` through `errorCallbackURL` and the fallback `onAPIError.errorURL`. The existing sign-in screen displays fixed messages for denied accounts, expired state and cancelled attempts, with retry and home navigation. Unknown codes use generic copy; provider descriptions are never rendered. Account linking remains disabled and the author guard still checks every protected request. Callback regression tests use the real Better Auth handler with an isolated memory adapter and stubbed GitHub responses.
+
+### Revision date
+
+`next.config.ts` resolves the latest Git commit date once and injects public build
+metadata through Next.js `env`. Footer, resume PDF, ProfilePage `dateModified`,
+and home/resume/Stack sitemap dates share it. The footer displays the full calendar
+date in UTC. Rebuilding the same revision keeps its date; opening a page does not
+claim a new update. Restart `npm run dev` after changing revisions to refresh
+build metadata. Builds from source archives without Git must supply
+`NEXT_PUBLIC_SITE_UPDATED_AT=YYYY-MM-DD`; malformed dates fail the build.
+Database-authored articles retain their own publication/update dates.

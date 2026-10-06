@@ -34,18 +34,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const root: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
-      lastModified: new Date(RESUME_CONFIG.updatedAt),
+      lastModified: RESUME_CONFIG.updatedAt ? new Date(RESUME_CONFIG.updatedAt) : undefined,
       changeFrequency: "monthly",
       priority: 1,
     },
     {
       url: absoluteUrl("/resume"),
-      lastModified: new Date(RESUME_CONFIG.updatedAt),
+      lastModified: RESUME_CONFIG.updatedAt ? new Date(RESUME_CONFIG.updatedAt) : undefined,
       changeFrequency: "monthly",
       priority: 0.9,
     },
     {
       url: absoluteUrl("/tech-stack"),
+      lastModified: RESUME_CONFIG.updatedAt ? new Date(RESUME_CONFIG.updatedAt) : undefined,
       changeFrequency: "monthly",
       priority: 0.7,
     },

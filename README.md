@@ -384,3 +384,12 @@ Private project - All rights reserved
 ---
 
 Made with ❤️ using Next.js and TypeScript
+
+### Site update date
+
+The public footer, PDF and profile SEO dates use the built Git revision date,
+resolved automatically by Next.js configuration. Restart the development server
+after switching/committing revisions; published sites pick it up on the next deploy.
+For builds without a Git checkout, set `NEXT_PUBLIC_SITE_UPDATED_AT` to the revision
+calendar date (`YYYY-MM-DD`) at build time. This is optional for normal Git builds
+and is not a Worker runtime secret.

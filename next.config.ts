@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { resolveSiteUpdatedAt } from "./config/site-updated-at"
 
 import { POSTHOG_ASSET_HOST, POSTHOG_HOST } from "./lib/analytics-host"
 
@@ -94,6 +95,7 @@ const SECURITY_HEADERS = [
 ]
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_SITE_UPDATED_AT: resolveSiteUpdatedAt() },
   async redirects() {
     return [
       // OpenNext needs an explicit root rule when the wildcard has no segments.

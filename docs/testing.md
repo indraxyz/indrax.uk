@@ -36,7 +36,7 @@ Better Auth itself, using an isolated in-memory adapter and stubbed GitHub respo
 it does not contact GitHub or PostgreSQL. Some specs use HTTP requests instead of a
 page when checking status codes, feeds, images, uploads, or server actions.
 
-### Unit tests: 114 cases in 12 files
+### Unit tests: 121 cases in 13 files
 
 Vitest discovers `**/*.test.ts`, excludes `node_modules`, `.next`, and `e2e`, and
 runs in a Node environment rather than jsdom. The `@` alias resolves to the repo
@@ -58,10 +58,11 @@ used only by the test runner. Application builds still use the real guard.
 | [observability.test.ts](../lib/observability.test.ts)                        |    12 | Structured logs, digest/context/stack handling, aborted requests, real failures                                                               |
 | [media.test.ts](../lib/utils/media.test.ts)                                  |     7 | HTTPS media origin allowlist, userinfo and host tricks, invalid URLs                                                                          |
 | [auth.test.ts](../lib/auth.test.ts)                                          |     3 | Real Better Auth callbacks with an isolated memory adapter: rejected/missing identity creates no rows or session; authorised control succeeds |
+| [site-updated-at.test.ts](../config/site-updated-at.test.ts)                 |     7 | Revision metadata, explicit overrides, valid leap dates, invalid dates, missing Git                                                           |
 
-### E2E tests: 139 cases in 16 files
+### E2E tests: 140 cases in 17 files
 
-The `reads` project discovers 124 cases; `writes` discovers 15. Counts include
+The `reads` project discovers 125 cases; `writes` discovers 15. Counts include
 parameterized accessibility cases and cases that can skip at runtime. A test
 that loops through several routes or viewports is still one discovered case.
 
@@ -81,6 +82,7 @@ that loops through several routes or viewports is still one discovered case.
 | [writing-series.spec.ts](../e2e/writing-series.spec.ts)   | reads   |     7 | Published reading order, draft exclusion, unknown series, part navigation, sitemap/indexability, no-JS reading                                                                                                                   |
 | [writing.spec.ts](../e2e/writing.spec.ts)                 | reads   |     8 | Archive, unknown article/tag 404s, RSS, permanent legacy redirects with queries, feed discovery, sitemap/robots, security headers                                                                                                |
 | [admin-authoring.spec.ts](../e2e/admin-authoring.spec.ts) | writes  |     8 | Admin breadcrumbs, listing/draft creation, public isolation, signed preview, publish/unpublish, series clash feedback, delete                                                                                                    |
+| [footer.spec.ts](../e2e/footer.spec.ts)                   | reads   |     1 | Built revision date across public footers, profile JSON-LD and root sitemap entries                                                                                                                                              |
 | [admin-login.spec.ts](../e2e/admin-login.spec.ts)         | reads   |     5 | Denied/expired/cancelled sign-in, safe error copy, retry/home navigation, real OAuth callback redirects                                                                                                                          |
 | [admin-session.spec.ts](../e2e/admin-session.spec.ts)     | writes  |     7 | Author allowlist, OAuth state cookie attributes, absolute session age, logout/replay rejection, authenticated upload validation                                                                                                  |
 

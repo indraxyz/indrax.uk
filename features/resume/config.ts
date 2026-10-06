@@ -14,11 +14,16 @@ export const absoluteUrl = (path: string) => new URL(path, SITE_URL).toString()
 
 export const RESUME_CONFIG = {
   title: "Indra's Resume",
-  // The date the resume content last changed. Deliberately authored rather than
-  // derived from `new Date()`: this page is statically rendered, so a computed
-  // date would freeze at build time and claim an update that never happened.
-  updatedAt: "2026-08-29",
+  // Resolved from the built revision by next.config.ts, shared by footer/PDF/SEO.
+  // Plain Node scripts without build metadata omit the date rather than invent one.
+  updatedAt: process.env.NEXT_PUBLIC_SITE_UPDATED_AT?.trim() || null,
 } as const
+
+export const UPDATED_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+}
 
 // Section wording lives here because both the page and the PDF render it; when
 // each kept its own copy the two drifted apart.
