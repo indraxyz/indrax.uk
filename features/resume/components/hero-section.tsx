@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ContactLinks } from "@/features/resume/components/contact-links"
 import { DownloadResumeButton } from "@/features/resume/components/download-resume-button"
 import { HighlightSkills } from "@/features/resume/components/highlight-skills"
-import { PersonalInfoDrawer } from "@/features/resume/components/personal-info-drawer"
+import { PersonalInfoSheet } from "@/features/resume/components/personal-info-sheet"
 import { bio, personalInfo } from "@/features/resume/data/resume"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { cn } from "@/lib/utils"
@@ -65,7 +65,7 @@ export function HeroSection({
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 print:hidden">
-                <PersonalInfoDrawer />
+                <PersonalInfoSheet />
                 <DownloadResumeButton />
               </div>
             </div>

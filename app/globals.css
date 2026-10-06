@@ -263,6 +263,7 @@
   }
 
   body {
+    position: relative;
     background-color: var(--color-background);
     color: var(--color-foreground);
     background-image:
