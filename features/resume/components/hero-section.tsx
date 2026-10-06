@@ -6,13 +6,32 @@ import { DownloadResumeButton } from "@/features/resume/components/download-resu
 import { HighlightSkills } from "@/features/resume/components/highlight-skills"
 import { PersonalInfoDrawer } from "@/features/resume/components/personal-info-drawer"
 import { bio, personalInfo } from "@/features/resume/data/resume"
+import { SITE_CONTAINER_CLASS } from "@/components/site-container"
+import { cn } from "@/lib/utils"
 
-export function HeroSection() {
+export function HeroSection({
+  fullWidth = false,
+  showSkills = true,
+}: {
+  fullWidth?: boolean
+  showSkills?: boolean
+}) {
   const firstName = personalInfo.name.trim().split(/\s+/)[0]
 
   return (
-    <Card className="variant-primary variant-surface mb-8 overflow-hidden bg-[var(--variant-soft)]">
-      <CardContent className="relative p-8 print:p-4 lg:p-12">
+    <Card
+      variant={fullWidth ? "ghost" : "card"}
+      className={cn(
+        "variant-primary variant-surface mb-8 overflow-hidden bg-[var(--variant-soft)]",
+        fullWidth && "w-full shadow-none"
+      )}
+    >
+      <CardContent
+        className={cn(
+          "relative p-8 print:p-4 lg:p-12",
+          fullWidth && `${SITE_CONTAINER_CLASS} !px-4 py-8 lg:py-12`
+        )}
+      >
         <div className="print:flex print:items-stretch print:gap-4">
           {/* On screen the photo lives in the drawer. Paper has no drawer to open,
               so the hero carries it: a plain rectangle sized to the block beside
@@ -50,7 +69,7 @@ export function HeroSection() {
                 <DownloadResumeButton />
               </div>
             </div>
-            <HighlightSkills skills={personalInfo.highlightSkills ?? []} />
+            {showSkills && <HighlightSkills skills={personalInfo.highlightSkills ?? []} />}
             <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground print:text-sm print:leading-snug sm:mx-0 md:text-lg">
               {bio}
             </p>

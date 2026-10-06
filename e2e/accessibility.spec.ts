@@ -22,15 +22,16 @@ const PATHS = [
   { name: "home", path: "/" },
   { name: "resume", path: "/resume" },
   { name: "tech stack", path: "/tech-stack" },
-  { name: "archive", path: "/blog" },
-  { name: "article", path: `/blog/${SEEDED_POST_SLUG}` },
-  { name: "tag", path: `/blog/tag/${SEEDED_TAG_SLUG}` },
-  { name: "series", path: `/blog/series/${SEEDED_SERIES_SLUG}` },
+  { name: "archive", path: "/writing" },
+  { name: "article", path: `/writing/${SEEDED_POST_SLUG}` },
+  { name: "tag", path: `/writing/tags/${SEEDED_TAG_SLUG}` },
+  { name: "series", path: `/writing/series/${SEEDED_SERIES_SLUG}` },
   // Both states: the search box on its own, and the box with results under it.
-  { name: "search", path: "/blog/search" },
-  { name: "search results", path: "/blog/search?q=postgres" },
-  { name: "not found", path: "/blog/no-such-article" },
+  { name: "search", path: "/writing/search" },
+  { name: "search results", path: "/writing/search?q=postgres" },
+  { name: "not found", path: "/writing/no-such-article" },
   { name: "sign in", path: "/admin/login" },
+  { name: "sign-in failure", path: "/admin/login?error=account_not_permitted" },
 ]
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]

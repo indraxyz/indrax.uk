@@ -3,10 +3,10 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/features/blog/components/admin/admin-shell"
-import { PostRow } from "@/features/blog/components/admin/post-row"
-import { listAllPosts } from "@/features/blog/data/admin-queries"
-import { BLOG_CONFIG } from "@/features/blog/config"
+import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { PostRow } from "@/features/writing/components/admin/post-row"
+import { listAllPosts } from "@/features/writing/data/admin-queries"
+import { WRITING_CONFIG } from "@/features/writing/config"
 import { getAuthor } from "@/lib/auth-guard"
 import { cn } from "@/lib/utils"
 
@@ -22,12 +22,12 @@ export default async function AdminPostsPage() {
       pageNavigation={
         <nav aria-label="Posts page" className="flex justify-end">
           <Link
-            href={BLOG_CONFIG.basePath}
+            href={WRITING_CONFIG.basePath}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Blogs <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            {WRITING_CONFIG.title} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </nav>
       }

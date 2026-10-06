@@ -21,6 +21,6 @@ export const SEEDED_TAG_SLUG = "typescript"
 
 // The series the seeded posts belong to. Two published parts and one draft, which
 // is what makes "part 1 of 2" rather than "part 1 of 3" a meaningful assertion.
-export const SEEDED_SERIES_SLUG = "building-this-blog"
-export const SEEDED_SERIES_TITLE = "Building this blog"
+export const SEEDED_SERIES_SLUG = "building-this-site"
+export const SEEDED_SERIES_TITLE = "Building this site"
 export const SEEDED_PUBLISHED_PARTS = 2

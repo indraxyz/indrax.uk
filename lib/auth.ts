@@ -86,6 +86,7 @@ function create() {
     database: drizzleAdapter(db, { provider: "pg", schema }),
     baseURL: process.env.BETTER_AUTH_URL ?? SITE_URL,
     secret: requiredEnv("BETTER_AUTH_SECRET"),
+    onAPIError: { errorURL: "/admin/login" },
 
     account: {
       /**
@@ -170,6 +171,7 @@ function create() {
 
             if (!allowed || !githubId || githubId !== allowed) {
               throw new APIError("FORBIDDEN", {
+                code: "account_not_permitted",
                 message: "This GitHub account is not permitted to sign in.",
               })
             }

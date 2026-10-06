@@ -1,10 +1,12 @@
 import { House } from "lucide-react"
 import Link from "next/link"
 
+import { WRITING_CONFIG } from "@/features/writing/config"
+
 const linkClassName =
   "text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 
-export type PublicPage = "home" | "resume" | "blogs" | "tech-stack"
+export type PublicPage = "home" | "resume" | "writing" | "tech-stack"
 
 export function PublicNavigation({ activePage }: { activePage?: PublicPage | null }) {
   return (
@@ -26,18 +28,18 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         Resume
       </Link>
       <Link
-        href="/blog"
-        aria-current={activePage === "blogs" ? "page" : undefined}
+        href={WRITING_CONFIG.basePath}
+        aria-current={activePage === "writing" ? "page" : undefined}
         className={linkClassName}
       >
-        Blogs
+        {WRITING_CONFIG.title}
       </Link>
       <Link
         href="/tech-stack"
         aria-current={activePage === "tech-stack" ? "page" : undefined}
         className={linkClassName}
       >
-        Tech Stack
+        Stack
       </Link>
     </nav>
   )

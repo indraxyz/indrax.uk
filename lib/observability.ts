@@ -20,7 +20,7 @@
  */
 
 export interface ErrorContext {
-  /** Where in the application this happened, e.g. `blog.getFeedPosts`. */
+  /** Where in the application this happened, e.g. `writing.getFeedPosts`. */
   scope: string
   /** Anything that narrows it down. Never anything secret. */
   [key: string]: unknown

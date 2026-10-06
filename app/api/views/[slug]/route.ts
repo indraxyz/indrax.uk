@@ -58,7 +58,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
         )
     } catch (error) {
       // A counter that cannot count must not break the page it sits on.
-      logServerError(error, { scope: "blog.viewCount", slug })
+      logServerError(error, { scope: "writing.viewCount", slug })
     }
   }
 

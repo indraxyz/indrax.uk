@@ -4,19 +4,37 @@ import { PublicFooter } from "@/components/public-footer"
 import { PublicHeader } from "@/components/public-header"
 import { PublicMain } from "@/components/public-main"
 import type { PublicPage } from "@/components/public-navigation"
+import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb"
+import { cn } from "@/lib/utils"
 
 export function PublicShell({
   children,
   activePage,
+  breadcrumbs,
+  spaced = false,
+  fullWidth = false,
+  className,
 }: {
   children: ReactNode
-  activePage: PublicPage
+  activePage: PublicPage | null
+  breadcrumbs?: readonly BreadcrumbItem[]
+  spaced?: boolean
+  fullWidth?: boolean
+  className?: string
 }) {
+  const trail =
+    breadcrumbs ??
+    (activePage === "resume" || activePage === "tech-stack"
+      ? [{ name: "Home", path: "/" }, { name: activePage === "resume" ? "Resume" : "Stack" }]
+      : [])
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className={cn("flex min-h-screen flex-col bg-background", className)}>
       <PublicHeader activePage={activePage} />
 
-      <PublicMain>{children}</PublicMain>
+      <PublicMain spaced={spaced} fullWidth={fullWidth}>
+        <Breadcrumb items={trail} />
+        {children}
+      </PublicMain>
 
       <PublicFooter />
     </div>

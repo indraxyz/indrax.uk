@@ -1,6 +1,12 @@
 import { Document, Image, Link, Page, Text, View } from "@react-pdf/renderer"
 
-import { RESUME_CONFIG, SECTION_COPY, SITE_HOST, SOCIAL_LINKS } from "@/features/resume/config"
+import {
+  RESUME_CONFIG,
+  SECTION_COPY,
+  SITE_HOST,
+  SOCIAL_LINKS,
+  UPDATED_DATE_FORMAT,
+} from "@/features/resume/config"
 import {
   achievements,
   bio,
@@ -269,7 +275,7 @@ export function ResumeDocument() {
         </Card>
 
         <Text style={styles.footer}>
-          {`UPDATED ${formatDate(RESUME_CONFIG.updatedAt).toUpperCase()} - ${SITE_HOST.toUpperCase()}`}
+          {`${RESUME_CONFIG.updatedAt ? `UPDATED ${formatDate(RESUME_CONFIG.updatedAt, UPDATED_DATE_FORMAT).toUpperCase()} - ` : ""}${SITE_HOST.toUpperCase()}`}
         </Text>
       </Page>
     </Document>

@@ -97,7 +97,7 @@ test.describe("the admin boundary", () => {
     ) as { node: Record<string, { filename?: string }> }
 
     const id = Object.entries(manifest.node).find(([, entry]) =>
-      entry.filename?.includes("features/blog/data/mutations")
+      entry.filename?.includes("features/writing/data/mutations")
     )?.[0]
 
     if (!id) throw new Error("No mutation action found in the build manifest.")
@@ -108,7 +108,7 @@ test.describe("the admin boundary", () => {
   const INJECTED_TITLE = "Injected by an unauthenticated caller"
 
   async function assertNothingWasWritten(request: import("@playwright/test").APIRequestContext) {
-    const feed = await (await request.get("/rss.xml")).text()
+    const feed = await (await request.get("/writing/rss.xml")).text()
     expect(feed).not.toContain(INJECTED_TITLE)
 
     const sitemap = await (await request.get("/sitemap.xml")).text()

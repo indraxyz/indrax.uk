@@ -1,6 +1,6 @@
 # Indra Cahya Edytya - Resume/CV Website
 
-A modern personal site with a home page, resume, and blog, built with Next.js 16, TypeScript, Tailwind CSS v4, and shadcn/ui components.
+A personal site with a home page, resume, and writing archive, built with Next.js 16, TypeScript, Tailwind CSS v4, and shared UI components.
 
 ## 🚀 Features
 
@@ -8,19 +8,22 @@ A modern personal site with a home page, resume, and blog, built with Next.js 16
 - **Fully Typed**: Complete TypeScript implementation
 - **Responsive**: Mobile-first design that works on all devices
 - **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
-- **Focused routes**: `/` introduces the author, process, and recent writing; `/resume` contains the full CV; `/blog` lists articles; `/tech-stack` explains this site's implementation
+- **Focused routes**: `/` introduces the author, process, and recent writing; `/resume` contains the full CV; `/writing` lists articles; `/tech-stack` explains this site's implementation
 - **Downloadable CV**: react-pdf draws the resume in the browser on request, lazily loaded
 - **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
 - **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
 - **Measured, with permission**: optional PostHog analytics for pageviews, CV downloads and contact clicks, behind a consent gate that starts nothing until the visitor says yes
-- **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
+- **Writing**: posts from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-post Open Graph cards and `Article` JSON-LD
 - **Search**: Postgres full-text search over titles, summaries and article bodies, weighted so a title match wins — a plain GET form, so it needs no JavaScript
 - **Series**: an ordered run of posts with its own page and article-to-article navigation, counting only the parts a reader can open
 - **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
+
 - **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
 - **Reading aids**: an in-page contents list, related articles by tag, and copy buttons on code blocks - none of which cost a reader any JavaScript to read
 - **Performance**: Built with Next.js 16 and optimized for speed
 - **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
+
+The former `/blog/*` URLs permanently redirect to `/writing/*`; the old `/blog/tag/*` URLs redirect to `/writing/tags/*`. The former `/rss.xml` feed redirects to `/writing/rss.xml`.
 
 ## 🛠️ Tech Stack
 
@@ -44,12 +47,11 @@ A modern personal site with a home page, resume, and blog, built with Next.js 16
 │   ├── page.tsx              # Server route entry, emits the JSON-LD block
 │   ├── resume/               # Full CV page
 │   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── blog/                 # List, article, tag, search, series, preview and cards
+│   ├── writing/              # Archive, articles, tags, search, series, previews and feed
 │   ├── admin/                # Authoring, behind the auth guard
 │   ├── api/auth/             # Better Auth endpoints
 │   ├── api/upload/           # Presigned cover uploads
 │   ├── api/views/            # View counter, served as a tracking pixel
-│   ├── rss.xml/              # RSS 2.0 feed
 │   ├── not-found.tsx         # Site-wide 404
 │   ├── robots.ts             # Generated /robots.txt
 │   ├── sitemap.ts            # Generated /sitemap.xml
@@ -63,7 +65,7 @@ A modern personal site with a home page, resume, and blog, built with Next.js 16
 ├── e2e/                      # Playwright end-to-end specs
 ├── drizzle/                  # Generated database migrations
 ├── features/
-│   ├── blog/                 # Blog slice - components, queries, content, editor
+│   ├── writing/                 # Writing feature - components, queries, content, editor
 │   ├── home/                 # Home page composition and recent writing
 │   └── resume/
 │       ├── components/      # Resume feature components
@@ -122,19 +124,19 @@ npm run dev
 
 Every variable is optional; copy `.env.example` to `.env.local` to set them.
 
-| Variable                       | Default                      | Purpose                                                                                                       |
-| :----------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_POSTHOG_KEY`      | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
-| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host. Also named in `connect-src`, so the two cannot drift.                                         |
-| `NEXT_PUBLIC_SITE_URL`         | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
-| `DATABASE_URL`                 | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
-| `DIRECT_DATABASE_URL`          | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
-| `NEXT_PUBLIC_MEDIA_ORIGIN`     | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                         |
-| `BETTER_AUTH_SECRET`           | unset                        | Session signing key. **Server-only.**                                                                         |
-| `BETTER_AUTH_URL`              | `NEXT_PUBLIC_SITE_URL`       | Origin OAuth callbacks return to.                                                                             |
-| `GITHUB_CLIENT_ID` / `_SECRET` | unset                        | GitHub OAuth App. **Secret is server-only.**                                                                  |
-| `ALLOWED_GITHUB_ID`            | unset                        | The one numeric GitHub user id allowed to sign in.                                                            |
-| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501.                                                               |
+| Variable                       | Default                      | Purpose                                                                                                                  |
+| :----------------------------- | :--------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_POSTHOG_KEY`      | unset                        | PostHog project key. Unset means analytics never initialises.                                                            |
+| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host. Also named in `connect-src`, so the two cannot drift.                                                    |
+| `NEXT_PUBLIC_SITE_URL`         | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                                          |
+| `DATABASE_URL`                 | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the writing archive is empty and the rest of the site is unaffected. |
+| `DIRECT_DATABASE_URL`          | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                              |
+| `NEXT_PUBLIC_MEDIA_ORIGIN`     | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                                    |
+| `BETTER_AUTH_SECRET`           | unset                        | Session signing key. **Server-only.**                                                                                    |
+| `BETTER_AUTH_URL`              | `NEXT_PUBLIC_SITE_URL`       | Origin OAuth callbacks return to.                                                                                        |
+| `GITHUB_CLIENT_ID` / `_SECRET` | unset                        | GitHub OAuth App. **Secret is server-only.**                                                                             |
+| `ALLOWED_GITHUB_ID`            | unset                        | The one numeric GitHub user id allowed to sign in.                                                                       |
+| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501.                                                                          |
 
 ### The admin
 
@@ -164,9 +166,9 @@ anyone and the ability to publish here.
 Account linking is disabled, so only that one GitHub account can ever reach the
 admin - not any account that happens to share an email address with it.
 
-### The blog database
+### The writing database
 
-The blog reads from Postgres through `@neondatabase/serverless`, which speaks
+The writing reads from Postgres through `@neondatabase/serverless`, which speaks
 Neon's HTTP protocol — the only driver that works on Cloudflare Workers, which
 cannot open raw TCP sockets. A stock Postgres does not speak that protocol, so
 local development runs one behind a Neon-compatible proxy. The application then
@@ -186,48 +188,28 @@ does not collide with a Postgres already running on the machine.
 
 Against Neon, set `DATABASE_URL` to the pooled connection string and run
 `npm run db:migrate`. Migrate a Neon branch before production — see §13 of
-`docs/blog-spec.md`.
+`docs/writing-spec.md`.
 
 ### Testing
 
-Two suites, and they answer different questions.
-
-**Vitest** covers what a browser cannot cheaply reach: the exact expiry boundary
-of a preview token, a signature altered by one character, the sanitiser's
-response to a `javascript:` URL the renderer will happily emit. Fast enough to
-sit on the same gate as the linter, so `npm run check` runs it.
+See the [complete test suite guide](docs/testing.md) for the unit/E2E inventory,
+disposable database and auth setup, skip conditions, targeted commands, PNG/HTML/
+trace reports, CI gates, debugging, and current coverage limits.
 
 ```bash
-npm run test          # once
-npm run test:watch    # while working
+npm run check           # formatting, lint, types, and unit tests
+npm run test:e2e        # production-build browser suite; fixtures needed for full coverage
+npx playwright show-report
 ```
 
-**Playwright** proves the system works in place — the authorization boundary, the
-draft that stays invisible, the PDF that really downloads.
+The suite uses Vitest for module logic and Playwright for HTTP/browser flows.
+Playwright runs against `next start`, uses Chromium, and runs the write project
+after the read project. Export fixture environment variables into the shell;
+a green run with skipped database/auth cases does not verify those flows.
 
-```bash
-npx playwright install chromium   # once
-npm run test:e2e
-```
-
-On an OS Playwright no longer builds Chromium for - it answers
-`does not support chromium on mac13` outright - borrow an installed browser
-instead of editing the config:
-
-```bash
-PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
-```
-
-The suite builds the site and runs against `next start`, because the CV and the
-social card are prerendered at build time and behave differently under `next dev`.
-
-`e2e/blog-content.spec.ts` needs content, so it skips itself unless
-`DATABASE_URL` is set. To run it, bring the local stack up and seed it first:
-
-```bash
-npm run db:up && npm run db:migrate && npm run db:seed
-DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
-```
+Screenshots are saved on browser-test failure; `E2E_SCREENSHOTS=on` also keeps
+passing-test PNGs. Traces are retained on failure, and HTML reports are written
+locally. CI uploads failure artifacts for 14 days.
 
 ### Privacy and consent
 
@@ -402,3 +384,12 @@ Private project - All rights reserved
 ---
 
 Made with ❤️ using Next.js and TypeScript
+
+### Site update date
+
+The public footer, PDF and profile SEO dates use the built Git revision date,
+resolved automatically by Next.js configuration. Restart the development server
+after switching/committing revisions; published sites pick it up on the next deploy.
+For builds without a Git checkout, set `NEXT_PUBLIC_SITE_UPDATED_AT` to the revision
+calendar date (`YYYY-MM-DD`) at build time. This is optional for normal Git builds
+and is not a Worker runtime secret.
