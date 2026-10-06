@@ -15,7 +15,6 @@ export function WritingShell({ children, activePage = "writing", breadcrumbs }: 
   return (
     <PublicShell
       activePage={activePage}
-      spaced
       breadcrumbs={
         breadcrumbs ??
         (activePage
@@ -26,7 +25,7 @@ export function WritingShell({ children, activePage = "writing", breadcrumbs }: 
           : [{ name: "Home", path: "/" }, { name: "Not found" }])
       }
     >
-      {children}
+      <div className="space-y-8">{children}</div>
     </PublicShell>
   )
 }

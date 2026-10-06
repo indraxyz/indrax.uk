@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type BrowserContext } from "@playwright/test"
 
 import { E2E_BASE_URL } from "./support/constants"
@@ -88,6 +89,110 @@ test.describe("sessions", () => {
 
     expect(stateCookie?.value).toMatch(/;\s*SameSite=Lax(?:;|$)/i)
     expect(stateCookie?.value).toMatch(/;\s*HttpOnly(?:;|$)/i)
+  })
+
+  test("mobile menu matches desktop navigation and keeps preferences and sign-out accessible", async ({
+    browser,
+  }) => {
+    test.setTimeout(60_000)
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    await page.goto("/admin/posts")
+    await expect(page.getByRole("main").getByRole("link", { name: /View Writing/i })).toHaveCount(0)
+    const desktopLinks = await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link")
+      .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
+    expect(desktopLinks).toEqual(["/admin", "/admin/posts", "/resume", "/writing"])
+
+    for (const width of [320, 767]) {
+      await page.setViewportSize({ width, height: 700 })
+      await expect(page.getByRole("navigation", { name: "Admin", exact: true })).toBeHidden()
+      const trigger = page.getByRole("button", { name: "Open admin menu" })
+      await trigger.click()
+      const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+      await expect(drawer).toBeVisible()
+      const menu = drawer.getByRole("navigation", { name: "Admin", exact: true })
+      expect(
+        await menu
+          .getByRole("link")
+          .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
+      ).toEqual(desktopLinks)
+      await expect(menu.locator('[aria-current="page"]')).toHaveText("Posts")
+      await expect(drawer.getByRole("button", { name: /Switch theme/ })).toBeVisible()
+      await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeVisible()
+      const menuBox = await menu.boundingBox()
+      const footerBox = await drawer.locator('[data-slot="drawer-footer"]').boundingBox()
+      expect(footerBox!.y).toBeGreaterThan(menuBox!.y + menuBox!.height)
+      expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(700)
+      const accessibility = await new AxeBuilder({ page })
+        .include('[data-slot="drawer-content"]')
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+      expect(accessibility.violations).toEqual([])
+      await test.info().attach(`Admin menu at ${width}px`, {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+      await page.keyboard.press("Escape")
+      await expect(drawer).toBeHidden()
+      await expect(trigger).toBeFocused()
+    }
+
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await page
+      .getByRole("dialog", { name: "Admin menu", exact: true })
+      .getByRole("link", { name: "Writing", exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/writing$/)
+    await expect(page.getByRole("dialog", { name: "Admin menu", exact: true })).toBeHidden()
+    await page.goto("/admin/posts")
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+    const theme = drawer.getByRole("button", { name: /Switch theme/ })
+    const previousTheme = await theme.getAttribute("aria-label")
+    await theme.click()
+    await expect(theme).not.toHaveAttribute("aria-label", previousTheme!)
+    await expect(drawer).toBeVisible()
+    await drawer.getByRole("button", { name: "Sign out", exact: true }).click()
+    const confirmation = page.getByRole("alertdialog")
+    await expect(confirmation.getByRole("heading", { name: "Sign out?" })).toBeVisible()
+    await confirmation.getByRole("button", { name: "Cancel" }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(drawer).toBeVisible()
+    await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeFocused()
+
+    await drawer.getByRole("link", { name: "Admin home", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin$/)
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await expect(drawer.getByRole("link", { name: "Admin home", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
+    )
+    await drawer.getByRole("button", { name: "Close admin menu" }).click()
+    await expect(drawer).toBeHidden()
+
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await page.setViewportSize({ width: 1024, height: 900 })
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole("button", { name: "Open admin menu" })).toBeHidden()
+    await expect(page.getByRole("navigation", { name: "Admin", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: /Switch theme/ })).not.toHaveAttribute(
+      "aria-label",
+      previousTheme!
+    )
+    await page.setViewportSize({ width: 375, height: 700 })
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await drawer.getByRole("button", { name: "Sign out", exact: true }).click()
+    await confirmation.getByRole("button", { name: "Sign out", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin\/login/)
+    await expect(drawer).toBeHidden()
+    await context.close()
   })
 
   test("refuses a session belonging to a different GitHub account", async ({ browser }) => {

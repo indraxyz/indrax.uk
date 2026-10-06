@@ -39,6 +39,11 @@ The former `/blog/*` URLs permanently redirect to `/writing/*`; the old `/blog/t
 - **Package Manager**: npm
 - **Home interaction**: An SVG sequence diagram uses CSS to animate workflow arrows and respects reduced-motion preferences
 
+The public `/tech-stack` page starts with a reading, publishing, and delivery
+architecture overview. Its cards explain each tool choice in application,
+development, quality, delivery, and monitoring order, followed by links to the
+source repository, CI/CD workflow, and GitHub Actions guide.
+
 ## 📁 Project Structure
 
 ```
@@ -148,6 +153,18 @@ deployment is closed rather than half-open.
 and which optional services are configured. `/admin/posts` holds the complete
 post list, including drafts and archived posts. The editor stays at
 `/admin/new` and `/admin/edit/[id]`.
+
+Below the `md` breakpoint (768px), the admin header uses a menu button to open a
+right-side drawer. It keeps the desktop link order (Admin home, Posts, Resume, Writing),
+marks the current page, and places theme and sign-out controls at the bottom.
+Selecting a link or switching to a desktop viewport closes the drawer. Sign-out
+keeps the same confirmation dialog on both layouts.
+The mobile menu uses the Base UI Drawer so nested confirmation dialogs share
+focus and interaction management. The public personal-information slide-over
+uses the Base UI Sheet (Dialog) component.
+Both primitives are installed with `npx shadcn@latest add sheet` and
+`npx shadcn@latest add drawer`; `components.json` selects the official `base-nova`
+registry. Their page-level styles use the site's existing theme and controls.
 
 Set it up once:
 

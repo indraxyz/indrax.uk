@@ -26,6 +26,22 @@ test.describe("sign-in failures", () => {
     await expect(page.getByRole("button", { name: "Try GitHub again" })).toBeVisible()
   })
 
+  test("mobile sign-in menu offers theme controls without protected navigation", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 700 })
+    await page.goto("/admin/login")
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+    await expect(drawer).toBeVisible()
+    await expect(drawer.getByRole("button", { name: /Switch theme/ })).toBeVisible()
+    await expect(drawer.getByRole("navigation", { name: "Admin", exact: true })).toHaveCount(0)
+    await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0)
+    await page.mouse.click(10, 300)
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole("button", { name: "Open admin menu" })).toBeFocused()
+  })
+
   test("does not reflect arbitrary provider errors or descriptions", async ({ page }) => {
     await page.goto(
       "/admin/login?error=untrusted-provider-value&error_description=private-provider-detail"

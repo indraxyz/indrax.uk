@@ -122,6 +122,10 @@ test.describe("the public pages", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Deployment" })).toBeVisible()
     await expect(page.getByText(/Cloudflare Workers · OpenNext/)).toBeVisible()
     await expect(page.getByText("PostHog · structured server logs")).toBeVisible()
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "See my experience" })
+    ).toHaveCount(0)
+    await expect(page.getByRole("main").getByRole("link", { name: "Read writing" })).toHaveCount(0)
     const data = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Data", exact: true }) })
@@ -135,6 +139,69 @@ test.describe("the public pages", () => {
     await expect(local).toContainText("npm run dev")
     await expect(local).toContainText(".env.local")
     await expect(local).toContainText("Neon-compatible HTTP proxy")
+    await expect(page.getByRole("region", { name: "Architecture overview" })).toContainText(
+      "One Next.js application serves the public site and the author dashboard."
+    )
+    const cards = page.locator('[data-slot="stack-cards"]')
+    await expect(cards.getByRole("heading", { level: 2 })).toHaveText([
+      "Interface",
+      "Content",
+      "Data",
+      "Author access",
+      "Local development",
+      "Quality",
+      "CI/CD",
+      "Deployment",
+      "Measurement & monitoring",
+    ])
+    await expect(cards.getByText("Why this choice:", { exact: true })).toHaveCount(9)
+    const resources = page.getByRole("region", { name: "Source & workflow" })
+    for (const [name, href] of [
+      ["Source on GitHub", "https://github.com/indraxyz/indrax.uk"],
+      [
+        "CI/CD workflow",
+        "https://github.com/indraxyz/indrax.uk/blob/develop/.github/workflows/ci.yml",
+      ],
+      [
+        "How GitHub Actions works",
+        "https://docs.github.com/en/actions/get-started/understand-github-actions",
+      ],
+    ]) {
+      await expect(resources.getByRole("link", { name, exact: true })).toHaveAttribute("href", href)
+    }
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      const architecture = await page
+        .getByRole("region", { name: "Architecture overview" })
+        .boundingBox()
+      const firstCard = await cards
+        .getByRole("region", { name: "Interface", exact: true })
+        .boundingBox()
+      expect(architecture!.y + architecture!.height).toBeLessThan(firstCard!.y)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+  })
+
+  test("writing uses the same breadcrumb-to-content spacing as the resume", async ({ page }) => {
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      const gaps: number[] = []
+      for (const path of ["/resume", "/writing"]) {
+        await page.goto(path)
+        const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
+        await expect(breadcrumb).toBeVisible()
+        gaps.push(
+          await breadcrumb.evaluate(
+            (element) =>
+              element.nextElementSibling!.getBoundingClientRect().top -
+              element.getBoundingClientRect().bottom
+          )
+        )
+      }
+      expect(gaps[1]).toBe(gaps[0])
+    }
   })
 
   test("shows the spec-driven delivery lifecycle with and without motion", async ({ page }) => {

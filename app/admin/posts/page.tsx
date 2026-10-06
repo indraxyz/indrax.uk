@@ -1,4 +1,4 @@
-import { ExternalLink, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
@@ -6,7 +6,6 @@ import { controlClassNames } from "@/components/ui/variants"
 import { AdminShell } from "@/features/writing/components/admin/admin-shell"
 import { PostRow } from "@/features/writing/components/admin/post-row"
 import { listAllPosts } from "@/features/writing/data/admin-queries"
-import { WRITING_CONFIG } from "@/features/writing/config"
 import { getAuthor } from "@/lib/auth-guard"
 import { cn } from "@/lib/utils"
 
@@ -19,18 +18,6 @@ export default async function AdminPostsPage() {
     <AdminShell
       title="Posts"
       activePage="posts"
-      pageNavigation={
-        <nav aria-label="Posts page" className="flex justify-end">
-          <Link
-            href={WRITING_CONFIG.basePath}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            {WRITING_CONFIG.title} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </Link>
-        </nav>
-      }
       actions={
         <Link href="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
           <Plus className="h-3.5 w-3.5" aria-hidden />

@@ -11,14 +11,12 @@ export function PublicShell({
   children,
   activePage,
   breadcrumbs,
-  spaced = false,
   fullWidth = false,
   className,
 }: {
   children: ReactNode
   activePage: PublicPage | null
   breadcrumbs?: readonly BreadcrumbItem[]
-  spaced?: boolean
   fullWidth?: boolean
   className?: string
 }) {
@@ -31,7 +29,7 @@ export function PublicShell({
     <div className={cn("flex min-h-screen flex-col bg-background", className)}>
       <PublicHeader activePage={activePage} />
 
-      <PublicMain spaced={spaced} fullWidth={fullWidth}>
+      <PublicMain fullWidth={fullWidth}>
         <Breadcrumb items={trail} />
         {children}
       </PublicMain>

@@ -68,11 +68,7 @@ test.describe("authoring", () => {
     await page.goto("/admin")
 
     await expect(page).toHaveURL(/\/admin$/)
-    await expect(
-      page
-        .getByRole("navigation", { name: "Breadcrumb", exact: true })
-        .locator('[aria-current="page"]')
-    ).toHaveText("Overview")
+    await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible()
     await expect(
       page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Resume" })
@@ -91,8 +87,11 @@ test.describe("authoring", () => {
     await expect(page).toHaveURL(/\/admin$/)
     await page.goto("/admin/posts")
     await expect(page.getByRole("link", { name: "Admin home" })).toHaveAttribute("href", "/admin")
-    await expect(page.getByRole("link", { name: "Writing" })).toHaveAttribute("target", "_blank")
-    await expect(page.getByRole("link", { name: "Writing" })).toHaveAttribute("href", "/writing")
+    await expect(
+      page
+        .getByRole("navigation", { name: "Admin", exact: true })
+        .getByRole("link", { name: "Writing", exact: true })
+    ).toHaveAttribute("href", "/writing")
     // The draft the seed creates is only visible here - it 404s everywhere public.
     // Matched on its exact title: each row renders the title as a link *and* an
     // "Edit <title>" control, so a loose match finds both.
