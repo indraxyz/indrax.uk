@@ -9,7 +9,7 @@ export interface SectionLink {
   textLink: string
 }
 
-// Every section link pointed off-site until the blog arrived, so opening a new tab
+// Every section link pointed off-site until the writing arrived, so opening a new tab
 // was unconditional. It cannot stay that way: a same-site link that steals a tab
 // is a nuisance, and the external-link icon beside it would be a lie.
 const isExternal = (href: string) => /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//")
@@ -17,7 +17,7 @@ const isExternal = (href: string) => /^[a-z][a-z0-9+.-]*:/i.test(href) || href.s
 export type SectionHeaderSize = "sm" | "lg"
 
 // Every section on the resume sits under the hero's h1, so h2 is the right default
-// and stays it. The blog's list and tag pages have no hero: their section header is
+// and stays it. The writing's list and tag pages have no hero: their section header is
 // the page's only top-level heading, and a page without an h1 is flagged by axe and
 // leaves anyone navigating by heading with no entry point.
 export type SectionHeadingLevel = 1 | 2

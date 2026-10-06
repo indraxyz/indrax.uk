@@ -2,9 +2,9 @@ import { ArrowLeft, FileQuestion } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 
-import { BlogShell } from "@/features/blog/components/blog-shell"
+import { WritingShell } from "@/features/writing/components/writing-shell"
 import { controlClassNames } from "@/components/ui/variants"
-import { BLOG_CONFIG } from "@/features/blog/config"
+import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <BlogShell activePage={null}>
+    <WritingShell activePage={null}>
       <div className="flex flex-col items-center gap-6 border-2 border-border bg-card px-6 py-20 text-center shadow-soft">
         <FileQuestion className="h-10 w-10 text-muted-foreground" aria-hidden />
 
@@ -36,11 +36,11 @@ export default function NotFound() {
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Home
           </Link>
-          <Link href={BLOG_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
-            {BLOG_CONFIG.title}
+          <Link href={WRITING_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
+            {WRITING_CONFIG.title}
           </Link>
         </div>
       </div>
-    </BlogShell>
+    </WritingShell>
   )
 }

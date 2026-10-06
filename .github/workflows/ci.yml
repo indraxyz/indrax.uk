@@ -64,8 +64,8 @@ jobs:
   # ran against a database: search would have indexed every `href` in an article,
   # making an injected spam link a search term, and the series clash check matched
   # nothing so every duplicate part number would have reached the author as a 500.
-  # Forty-seven of the specs skip themselves without a database, and those
-  # forty-seven are where both bugs lived.
+  # Seeded-content and authenticated specs skip without their fixture environment,
+  # so a database-free smoke run cannot establish the same coverage.
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30

@@ -4,7 +4,7 @@ import { AlertTriangle, RotateCw } from "lucide-react"
 import Link from "next/link"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { BLOG_CONFIG } from "@/features/blog/config"
+import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
 interface ErrorPageProps {
@@ -25,7 +25,7 @@ interface ErrorPageProps {
  * without a stack trace reaching the reader (PRD US-6.2).
  *
  * A client component, because that is what an error boundary has to be - which is
- * also why it does not use `BlogShell`: that pulls in server-only imports.
+ * also why it does not use `WritingShell`: that pulls in server-only imports.
  */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
@@ -53,8 +53,8 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           <Link href="/" className={cn(controlClassNames, "px-5 py-3")}>
             Home
           </Link>
-          <Link href={BLOG_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
-            {BLOG_CONFIG.title}
+          <Link href={WRITING_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
+            {WRITING_CONFIG.title}
           </Link>
         </div>
       </div>

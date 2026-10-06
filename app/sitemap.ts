@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 
-import { BLOG_CONFIG } from "@/features/blog/config"
-import { getPublishedSlugs, getSeriesSlugs, getTagsInUse } from "@/features/blog/data/queries"
+import { WRITING_CONFIG } from "@/features/writing/config"
+import { getPublishedSlugs, getSeriesSlugs, getTagsInUse } from "@/features/writing/data/queries"
 import { RESUME_CONFIG, absoluteUrl, SITE_URL } from "@/features/resume/config"
 
 // The sitemap is prerendered, so without this it would keep whatever the archive
@@ -20,7 +20,7 @@ export const revalidate = 3600
  *
  * With no database configured this lists home, resume and tech stack pages.
  *
- * `/blog/search` is deliberately absent. It is `noindex` by design - every `?q=`
+ * `/writing/search` is deliberately absent. It is `noindex` by design - every `?q=`
  * is a distinct thin page and listing it would invite exactly the crawl it is
  * trying to avoid.
  */
@@ -58,20 +58,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...root,
     {
-      url: absoluteUrl(BLOG_CONFIG.basePath),
+      url: absoluteUrl(WRITING_CONFIG.basePath),
       // The archive is exactly as fresh as its newest article.
       lastModified: new Date(posts[0].updatedAt),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     ...posts.map((post) => ({
-      url: absoluteUrl(`${BLOG_CONFIG.basePath}/${post.slug}`),
+      url: absoluteUrl(`${WRITING_CONFIG.basePath}/${post.slug}`),
       lastModified: new Date(post.updatedAt),
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
     ...tags.map((tag) => ({
-      url: absoluteUrl(`${BLOG_CONFIG.basePath}/tag/${tag.slug}`),
+      url: absoluteUrl(`${WRITING_CONFIG.tagPath}/${tag.slug}`),
       changeFrequency: "weekly" as const,
       priority: 0.4,
     })),
@@ -79,7 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // through to published posts, so a series being written has nothing here and
     // the page it would point at 404s anyway.
     ...series.map((entry) => ({
-      url: absoluteUrl(`${BLOG_CONFIG.seriesPath}/${entry.slug}`),
+      url: absoluteUrl(`${WRITING_CONFIG.seriesPath}/${entry.slug}`),
       lastModified: new Date(entry.updatedAt),
       changeFrequency: "weekly" as const,
       // Above a tag page: a series is an authored reading order, not an

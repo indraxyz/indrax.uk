@@ -1,18 +1,14 @@
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { Timeline, TimelineContent, TimelineItem } from "@/components/ui/timeline"
 import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { experiences } from "@/features/resume/data/resume"
-import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { Briefcase } from "lucide-react"
 
 type Experience = (typeof experiences)[number]
 
 const experienceKey = (experience: Experience) => `${experience.company}-${experience.period}`
 
-// The timeline and the mobile rail lay the same facts out differently, but the
-// bullet list itself is identical in both, so it lives here once.
 function ExperienceDescription({ description }: Pick<Experience, "description">) {
   return (
     <ul className="ml-4 list-outside list-disc space-y-2 text-sm text-foreground print:space-y-1">
@@ -45,37 +41,6 @@ function ExperienceDetails({ company, period, timing, role, description }: Exper
   )
 }
 
-function ExperienceCard({ company, period, timing, role, description }: Experience) {
-  return (
-    <Card
-      height="2xl"
-      className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
-    >
-      <CardHeader className="variant-surface-header border-b-2 pb-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="variant-soft-chip rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground">
-            {period}
-          </p>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <Badge variant="tertiary" className="w-fit px-2 text-[10px]">
-            {role}
-          </Badge>
-          <span className="text-[10px] font-black uppercase tracking-widest text-current">
-            ({timing})
-          </span>
-        </div>
-        <CardTitle className="mt-2 text-lg font-black uppercase leading-tight tracking-tight">
-          {company}
-        </CardTitle>
-      </CardHeader>
-      <CardContent scrollable aria-label={company} className="pt-4">
-        <ExperienceDescription description={description} />
-      </CardContent>
-    </Card>
-  )
-}
-
 export function ExperienceSection() {
   return (
     <SectionCard
@@ -84,31 +49,23 @@ export function ExperienceSection() {
       title="Experiences"
       subtitle={SECTION_COPY.experiences}
       link={{ href: SOCIAL_LINKS.linkedin, textLink: "Linkedin" }}
-      height="xl"
-      contentClassName="pt-8 pb-4 sm:pr-4"
+      height="2xl"
+      className="min-h-0 max-h-svh sm:max-h-none"
+      contentClassName="pt-8 pb-4 pr-2 sm:pr-4 sm:overflow-visible"
     >
-      <div className="hidden print:block sm:block">
-        <Timeline>
-          {experiences.map((experience, index) => (
-            <TimelineItem key={experienceKey(experience)} isLast={index === experiences.length - 1}>
-              <TimelineContent>
-                <ExperienceDetails {...experience} />
-              </TimelineContent>
-            </TimelineItem>
-          ))}
-        </Timeline>
-      </div>
-
-      <div
-        role="region"
-        aria-label="Experience cards"
-        tabIndex={0}
-        className="flex gap-6 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden sm:hidden"
-      >
-        {experiences.map((experience) => (
-          <ExperienceCard key={experienceKey(experience)} {...experience} />
+      <Timeline role="list" aria-label="Experience timeline">
+        {experiences.map((experience, index) => (
+          <TimelineItem
+            role="listitem"
+            key={experienceKey(experience)}
+            isLast={index === experiences.length - 1}
+          >
+            <TimelineContent>
+              <ExperienceDetails {...experience} />
+            </TimelineContent>
+          </TimelineItem>
         ))}
-      </div>
+      </Timeline>
     </SectionCard>
   )
 }

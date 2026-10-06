@@ -7,7 +7,7 @@ import { TechStackSection } from "@/features/resume/components/tech-stack-sectio
 
 export function ResumePage() {
   return (
-    <PublicShell activePage="resume">
+    <PublicShell activePage="resume" className="@container">
       <HeroSection />
 
       {/* On screen this content lives in the drawer, which unmounts while closed

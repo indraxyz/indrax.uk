@@ -36,11 +36,11 @@ test.describe("the public pages", () => {
     }
   })
 
-  test("keeps blog search on one line and submits from mobile", async ({ page }) => {
+  test("keeps writing search on one line and submits from mobile", async ({ page }) => {
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 })
 
-      for (const path of ["/blog", "/blog/search"]) {
+      for (const path of ["/writing", "/writing/search"]) {
         await page.goto(path)
 
         const searchbox = page.getByRole("searchbox", { name: "Search articles" })
@@ -57,13 +57,13 @@ test.describe("the public pages", () => {
 
         await searchbox.fill("typescript")
         await button.click()
-        await expect(page).toHaveURL(/\/blog\/search\?q=typescript/)
+        await expect(page).toHaveURL(/\/writing\/search\?q=typescript/)
       }
     }
   })
 
   test("uses the same site navigation on every public page", async ({ page }) => {
-    for (const path of ["/", "/resume", "/blog", "/tech-stack"]) {
+    for (const path of ["/", "/resume", "/writing", "/tech-stack"]) {
       await page.goto(path)
       const navigation = page.getByRole("navigation", { name: "Site" })
       await expect(navigation.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/")
@@ -71,8 +71,11 @@ test.describe("the public pages", () => {
         "href",
         "/resume"
       )
-      await expect(navigation.getByRole("link", { name: "Blogs" })).toHaveAttribute("href", "/blog")
-      await expect(navigation.getByRole("link", { name: "Tech Stack" })).toHaveAttribute(
+      await expect(navigation.getByRole("link", { name: "Writing" })).toHaveAttribute(
+        "href",
+        "/writing"
+      )
+      await expect(navigation.getByRole("link", { name: "Stack" })).toHaveAttribute(
         "href",
         "/tech-stack"
       )
@@ -80,18 +83,34 @@ test.describe("the public pages", () => {
     }
   })
 
-  test("uses one 1440px layout width across public pages", async ({ page }) => {
+  test("keeps public content bounded while the home hero spans the viewport", async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 })
 
-    for (const path of ["/", "/resume", "/blog", "/tech-stack"]) {
+    for (const path of ["/", "/resume", "/writing", "/tech-stack"]) {
       await page.goto(path)
-      const widths = await page.evaluate(() =>
-        ["header > div", "main", "footer"].map(
-          (selector) => document.querySelector(selector)!.getBoundingClientRect().width
-        )
+      const widths = await page.evaluate(
+        (path) =>
+          ["header > div", path === "/" ? "main > div > div" : "main", "footer"].map(
+            (selector) => document.querySelector(selector)!.getBoundingClientRect().width
+          ),
+        path
       )
 
       expect(widths, path).toEqual([1440, 1440, 1440])
+      if (path === "/") {
+        const hero = page.locator("main > div").first()
+        const surface = await hero.evaluate((element) => ({
+          width: element.getBoundingClientRect().width,
+          shadow: getComputedStyle(element).boxShadow,
+        }))
+        expect(surface.width).toBe(1600)
+        const header = await page.locator("header").boundingBox()
+        const heroBounds = await hero.boundingBox()
+        expect(Math.abs(heroBounds!.y - header!.y - header!.height)).toBeLessThanOrEqual(1)
+        // Tailwind can serialize shadow-none as several transparent shadows.
+        const shadowColors = surface.shadow.match(/rgba?\([^)]+\)/g) ?? []
+        expect(shadowColors.every((color) => color.endsWith(", 0)"))).toBe(true)
+      }
     }
   })
 
@@ -101,8 +120,20 @@ test.describe("the public pages", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
     await expect(page.getByRole("heading", { level: 2, name: "Deployment" })).toBeVisible()
     await expect(page.getByText(/Cloudflare Workers · OpenNext/)).toBeVisible()
-    await expect(page.getByText("PostHog · Sentry (planned)")).toBeVisible()
-    await expect(page.getByText(/Sentry is the next planned addition/)).toBeVisible()
+    await expect(page.getByText("PostHog · structured server logs")).toBeVisible()
+    const data = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Data", exact: true }) })
+    const deployment = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Deployment", exact: true }) })
+    await expect(data.getByText(/Cloudflare R2/)).toBeVisible()
+    await expect(data.getByText(/R2 stores article media/)).toBeVisible()
+    await expect(deployment).not.toContainText("R2")
+    const local = page.getByRole("region", { name: "Local development", exact: true })
+    await expect(local).toContainText("npm run dev")
+    await expect(local).toContainText(".env.local")
+    await expect(local).toContainText("Neon-compatible HTTP proxy")
   })
 
   test("shows the spec-driven delivery lifecycle with and without motion", async ({ page }) => {
@@ -190,25 +221,112 @@ test.describe("the public pages", () => {
     for (const section of ["Experiences", "Tech Stack", "Portfolio"]) {
       await expect(page.getByRole("heading", { level: 2, name: section })).toBeVisible()
     }
+
+    const stack = page.getByRole("region", { name: /tech stack/i })
+    await expect(stack.getByText(/Payload CMS \(headless CMS built on Next\.js\)/)).toBeVisible()
   })
 
-  test("uses one card width across the mobile resume rails", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto("/resume")
+  test("uses a timeline and full-width horizontal stack rail on mobile and desktop", async ({
+    page,
+  }) => {
+    for (const width of [320, 390, 1600]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto("/resume")
 
-    const widths = await Promise.all(
-      [
-        '[aria-label="Experience cards"] > div',
-        '[aria-label="Tech Stack"] > div',
-        '[aria-label="Portfolio"] > div',
-      ].map((selector) =>
-        page
-          .locator(selector)
-          .first()
-          .evaluate((card) => card.getBoundingClientRect().width)
+      const timeline = page.getByRole("list", { name: "Experience timeline" })
+      await expect(timeline).toBeVisible()
+      await expect(timeline.getByRole("listitem")).not.toHaveCount(0)
+      await expect(page.getByRole("region", { name: "Experience cards" })).toHaveCount(0)
+
+      const stack = page.getByRole("region", { name: "Tech Stack", exact: true })
+      const cards = stack.locator("div.variant-border")
+      const dimensions = await stack.evaluate((element) => ({
+        width: element.clientWidth,
+        viewportWidth: document.documentElement.clientWidth,
+        left: element.getBoundingClientRect().left,
+        right: element.getBoundingClientRect().right,
+        scrollWidth: element.scrollWidth,
+      }))
+      expect(Math.abs(dimensions.left)).toBeLessThanOrEqual(1)
+      expect(Math.abs(dimensions.right - dimensions.viewportWidth)).toBeLessThanOrEqual(1)
+      expect(dimensions.width).toBe(dimensions.viewportWidth)
+      expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.width)
+      const cardWidths = await cards.evaluateAll((elements) =>
+        elements.map((element) => element.getBoundingClientRect().width)
       )
-    )
-    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1)
+      expect(cardWidths.length).toBeGreaterThan(1)
+      expect(
+        cardWidths.every((cardWidth) => cardWidth <= 384 && cardWidth < dimensions.width)
+      ).toBe(true)
+      await stack.focus()
+      await page.keyboard.press("ArrowRight")
+      await expect.poll(() => stack.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+    await page.emulateMedia({ media: "print" })
+    const stack = page.getByRole("region", { name: "Tech Stack", exact: true })
+    const printWidths = await stack.evaluate((element) => ({
+      width: element.clientWidth,
+      parentWidth: element.parentElement!.clientWidth,
+    }))
+    expect(printWidths.width).toBe(printWidths.parentWidth)
+  })
+
+  test("scrolls the experience timeline vertically on mobile and expands it on desktop and print", async ({
+    page,
+  }) => {
+    for (const { width, height } of [
+      { width: 320, height: 640 },
+      { width: 390, height: 640 },
+      { width: 390, height: 480 },
+    ]) {
+      await page.setViewportSize({ width, height })
+      await page.goto("/resume")
+      const pane = page.getByRole("region", { name: "Experiences", exact: true })
+      const dimensions = await pane.evaluate((element) => ({
+        height: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        sectionHeight: element.parentElement!.getBoundingClientRect().height,
+      }))
+      expect(dimensions.height).toBeGreaterThan(0)
+      expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.height)
+      expect(dimensions.sectionHeight).toBeGreaterThanOrEqual(height - 1)
+      expect(dimensions.sectionHeight).toBeLessThanOrEqual(height + 1)
+      await pane.focus()
+      await page.keyboard.press("PageDown")
+      await expect.poll(() => pane.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+      await page.keyboard.press("End")
+      await expect
+        .poll(() =>
+          pane.evaluate(
+            (element) => element.scrollHeight - element.clientHeight - element.scrollTop
+          )
+        )
+        .toBeLessThanOrEqual(1)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const pane = page.getByRole("region", { name: "Experiences", exact: true })
+    const desktop = await pane.evaluate((element) => ({
+      height: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }))
+    expect(desktop.height).toBeGreaterThanOrEqual(desktop.scrollHeight)
+
+    await page.setViewportSize({ width: 390, height: 640 })
+    await page.emulateMedia({ media: "print" })
+    const printed = await pane.evaluate((element) => ({
+      height: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      cap: getComputedStyle(element.parentElement!).maxHeight,
+    }))
+    expect(printed.cap).toBe("none")
+    expect(printed.height).toBeGreaterThanOrEqual(printed.scrollHeight)
   })
 
   test("prints the full resume with personal contact details", async ({ page }) => {

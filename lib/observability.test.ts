@@ -61,9 +61,12 @@ describe("logServerError", () => {
   })
 
   it("lets the caller add context, and does not let it be overwritten silently", () => {
-    const { record } = captured(new Error("Boom"), { scope: "blog.getFeedPosts", slug: "a-post" })
+    const { record } = captured(new Error("Boom"), {
+      scope: "writing.getFeedPosts",
+      slug: "a-post",
+    })
 
-    expect(record.scope).toBe("blog.getFeedPosts")
+    expect(record.scope).toBe("writing.getFeedPosts")
     expect(record.slug).toBe("a-post")
   })
 })
@@ -95,10 +98,10 @@ describe("logServerError — a reader who left is not a failure", () => {
 
   it("still records it rather than swallowing it", () => {
     // Demoted, not hidden. A flood of these is itself a signal.
-    const { record } = captured(new Error("aborted"), { scope: "render:/blog/tag/[tag]" })
+    const { record } = captured(new Error("aborted"), { scope: "render:/writing/tags/[tag]" })
 
     expect(record.message).toBe("aborted")
-    expect(record.scope).toBe("render:/blog/tag/[tag]")
+    expect(record.scope).toBe("render:/writing/tags/[tag]")
   })
 
   it("does not demote a real error that merely mentions aborting", () => {

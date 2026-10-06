@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm"
 
-import { POST_STATUSES, type PostDocument } from "@/features/blog/types"
+import { POST_STATUSES, type PostDocument } from "@/features/writing/types"
 
 // Better Auth owns these; the Drizzle adapter is handed the whole schema object,
 // so they have to be reachable from here.
@@ -67,7 +67,7 @@ export const posts = pgTable(
     //
     // Untrusted for as long as it lives: the renderer emits whatever attributes
     // this carries, so sanitising happens on the way out, every time. Its meaning
-    // depends on `BLOG_EXTENSIONS` - see the note there.
+    // depends on `WRITING_EXTENSIONS` - see the note there.
     contentJson: jsonb("content_json").$type<PostDocument>(),
     coverUrl: text("cover_url"),
     coverAlt: text("cover_alt"),

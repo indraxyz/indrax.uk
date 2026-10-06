@@ -107,7 +107,7 @@ test.describe("analytics", () => {
     // unpublished work. That is the outcome the token's signing and expiry exist to
     // prevent (threat T-4).
     const token = "a-token-that-must-not-be-transmitted"
-    await page.goto(`/blog/${SEEDED_POST_SLUG}/preview?token=${token}`)
+    await page.goto(`/writing/${SEEDED_POST_SLUG}/preview?token=${token}`)
 
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
 
@@ -173,11 +173,13 @@ test.describe("analytics", () => {
       const sentBeforeRegrant = analytics.sent.length
 
       await page.getByRole("button", { name: "Accept" }).click()
-      await page.getByRole("link", { name: /blog/i }).first().click()
+      await page
+        .getByRole("link", { name: /writing/i })
+        .first()
+        .click()
       await expect
-        .poll(() => analytics.sent.length, { timeout: 20_000 })
-        .toBeGreaterThan(sentBeforeRegrant)
-      expect(analytics.sent.slice(sentBeforeRegrant).join("\n")).toContain("$pageview")
+        .poll(() => analytics.sent.slice(sentBeforeRegrant).join("\n"), { timeout: 20_000 })
+        .toContain("$pageview")
     })
 
     test("resumes capture when consent is granted after a reload", async ({ page }) => {
@@ -193,7 +195,10 @@ test.describe("analytics", () => {
 
       const sentBeforeRegrant = analytics.sent.length
       await page.getByRole("button", { name: "Accept" }).click()
-      await page.getByRole("link", { name: /blog/i }).first().click()
+      await page
+        .getByRole("link", { name: /writing/i })
+        .first()
+        .click()
 
       await expect
         .poll(() => analytics.sent.slice(sentBeforeRegrant).join("\n"), { timeout: 20_000 })
@@ -244,7 +249,7 @@ test.describe("analytics", () => {
     test("can be withdrawn from the footer, on any page", async ({ page }) => {
       await recordAnalytics(page, { consent: "granted" })
 
-      for (const path of ["/", "/blog"]) {
+      for (const path of ["/", "/writing"]) {
         await test.step(path, async () => {
           await page.goto(path)
 

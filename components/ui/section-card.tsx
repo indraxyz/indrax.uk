@@ -24,7 +24,7 @@ interface SectionCardProps {
   link?: SectionLink
   tone?: VisualVariant
   // Promotes the header to the page's h1. For a page whose section header is its
-  // only top-level heading - the blog list and tag pages, which have no hero.
+  // only top-level heading - the writing list and tag pages, which have no hero.
   headingLevel?: SectionHeadingLevel
   variant?: CardVariant
   height?: CardHeight

@@ -94,6 +94,20 @@ const SECURITY_HEADERS = [
 ]
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // OpenNext needs an explicit root rule when the wildcard has no segments.
+      { source: "/blog", destination: "/writing", permanent: true },
+      {
+        source: "/blog/tag/:tag",
+        destination: "/writing/tags/:tag",
+        permanent: true,
+      },
+      { source: "/blog/:path*", destination: "/writing/:path*", permanent: true },
+      { source: "/rss.xml", destination: "/writing/rss.xml", permanent: true },
+    ]
+  },
+
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }]
   },
@@ -106,7 +120,7 @@ const nextConfig: NextConfig = {
     // Article cards are drawn per post, so unlike the resume card they cannot all
     // be prerendered - a post published after the last deploy renders its card on
     // demand. Tracing the fonts keeps that path working wherever it runs.
-    "/blog/[slug]/opengraph-image": ["./public/fonts/**"],
+    "/writing/[slug]/opengraph-image": ["./public/fonts/**"],
   },
 }
 

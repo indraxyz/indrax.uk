@@ -3,8 +3,8 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/features/blog/components/admin/admin-shell"
-import { listAllPosts } from "@/features/blog/data/admin-queries"
+import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { listAllPosts } from "@/features/writing/data/admin-queries"
 import { getAuthor } from "@/lib/auth-guard"
 import { cn } from "@/lib/utils"
 import { isAllowedMediaUrl } from "@/lib/utils/media"
@@ -35,7 +35,7 @@ export default async function AdminPage() {
     {
       name: "Postgres",
       state: "Connected",
-      description: "The post counts above were read from the blog database.",
+      description: "The post counts above were read from the writing database.",
     },
     {
       name: "Cover uploads",

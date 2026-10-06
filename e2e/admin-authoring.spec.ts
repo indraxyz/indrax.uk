@@ -68,6 +68,11 @@ test.describe("authoring", () => {
     await page.goto("/admin")
 
     await expect(page).toHaveURL(/\/admin$/)
+    await expect(
+      page
+        .getByRole("navigation", { name: "Breadcrumb", exact: true })
+        .locator('[aria-current="page"]')
+    ).toHaveText("Overview")
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible()
     await expect(
       page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Resume" })
@@ -80,9 +85,14 @@ test.describe("authoring", () => {
       .getByRole("link", { name: "Posts" })
       .click()
     await expect(page).toHaveURL(/\/admin\/posts$/)
+    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
+    await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText("Posts")
+    await breadcrumb.getByRole("link", { name: "Admin", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin$/)
+    await page.goto("/admin/posts")
     await expect(page.getByRole("link", { name: "Admin home" })).toHaveAttribute("href", "/admin")
-    await expect(page.getByRole("link", { name: "Blogs" })).toHaveAttribute("target", "_blank")
-    await expect(page.getByRole("link", { name: "Blogs" })).toHaveAttribute("href", "/blog")
+    await expect(page.getByRole("link", { name: "Writing" })).toHaveAttribute("target", "_blank")
+    await expect(page.getByRole("link", { name: "Writing" })).toHaveAttribute("href", "/writing")
     // The draft the seed creates is only visible here - it 404s everywhere public.
     // Matched on its exact title: each row renders the title as a link *and* an
     // "Edit <title>" control, so a loose match finds both.
@@ -96,6 +106,12 @@ test.describe("authoring", () => {
     page.on("pageerror", (error) => errors.push(String(error)))
 
     await page.goto("/admin/new")
+    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
+    await expect(breadcrumb.locator("li")).toHaveText(["Admin", "Posts", "New post"])
+    await expect(breadcrumb.getByRole("link", { name: "Posts", exact: true })).toHaveAttribute(
+      "href",
+      "/admin/posts"
+    )
     await page.waitForSelector(".ProseMirror")
 
     // Exact, because the series fieldset adds a "Series title" field and the
@@ -110,6 +126,7 @@ test.describe("authoring", () => {
 
     await page.getByRole("button", { name: /^save$/i }).click()
     await page.waitForURL(/\/admin\/edit\//)
+    await expect(breadcrumb.locator("li")).toHaveText(["Admin", "Posts", "Edit post"])
 
     // The slug is derived from the title, server-side.
     await expect(page.getByLabel("Slug")).toHaveValue(SLUG_PATTERN)
@@ -125,8 +142,8 @@ test.describe("authoring", () => {
     const slug = await page.getByLabel("Slug").inputValue()
     await page.close()
 
-    expect((await request.get(`/blog/${slug}`)).status()).toBe(404)
-    expect(await (await request.get("/rss.xml")).text()).not.toContain(TITLE)
+    expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
+    expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
     expect(await (await request.get("/sitemap.xml")).text()).not.toContain(slug)
   })
 
@@ -140,7 +157,7 @@ test.describe("authoring", () => {
     // succeeds depends on browser policy, and the field is what an author would
     // actually copy from when it does not.
     const field = page.getByLabel("Preview link")
-    await expect(field).toHaveValue(/\/blog\/.+\/preview\?token=/, { timeout: 15_000 })
+    await expect(field).toHaveValue(/\/writing\/.+\/preview\?token=/, { timeout: 15_000 })
     const previewUrl = await field.inputValue()
 
     // A fresh context: the link has to work for whoever it is sent to, and that
@@ -151,6 +168,9 @@ test.describe("authoring", () => {
     const response = await reader.goto(previewUrl)
     expect(response?.status()).toBe(200)
     await expect(reader.getByRole("status")).toContainText(/draft preview/i)
+    const breadcrumb = reader.getByRole("navigation", { name: "Breadcrumb", exact: true })
+    await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(`Preview: ${TITLE}`)
+    await expect(breadcrumb.getByRole("link")).toHaveCount(2)
     await expect(reader.getByRole("heading", { level: 1 })).toHaveText(TITLE)
 
     // Unpublished work advertises nothing.
@@ -161,11 +181,11 @@ test.describe("authoring", () => {
 
     // A token is for one post. Repointing it at another must fail - and the target
     // has to be a post that exists, or a 404 would prove only that it is missing.
-    expect((await reader.goto(`/blog/${SEEDED_SECOND_POST_SLUG}`))?.status()).toBe(200)
+    expect((await reader.goto(`/writing/${SEEDED_SECOND_POST_SLUG}`))?.status()).toBe(200)
 
     const token = new URL(previewUrl).searchParams.get("token") ?? ""
     const replayed = await reader.goto(
-      `/blog/${SEEDED_SECOND_POST_SLUG}/preview?token=${encodeURIComponent(token)}`
+      `/writing/${SEEDED_SECOND_POST_SLUG}/preview?token=${encodeURIComponent(token)}`
     )
     expect(replayed?.status()).toBe(404)
 
@@ -190,7 +210,7 @@ test.describe("authoring", () => {
     })
     await page.close()
 
-    const article = await request.get(`/blog/${slug}`)
+    const article = await request.get(`/writing/${slug}`)
     expect(article.status()).toBe(200)
 
     const html = await article.text()
@@ -199,7 +219,7 @@ test.describe("authoring", () => {
     // so it must join the existing TypeScript tag rather than create a second one.
     expect(html.toLowerCase()).toContain("typescript")
 
-    expect(await (await request.get("/rss.xml")).text()).toContain(TITLE)
+    expect(await (await request.get("/writing/rss.xml")).text()).toContain(TITLE)
     expect(await (await request.get("/sitemap.xml")).text()).toContain(slug)
   })
 
@@ -212,8 +232,8 @@ test.describe("authoring", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible({ timeout: 15_000 })
     await page.close()
 
-    expect((await request.get(`/blog/${slug}`)).status()).toBe(404)
-    expect(await (await request.get("/rss.xml")).text()).not.toContain(TITLE)
+    expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
+    expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
   })
 
   test("refuses a part number another article already holds", async () => {

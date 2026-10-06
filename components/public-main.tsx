@@ -5,13 +5,15 @@ import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 export function PublicMain({
   children,
   spaced = false,
+  fullWidth = false,
 }: {
   children: ReactNode
   spaced?: boolean
+  fullWidth?: boolean
 }) {
   return (
     <main
-      className={`${SITE_CONTAINER_CLASS} flex-1 py-10 print:py-4 lg:py-14 ${spaced ? "flex flex-col gap-8" : ""}`}
+      className={`${fullWidth ? "w-full pb-10 lg:pb-14" : `${SITE_CONTAINER_CLASS} py-10 lg:py-14`} flex-1 print:py-4 ${spaced ? "flex flex-col gap-8" : ""}`}
     >
       {children}
     </main>

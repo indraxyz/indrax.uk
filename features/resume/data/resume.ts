@@ -589,7 +589,7 @@ export const techStacks: TechStack[] = [
     group: "Website Operations",
     category: "CMS & Website Platforms",
     items:
-      "Shopify, WordPress, Elementor Pro, Statamic, Laravel, Next.js, PHP, headless CMS patterns, theme & template development, custom blocks and field types, plugin & extension development, multisite management, content modelling, editorial workflows, landing pages, content publishing",
+      "Payload CMS (headless CMS built on Next.js), Shopify, WordPress, Elementor Pro, Statamic, Laravel, Next.js, PHP, headless CMS patterns, theme & template development, custom blocks and field types, plugin & extension development, multisite management, content modelling, editorial workflows, landing pages, content publishing",
   },
   {
     group: "Website Operations",
@@ -649,7 +649,7 @@ export const techStacks: TechStack[] = [
     group: "Integrations & Growth",
     category: "SEO & Content Growth",
     items:
-      "Keyword research & search-intent mapping, content strategy & topic clusters, on-page optimization & copy briefs, internal linking strategy, local SEO & Google Business Profile, SERP feature targeting, competitor and gap analysis, content refresh cadence, landing page and blog growth programmes, backlink and digital-PR basics, SEO performance reporting & forecasting",
+      "Keyword research & search-intent mapping, content strategy & topic clusters, on-page optimization & copy briefs, internal linking strategy, local SEO & Google Business Profile, SERP feature targeting, competitor and gap analysis, content refresh cadence, landing page and editorial growth programmes, backlink and digital-PR basics, SEO performance reporting & forecasting",
   },
   {
     group: "Integrations & Growth",

@@ -7,7 +7,7 @@ import * as schema from "./schema"
 // like an oversight. `lib/db/seed.ts` and `drizzle.config.ts` are plain Node
 // processes that import this module, and `server-only` throws outside a React
 // Server Component - adding it breaks `npm run db:seed`. The guard lives one layer
-// up in `features/blog/data/queries.ts`, which is the only thing the application
+// up in `features/writing/data/queries.ts`, which is the only thing the application
 // imports.
 
 export type Database = ReturnType<typeof createClient>
@@ -56,8 +56,8 @@ let client: Database | undefined
  * Returning null rather than throwing is deliberate. `DATABASE_URL` is absent in
  * three ordinary situations - a fresh clone, a CI build, a preview that has not
  * been given a branch - and in all three the site should still build and still
- * serve the resume. Callers in `features/blog/data/queries.ts` treat a null
- * database as "no posts", which is the same path as a blog that has not been
+ * serve the resume. Callers in `features/writing/data/queries.ts` treat a null
+ * database as "no posts", which is the same path as an empty writing archive that has not been
  * written yet.
  *
  * Never expose this through a `NEXT_PUBLIC_` variable. The connection string is

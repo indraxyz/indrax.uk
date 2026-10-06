@@ -3,7 +3,7 @@ import { JetBrains_Mono } from "next/font/google"
 
 import { ConsentBanner } from "@/components/consent-banner"
 import { PostHogAnalytics } from "@/components/posthog-analytics"
-import { BLOG_CONFIG } from "@/features/blog/config"
+import { WRITING_CONFIG } from "@/features/writing/config"
 import { RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
@@ -92,8 +92,8 @@ export default function RootLayout({
         <link
           rel="alternate"
           type="application/rss+xml"
-          title={BLOG_CONFIG.feedTitle}
-          href={BLOG_CONFIG.feedPath}
+          title={WRITING_CONFIG.feedTitle}
+          href={WRITING_CONFIG.feedPath}
         />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

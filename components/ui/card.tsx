@@ -86,7 +86,7 @@ const CardTitle = React.forwardRef<
   React.HTMLAttributes<HTMLHeadingElement> & {
     // A card title sits one level under whatever heading introduces its group.
     // That is h3 under the resume's h2 sections, which stays the default, and h2
-    // under the blog list pages, whose section header is the page h1 - h1 followed
+    // under the writing list pages, whose section header is the page h1 - h1 followed
     // by h3 skips a level.
     level?: CardTitleLevel
   }

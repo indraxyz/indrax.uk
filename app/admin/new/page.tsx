@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 
-import { AdminShell } from "@/features/blog/components/admin/admin-shell"
-import { PostForm } from "@/features/blog/components/admin/post-form"
+import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { PostForm } from "@/features/writing/components/admin/post-form"
 import { getAuthor } from "@/lib/auth-guard"
 
 export default async function NewPostPage() {

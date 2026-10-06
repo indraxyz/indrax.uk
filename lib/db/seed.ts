@@ -14,12 +14,12 @@
  */
 import { eq, inArray, sql } from "drizzle-orm"
 
-import type { PostDocument } from "@/features/blog/types"
-import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
-import { computeReadingTime } from "@/features/blog/utils/reading-time"
-import { slugify } from "@/features/blog/utils/slug"
+import type { PostDocument } from "@/features/writing/types"
+import { deriveExcerpt, plainText } from "@/features/writing/utils/content"
+import { computeReadingTime } from "@/features/writing/utils/reading-time"
+import { slugify } from "@/features/writing/utils/slug"
 import { getDb, schema } from "@/lib/db"
-import { postInputSchema, type PostInput } from "@/lib/validators/blog"
+import { postInputSchema, type PostInput } from "@/lib/validators/writing"
 
 import { loadLocalEnv } from "./dev-env"
 
@@ -31,7 +31,7 @@ loadLocalEnv()
  * Authoring these documents as literals is unreadable at any length, and pulling
  * in a markdown-to-ProseMirror converter would add a dependency to make a
  * dev-only script shorter. These also serve as a compact statement of the node
- * shapes `BLOG_EXTENSIONS` produces.
+ * shapes `WRITING_EXTENSIONS` produces.
  */
 type Inline = PostDocument
 
@@ -98,14 +98,13 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
     status: "published",
     publishedAt: "2026-08-14T09:00:00.000Z",
     tags: ["Next.js", "Performance", "TypeScript"],
-    seriesTitle: "Building this blog",
-    seriesDescription:
-      "How the blog you are reading was built, in the order the decisions were actually made.",
+    seriesTitle: "Building this site",
+    seriesDescription: "How this site was built, in the order the decisions were actually made.",
     seriesOrder: 1,
     content: doc(
       p(
         text(
-          "Syntax highlighting is the easiest place on a blog to accidentally ship a hundred kilobytes of JavaScript to a reader who only wanted to read a paragraph. The usual setup runs a highlighter in the browser: the page arrives with plain code in it, the bundle loads, and the code repaints. It works, and it costs every reader the download."
+          "Syntax highlighting is an easy place to accidentally ship a hundred kilobytes of JavaScript to a reader who only wanted to read a paragraph. The usual setup runs a highlighter in the browser: the page arrives with plain code in it, the bundle loads, and the code repaints. It works, and it costs every reader the download."
         )
       ),
       h(2, "Move it to the server"),
@@ -116,7 +115,7 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
       ),
       code(
         "ts",
-        `const html = renderToHTMLString({ content: document, extensions: BLOG_EXTENSIONS })
+        `const html = renderToHTMLString({ content: document, extensions: WRITING_EXTENSIONS })
 
 const file = await unified()
   .use(rehypeParse, { fragment: true })
@@ -177,7 +176,7 @@ const file = await unified()
     status: "published",
     publishedAt: "2026-08-28T09:00:00.000Z",
     tags: ["Architecture", "Postgres", "TypeScript"],
-    seriesTitle: "Building this blog",
+    seriesTitle: "Building this site",
     seriesOrder: 2,
     content: doc(
       p(
@@ -212,7 +211,7 @@ const file = await unified()
         )
       ),
       quote(
-        "A blog that cannot reach Postgres renders as a blog with nothing in it. That is a far better failure than an unhandled exception taking down the only page the site has."
+        "When the site cannot reach Postgres, the writing archive shows an empty state. That is a far better failure than an unhandled exception taking down the only page the site has."
       ),
       p(
         text(
@@ -239,7 +238,7 @@ const file = await unified()
     tags: ["Security"],
     // Part three, and unpublished. Deliberate: it is what proves a reader is told
     // "part 1 of 2" rather than "part 1 of 3" with one of them answering 404.
-    seriesTitle: "Building this blog",
+    seriesTitle: "Building this site",
     seriesOrder: 3,
     content: doc(
       p(

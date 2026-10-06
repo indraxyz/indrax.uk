@@ -1,9 +1,9 @@
 import { notFound, redirect } from "next/navigation"
 
-import { AdminShell } from "@/features/blog/components/admin/admin-shell"
-import { PostActions } from "@/features/blog/components/admin/post-actions"
-import { PostForm } from "@/features/blog/components/admin/post-form"
-import { getPostForEdit } from "@/features/blog/data/admin-queries"
+import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { PostActions } from "@/features/writing/components/admin/post-actions"
+import { PostForm } from "@/features/writing/components/admin/post-form"
+import { getPostForEdit } from "@/features/writing/data/admin-queries"
 import { getAuthor } from "@/lib/auth-guard"
 
 interface EditPostPageProps {

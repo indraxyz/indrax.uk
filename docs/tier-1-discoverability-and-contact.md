@@ -48,7 +48,7 @@ can be found, shared, acted on, and measured.
 
 ## 3. Non-goals
 
-- A blog, case-study routes, or any second content type (Tier 2).
+- A writing archive, case-study routes, or any second content type (Tier 2).
 - Editing resume copy, pruning the portfolio, or changing which personal
   fields are displayed (Tier 3 — deliberately excluded so this branch stays
   reviewable).

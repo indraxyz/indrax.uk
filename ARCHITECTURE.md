@@ -7,11 +7,10 @@ This document describes the architecture and design decisions for the Resume/CV 
 ```
 ├── app/                      # Next.js App Router
 │   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
-│   ├── page.tsx             # Server entry for the resume page
-│   ├── blog/                # Blog routes - list, article, tag, per-post OG card
+│   ├── page.tsx             # Server entry for the home page
+│   ├── writing/             # Archive, article, tags, search, series, preview, feed and OG card
 │   ├── admin/               # Authoring, behind the auth guard
 │   ├── api/                 # Better Auth endpoints and presigned uploads
-│   ├── rss.xml/             # RSS 2.0 feed
 │   ├── not-found.tsx        # Site-wide 404, also what a draft looks like
 │   ├── robots.ts            # Generated /robots.txt
 │   ├── sitemap.ts           # Generated /sitemap.xml - async, queries the database
@@ -22,6 +21,7 @@ This document describes the architecture and design decisions for the Resume/CV 
 │   └── ui/                  # shadcn/ui base components
 │       ├── avatar.tsx
 │       ├── badge.tsx
+│       ├── breadcrumb.tsx   # Server-rendered public/admin ancestor navigation
 │       ├── button.tsx
 │       ├── card.tsx
 │       ├── drawer.tsx
@@ -33,13 +33,13 @@ This document describes the architecture and design decisions for the Resume/CV 
 │       └── variants.ts      # Visual variant tokens
 │
 ├── features/
-│   ├── blog/
+│   ├── writing/
 │   │   ├── components/      # Cards, list section, article body, chrome
 │   │   ├── data/            # Drizzle reads, cache-tagged
 │   │   ├── editor/          # The frozen Tiptap extension set
 │   │   ├── utils/           # Content pipeline, slug, reading time, JSON-LD
 │   │   ├── social-card.tsx  # Per-article link-preview banner
-│   │   ├── config.ts        # BLOG_CONFIG and section copy
+│   │   ├── config.ts        # WRITING_CONFIG and section copy
 │   │   └── types.ts         # Post, Tag, PostStatus
 │   └── resume/
 │       ├── components/      # Feature UI, section cards, and drawer
@@ -103,21 +103,22 @@ This document describes the architecture and design decisions for the Resume/CV 
 - Prettier for code formatting
 - Clear naming conventions
 - Comprehensive README
+- [Test suite guide](docs/testing.md): inventory, fixture setup, reports, CI, and coverage limits
 
 ## 🔄 Data Flow
 
 The site now has two sources of truth, one per feature slice. The resume is a
-committed file; the blog is a database. The shape of the two flows is deliberately
+committed file; the writing archive is backed by a database. The shape of the two flows is deliberately
 identical below the source, so a route composes the same way either way.
 
 ```
 features/resume/data/resume.ts (Source of Truth)     Neon Postgres (Source of Truth)
     ↓                                                     ↓  lib/db/schema.ts
-features/resume/types.ts (Type Definitions)               ↓  features/blog/data/queries.ts
-    ↓                                                     ↓  features/blog/types.ts
-features/resume/components/resume-page.tsx                ↓  app/blog/** (thin route entries)
+features/resume/types.ts (Type Definitions)               ↓  features/writing/data/queries.ts
+    ↓                                                     ↓  features/writing/types.ts
+features/resume/components/resume-page.tsx                ↓  app/writing/** (thin route entries)
     ↓                                                     ↓
-features/resume/components/ (Feature Components)     features/blog/components/
+features/resume/components/ (Feature Components)     features/writing/components/
     ↓                                                     ↓
 components/ui/ (Base UI Components)                  components/ui/
 ```
@@ -134,6 +135,23 @@ components/ui/ (Base UI Components)                  components/ui/
 
 ### Component Organization
 
+- **Shared page framing**: `WritingShell` composes `PublicShell`; the Stack page
+  uses the same `SectionHeader` as Writing and resume sections. The home hero
+  surface meets the navigation and spans the viewport without a shadow, while its content and other home
+  sections retain `SITE_CONTAINER_CLASS`.
+- **Breadcrumbs are explicit ancestry**: the shared server component renders a
+  labelled navigation landmark, an ordered list, ancestor links, and an unlinked
+  current page with `aria-current`. Routes supply article, tag, and series labels
+  from their data, sharing the trail with existing JSON-LD. Preview trails omit
+  an unpublished article link and the token. Admin uses the dashboard and Posts
+  as ancestors; sign-in returns to the public home. Home has no ancestor trail.
+- **Resume sections adapt to the viewport**: experience uses one timeline at every
+  viewport size. On mobile its section is capped at 100svh with a keyboard-accessible
+  vertical scroll pane; desktop and print show the full timeline without the cap.
+  The Stack rail extends to both screen edges, with horizontally scrollable
+  cards using the shared rail sizing and bounded content panes, like the portfolio.
+  Its width uses the resume page's inline-size container, excluding the browser
+  scrollbar, and returns to the content width in print.
 - **Scrolling panes are regions**: any pane that scrolls — a height-capped card
   body or a horizontal rail — is focusable and carries an `aria-label`, so keyboard
   users can reach content that is off-screen
@@ -164,8 +182,13 @@ components/ui/ (Base UI Components)                  components/ui/
   survive a filter the author cannot reach. The renderer emits stored attributes
   without judging them - a document carrying `src="javascript:..."` produces
   exactly that - so this is the only thing between the database and the reader
+- **Code highlighting uses Shiki's JavaScript regex engine**: `rehype-pretty-code`
+  receives the engine through its existing `getHighlighter` option and caches the
+  highlighter. This supports cold dynamic article and preview renders on Workers,
+  which reject runtime compilation of Oniguruma WebAssembly. Sanitization still
+  runs before highlighting; light and dark palettes remain in the HTML.
 - **The extension set is a compatibility surface**: a stored document only means
-  anything against the extensions that produced it, so `BLOG_EXTENSIONS` is one
+  anything against the extensions that produced it, so `WRITING_EXTENSIONS` is one
   exported constant. Removing an extension makes every document containing that
   node render wrong, silently, because an unknown node is dropped rather than
   raised
@@ -175,7 +198,7 @@ components/ui/ (Base UI Components)                  components/ui/
   beacon would miss - and the code-copy buttons are attached after load, so a
   reader without JavaScript sees no dead controls rather than broken ones
 - **The draft preview is its own route, not a query parameter**: the spec asked
-  for `/blog/{slug}?preview=…`, and building it that way turned every article
+  for `/writing/{slug}?preview=…`, and building it that way turned every article
   from prerendered into on-demand, because a page that reads `searchParams`
   cannot be static. That meant re-running the highlighter on every read of every
   published article to support a feature used a few times a month
@@ -197,7 +220,7 @@ components/ui/ (Base UI Components)                  components/ui/
 - **An absent database is a state, not an error**: `getDb()` returns `null` when
   `DATABASE_URL` is unset and every query returns the empty result, so a fresh
   clone, a CI build and a preview without a branch all build and serve the resume.
-  Query failures take the same path, so a database outage renders `/blog` empty
+  Query failures take the same path, so a database outage renders `/writing` empty
   rather than crashing the only page the site has
 - **Article rendering ships no JavaScript**: the markdown pipeline and Shiki run in
   a server component and the page receives finished HTML. That is what keeps the
@@ -248,12 +271,12 @@ Potential enhancements:
       rather than a shrug: the nonce forces every prerendered page to render per
       request, at ~430ms of CPU per cold article, which worsens T-11 (denial of
       wallet) to buy defence-in-depth behind an already-tested sanitiser. See
-      §15.4 of `docs/blog-implementation-plan.md`
+      §15.4 of `docs/writing-implementation-plan.md`
 - [x] Full-text search — Postgres `tsvector`, generated from the Tiptap document
       and weighted so titles outrank body text
 - [x] Series — an ordered run of posts, with an index page and article navigation
       that counts only the parts a reader can actually open
-- [ ] `pgvector` semantic search (see `docs/blog-implementation-plan.md` §16)
+- [ ] `pgvector` semantic search (see `docs/writing-implementation-plan.md` §16)
 - [ ] Giscus comments
 - [ ] Add Storybook for component documentation
 - [ ] Add i18n support for multiple languages
@@ -264,3 +287,7 @@ Potential enhancements:
 - [x] Dependabot, and the CI gate that makes its pull requests verifiable
 - [x] Playwright in CI — the repository's own compose stack, so the runner and a
       laptop cannot drift apart
+
+### Sign-in failures
+
+GitHub account rejection throws a coded `APIError` (`account_not_permitted`) before any user is created. Better Auth redirects OAuth failures to `/admin/login` through `errorCallbackURL` and the fallback `onAPIError.errorURL`. The existing sign-in screen displays fixed messages for denied accounts, expired state and cancelled attempts, with retry and home navigation. Unknown codes use generic copy; provider descriptions are never rendered. Account linking remains disabled and the author guard still checks every protected request. Callback regression tests use the real Better Auth handler with an isolated memory adapter and stubbed GitHub responses.
