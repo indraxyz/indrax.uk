@@ -3,8 +3,10 @@ import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
 import { SectionCard } from "@/components/ui/section-card"
 import { portfolioItems } from "@/features/resume/data/resume"
 import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
-import { Code, ExternalLink } from "lucide-react"
-import Link from "next/link"
+import { GithubIcon } from "@/components/ui/github-icon"
+import { controlClassNames } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
+import { Code } from "lucide-react"
 
 export function PortfolioSection() {
   return (
@@ -23,26 +25,44 @@ export function PortfolioSection() {
           className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
-            <div className="flex items-start justify-between gap-4">
-              <CardTitle className="text-base font-black uppercase leading-snug tracking-tight">
+            <div className="relative flex items-center justify-between gap-4 pe-14">
+              <CardTitle className="text-base font-black uppercase tracking-tight">
                 {item.title}
               </CardTitle>
-              {item.link && (
-                <Link
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0"
-                >
-                  <ExternalLink className="h-4 w-4 text-foreground transition-colors hover:text-[var(--component-variant-secondary-bg)]" />
-                </Link>
-              )}
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${item.title} repository on GitHub (opens in a new tab)`}
+                className={cn(
+                  controlClassNames,
+                  "absolute end-0 top-1/2 min-h-11 min-w-11 -translate-y-1/2 justify-center border-0 hover:text-foreground"
+                )}
+              >
+                <GithubIcon className="h-4 w-4" />
+              </a>
             </div>
           </CardHeader>
           <CardContent scrollable aria-label={item.title} className="pt-4">
             <p className="text-sm font-medium leading-relaxed text-foreground print:leading-snug">
               {item.description}
             </p>
+            <div className="mt-4 text-sm leading-relaxed">
+              <h4 className="font-bold">Features</h4>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {item.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-4 text-sm leading-relaxed">
+              <h4 className="font-bold">Tech stack</h4>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {item.techStack.map((tool) => (
+                  <li key={tool}>{tool}</li>
+                ))}
+              </ul>
+            </div>
           </CardContent>
         </Card>
       ))}

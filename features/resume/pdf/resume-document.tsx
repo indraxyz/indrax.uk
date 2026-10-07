@@ -269,7 +269,15 @@ export function ResumeDocument() {
                 {item.title.toUpperCase()}
               </Text>
               <Text style={{ marginTop: 1.5 }}>{item.description}</Text>
-              {item.link ? <Text style={styles.itemMeta}>{item.link}</Text> : null}
+              <Text style={styles.itemMeta}>FEATURES</Text>
+              {item.features.map((feature) => (
+                <Text key={feature}>• {feature}</Text>
+              ))}
+              <Text style={styles.itemMeta}>TECH STACK</Text>
+              <Text>{item.techStack.join(" · ")}</Text>
+              <Link src={item.link} style={styles.itemMeta}>
+                {item.link}
+              </Link>
             </View>
           ))}
         </Card>

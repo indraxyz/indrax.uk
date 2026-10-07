@@ -126,57 +126,94 @@ export const experiences: ExperienceItem[] = [
 export const portfolioItems: PortfolioItem[] = [
   {
     title: "kademix",
-    description:
-      "data table management with proper uiux & performance with Next.js, React Router,  MongoDB, Postgresql, GraphQL, React, TypeScript, Vite/ Turbopack, Tailwind CSS v4 (fullstack application) enhanced for optimal maintainability and scalability.",
+    description: "Full-stack data table management application.",
+    features: [
+      "Manage tabular data with a focus on usability and performance.",
+      "Structure the application for maintainability and scalability.",
+    ],
+    techStack: [
+      "Next.js",
+      "React",
+      "React Router",
+      "TypeScript",
+      "Vite / Turbopack",
+      "Tailwind CSS 4",
+      "MongoDB",
+      "PostgreSQL",
+      "GraphQL",
+    ],
     year: "2025",
+    link: "https://github.com/indraxyz/fullstack-kademix",
   },
   {
     title: "Belov",
-    description:
-      "[BPJS-TK Sidoarjo] Correction data system. Main features: manage ticket (detail, attachments, verification, history, delete). Web base using Laravel, MySQL, ReactJS, BulmaCSS",
+    description: "Data correction system for BPJS-TK Sidoarjo.",
+    features: [
+      "Manage correction tickets with details and attachments.",
+      "Verify submissions and track ticket history.",
+    ],
+    techStack: ["Laravel", "MySQL", "React", "Bulma CSS"],
     year: "2022",
+    link: "https://github.com/indraxyz/belov",
   },
   {
     title: "Crimenesia",
-    description:
-      "Crime reporting system between police and society. Main features: crime reporting and crime mapping. Web and android platform using Laravel, MySQL, jQuery, Semantic, NotyJS, ReactJS, React Native",
+    description: "Web and Android crime reporting system connecting the public and police.",
+    features: ["Submit crime reports.", "Map reported crimes by location."],
+    techStack: ["Laravel", "MySQL", "jQuery", "Semantic UI", "NotyJS", "React", "React Native"],
     year: "2017",
+    link: "https://github.com/indraxyz/crimenesia_web",
   },
   {
     title: "WisataApp",
-    description:
-      "Booking rooms platform. Main features: search property, hotels, available rooms. Web base with TypeScript, NextJS, Tailwind, MaterialUI, REST API",
+    description: "Property and hotel room booking platform.",
+    features: ["Search properties and hotels.", "Find available rooms for booking."],
+    techStack: ["TypeScript", "Next.js", "Tailwind CSS", "Material UI", "REST API"],
     year: "2024",
+    link: "https://github.com/indraxyz/WisataApp",
   },
   {
     title: "Spektra",
-    description:
-      "Project monitoring system. Main features: monitoring progress, register and approvals projects. Web base with NextJS, Tailwind, MaterialUI, EmotionJS, REST API",
+    description: "Project registration and progress monitoring system.",
+    features: ["Register projects and manage approvals.", "Monitor project progress."],
+    techStack: ["Next.js", "Tailwind CSS", "Material UI", "Emotion", "REST API"],
     year: "2023",
+    link: "https://github.com/indraxyz/project-monitoring",
   },
   {
     title: "Parkir",
-    description:
-      "Parking management system. Main features: auto select location, park entrance and out, tariff and payment, report. Web base using Laravel, Tailwind, MySQL",
+    description: "Parking management system covering arrivals, departures, and payments.",
+    features: [
+      "Select parking locations and record vehicle entry and exit.",
+      "Manage tariffs, payments, and reports.",
+    ],
+    techStack: ["Laravel", "Tailwind CSS", "MySQL"],
     year: "2021",
+    link: "https://github.com/indraxyz/parkir",
   },
   {
     title: "TodoApp",
-    description:
-      "todoApp (kanban board) q with drag drop functionality use Typescript, NextJs, NextUi, tailwind, motion.",
+    description: "Kanban board for organising tasks.",
+    features: ["Move tasks between columns with drag and drop."],
+    techStack: ["TypeScript", "Next.js", "NextUI", "Tailwind CSS", "Motion"],
     year: "2025",
+    link: "https://github.com/indraxyz/todoApp-dragdrop",
   },
   {
     title: "Calculator",
-    description:
-      "beautiful, secure that built with React 19, TypeScript, Vite, Tailwind CSS v4, and React Router v7. This calculator combines modern design with robust security measures, excellent user experience, optimized code architecture.",
+    description: "Calculator application with a responsive interface.",
+    features: ["Perform calculations through a clear, accessible interface."],
+    techStack: ["React 19", "TypeScript", "Vite", "Tailwind CSS 4", "React Router 7"],
     year: "2025",
+    link: "https://github.com/indraxyz/calculator-reactrouterv7-tailwind-vercel",
   },
   {
     title: "Pokedex",
-    description:
-      "search about pokemons that built with typescript, nextJs, material ui, tailwind, pokemon api v2.",
+    description: "Pokémon search application powered by PokéAPI.",
+    features: ["Search Pokémon and explore their information."],
+    techStack: ["TypeScript", "Next.js", "Material UI", "Tailwind CSS", "PokéAPI v2"],
     year: "2025",
+    link: "https://github.com/indraxyz/pokedex",
   },
 ]
 

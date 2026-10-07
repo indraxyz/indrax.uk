@@ -42,7 +42,15 @@ The former `/blog/*` URLs permanently redirect to `/writing/*`; the old `/blog/t
 The public `/tech-stack` page starts with a reading, publishing, and delivery
 architecture overview. Its cards explain each tool choice in application,
 development, quality, delivery, and monitoring order, followed by links to the
-source repository, CI/CD workflow, and GitHub Actions guide.
+source repository, CI/CD workflow, GitHub Actions guide, and Cloudflare documentation
+for Next.js on Workers, R2 storage, and observability.
+
+Tailwind CSS, its PostCSS plugin, and the typography plugin are build tools in
+`devDependencies`; build environments must install development dependencies.
+PostCSS is provided by the existing build tools rather than declared separately.
+Tiptap's `core` and `pm` packages remain explicit dependencies because the editor
+and static renderer require them as peers. The PDF renderer loads on demand, and
+article rendering and syntax highlighting stay on the server.
 
 ## 📁 Project Structure
 
@@ -307,6 +315,10 @@ tree that was clean a few days earlier, and that will happen again.
 ### Update Resume Data
 
 Edit `features/resume/data/resume.ts` to update your personal information, experiences, portfolio, etc.
+
+Portfolio entries separate `description` (project purpose), `features` (bullet points),
+`techStack` (tools), and `link` (the public GitHub repository). The resume cards and
+PDF share this data; each card's GitHub icon opens its repository in a new tab.
 
 ### Styling
 
