@@ -42,7 +42,7 @@ export const experiences: ExperienceItem[] = [
     timing: "Full Time, Hybrid",
     role: "Software Engineer",
     description: [
-      "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, Payload CMS, Vue.js, and WordPress, with a focus on responsive UX, clean implementation, reliable releases, and fast issue resolution.",
+      "Build and maintain production websites and product features across Laravel, Statamic, Shopify, Next.js, Payload CMS, Vue.js, and WordPress.",
       "Own delivery across MySQL, MariaDB, and PostgreSQL data; Docker, Redis, cloud storage, AWS/VPS CI/CD; Stripe and Xendit payment integrations; unit, feature, and automated testing; and collaboration with Jira, Slack, WhatsApp, Trello, and GitHub.",
       "Follow a delivery workflow with daily standups, progress reporting, ticket tracking, and weekly and monthly team meetings.",
       "Use Figma, pen.dev, GSAP, and Lenis for polished digital experiences, and apply AI API integration, n8n workflow automation, and agentic workflows with Claude, Codex, MCP, and skills to improve delivery efficiency and maintain code quality and conventions.",
