@@ -26,7 +26,10 @@ export function AdminShell({
 }: AdminShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85">
+      <header
+        data-admin-header
+        className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85"
+      >
         <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex items-center justify-between gap-4">
             <Link

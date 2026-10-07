@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { requireAuthor } from "@/lib/auth-guard"
+import { getCoverStorageConfig } from "@/lib/cover-storage"
 
 export const dynamic = "force-dynamic"
 
@@ -50,18 +51,6 @@ const EXTENSIONS: Record<(typeof ALLOWED_TYPES)[number], string> = {
   "image/avif": "avif",
 }
 
-function config() {
-  const accountId = process.env.R2_ACCOUNT_ID
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
-  const bucket = process.env.R2_BUCKET
-  const publicUrl = process.env.NEXT_PUBLIC_MEDIA_ORIGIN
-
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) return null
-
-  return { accountId, accessKeyId, secretAccessKey, bucket, publicUrl }
-}
-
 /**
  * Mints a short-lived, single-object URL the browser uploads straight to.
  *
@@ -85,7 +74,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authorised." }, { status: 401 })
   }
 
-  const settings = config()
+  const settings = getCoverStorageConfig()
   if (!settings) {
     return NextResponse.json(
       { error: "No media storage is configured for this deployment." },
