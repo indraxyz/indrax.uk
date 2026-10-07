@@ -115,6 +115,123 @@ test.describe("the public pages", () => {
     }
   })
 
+  test("portfolio cards separate project details and open their repositories in a new tab", async ({
+    page,
+    context,
+  }) => {
+    const repositories = [
+      ["kademix", "fullstack-kademix"],
+      ["Belov", "belov"],
+      ["Crimenesia", "crimenesia_web"],
+      ["WisataApp", "WisataApp"],
+      ["Spektra", "project-monitoring"],
+      ["Parkir", "parkir"],
+      ["TodoApp", "todoApp-dragdrop"],
+      ["Calculator", "calculator-reactrouterv7-tailwind-vercel"],
+      ["Pokedex", "pokedex"],
+    ]
+    await context.route("https://github.com/indraxyz/**", (route) =>
+      route.fulfill({ body: "Repository" })
+    )
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto("/resume")
+      const portfolio = page.getByRole("region", { name: "Portfolio", exact: true })
+      const stackHeader = await page
+        .getByRole("heading", { name: "Data & Storage", exact: true })
+        .locator("..")
+        .boundingBox()
+      expect(stackHeader).not.toBeNull()
+      for (const [title, repo] of repositories) {
+        const card = portfolio
+          .locator("div")
+          .filter({ has: page.getByRole("heading", { name: title, exact: true }) })
+          .filter({ has: page.getByRole("region", { name: title, exact: true }) })
+          .last()
+        const link = card.getByRole("link", {
+          name: `${title} repository on GitHub (opens in a new tab)`,
+          exact: true,
+        })
+        await expect(link).toHaveAttribute("href", `https://github.com/indraxyz/${repo}`)
+        await expect(link).toHaveAttribute("target", "_blank")
+        await expect(link).toHaveAttribute("rel", "noopener noreferrer")
+        const details = card.getByRole("region", { name: title, exact: true })
+        await expect(details.getByRole("heading", { name: "Features", exact: true })).toHaveCount(1)
+        await expect(details.getByRole("heading", { name: "Tech stack", exact: true })).toHaveCount(
+          1
+        )
+        await expect(details.getByRole("list")).toHaveCount(2)
+        await link.scrollIntoViewIfNeeded()
+        const heading = await card.getByRole("heading", { name: title, exact: true }).boundingBox()
+        const header = await card.locator(":scope > div").first().boundingBox()
+        const icon = await link.boundingBox()
+        expect(Math.abs(header!.height - stackHeader!.height)).toBeLessThanOrEqual(1)
+        expect(icon!.width).toBeGreaterThanOrEqual(44)
+        expect(icon!.height).toBeGreaterThanOrEqual(44)
+        expect(icon!.x).toBeGreaterThanOrEqual(heading!.x + heading!.width)
+        expect(icon!.y).toBeGreaterThanOrEqual(header!.y)
+        expect(icon!.y + icon!.height).toBeLessThanOrEqual(header!.y + header!.height)
+        const popupPromise = page.waitForEvent("popup")
+        await link.click()
+        const popup = await popupPromise
+        await expect(popup).toHaveURL(`https://github.com/indraxyz/${repo}`)
+        await popup.close()
+        await expect(page).toHaveURL(/\/resume$/)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+  })
+
+  test("portfolio GitHub icons keep contrast on hover in both themes", async ({ page }) => {
+    await page.goto("/resume")
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((value) => localStorage.setItem("indrax-theme", value), theme)
+      await page.reload()
+      for (const width of [320, 1280]) {
+        await page.setViewportSize({ width, height: 900 })
+        const link = page.getByRole("link", {
+          name: "kademix repository on GitHub (opens in a new tab)",
+          exact: true,
+        })
+        await link.hover()
+        expect(await link.evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe(
+          "0px"
+        )
+        await expect
+          .poll(
+            () =>
+              link.evaluate((element) => {
+                const styles = getComputedStyle(element)
+                const canvas = document.createElement("canvas")
+                canvas.width = canvas.height = 1
+                const context = canvas.getContext("2d")!
+                const luminance = (color: string) => {
+                  context.fillStyle = color
+                  context.fillRect(0, 0, 1, 1)
+                  const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data)
+                    .slice(0, 3)
+                    .map((channel) => {
+                      const value = channel / 255
+                      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+                    })
+                  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+                }
+                const foreground = luminance(getComputedStyle(element.querySelector("svg")!).fill)
+                const background = luminance(styles.backgroundColor)
+                return (
+                  (Math.max(foreground, background) + 0.05) /
+                  (Math.min(foreground, background) + 0.05)
+                )
+              }),
+            { message: `${theme} theme icon contrast at ${width}px` }
+          )
+          .toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
   test("explains the site stack", async ({ page }) => {
     await page.goto("/tech-stack")
 
@@ -135,6 +252,11 @@ test.describe("the public pages", () => {
     await expect(data.getByText(/Cloudflare R2/)).toBeVisible()
     await expect(data.getByText(/R2 stores article media/)).toBeVisible()
     await expect(deployment).not.toContainText("R2")
+    const auth = page.getByRole("region", { name: "Author access", exact: true })
+    await expect(auth).toContainText("Better Auth handles GitHub OAuth sign-in, sign-out")
+    await expect(auth).toContainText("database-backed sessions through the Drizzle adapter")
+    await expect(auth).toContainText("numeric GitHub account allowlist")
+    await expect(auth).toContainText("database sessions can be revoked")
     const local = page.getByRole("region", { name: "Local development", exact: true })
     await expect(local).toContainText("npm run dev")
     await expect(local).toContainText(".env.local")
@@ -154,8 +276,8 @@ test.describe("the public pages", () => {
       "Deployment",
       "Measurement & monitoring",
     ])
-    await expect(cards.getByText("Why this choice:", { exact: true })).toHaveCount(9)
-    const resources = page.getByRole("region", { name: "Source & workflow" })
+    await expect(cards.getByText("Why:", { exact: true })).toHaveCount(9)
+    const resources = page.getByRole("region", { name: "Sources", exact: true })
     for (const [name, href] of [
       ["Source on GitHub", "https://github.com/indraxyz/indrax.uk"],
       [
@@ -166,6 +288,12 @@ test.describe("the public pages", () => {
         "How GitHub Actions works",
         "https://docs.github.com/en/actions/get-started/understand-github-actions",
       ],
+      [
+        "Next.js on Cloudflare Workers",
+        "https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/",
+      ],
+      ["Cloudflare R2 storage", "https://developers.cloudflare.com/r2/"],
+      ["Workers observability", "https://developers.cloudflare.com/workers/observability/"],
     ]) {
       await expect(resources.getByRole("link", { name, exact: true })).toHaveAttribute("href", href)
     }

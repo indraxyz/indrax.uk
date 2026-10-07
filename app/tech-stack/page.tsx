@@ -61,9 +61,9 @@ const groups = [
     title: "Author access",
     tools: "Better Auth · GitHub OAuth",
     detail:
-      "GitHub OAuth and a numeric account allowlist protect the author dashboard, drafts, and media uploads.",
+      "Better Auth handles GitHub OAuth sign-in, sign-out, and database-backed sessions through the Drizzle adapter. A numeric GitHub account allowlist protects the author dashboard, drafts, and media uploads. Sessions expire after seven days without a refresh, with a thirty-day absolute limit enforced by the author guard.",
     reason:
-      "GitHub sign-in reuses an existing identity, while an account allowlist keeps publishing limited to the author.",
+      "Better Auth integrates authentication with the existing Next.js and PostgreSQL stack. GitHub sign-in reuses an existing identity without storing passwords, while database sessions can be revoked and the account allowlist keeps publishing limited to the author.",
   },
   {
     icon: Terminal,
@@ -120,6 +120,15 @@ const resources = [
   {
     label: "How GitHub Actions works",
     href: "https://docs.github.com/en/actions/get-started/understand-github-actions",
+  },
+  {
+    label: "Next.js on Cloudflare Workers",
+    href: "https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/",
+  },
+  { label: "Cloudflare R2 storage", href: "https://developers.cloudflare.com/r2/" },
+  {
+    label: "Workers observability",
+    href: "https://developers.cloudflare.com/workers/observability/",
   },
 ] as const
 
@@ -197,7 +206,7 @@ export default function TechStackPage() {
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{detail}</p>
               <p className="mt-4 border-t-2 border-border pt-4 text-sm leading-relaxed text-muted-foreground">
-                <span className="font-bold text-foreground">Why this choice: </span>
+                <span className="font-bold text-foreground">Why: </span>
                 {reason}
               </p>
             </section>
@@ -209,11 +218,12 @@ export default function TechStackPage() {
           className="border-2 border-border bg-card p-6 shadow-soft"
         >
           <h2 id="stack-source" className="text-lg font-black uppercase">
-            Source &amp; workflow
+            Sources
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             Explore the implementation and the workflow that builds, tests, and deploys it. The
-            GitHub Actions guide explains the workflows, jobs, and runners behind the pipeline.
+            GitHub Actions guide explains the pipeline; Cloudflare documentation covers the Next.js
+            runtime, optional media storage, and operational monitoring.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             {resources.map(({ label, href }) => (
