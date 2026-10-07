@@ -45,6 +45,7 @@ const labelClasses = "text-xs font-black uppercase tracking-[0.14em] text-muted-
 
 interface PostFormProps {
   post: AdminPost | null
+  coverUploadsConfigured: boolean
 }
 
 /**
@@ -73,7 +74,7 @@ function FieldError({ id, messages }: { id: string; messages?: string[] }) {
 const describedBy = (field: string, messages?: string[]) =>
   messages?.length ? { "aria-invalid": true, "aria-describedby": `${field}-error` } : {}
 
-export function PostForm({ post }: PostFormProps) {
+export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [result, setResult] = useState<ActionResult | null>(null)
@@ -153,7 +154,7 @@ export function PostForm({ post }: PostFormProps) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="title" className={labelClasses}>
               Title
@@ -179,7 +180,7 @@ export function PostForm({ post }: PostFormProps) {
           <FieldError id="content-error" messages={result?.errors?.content} />
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="status" className={labelClasses}>
               Status
@@ -309,9 +310,20 @@ export function PostForm({ post }: PostFormProps) {
             <FieldError id="excerpt-error" messages={result?.errors?.excerpt} />
           </div>
 
-          <div className="space-y-1.5">
+          <fieldset
+            disabled={!coverUploadsConfigured}
+            aria-describedby={!coverUploadsConfigured ? "cover-storage-help" : undefined}
+            className="space-y-1.5 disabled:[&_input]:opacity-60 disabled:[&_button]:opacity-60"
+          >
+            <legend className={labelClasses}>Cover image</legend>
+            {!coverUploadsConfigured && (
+              <p id="cover-storage-help" className="text-xs font-medium text-muted-foreground">
+                Cover images are unavailable until media storage is configured. Existing cover
+                details are kept when you save.
+              </p>
+            )}
             <label htmlFor="coverUrl" className={labelClasses}>
-              Cover image
+              Cover image URL
             </label>
             <input
               id="coverUrl"
@@ -336,7 +348,7 @@ export function PostForm({ post }: PostFormProps) {
               className={fieldClasses}
             />
             <FieldError id="coverAlt-error" messages={result?.errors?.coverAlt} />
-          </div>
+          </fieldset>
         </div>
       </div>
 

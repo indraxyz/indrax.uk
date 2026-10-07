@@ -5,6 +5,7 @@ import { PostActions } from "@/features/writing/components/admin/post-actions"
 import { PostForm } from "@/features/writing/components/admin/post-form"
 import { getPostForEdit } from "@/features/writing/data/admin-queries"
 import { getAuthor } from "@/lib/auth-guard"
+import { getCoverStorageConfig } from "@/lib/cover-storage"
 
 interface EditPostPageProps {
   params: Promise<{ id: string }>
@@ -24,7 +25,7 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
       backLink={{ href: "/admin/posts", label: "Posts" }}
       actions={<PostActions post={post} />}
     >
-      <PostForm post={post} />
+      <PostForm post={post} coverUploadsConfigured={Boolean(getCoverStorageConfig())} />
     </AdminShell>
   )
 }

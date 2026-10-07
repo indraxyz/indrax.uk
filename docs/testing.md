@@ -2,7 +2,7 @@
 
 This guide documents the repository's current test setup, how to run it, and
 what its results prove. Configuration and test files are the source of truth.
-The inventory below was collected on **6 October 2026**; it is a count of
+The inventory below was collected on **7 October 2026**; it is a count of
 discovered cases, not a claim that every case ran in a particular test run.
 
 ## Contents
@@ -36,7 +36,7 @@ Better Auth itself, using an isolated in-memory adapter and stubbed GitHub respo
 it does not contact GitHub or PostgreSQL. Some specs use HTTP requests instead of a
 page when checking status codes, feeds, images, uploads, or server actions.
 
-### Unit tests: 121 cases in 13 files
+### Unit tests: 136 cases in 14 files
 
 Vitest discovers `**/*.test.ts`, excludes `node_modules`, `.next`, and `e2e`, and
 runs in a Node environment rather than jsdom. The `@` alias resolves to the repo
@@ -57,12 +57,13 @@ used only by the test runner. Application builds still use the real guard.
 | [analytics-host.test.ts](../lib/analytics-host.test.ts)                      |     9 | Analytics origins, invalid schemes/input, CSP injection prevention, regional asset hosts                                                      |
 | [observability.test.ts](../lib/observability.test.ts)                        |    12 | Structured logs, digest/context/stack handling, aborted requests, real failures                                                               |
 | [media.test.ts](../lib/utils/media.test.ts)                                  |     7 | HTTPS media origin allowlist, userinfo and host tricks, invalid URLs                                                                          |
+| [cover-storage.test.ts](../lib/cover-storage.test.ts)                        |    15 | Cover configuration completeness, blank credentials and invalid media origins                                                                 |
 | [auth.test.ts](../lib/auth.test.ts)                                          |     3 | Real Better Auth callbacks with an isolated memory adapter: rejected/missing identity creates no rows or session; authorised control succeeds |
 | [site-updated-at.test.ts](../config/site-updated-at.test.ts)                 |     7 | Revision metadata, explicit overrides, valid leap dates, invalid dates, missing Git                                                           |
 
-### E2E tests: 146 cases in 17 files
+### E2E tests: 151 cases in 17 files
 
-The `reads` project discovers 130 cases; `writes` discovers 16. Counts include
+The `reads` project discovers 130 cases; `writes` discovers 21. Counts include
 parameterized accessibility cases and cases that can skip at runtime. A test
 that loops through several routes or viewports is still one discovered case.
 
@@ -81,7 +82,7 @@ that loops through several routes or viewports is still one discovered case.
 | [writing-search.spec.ts](../e2e/writing-search.spec.ts)   | reads   |    10 | Body/title search, ranking, draft exclusion, noindex, empty/missing results, query limits, punctuation, no-JS forms, pagination                                                                                                                                                                    |
 | [writing-series.spec.ts](../e2e/writing-series.spec.ts)   | reads   |     7 | Published reading order, draft exclusion, unknown series, part navigation, sitemap/indexability, no-JS reading                                                                                                                                                                                     |
 | [writing.spec.ts](../e2e/writing.spec.ts)                 | reads   |     8 | Archive, unknown article/tag 404s, RSS, permanent legacy redirects with queries, feed discovery, sitemap/robots, security headers                                                                                                                                                                  |
-| [admin-authoring.spec.ts](../e2e/admin-authoring.spec.ts) | writes  |     8 | Admin breadcrumbs, listing/draft creation, public isolation, signed preview, publish/unpublish, series clash feedback, delete                                                                                                                                                                      |
+| [admin-authoring.spec.ts](../e2e/admin-authoring.spec.ts) | writes  |    13 | Admin breadcrumbs, listing/draft creation, table actions and persistence, sticky formatting on desktop/mobile, cover availability and cover preservation, public isolation, signed preview, publish/unpublish, series clash feedback, delete                                                       |
 | [footer.spec.ts](../e2e/footer.spec.ts)                   | reads   |     1 | Built revision date across public footers, profile JSON-LD and root sitemap entries                                                                                                                                                                                                                |
 | [admin-login.spec.ts](../e2e/admin-login.spec.ts)         | reads   |     6 | Denied/expired/cancelled sign-in, safe error copy, retry/home navigation, OAuth callback redirects, mobile preferences without protected navigation                                                                                                                                                |
 | [admin-session.spec.ts](../e2e/admin-session.spec.ts)     | writes  |     8 | Author allowlist, OAuth state cookie attributes, session age, logout/replay rejection, uploads, responsive drawer navigation, theme sync, focus, and sign-out confirmation                                                                                                                         |
@@ -188,6 +189,14 @@ unset R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET NEXT_PUBLIC_
 
 An interrupted authoring run can leave its temporary post behind. A fresh test
 volume restores a predictable fixture set; rerunning the seed is not a full reset.
+
+Cover availability tests exercise both configurations. The disposable setup above
+runs the unavailable-storage and preservation cases. To verify enabled controls,
+rebuild with dummy `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET`, and `NEXT_PUBLIC_MEDIA_ORIGIN=https://media.example.com`, then run
+`admin-authoring.spec.ts --project=writes --no-deps --grep "enables cover controls"`.
+That test checks enabled controls without contacting an R2 bucket. Never use
+live storage credentials for this test.
 
 ### Targeted browser commands
 

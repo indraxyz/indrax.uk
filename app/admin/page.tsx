@@ -6,8 +6,8 @@ import { controlClassNames } from "@/components/ui/variants"
 import { AdminShell } from "@/features/writing/components/admin/admin-shell"
 import { listAllPosts } from "@/features/writing/data/admin-queries"
 import { getAuthor } from "@/lib/auth-guard"
+import { getCoverStorageConfig } from "@/lib/cover-storage"
 import { cn } from "@/lib/utils"
-import { isAllowedMediaUrl } from "@/lib/utils/media"
 
 export default async function AdminPage() {
   if (!(await getAuthor())) redirect("/admin/login")
@@ -17,13 +17,7 @@ export default async function AdminPage() {
   const drafts = posts.filter((post) => post.status === "draft").length
   const archived = posts.filter((post) => post.status === "archived").length
   const latestDraft = posts.find((post) => post.status === "draft")
-  const coverUploadsConfigured = Boolean(
-    process.env.R2_ACCOUNT_ID &&
-    process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY &&
-    process.env.R2_BUCKET &&
-    isAllowedMediaUrl(process.env.NEXT_PUBLIC_MEDIA_ORIGIN)
-  )
+  const coverUploadsConfigured = Boolean(getCoverStorageConfig())
   const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY)
 
   const services = [

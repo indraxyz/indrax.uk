@@ -1,3 +1,4 @@
+import { neon } from "@neondatabase/serverless"
 import { expect, test, type BrowserContext } from "@playwright/test"
 
 import {
@@ -99,6 +100,175 @@ test.describe("authoring", () => {
     await page.close()
   })
 
+  test("edits table structure and keeps controls in sync with the selection", async () => {
+    const page = await context.newPage()
+    await page.goto("/admin/new")
+    const body = page.locator(".ProseMirror")
+    await expect(body).toBeVisible()
+    await expect(page.getByRole("toolbar", { name: "Table editing" })).toHaveCount(0)
+    await body.click()
+    await page.getByRole("button", { name: "Table", exact: true }).click()
+    const table = body.locator("table")
+    const tools = page.getByRole("toolbar", { name: "Table editing" })
+    await expect(table.locator("tr")).toHaveCount(3)
+    await expect(table.locator("tr").first().locator("th")).toHaveCount(3)
+    await expect(tools).toBeVisible()
+    for (const button of await tools.getByRole("button").all()) {
+      const label = await button.getAttribute("aria-label")
+      expect(label).toBeTruthy()
+      await expect(button).toHaveAttribute("title", label!)
+      await expect(button.locator("svg").first()).toBeVisible()
+      await expect(button).toHaveText("")
+    }
+    await expect(page.getByRole("button", { name: "Table", exact: true })).toBeDisabled()
+    await expect(tools.getByRole("button", { name: "Merge cells", exact: true })).toBeDisabled()
+    await expect(tools.getByRole("button", { name: "Split cell", exact: true })).toBeDisabled()
+
+    for (const action of ["Add row above", "Add row below"]) {
+      await tools.getByRole("button", { name: action, exact: true }).click()
+    }
+    await expect(table.locator("tr")).toHaveCount(5)
+    await tools.getByRole("button", { name: "Delete row", exact: true }).click()
+    await expect(table.locator("tr")).toHaveCount(4)
+    for (const action of ["Add column before", "Add column after"]) {
+      await tools.getByRole("button", { name: action, exact: true }).click()
+    }
+    await expect(table.locator("tr").first().locator("th, td")).toHaveCount(5)
+    await tools.getByRole("button", { name: "Delete column", exact: true }).click()
+    await expect(table.locator("tr").first().locator("th, td")).toHaveCount(4)
+
+    // Header row/column controls toggle the table headers; the cell toggle follows the caret.
+    await table.locator("tr").last().locator("td").first().click()
+    // Deleting the original selected row above also removed the original header.
+    await expect(table.locator("tr").first().locator("th")).toHaveCount(0)
+    await tools.getByRole("button", { name: "Toggle header row", exact: true }).click()
+    await expect(table.locator("tr").first().locator("th")).toHaveCount(4)
+    await tools.getByRole("button", { name: "Toggle header row", exact: true }).click()
+    await expect(table.locator("tr").first().locator("th")).toHaveCount(0)
+    await tools.getByRole("button", { name: "Toggle header column", exact: true }).click()
+    await expect(table.locator("tr").last().locator("th")).toHaveCount(1)
+    await tools.getByRole("button", { name: "Toggle header column", exact: true }).click()
+    await tools.getByRole("button", { name: "Toggle header cell", exact: true }).click()
+    await expect(table.locator("tr").last().locator("th")).toHaveCount(1)
+    await tools.getByRole("button", { name: "Toggle header cell", exact: true }).click()
+
+    // Shift-click selects adjacent cells through ProseMirror's real interaction.
+    const cells = table.locator("tr").last().locator("td")
+    await cells.nth(0).click()
+    await cells.nth(1).click({ modifiers: ["Shift"] })
+    await expect(tools.getByRole("button", { name: "Merge cells", exact: true })).toBeEnabled()
+    await tools.getByRole("button", { name: "Merge cells", exact: true }).click()
+    await expect(table.locator('[colspan="2"]')).toHaveCount(1)
+    await expect(tools.getByRole("button", { name: "Split cell", exact: true })).toBeEnabled()
+    await tools.getByRole("button", { name: "Split cell", exact: true }).click()
+    await expect(table.locator('[colspan="2"]')).toHaveCount(0)
+    await expect(table.locator("tr").last().locator("td")).toHaveCount(4)
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true)
+    // Keyboard focus also scrolls the contextual control rail into view on mobile.
+    const deleteTable = tools.getByRole("button", { name: "Delete table", exact: true })
+    await deleteTable.focus()
+    await expect(deleteTable).toBeInViewport()
+    await page.keyboard.press("Enter")
+    await expect(table).toHaveCount(0)
+    await expect(tools).toHaveCount(0)
+    await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled()
+    await page.getByRole("button", { name: "Undo", exact: true }).click()
+    await expect(table.locator("tr")).toHaveCount(4)
+    await page.getByRole("button", { name: "Redo", exact: true }).click()
+    await expect(table).toHaveCount(0)
+    await page.close()
+  })
+
+  test("keeps formatting visible below the admin header while scrolling long content", async () => {
+    const page = await context.newPage()
+    await page.goto("/admin/new")
+    const body = page.locator(".ProseMirror")
+    await expect(body).toBeVisible()
+    await body.fill(
+      Array.from({ length: 80 }, (_, i) => `Paragraph ${i + 1}: Long article content.`).join("\n")
+    )
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport)
+      await page.evaluate(() => window.scrollTo(0, 1000))
+      const formatting = page.getByRole("toolbar", { name: "Formatting", exact: true })
+      await expect
+        .poll(async () => {
+          const header = await page.locator("[data-admin-header]").boundingBox()
+          const toolbar = await formatting.boundingBox()
+          return header && toolbar ? Math.abs(toolbar.y - (header.y + header.height)) : Infinity
+        })
+        .toBeLessThan(2)
+      await expect(formatting.getByRole("button", { name: "Bold", exact: true })).toBeInViewport()
+      await formatting.getByRole("button", { name: "Bold", exact: true }).click()
+      await expect(formatting.getByRole("button", { name: "Bold", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      )
+      await formatting.getByRole("button", { name: "Bold", exact: true }).click()
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+      ).toBe(true)
+    }
+    await page.close()
+  })
+
+  test("disables cover controls when media storage is unavailable", async () => {
+    test.skip(
+      Boolean(
+        process.env.R2_ACCOUNT_ID &&
+        process.env.R2_ACCESS_KEY_ID &&
+        process.env.R2_SECRET_ACCESS_KEY &&
+        process.env.R2_BUCKET &&
+        process.env.NEXT_PUBLIC_MEDIA_ORIGIN
+      ),
+      "run with R2 variables explicitly empty"
+    )
+    const page = await context.newPage()
+    await page.goto("/admin/new")
+    const cover = page.getByRole("group", { name: "Cover image", exact: true })
+    await expect(cover).toHaveAttribute("disabled", "")
+    await expect(cover.getByLabel("Cover image URL")).toBeDisabled()
+    await expect(cover.getByLabel("Cover alt text")).toBeDisabled()
+    await expect(cover.getByRole("button", { name: "Upload a cover" })).toBeDisabled()
+    await expect(cover.locator('input[type="file"]')).toBeDisabled()
+    await expect(cover).toContainText(/unavailable/i)
+    await expect(page.getByRole("button", { name: /^save$/i })).toBeEnabled()
+    await page.close()
+  })
+
+  test("enables cover controls when media storage is configured", async () => {
+    test.skip(
+      !process.env.R2_ACCOUNT_ID ||
+        !process.env.R2_ACCESS_KEY_ID ||
+        !process.env.R2_SECRET_ACCESS_KEY ||
+        !process.env.R2_BUCKET ||
+        !process.env.NEXT_PUBLIC_MEDIA_ORIGIN,
+      "run with dummy R2 settings and a valid HTTPS media origin"
+    )
+    const page = await context.newPage()
+    await page.goto("/admin/new")
+    const cover = page.getByRole("group", { name: "Cover image", exact: true })
+    await expect(cover).not.toHaveAttribute("disabled", "")
+    await expect(cover.getByLabel("Cover image URL")).toBeEnabled()
+    await expect(cover.getByLabel("Cover alt text")).toBeEnabled()
+    await expect(cover.getByRole("button", { name: "Upload a cover" })).toBeEnabled()
+    await expect(cover.locator('input[type="file"]')).toBeEnabled()
+    await cover.getByLabel("Cover image URL").fill("https://media.example.com/cover.png")
+    await cover.getByLabel("Cover alt text").fill("A configured cover")
+    await expect(cover.getByLabel("Cover image URL")).toHaveValue(
+      "https://media.example.com/cover.png"
+    )
+    await expect(cover.getByLabel("Cover alt text")).toHaveValue("A configured cover")
+    await expect(cover).not.toContainText(/unavailable/i)
+    await page.close()
+  })
+
   test("writes a post and saves it as a draft", async () => {
     const page = await context.newPage()
     const errors: string[] = []
@@ -121,6 +291,10 @@ test.describe("authoring", () => {
     await page.keyboard.press("Enter")
     await page.getByRole("button", { name: "Heading 2" }).click()
     await page.keyboard.type("A section")
+    await page.keyboard.press("Enter")
+    await page.getByRole("button", { name: "Table", exact: true }).click()
+    await page.getByRole("button", { name: "Add row below", exact: true }).click()
+    await page.getByRole("button", { name: "Add column after", exact: true }).click()
     await page.getByLabel("Tags").fill("Testing, typescript")
 
     await page.getByRole("button", { name: /^save$/i }).click()
@@ -135,10 +309,45 @@ test.describe("authoring", () => {
     await page.close()
   })
 
+  test("preserves an existing cover when saving with storage unavailable", async () => {
+    test.skip(Boolean(process.env.R2_ACCOUNT_ID), "run with R2 variables explicitly empty")
+    const databaseUrl = process.env.DATABASE_URL!
+    expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(databaseUrl).hostname)
+    // Only the post created by this lifecycle is modified, never a shared seed.
+    // mintAuthorSession has already configured the local Neon HTTP endpoint.
+    const sql = neon(databaseUrl)
+    const id = postPath.split("/").at(-1)!
+    const coverUrl = "https://media.example.com/existing-cover.webp"
+    const coverAlt = "An existing cover"
+    await sql`UPDATE posts SET cover_url = ${coverUrl}, cover_alt = ${coverAlt} WHERE id = ${id}`
+    const page = await context.newPage()
+    await page.goto(postPath)
+    const cover = page.getByRole("group", { name: "Cover image", exact: true })
+    await expect(cover).toHaveAttribute("disabled", "")
+    await expect(cover.getByLabel("Cover image URL")).toHaveValue(coverUrl)
+    await expect(cover.getByLabel("Cover alt text")).toHaveValue(coverAlt)
+    await page.getByLabel("Excerpt").fill("Updated with media storage unavailable.")
+    await page.getByRole("button", { name: /^save$/i }).click()
+    await expect(page.getByText("Saved.", { exact: true })).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel("Excerpt")).toHaveValue("Updated with media storage unavailable.")
+    await expect(cover.getByLabel("Cover image URL")).toHaveValue(coverUrl)
+    await expect(cover.getByLabel("Cover alt text")).toHaveValue(coverAlt)
+    await page.close()
+  })
+
   test("keeps the unpublished post out of every public surface", async ({ request }) => {
     const page = await context.newPage()
     await page.goto(postPath)
     const slug = await page.getByLabel("Slug").inputValue()
+    await expect(page.locator(".ProseMirror table tr")).toHaveCount(4)
+    await expect(page.locator(".ProseMirror table tr").first().locator("th, td")).toHaveCount(4)
+    if (!process.env.R2_ACCOUNT_ID) {
+      await expect(page.getByRole("group", { name: "Cover image", exact: true })).toHaveAttribute(
+        "disabled",
+        ""
+      )
+    }
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)

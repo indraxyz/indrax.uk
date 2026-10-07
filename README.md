@@ -149,7 +149,7 @@ Every variable is optional; copy `.env.example` to `.env.local` to set them.
 | `BETTER_AUTH_URL`              | `NEXT_PUBLIC_SITE_URL`       | Origin OAuth callbacks return to.                                                                                        |
 | `GITHUB_CLIENT_ID` / `_SECRET` | unset                        | GitHub OAuth App. **Secret is server-only.**                                                                             |
 | `ALLOWED_GITHUB_ID`            | unset                        | The one numeric GitHub user id allowed to sign in.                                                                       |
-| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501.                                                                          |
+| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501 and cover fields are disabled in the post editor.                         |
 
 ### The admin
 
@@ -161,6 +161,14 @@ deployment is closed rather than half-open.
 and which optional services are configured. `/admin/posts` holds the complete
 post list, including drafts and archived posts. The editor stays at
 `/admin/new` and `/admin/edit/[id]`.
+
+Formatting controls stay below the admin header while scrolling long articles.
+Select a table cell to show row/column insertion and deletion, merge/split,
+header toggles, and table deletion. Shift-click another cell to select cells
+for merging. The table controls use icons with tooltips and accessible labels, and scroll
+horizontally on small screens.
+Cover fields are disabled until storage credentials and a valid HTTPS media
+origin are configured; saving retains existing cover details.
 
 Below the `md` breakpoint (768px), the admin header uses a menu button to open a
 right-side drawer. It keeps the desktop link order (Admin home, Posts, Resume, Writing),
