@@ -218,7 +218,7 @@ export default function TechStackPage() {
           className="border-2 border-border bg-card p-6 shadow-soft"
         >
           <h2 id="stack-source" className="text-lg font-black uppercase">
-            Source &amp; workflow
+            Sources
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             Explore the implementation and the workflow that builds, tests, and deploys it. The

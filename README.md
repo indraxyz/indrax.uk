@@ -320,6 +320,10 @@ Portfolio entries separate `description` (project purpose), `features` (bullet p
 `techStack` (tools), and `link` (the public GitHub repository). The resume cards and
 PDF share this data; each card's GitHub icon opens its repository in a new tab.
 
+Verify stack changes against the linked repository’s manifests and implementation.
+[Portfolio source verification](docs/portfolio-sources.md) records the reviewed
+revisions and evidence; roadmap tools and sibling repository stacks are excluded.
+
 ### Styling
 
 - Global styles: `app/globals.css`

@@ -277,7 +277,7 @@ test.describe("the public pages", () => {
       "Measurement & monitoring",
     ])
     await expect(cards.getByText("Why:", { exact: true })).toHaveCount(9)
-    const resources = page.getByRole("region", { name: "Source & workflow" })
+    const resources = page.getByRole("region", { name: "Source" })
     for (const [name, href] of [
       ["Source on GitHub", "https://github.com/indraxyz/indrax.uk"],
       [
