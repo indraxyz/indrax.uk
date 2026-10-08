@@ -51,9 +51,21 @@ async function overHttp(file: string): Promise<ArrayBuffer> {
  * This is the asset-path rule `ARCHITECTURE.md` records, applied to a route that
  * genuinely runs in both places rather than only one.
  */
-export async function loadBrandFonts(): Promise<BrandFonts> {
+async function readBrandFonts(): Promise<BrandFonts> {
   const load = async (file: string) => (await fromDisk(file)) ?? overHttp(file)
   const [regular, extraBold] = await Promise.all([load(FILES.regular), load(FILES.extraBold)])
 
   return { regular, extraBold }
+}
+
+// Font bytes are immutable deployment assets. Share in-flight reads and retain
+// them for this isolate; a transient failure must allow a later request to retry.
+let fonts: Promise<BrandFonts> | undefined
+
+export function loadBrandFonts(): Promise<BrandFonts> {
+  fonts ??= readBrandFonts().catch((error: unknown) => {
+    fonts = undefined
+    throw error
+  })
+  return fonts
 }

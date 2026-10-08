@@ -389,6 +389,9 @@ release needs separate cache resources for dev and production; deploy scripts
 check their IDs before running OpenNext's cache population. Build and local
 preview do not provision remote resources.
 
+Database round-trip reductions, request budgets, and the local integration suite
+are documented in [Neon latency optimization](docs/neon-latency-optimization.md).
+
 Both Workers inherit the observability settings in `wrangler.jsonc`: persisted
 invocation/application logs, automatic traces, and Issues detection. The shared
 head sampling rate is `1` (100%); reduce it if telemetry volume grows. Query

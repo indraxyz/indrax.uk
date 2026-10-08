@@ -1,7 +1,8 @@
 import "server-only"
 
-import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
+import { and, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
+import { cache } from "react"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type {
@@ -16,6 +17,7 @@ import type {
   TagWithCount,
 } from "@/features/writing/types"
 import { getDb, schema } from "@/lib/db"
+import { qualified } from "@/lib/db/qualified-column"
 import { logServerError } from "@/lib/observability"
 
 /**
@@ -56,6 +58,44 @@ const summaryColumns = {
   updatedAt: schema.posts.updatedAt,
   readingTime: schema.posts.readingTime,
 } as const
+
+const seriesColumns = {
+  id: schema.series.id,
+  slug: schema.series.slug,
+  title: schema.series.title,
+  description: schema.series.description,
+} as const
+
+// Aggregate tags inside the post query. This preserves one row per card (and
+// therefore its limit/offset) without a second HTTP trip to fetch those tags.
+const summaryWithTags = {
+  ...summaryColumns,
+  tags: sql<Tag[]>`coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', ${qualified(schema.tags.id)},
+      'name', ${qualified(schema.tags.name)},
+      'slug', ${qualified(schema.tags.slug)}
+    ) order by ${qualified(schema.tags.name)})
+    from ${schema.postTags}
+    inner join ${schema.tags} on ${qualified(schema.tags.id)} = ${qualified(schema.postTags.tagId)}
+    where ${qualified(schema.postTags.postId)} = ${qualified(schema.posts.id)}
+  ), '[]'::jsonb)`.mapWith((value: Tag[] | string) =>
+    typeof value === "string" ? (JSON.parse(value) as Tag[]) : value
+  ),
+} as const
+
+type SummaryRow = Omit<PostSummary, "publishedAt" | "updatedAt"> & {
+  publishedAt: Date | null
+  updatedAt: Date
+}
+
+function summaries(rows: SummaryRow[]): PostSummary[] {
+  return rows.map((row) => ({
+    ...row,
+    publishedAt: iso(row.publishedAt),
+    updatedAt: row.updatedAt.toISOString(),
+  }))
+}
 
 const EMPTY_PAGE: PaginatedPosts = { posts: [], page: 1, pageCount: 0 }
 
@@ -138,79 +178,42 @@ async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Pr
   }
 }
 
-/**
- * Tags for a set of posts, in one round trip rather than one per card.
- *
- * Shared with the admin reads. Those live in their own file because a *post*
- * query that could return a draft must not sit next to one that must not - but
- * this reads no post rows at all, so there is nothing here to get wrong by
- * sharing.
+/** Count and page share one Neon HTTP transaction. A stale out-of-range
+ * page needs one corrective query; ordinary requests only make one round trip.
  */
-export async function tagsByPost(postIds: string[]): Promise<Map<string, Tag[]>> {
-  const grouped = new Map<string, Tag[]>()
-  if (postIds.length === 0) return grouped
+async function readPage(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  filter: SQL | undefined,
+  page: number,
+  pageSize: number,
+  order: SQL[]
+): Promise<PaginatedPosts> {
+  const requested = Math.max(page, 1)
+  const pageQuery = (current: number) =>
+    db
+      .select(summaryWithTags)
+      .from(schema.posts)
+      .where(filter)
+      .orderBy(...order)
+      .limit(pageSize)
+      .offset((current - 1) * pageSize)
 
-  const db = getDb()
-  if (!db) return grouped
+  const [totals, initialRows] = await db.batch([
+    db.select({ total: count() }).from(schema.posts).where(filter),
+    pageQuery(requested),
+  ])
+  const pageCount = Math.ceil(totals[0].total / pageSize)
+  const current = Math.min(requested, Math.max(pageCount, 1))
+  const rows = current === requested || pageCount === 0 ? initialRows : await pageQuery(current)
 
-  const rows = await db
-    .select({
-      postId: schema.postTags.postId,
-      id: schema.tags.id,
-      name: schema.tags.name,
-      slug: schema.tags.slug,
-    })
-    .from(schema.postTags)
-    .innerJoin(schema.tags, eq(schema.tags.id, schema.postTags.tagId))
-    .where(inArray(schema.postTags.postId, postIds))
-    .orderBy(schema.tags.name)
-
-  for (const { postId, ...tag } of rows) {
-    const existing = grouped.get(postId)
-    if (existing) existing.push(tag)
-    else grouped.set(postId, [tag])
-  }
-
-  return grouped
-}
-
-async function attachTags(
-  rows: (Omit<PostSummary, "tags" | "publishedAt" | "updatedAt"> & {
-    publishedAt: Date | null
-    updatedAt: Date
-  })[]
-): Promise<PostSummary[]> {
-  const grouped = await tagsByPost(rows.map((row) => row.id))
-
-  return rows.map((row) => ({
-    ...row,
-    publishedAt: iso(row.publishedAt),
-    updatedAt: row.updatedAt.toISOString(),
-    tags: grouped.get(row.id) ?? [],
-  }))
+  return { posts: summaries(rows), page: current, pageCount }
 }
 
 async function readPublishedPosts(page: number): Promise<PaginatedPosts> {
   const db = getDb()
   if (!db) return EMPTY_PAGE
 
-  const [{ total }] = await db.select({ total: count() }).from(schema.posts).where(isPublic)
-
-  const pageCount = Math.ceil(total / WRITING_CONFIG.pageSize)
-  // Clamp rather than 404: a stale link to page 9 of a shrinking archive should
-  // land somewhere real. `pageCount` is 0 when there is nothing published, and
-  // page 1 is still the correct place to render the empty state.
-  const current = Math.min(Math.max(page, 1), Math.max(pageCount, 1))
-
-  const rows = await db
-    .select(summaryColumns)
-    .from(schema.posts)
-    .where(isPublic)
-    .orderBy(desc(schema.posts.publishedAt))
-    .limit(WRITING_CONFIG.pageSize)
-    .offset((current - 1) * WRITING_CONFIG.pageSize)
-
-  return { posts: await attachTags(rows), page: current, pageCount }
+  return readPage(db, isPublic, page, WRITING_CONFIG.pageSize, [desc(schema.posts.publishedAt)])
 }
 
 async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedPosts> {
@@ -227,20 +230,7 @@ async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedP
     )`
   )
 
-  const [{ total }] = await db.select({ total: count() }).from(schema.posts).where(carriesTag)
-
-  const pageCount = Math.ceil(total / WRITING_CONFIG.pageSize)
-  const current = Math.min(Math.max(page, 1), Math.max(pageCount, 1))
-
-  const rows = await db
-    .select(summaryColumns)
-    .from(schema.posts)
-    .where(carriesTag)
-    .orderBy(desc(schema.posts.publishedAt))
-    .limit(WRITING_CONFIG.pageSize)
-    .offset((current - 1) * WRITING_CONFIG.pageSize)
-
-  return { posts: await attachTags(rows), page: current, pageCount }
+  return readPage(db, carriesTag, page, WRITING_CONFIG.pageSize, [desc(schema.posts.publishedAt)])
 }
 
 /**
@@ -273,27 +263,13 @@ async function readSearchResults(query: string, page: number): Promise<SearchRes
   const tsquery = sql`websearch_to_tsquery('english', ${query})`
   const matches = and(isPublic, sql`${schema.posts.searchVector} @@ ${tsquery}`)
 
-  const [{ total }] = await db.select({ total: count() }).from(schema.posts).where(matches)
+  const results = await readPage(db, matches, page, WRITING_CONFIG.searchPageSize, [
+    // Proximity rank first; publication date breaks ties.
+    sql`ts_rank_cd(${schema.posts.searchVector}, ${tsquery}) desc`,
+    desc(schema.posts.publishedAt),
+  ])
 
-  const pageCount = Math.ceil(total / WRITING_CONFIG.searchPageSize)
-  const current = Math.min(Math.max(page, 1), Math.max(pageCount, 1))
-
-  const rows = await db
-    .select(summaryColumns)
-    .from(schema.posts)
-    .where(matches)
-    // `ts_rank_cd` over `ts_rank`: it accounts for how close the matched words are
-    // to each other, which is what makes a two-word search find the article that
-    // discusses both together rather than the one that mentions each once.
-    // Publication date breaks ties, so equally relevant articles read newest-first.
-    .orderBy(
-      sql`ts_rank_cd(${schema.posts.searchVector}, ${tsquery}) desc`,
-      desc(schema.posts.publishedAt)
-    )
-    .limit(WRITING_CONFIG.searchPageSize)
-    .offset((current - 1) * WRITING_CONFIG.searchPageSize)
-
-  return { query, posts: await attachTags(rows), page: current, pageCount }
+  return { query, ...results }
 }
 
 /**
@@ -309,29 +285,27 @@ async function readSeriesContext(
   seriesId: string,
   slug: string
 ): Promise<SeriesContext | null> {
-  const [row] = await db.select().from(schema.series).where(eq(schema.series.id, seriesId)).limit(1)
-
+  const [seriesRows, parts] = await db.batch([
+    db.select(seriesColumns).from(schema.series).where(eq(schema.series.id, seriesId)).limit(1),
+    db
+      .select({
+        slug: schema.posts.slug,
+        title: schema.posts.title,
+        order: schema.posts.seriesOrder,
+        published: sql<boolean>`${isPublic}`,
+      })
+      .from(schema.posts)
+      .where(eq(schema.posts.seriesId, seriesId))
+      .orderBy(schema.posts.seriesOrder),
+  ])
+  const [row] = seriesRows
   if (!row) return null
-
-  const parts = await db
-    .select({
-      slug: schema.posts.slug,
-      title: schema.posts.title,
-      order: schema.posts.seriesOrder,
-      status: schema.posts.status,
-      publishedAt: schema.posts.publishedAt,
-      contentJson: schema.posts.contentJson,
-    })
-    .from(schema.posts)
-    .where(eq(schema.posts.seriesId, seriesId))
-    .orderBy(schema.posts.seriesOrder)
 
   const readable: SeriesPart[] = parts.map((part, fallbackOrder) => ({
     slug: part.slug,
     title: part.title,
     order: part.order ?? fallbackOrder + 1,
-    published:
-      part.status === "published" && part.publishedAt !== null && part.contentJson !== null,
+    published: part.published,
   }))
 
   const published = readable.filter((part) => part.published)
@@ -355,33 +329,31 @@ async function readSeriesBySlug(slug: string): Promise<SeriesWithParts | null> {
   const db = getDb()
   if (!db) return null
 
-  const [row] = await db.select().from(schema.series).where(eq(schema.series.slug, slug)).limit(1)
-
-  if (!row) return null
-
-  const parts = await db
+  const rows = await db
     .select({
-      slug: schema.posts.slug,
-      title: schema.posts.title,
-      order: schema.posts.seriesOrder,
-      excerpt: schema.posts.excerpt,
-      readingTime: schema.posts.readingTime,
-      publishedAt: schema.posts.publishedAt,
+      series: seriesColumns,
+      part: {
+        slug: schema.posts.slug,
+        title: schema.posts.title,
+        order: schema.posts.seriesOrder,
+        excerpt: schema.posts.excerpt,
+        readingTime: schema.posts.readingTime,
+        publishedAt: schema.posts.publishedAt,
+      },
     })
-    .from(schema.posts)
-    .where(and(eq(schema.posts.seriesId, row.id), isPublic))
+    .from(schema.series)
+    .leftJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic))
+    .where(eq(schema.series.slug, slug))
     .orderBy(schema.posts.seriesOrder)
 
+  const [row] = rows
+  if (!row) return null
+
   return {
-    series: { id: row.id, slug: row.slug, title: row.title, description: row.description },
-    parts: parts.map((part, index) => ({
-      slug: part.slug,
-      title: part.title,
-      order: part.order ?? index + 1,
-      excerpt: part.excerpt,
-      readingTime: part.readingTime,
-      publishedAt: iso(part.publishedAt),
-    })),
+    series: row.series,
+    parts: rows.flatMap(({ part }, index) =>
+      part ? [{ ...part, order: part.order ?? index + 1, publishedAt: iso(part.publishedAt) }] : []
+    ),
   }
 }
 
@@ -408,7 +380,13 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
   if (!db) return null
 
   const [row] = await db
-    .select()
+    .select({
+      ...summaryWithTags,
+      contentJson: schema.posts.contentJson,
+      status: schema.posts.status,
+      viewCount: schema.posts.viewCount,
+      seriesId: schema.posts.seriesId,
+    })
     .from(schema.posts)
     // The status filter lives in the query, not in a caller's `if`. A draft is
     // indistinguishable from a slug that was never used, which is what makes an
@@ -420,14 +398,16 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
   // as absent keeps the failure at the boundary rather than inside the renderer.
   if (!row?.contentJson) return null
 
-  const [summary] = await attachTags([row])
+  const { contentJson, status, viewCount, seriesId, ...card } = row
+  const [summary] = summaries([card])
+  const seriesContext = seriesId ? await readSeriesContext(db, seriesId, slug) : null
 
   return {
     ...summary,
-    content: row.contentJson,
-    status: row.status,
-    viewCount: row.viewCount,
-    seriesContext: row.seriesId ? await readSeriesContext(db, row.seriesId, slug) : null,
+    content: contentJson,
+    status,
+    viewCount,
+    seriesContext,
   }
 }
 
@@ -445,20 +425,32 @@ export async function getPostForPreview(slug: string): Promise<Post | null> {
   const db = getDb()
   if (!db) return null
 
-  const [row] = await db.select().from(schema.posts).where(eq(schema.posts.slug, slug)).limit(1)
+  const [row] = await db
+    .select({
+      ...summaryWithTags,
+      contentJson: schema.posts.contentJson,
+      status: schema.posts.status,
+      viewCount: schema.posts.viewCount,
+      seriesId: schema.posts.seriesId,
+    })
+    .from(schema.posts)
+    .where(eq(schema.posts.slug, slug))
+    .limit(1)
   if (!row?.contentJson) return null
 
-  const [summary] = await attachTags([row])
+  const { contentJson, status, viewCount, seriesId, ...card } = row
+  const [summary] = summaries([card])
+  const seriesContext = seriesId ? await readSeriesContext(db, seriesId, slug) : null
 
   return {
     ...summary,
-    content: row.contentJson,
-    status: row.status,
-    viewCount: row.viewCount,
+    content: contentJson,
+    status,
+    viewCount,
     // Null while the draft itself is unpublished: it has no place among the
     // parts a reader can reach, and inventing one would show the author a
     // position the published article will not have.
-    seriesContext: row.seriesId ? await readSeriesContext(db, row.seriesId, slug) : null,
+    seriesContext,
   }
 }
 
@@ -488,13 +480,13 @@ async function readRecentPosts(limit: number): Promise<PostSummary[]> {
   if (!db) return []
 
   const rows = await db
-    .select(summaryColumns)
+    .select(summaryWithTags)
     .from(schema.posts)
     .where(isPublic)
     .orderBy(desc(schema.posts.publishedAt))
     .limit(limit)
 
-  return attachTags(rows)
+  return summaries(rows)
 }
 
 /**
@@ -525,14 +517,14 @@ async function readRelatedPosts(postId: string, limit: number): Promise<PostSumm
     .as("shared_tags")
 
   const rows = await db
-    .select(summaryColumns)
+    .select(summaryWithTags)
     .from(schema.posts)
     .innerJoin(shared, eq(shared.postId, schema.posts.id))
     .where(isPublic)
     .orderBy(desc(shared.shared), desc(schema.posts.publishedAt))
     .limit(limit)
 
-  return attachTags(rows)
+  return summaries(rows)
 }
 
 async function readFeedPosts(): Promise<PostSummary[]> {
@@ -540,13 +532,13 @@ async function readFeedPosts(): Promise<PostSummary[]> {
   if (!db) return []
 
   const rows = await db
-    .select(summaryColumns)
+    .select(summaryWithTags)
     .from(schema.posts)
     .where(isPublic)
     .orderBy(desc(schema.posts.publishedAt))
     .limit(WRITING_CONFIG.feedSize)
 
-  return attachTags(rows)
+  return summaries(rows)
 }
 
 async function readPublishedSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
@@ -668,8 +660,10 @@ const cachedSeriesSlugs = unstable_cache(readSeriesSlugs, ["writing", "series-sl
  * existing. `null` here means "no such series", which the route turns into a 404,
  * and a database outage returns the empty list instead so the page stays a page.
  */
-export const getSeriesBySlug = (slug: string) =>
+// Metadata and page rendering share a read within the current server request.
+export const getSeriesBySlug = cache((slug: string) =>
   safely("getSeriesBySlug", null as SeriesWithParts | null, () => cachedSeriesBySlug(slug))
+)
 
 export const getSeriesSlugs = () =>
   safely("getSeriesSlugs", [] as { slug: string; updatedAt: string }[], cachedSeriesSlugs)
@@ -687,9 +681,10 @@ export const getSeriesSlugs = () =>
  * The one wrapper that cannot be hoisted: its tag list names the slug, so it is a
  * different cache entry per post.
  */
-export const getPostBySlug = (slug: string) =>
+export const getPostBySlug = cache((slug: string) =>
   unstable_cache(readPostBySlug, ["writing", "post-by-slug"], {
     // Tagged both ways so publishing one post does not evict the whole archive,
     // while a change to the archive still reaches the article page.
     tags: [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
   })(slug)
+)

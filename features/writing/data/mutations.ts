@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq, inArray, ne } from "drizzle-orm"
+import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm"
 import { updateTag } from "next/cache"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
@@ -61,59 +61,20 @@ function revalidatePost(...slugs: (string | null | undefined)[]) {
 }
 
 /**
- * Resolve tag names to rows, creating what does not exist.
+ * Normalize desired tag names before synchronizing their joins.
  *
  * Matching is on the slug, which is what makes it case- and punctuation-
  * insensitive: "Next.js", "next.js" and "NEXT JS" all slugify to `next-js` and
  * resolve to one row rather than three (PRD US-3.5).
  */
-async function resolveTags(names: string[]): Promise<string[]> {
-  const db = getDb()
-  if (!db || names.length === 0) return []
-
+function normalizedTags(names: string[]): Map<string, string> {
   const wanted = new Map<string, string>()
   for (const name of names) {
     const slug = slugify(name)
-    // First spelling wins, so the display name is the one the author typed.
+    // First spelling wins; existing tag display names are never overwritten.
     if (slug && !wanted.has(slug)) wanted.set(slug, name.trim())
   }
-
-  if (wanted.size === 0) return []
-
-  await db
-    .insert(schema.tags)
-    .values([...wanted].map(([slug, name]) => ({ slug, name })))
-    .onConflictDoNothing({ target: schema.tags.slug })
-
-  const rows = await db
-    .select({ id: schema.tags.id })
-    .from(schema.tags)
-    .where(inArray(schema.tags.slug, [...wanted.keys()]))
-
-  return rows.map((row) => row.id)
-}
-
-/**
- * Replace a post's tag joins.
- *
- * Only the join rows are touched. A tag removed from this post survives for every
- * other post carrying it, which is the difference between un-tagging and deleting
- * a tag (PRD US-3.5).
- */
-async function setPostTags(postId: string, names: string[]) {
-  const db = getDb()
-  if (!db) return
-
-  const tagIds = await resolveTags(names)
-
-  await db.delete(schema.postTags).where(eq(schema.postTags.postId, postId))
-
-  if (tagIds.length > 0) {
-    await db
-      .insert(schema.postTags)
-      .values(tagIds.map((tagId) => ({ postId, tagId })))
-      .onConflictDoNothing()
-  }
+  return wanted
 }
 
 /**
@@ -136,23 +97,20 @@ async function resolveSeries(
   const slug = slugify(title)
   if (!slug) return null
 
-  await db
-    .insert(schema.series)
-    .values({ slug, title: title.trim(), description: description?.trim() || null })
-    .onConflictDoNothing({ target: schema.series.slug })
-
+  const nextDescription = description?.trim()
   const [row] = await db
-    .select({ id: schema.series.id })
-    .from(schema.series)
-    .where(eq(schema.series.slug, slug))
-    .limit(1)
-
-  if (row && description?.trim()) {
-    await db
-      .update(schema.series)
-      .set({ description: description.trim(), updatedAt: new Date() })
-      .where(eq(schema.series.id, row.id))
-  }
+    .insert(schema.series)
+    .values({ slug, title: title.trim(), description: nextDescription || null })
+    .onConflictDoUpdate({
+      target: schema.series.slug,
+      set: {
+        // The original display title and a previously written description survive
+        // a differently cased title or an empty description on another part.
+        description: nextDescription || sql`${schema.series.description}`,
+        updatedAt: nextDescription ? new Date() : sql`${schema.series.updatedAt}`,
+      },
+    })
+    .returning({ id: schema.series.id })
 
   return row?.id ?? null
 }
@@ -230,7 +188,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
       input.title,
       others.map((row) => row.slug)
     )
-  } else {
+  } else if (slug !== current?.slug) {
     const clash = await db
       .select({ id: schema.posts.id })
       .from(schema.posts)
@@ -288,30 +246,80 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     updatedAt: new Date(),
   }
 
+  const postId = current?.id ?? crypto.randomUUID()
+  const wanted = normalizedTags(input.tags)
+
+  const writePost = current
+    ? db
+        .update(schema.posts)
+        .set(row)
+        .where(eq(schema.posts.id, current.id))
+        .returning({ id: schema.posts.id, slug: schema.posts.slug })
+    : db
+        .insert(schema.posts)
+        .values({ ...row, id: postId })
+        .returning({ id: schema.posts.id, slug: schema.posts.slug })
+
   let saved: { id: string; slug: string }
 
   try {
-    const [written] = current
-      ? await db
-          .update(schema.posts)
-          .set(row)
-          .where(eq(schema.posts.id, current.id))
-          .returning({ id: schema.posts.id, slug: schema.posts.slug })
-      : await db
-          .insert(schema.posts)
-          .values(row)
-          .returning({ id: schema.posts.id, slug: schema.posts.slug })
-
-    saved = written
+    // The post UPDATE locks this row before synchronizing joins. Always perform
+    // the tag synchronization inside the same transaction: comparing a prior
+    // read could otherwise miss a concurrent save that changed its tags.
+    // Existing desired joins survive; only undesired joins are deleted, and
+    // ON CONFLICT leaves both original tag names and existing joins untouched.
+    const removeJoins = db.delete(schema.postTags).where(
+      wanted.size > 0
+        ? and(
+            eq(schema.postTags.postId, postId),
+            notInArray(
+              schema.postTags.tagId,
+              db
+                .select({ id: schema.tags.id })
+                .from(schema.tags)
+                .where(inArray(schema.tags.slug, [...wanted.keys()]))
+            )
+          )
+        : eq(schema.postTags.postId, postId)
+    )
+    const [written] = await db.batch([
+      writePost,
+      ...(wanted.size > 0
+        ? [
+            db
+              .insert(schema.tags)
+              .values([...wanted].map(([tagSlug, name]) => ({ slug: tagSlug, name })))
+              .onConflictDoNothing({ target: schema.tags.slug }),
+          ]
+        : []),
+      removeJoins,
+      ...(wanted.size > 0
+        ? [
+            db
+              .insert(schema.postTags)
+              .select(
+                db
+                  .select({
+                    postId: sql<string>`${postId}::uuid`.as("post_id"),
+                    tagId: schema.tags.id,
+                  })
+                  .from(schema.tags)
+                  .where(inArray(schema.tags.slug, [...wanted.keys()]))
+              )
+              .onConflictDoNothing(),
+          ]
+        : []),
+    ])
+    saved = written[0]
   } catch (error) {
+    // Individual Drizzle writes wrap the driver error; Neon batches expose it
+    // directly. Both must produce the same actionable series-order validation.
     if (!isSeriesOrderClash(error)) throw error
 
     return failure("That could not be saved.", {
       seriesOrder: [`Part ${input.seriesOrder} of that series already exists.`],
     })
   }
-
-  await setPostTags(saved.id, input.tags)
 
   revalidatePost(saved.slug, current?.slug)
 
@@ -324,13 +332,25 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
   const db = getDb()
   if (!db) return failure("No database is configured for this deployment.")
 
+  if (!postIdSchema.safeParse(id).success) return failure("That post no longer exists.")
+
   const parsed = postInputSchema.shape.status.safeParse(status)
   if (!parsed.success) return failure("That is not a status a post can have.")
 
-  const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
+  const [current] = await db
+    .select({
+      slug: schema.posts.slug,
+      publishedAt: schema.posts.publishedAt,
+      hasContent: sql<boolean>`${schema.posts.contentJson} is not null`,
+      coverUrl: schema.posts.coverUrl,
+      coverAlt: schema.posts.coverAlt,
+    })
+    .from(schema.posts)
+    .where(eq(schema.posts.id, id))
+    .limit(1)
   if (!current) return failure("That post no longer exists.")
 
-  if (parsed.data === "published" && !current.contentJson) {
+  if (parsed.data === "published" && !current.hasContent) {
     return failure("A post needs a body before it can be published.")
   }
 
@@ -365,12 +385,13 @@ export async function deletePost(id: string): Promise<ActionResult> {
   // simply matching nothing.
   if (!postIdSchema.safeParse(id).success) return failure("That post no longer exists.")
 
-  const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
+  // RETURNING also detects a missing post. Cascading joins and the post delete
+  // happen in one statement, without first downloading its article body.
+  const [current] = await db
+    .delete(schema.posts)
+    .where(eq(schema.posts.id, id))
+    .returning({ slug: schema.posts.slug })
   if (!current) return failure("That post no longer exists.")
-
-  // The join rows go with it: `post_tags.post_id` cascades, so this is one
-  // statement rather than two that could half-succeed. The tags themselves stay.
-  await db.delete(schema.posts).where(eq(schema.posts.id, id))
 
   revalidatePost(current.slug)
 
@@ -397,7 +418,11 @@ export async function createPreviewLink(id: string): Promise<ActionResult & { ur
   // simply matching nothing.
   if (!postIdSchema.safeParse(id).success) return failure("That post no longer exists.")
 
-  const [current] = await db.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
+  const [current] = await db
+    .select({ slug: schema.posts.slug })
+    .from(schema.posts)
+    .where(eq(schema.posts.id, id))
+    .limit(1)
   if (!current) return failure("That post no longer exists.")
 
   const token = await createPreviewToken(current.slug)

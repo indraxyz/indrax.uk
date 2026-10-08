@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless"
-import { expect, test, type BrowserContext } from "@playwright/test"
+import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 
 import {
   E2E_BASE_URL,
@@ -66,6 +66,37 @@ test.describe("authoring", () => {
     if (authorId) await revokeAuthorSession(authorId)
   })
 
+  async function expectOverview(page: Page) {
+    const databaseUrl = process.env.DATABASE_URL!
+    expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(databaseUrl).hostname)
+    // An independent row read verifies aggregate counts against actual state,
+    // including lifecycle changes; it never touches shared seed data.
+    const sql = neon(databaseUrl)
+    const rows = await sql`select id, title, status from posts order by updated_at desc`
+    const summary = page.locator('section[aria-labelledby="posts-heading"]')
+    for (const [label, value] of [
+      ["All posts", rows.length],
+      ["Published", rows.filter((row) => row.status === "published").length],
+      ["Drafts", rows.filter((row) => row.status === "draft").length],
+      ["Archived", rows.filter((row) => row.status === "archived").length],
+    ] as const) {
+      const card = summary
+        .locator("div.border-2")
+        .filter({ has: page.getByText(label, { exact: true }) })
+      await expect(card.locator("p").last()).toHaveText(String(value))
+    }
+    const latestDraft = rows.find((row) => row.status === "draft")
+    if (latestDraft) {
+      await expect(page.getByRole("link", { name: "Edit draft", exact: true })).toHaveAttribute(
+        "href",
+        `/admin/edit/${latestDraft.id}`
+      )
+      await expect(page.locator('section[aria-labelledby="next-heading"]')).toContainText(
+        latestDraft.title
+      )
+    }
+  }
+
   test("lists existing posts, drafts included", async () => {
     const page = await context.newPage()
     await page.goto("/admin")
@@ -73,6 +104,7 @@ test.describe("authoring", () => {
     await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible()
+    await expectOverview(page)
     await expect(
       page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Resume" })
     ).toHaveAttribute("href", "/resume")
@@ -308,6 +340,12 @@ test.describe("authoring", () => {
     expect(errors).toEqual([])
 
     postPath = new URL(page.url()).pathname
+    await page.goto("/admin")
+    await expectOverview(page)
+    await expect(page.getByRole("link", { name: "Edit draft", exact: true })).toHaveAttribute(
+      "href",
+      postPath
+    )
     await page.close()
   })
 
@@ -418,10 +456,18 @@ test.describe("authoring", () => {
     await page.goto(postPath)
 
     const slug = await page.getByLabel("Slug").inputValue()
+    const extraEditReads: string[] = []
+    page.on("request", (request) => {
+      if (request.method() === "GET" && new URL(request.url()).pathname === postPath) {
+        extraEditReads.push(request.url())
+      }
+    })
     await page.getByRole("button", { name: /^publish$/i }).click()
     await expect(page.getByRole("button", { name: /^unpublish$/i })).toBeVisible({
       timeout: 15_000,
     })
+    await expect(page.getByRole("button", { name: /^unpublish$/i })).toBeEnabled()
+    expect(extraEditReads).toEqual([])
     await page.close()
 
     const article = await request.get(`/writing/${slug}`)
@@ -488,8 +534,16 @@ test.describe("authoring", () => {
     await page.goto(postPath)
 
     const slug = await page.getByLabel("Slug").inputValue()
+    const extraEditReads: string[] = []
+    page.on("request", (request) => {
+      if (request.method() === "GET" && new URL(request.url()).pathname === postPath) {
+        extraEditReads.push(request.url())
+      }
+    })
     await page.getByRole("button", { name: /^unpublish$/i }).click()
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole("button", { name: /^publish$/i })).toBeEnabled()
+    expect(extraEditReads).toEqual([])
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
