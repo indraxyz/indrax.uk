@@ -20,16 +20,16 @@ export const SERIES_ORDER_CONSTRAINT = "idx_posts_series_order_unique"
  * 500 with a masked digest, which says nothing about the one field that needs
  * changing - so it is translated rather than left to the error boundary.
  *
- * Read off `cause`, and off the structured `constraint` field rather than the
- * message. Both matter, and the first version got both wrong: Drizzle wraps the
+ * Individual writes expose the driver error through `cause`; Neon HTTP batches
+ * expose it directly. Prefer the structured `constraint` field. Drizzle wraps the
  * driver error in a `DrizzleQueryError` whose own `code` is `undefined` and whose
- * message is the failed SQL - it never names the index at all. A check against
- * the top-level `code` and message therefore matched nothing, and would have let
+ * message is the failed SQL - it never names the index at all. Checking only
+ * the wrapper's `code` and message matched nothing, and would have let
  * every clash through as a 500. Found by provoking one through the real driver
  * rather than by reading the types.
  */
 export function isSeriesOrderClash(error: unknown): boolean {
-  const cause = (error as { cause?: unknown })?.cause as
+  const cause = ((error as { cause?: unknown })?.cause ?? error) as
     { code?: unknown; constraint?: unknown; message?: unknown } | undefined
 
   if (String(cause?.code) !== "23505") return false

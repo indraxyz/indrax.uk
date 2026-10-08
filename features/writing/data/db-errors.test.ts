@@ -38,6 +38,14 @@ describe("isSeriesOrderClash", () => {
     expect(isSeriesOrderClash(realClash())).toBe(true)
   })
 
+  it("recognises the unwrapped driver error raised by Neon HTTP batches", () => {
+    expect(isSeriesOrderClash(realClash().cause)).toBe(true)
+  })
+
+  it("does not classify another unwrapped uniqueness failure as a series conflict", () => {
+    expect(isSeriesOrderClash({ code: "23505", constraint: "posts_slug_unique" })).toBe(false)
+  })
+
   it("does not depend on the wrapper carrying a code", () => {
     // Asserting the trap directly: the top-level code is undefined, and reading
     // it is what made the first version match nothing.

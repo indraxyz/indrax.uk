@@ -33,8 +33,9 @@ export function PostActions({ post }: { post: AdminPost }) {
         setError(result.message ?? "That did not work.")
         return
       }
+      // Status actions updateTag and include the updated server tree. Deletion
+      // navigates to the list; an extra refresh would repeat either page read.
       then?.()
-      router.refresh()
     })
   }
 

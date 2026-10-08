@@ -111,6 +111,9 @@ jobs:
           npm run db:migrate
           npm run db:seed
 
+      - name: Check database request budgets and atomic writes
+        run: TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+
       # Browsers are ~150MB and change only with the Playwright version, which
       # moves with the lockfile.
       - name: Cache Playwright browsers

@@ -1,6 +1,7 @@
 import "server-only"
 
 import { headers } from "next/headers"
+import { cache } from "react"
 
 import { allowedGithubId, getAuth, SESSION_ABSOLUTE_MS, type Author } from "@/lib/auth"
 import { logServerError } from "@/lib/observability"
@@ -12,10 +13,10 @@ import { logServerError } from "@/lib/observability"
  * request away from `/admin`, but a redirect is a convenience for a browser, not
  * a control: a server action is a POST to the application, reachable directly,
  * and nothing about routing stands between a caller and one. So every action and
- * every admin page calls through here, and the checks below run each time rather
- * than being trusted from an earlier layer (threat T-3).
+ * every admin page calls through here. React deduplicates the check only within
+ * one server request; a subsequent request checks the session again (threat T-3).
  *
- * Four things have to hold, and all four are re-tested on every call:
+ * Four things have to hold, and all four are re-tested on every request:
  *
  * 1. A session exists and Better Auth considers it valid, which covers idle
  *    expiry, revocation and signature.
@@ -27,7 +28,7 @@ import { logServerError } from "@/lib/observability"
  *    the next sign-in.
  * 4. The identity is matched on GitHub's immutable numeric id, never a username.
  */
-export async function getAuthor(): Promise<Author | null> {
+export const getAuthor = cache(async (): Promise<Author | null> => {
   const auth = getAuth()
   if (!auth) return null
 
@@ -73,7 +74,7 @@ export async function getAuthor(): Promise<Author | null> {
     email: user.email ?? "",
     githubId: user.githubId,
   }
-}
+})
 
 /**
  * The signed-in author, or a thrown rejection.

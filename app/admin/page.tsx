@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { AdminShell } from "@/features/writing/components/admin/admin-shell"
-import { listAllPosts } from "@/features/writing/data/admin-queries"
+import { getAdminOverview } from "@/features/writing/data/admin-queries"
 import { getAuthor } from "@/lib/auth-guard"
 import { getCoverStorageConfig } from "@/lib/cover-storage"
 import { cn } from "@/lib/utils"
@@ -12,11 +12,7 @@ import { cn } from "@/lib/utils"
 export default async function AdminPage() {
   if (!(await getAuthor())) redirect("/admin/login")
 
-  const posts = await listAllPosts()
-  const published = posts.filter((post) => post.status === "published").length
-  const drafts = posts.filter((post) => post.status === "draft").length
-  const archived = posts.filter((post) => post.status === "archived").length
-  const latestDraft = posts.find((post) => post.status === "draft")
+  const { total, published, drafts, archived, latestDraft } = await getAdminOverview()
   const coverUploadsConfigured = Boolean(getCoverStorageConfig())
   const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY)
 
@@ -81,7 +77,7 @@ export default async function AdminPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "All posts", value: posts.length },
+            { label: "All posts", value: total },
             { label: "Published", value: published },
             { label: "Drafts", value: drafts },
             { label: "Archived", value: archived },

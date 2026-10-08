@@ -2,9 +2,9 @@
 
 This guide documents the repository's current test setup, how to run it, and
 what its results prove. Configuration and test files are the source of truth.
-The inventory below was collected on **7 October 2026**; it is a count of
+The inventory below was collected on **8 October 2026**; it is a count of
 discovered cases, not a claim that every case ran in a particular test run.
-The Worker optimization regressions below were added on **8 October 2026**.
+The Worker and database latency regressions below were added on **8 October 2026**.
 
 ## Contents
 
@@ -31,15 +31,17 @@ The Worker optimization regressions below were added on **8 October 2026**.
 | Feature / integration / browser | Playwright, [playwright.config.ts](../playwright.config.ts) | Production pages, HTTP endpoints, database-backed flows, and browser interaction |
 | Build                           | Next.js, `npm run build`                                    | Production compilation, route generation, and asset tracing                      |
 
-There is no separate feature-test runner: feature and integration coverage primarily lives
-in Playwright alongside browser tests. The Vitest auth callback regression also exercises
+The SQL/request-budget integration suite uses a separate Vitest configuration
+and an explicitly supplied local database. Feature/browser coverage lives in
+Playwright. The Vitest auth callback regression also exercises
 Better Auth itself, using an isolated in-memory adapter and stubbed GitHub responses;
 it does not contact GitHub or PostgreSQL. Some specs use HTTP requests instead of a
 page when checking status codes, feeds, images, uploads, or server actions.
 
-### Unit tests: 173 cases in 23 files
+### Unit tests: 234 cases in 28 files
 
-Vitest discovers `**/*.test.ts`, excludes `node_modules`, `.next`, and `e2e`, and
+Vitest discovers `**/*.test.ts`, excludes `node_modules`, `.next`, `e2e`, and
+`test/integration`, and
 runs in a Node environment rather than jsdom. The `@` alias resolves to the repo
 root. Its `server-only` alias points to
 [test/support/server-only.ts](../test/support/server-only.ts), an empty module
@@ -53,7 +55,7 @@ used only by the test runner. Application builds still use the real guard.
 | [reading-time.test.ts](../features/writing/utils/reading-time.test.ts)               |     4 | Minimum duration, rounding, length, integer results                                                                                           |
 | [slug.test.ts](../features/writing/utils/slug.test.ts)                               |    13 | Normalization, accents, punctuation, slug patterns, collision suffixes                                                                        |
 | [search-query.test.ts](../features/writing/utils/search-query.test.ts)               |     7 | Empty queries, whitespace normalization, length limits, punctuation                                                                           |
-| [db-errors.test.ts](../features/writing/data/db-errors.test.ts)                      |     6 | Recognizing the series-order uniqueness constraint through nested driver errors                                                               |
+| [db-errors.test.ts](../features/writing/data/db-errors.test.ts)                      |     8 | Recognizing the series-order uniqueness constraint through raw and nested driver errors                                                       |
 | [writing.test.ts](../lib/validators/writing.test.ts)                                 |    15 | IDs, slugs, post input, invalid fields and authoring constraints                                                                              |
 | [analytics-host.test.ts](../lib/analytics-host.test.ts)                              |     9 | Analytics origins, invalid schemes/input, CSP injection prevention, regional asset hosts                                                      |
 | [observability.test.ts](../lib/observability.test.ts)                                |    12 | Structured logs, digest/context/stack handling, aborted requests, real failures                                                               |
@@ -63,17 +65,34 @@ used only by the test runner. Application builds still use the real guard.
 | [site-updated-at.test.ts](../config/site-updated-at.test.ts)                         |     7 | Revision metadata, explicit overrides, valid leap dates, invalid dates, missing Git                                                           |
 | [content-performance.test.ts](../features/writing/utils/content-performance.test.ts) |     4 | Lazy highlighting, ordinary and annotated inline code, highlighter reuse                                                                      |
 | [plain-text.test.ts](../features/writing/utils/plain-text.test.ts)                   |     2 | Lightweight extraction and reuse of text for excerpts                                                                                         |
-| [mutations.test.ts](../features/writing/data/mutations.test.ts)                      |     6 | Save authorization/validation, create/update, publication dates, conflicts, and invalidation                                                  |
+| [mutations.test.ts](../features/writing/data/mutations.test.ts)                      |    18 | Save validation, unchanged/changed tags, batching, series upserts, conflicts, and invalidation                                                |
 | [post-form.test.ts](../features/writing/components/admin/post-form.test.ts)          |     3 | Save failure, existing-post save without redundant navigation, one navigation for creation                                                    |
 | [navigation-prefetch.test.ts](../components/navigation-prefetch.test.ts)             |     2 | Public and admin links without speculative prefetch                                                                                           |
 | [page.test.ts](../app/writing/tags/[tag]/page.test.ts)                               |     6 | Tag request rendering, pagination, canonical metadata, missing-tag behavior                                                                   |
 | [rendered-article.test.ts](../features/writing/data/rendered-article.test.ts)        |     6 | Real Next cache with isolated storage: reuse, saved revisions, slug invalidation, draft isolation                                             |
 | [worker-cache.test.ts](../config/worker-cache.test.ts)                               |     2 | Adapter cache configuration and dev/production binding separation                                                                             |
 | [worker-cache-preflight.test.ts](../config/worker-cache-preflight.test.ts)           |     5 | Release checks for missing bindings and environment selection                                                                                 |
+| [queries.test.ts](../features/writing/data/queries.test.ts)                          |    18 | Public SQL projections, pagination, request batching, visibility, and fallback behavior                                                       |
+| [admin-queries.test.ts](../features/writing/data/admin-queries.test.ts)              |     9 | Relational admin reads, tags/series, minimal projections, and authorization                                                                   |
+| [brand-fonts.test.ts](../lib/og/brand-fonts.test.ts)                                 |     3 | Reused local/HTTP font bytes, in-flight sharing, and retry after transient failure                                                            |
+| [post-actions.test.ts](../features/writing/components/admin/post-actions.test.ts)    |     6 | Status updates and deletion without redundant refresh, cancellation, and failures                                                             |
+| [auth-guard.test.ts](../lib/auth-guard.test.ts)                                      |    11 | Request-scoped memoization, request isolation, expiry, revocation, and author allowlist                                                       |
+
+### Database integration tests: 13 cases in 1 file
+
+`npm run test:integration` uses
+[vitest.integration.config.mts](../vitest.integration.config.mts) and
+[database-latency.test.ts](../test/integration/database-latency.test.ts). It requires
+`TEST_DATABASE_URL` pointing to an isolated loopback Postgres/Neon HTTP stack.
+There is no remote database fallback. Tests verify actual SQL results, HTTP
+request budgets, pagination, draft isolation, post/tag atomicity, and series
+metadata behavior. CI runs it after migrations/seed, before browser tests.
+See [Neon latency optimization](neon-latency-optimization.md) for the command and
+the distinction between SQL tests and authorization/browser coverage.
 
 ### E2E tests: 153 cases in 18 files
 
-The `reads` project discovers 130 cases; `writes` discovers 21. Counts include
+The `reads` project discovers 132 cases; `writes` discovers 21. Counts include
 parameterized accessibility cases and cases that can skip at runtime. A test
 that loops through several routes or viewports is still one discovered case.
 
@@ -394,10 +413,10 @@ image baselines and explicit screenshot comparison tests.
 [ci.yml](../.github/workflows/ci.yml) runs on pull requests and pushes to `main`
 and `develop`. New runs supersede older runs for the same Git ref.
 
-| Job     | Steps                                                                                                      | Result                                                                       |
-| ------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `check` | Node 24, `npm ci`, `npm run check`, production build without a DB, audit                                   | Formatting/types/unit/build gate; audit reports findings but is non-blocking |
-| `e2e`   | Node 24, dependencies, Compose DB/proxy, migrations/seed, Chromium/system libraries, full Playwright suite | Real fixture-backed E2E gate                                                 |
+| Job     | Steps                                                                                                                             | Result                                                                       |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `check` | Node 24, `npm ci`, `npm run check`, production build without a DB, audit                                                          | Formatting/types/unit/build gate; audit reports findings but is non-blocking |
+| `e2e`   | Node 24, dependencies, Compose DB/proxy, migrations/seed, SQL integration suite, Chromium/system libraries, full Playwright suite | Real fixture-backed E2E gate                                                 |
 
 The jobs run in parallel with 15- and 30-minute limits respectively. Chromium is
 cached by lockfile hash; system dependencies are installed even on a cache hit.
@@ -439,7 +458,8 @@ preview tokens, or private draft screenshots into public issues.
 1. Put deterministic logic coverage beside its module as `.test.ts`; use the
    actual implementation and assert meaningful boundaries, not implementation
    details copied into the test.
-2. Put request/database/browser behavior in `e2e/*.spec.ts`. Prefer role/label
+2. Put SQL/transaction/request-budget checks in `test/integration/*.test.ts` and
+   application request/browser behavior in `e2e/*.spec.ts`. Prefer role/label
    locators, scope them to the feature, and use Playwright's web-first assertions.
 3. Reuse fixture constants, signed-session helpers, analytics interception, and
    hydration helpers. Keep identities unique and close custom contexts/clean up

@@ -17,6 +17,7 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:watch": "vitest",
     "clean": "rm -rf .next out",
     "db:up": "docker compose up -d --wait",
