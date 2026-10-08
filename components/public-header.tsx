@@ -10,6 +10,7 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
       <div className={`${SITE_CONTAINER_CLASS} py-4`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
+            prefetch={false}
             href="/"
             className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
           >

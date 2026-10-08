@@ -12,6 +12,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
   return (
     <nav aria-label="Site" className="flex items-center gap-3 sm:gap-4">
       <Link
+        prefetch={false}
         href="/"
         aria-label="Home"
         title="Home"
@@ -21,6 +22,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         <House className="h-4 w-4" aria-hidden />
       </Link>
       <Link
+        prefetch={false}
         href="/resume"
         aria-current={activePage === "resume" ? "page" : undefined}
         className={linkClassName}
@@ -28,6 +30,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         Resume
       </Link>
       <Link
+        prefetch={false}
         href={WRITING_CONFIG.basePath}
         aria-current={activePage === "writing" ? "page" : undefined}
         className={linkClassName}
@@ -35,6 +38,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         {WRITING_CONFIG.title}
       </Link>
       <Link
+        prefetch={false}
         href="/tech-stack"
         aria-current={activePage === "tech-stack" ? "page" : undefined}
         className={linkClassName}

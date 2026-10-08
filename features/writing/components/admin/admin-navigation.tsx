@@ -52,6 +52,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
           <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
             {links.map(({ href, label, page, icon: Icon }) => (
               <Link
+                prefetch={false}
                 key={href}
                 href={href}
                 aria-label={label}
@@ -105,6 +106,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
               <nav aria-label="Admin" className="flex flex-col gap-2">
                 {links.map(({ href, label, page, icon: Icon }) => (
                   <Link
+                    prefetch={false}
                     key={href}
                     href={href}
                     onClick={() => setOpen(false)}

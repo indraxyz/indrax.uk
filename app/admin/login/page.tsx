@@ -52,7 +52,7 @@ export default async function LoginPage({
         </p>
 
         <SignInButton retry={failed} />
-        <Link href="/" className={`${controlClassNames} px-5 py-3`}>
+        <Link prefetch={false} href="/" className={`${controlClassNames} px-5 py-3`}>
           <House className="h-4 w-4" aria-hidden />
           Back to site
         </Link>

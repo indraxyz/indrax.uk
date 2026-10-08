@@ -33,6 +33,8 @@ test.describe("authoring", () => {
 
   const TITLE = `A post written by the suite ${Date.now()}`
   const SLUG_PATTERN = /a-post-written-by-the-suite-\d+/
+  const TAG = `authoring-regression-${Date.now()}`
+  const TAG_PATH = `/writing/tags/${TAG}`
 
   let context: BrowserContext
   let authorId = ""
@@ -295,7 +297,7 @@ test.describe("authoring", () => {
     await page.getByRole("button", { name: "Table", exact: true }).click()
     await page.getByRole("button", { name: "Add row below", exact: true }).click()
     await page.getByRole("button", { name: "Add column after", exact: true }).click()
-    await page.getByLabel("Tags").fill("Testing, typescript")
+    await page.getByLabel("Tags").fill(`Testing, typescript, ${TAG}`)
 
     await page.getByRole("button", { name: /^save$/i }).click()
     await page.waitForURL(/\/admin\/edit\//)
@@ -351,6 +353,10 @@ test.describe("authoring", () => {
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
+    // Warm the missing page before publishing. A new tag must become available
+    // without rebuilding, even if the route was previously requested as a 404.
+    expect((await request.get(TAG_PATH)).status()).toBe(404)
+    expect(await (await request.get(TAG_PATH)).text()).toContain("noindex")
     expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
     expect(await (await request.get("/sitemap.xml")).text()).not.toContain(slug)
   })
@@ -429,6 +435,52 @@ test.describe("authoring", () => {
 
     expect(await (await request.get("/writing/rss.xml")).text()).toContain(TITLE)
     expect(await (await request.get("/sitemap.xml")).text()).toContain(slug)
+
+    const reader = await context.newPage()
+    expect((await reader.goto(TAG_PATH))?.status()).toBe(200)
+    await expect(reader.getByRole("link", { name: TITLE, exact: true })).toBeVisible()
+    await expect(reader.locator('head link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      new RegExp(`${TAG_PATH}$`)
+    )
+    await expect(reader.locator('head meta[name="robots"][content*="noindex"]')).toHaveCount(0)
+    await reader.close()
+  })
+
+  test("revisits a tag after saving and keeps query pagination canonical", async () => {
+    const page = await context.newPage()
+    await page.goto(TAG_PATH)
+    await expect(page.getByRole("link", { name: TITLE, exact: true })).toBeVisible()
+
+    // Exercise invalidation of an already visited public tag from the same
+    // authenticated authoring flow that previously caused production errors.
+    await page.goto(postPath)
+    const excerpt = "A published edit reflected in the tag archive."
+    const articlePath = `/writing/${await page.getByLabel("Slug").inputValue()}`
+    // Warm the public render cache before changing its saved revision.
+    expect((await page.request.get(articlePath)).status()).toBe(200)
+    const bodyMarker = "A new saved body must replace the previously cached article."
+    await page.locator(".ProseMirror").press("ControlOrMeta+End")
+    await page.keyboard.press("Enter")
+    await page.keyboard.insertText(bodyMarker)
+    await page.getByLabel("Excerpt").fill(excerpt)
+    await page.getByRole("button", { name: /^save$/i }).click()
+    await expect(page.getByText("Saved.", { exact: true })).toBeVisible()
+    expect((await page.goto(TAG_PATH))?.status()).toBe(200)
+    await expect(page.getByText(excerpt, { exact: true })).toBeVisible()
+    expect((await page.reload())?.status()).toBe(200)
+    await expect(page.getByText(excerpt, { exact: true })).toBeVisible()
+
+    expect((await page.goto(`${TAG_PATH}?page=2`))?.status()).toBe(200)
+    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      new RegExp(`${TAG_PATH}\\?page=2$`)
+    )
+    expect((await page.goto(articlePath))?.status()).toBe(200)
+    await expect(page.locator(".prose")).toContainText(bodyMarker)
+    expect((await page.reload())?.status()).toBe(200)
+    await expect(page.locator(".prose")).toContainText(bodyMarker)
+    await page.close()
   })
 
   test("unpublishes it, and the public surfaces let it go", async ({ request }) => {
@@ -441,6 +493,7 @@ test.describe("authoring", () => {
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
+    expect((await request.get(TAG_PATH)).status()).toBe(404)
     expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
   })
 

@@ -1,11 +1,8 @@
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string"
 import rehypeParse from "rehype-parse"
-import rehypePrettyCode from "rehype-pretty-code"
 import rehypeSanitize, { defaultSchema, type Options as Schema } from "rehype-sanitize"
 import rehypeSlug from "rehype-slug"
 import rehypeStringify from "rehype-stringify"
-import { createHighlighter } from "shiki"
-import { createJavaScriptRegexEngine } from "shiki/engine/javascript"
 import { unified } from "unified"
 
 import type { Element, Root as HastRoot } from "hast"
@@ -15,17 +12,7 @@ import { SITE_URL } from "@/features/resume/config"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
 import type { PostDocument, RenderedArticle, TocEntry } from "@/features/writing/types"
 
-// Shiki themes for the two site themes. Both are emitted in one pass as
-// `--shiki-light` / `--shiki-dark` custom properties, and `app/globals.css`
-// chooses between them off the `.dark` class - so switching theme repaints code
-// without a second render and without shipping a highlighter to the browser.
-//
-// The light theme is the high-contrast variant because the ordinary one is not
-// accessible on this surface: axe measured its red at 4.42:1, its green at 4.47:1
-// and its orange at 3.37:1 against `--component-prose-code-bg`, all short of the
-// 4.5:1 that WCAG AA asks of body text (NFR-4). Syntax highlighting is text.
-// `github-dark` already clears the bar against the darker dark-mode surface.
-const CODE_THEMES = { light: "github-light-high-contrast", dark: "github-dark" } as const
+export { deriveExcerpt, deriveExcerptText, plainText } from "./plain-text"
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
 
@@ -313,6 +300,44 @@ const schema: Schema = {
   },
 }
 
+/** Only load the highlighter when sanitised code can actually use it. */
+function rehypeHighlightCode() {
+  return async (tree: HastRoot) => {
+    const hasCode = (node: HastRoot | Element, parent?: Element): boolean => {
+      if (node.type === "element" && node.tagName === "code") {
+        if (parent?.tagName === "pre") {
+          const classes = node.properties.className
+          if (
+            Array.isArray(classes) &&
+            classes.some(
+              (value) => typeof value === "string" && /^language-(?!math$).+/.test(value)
+            )
+          ) {
+            return true
+          }
+        } else {
+          const first = node.children[0]
+          // Pretty Code leaves ordinary inline code alone. Language annotations
+          // (including its token-class notation) are the opt-in for highlighting.
+          // Let Pretty Code also handle escaped annotations, which it renders
+          // literally after removing the escape rather than highlighting.
+          if (first?.type === "text" && /{:[a-zA-Z.-]+}$/.test(first.value)) return true
+        }
+      }
+
+      return node.children.some(
+        (child) =>
+          child.type === "element" && hasCode(child, node.type === "element" ? node : undefined)
+      )
+    }
+
+    if (!hasCode(tree)) return
+
+    const { highlightCode } = await import("./highlight-code")
+    return highlightCode(tree)
+  }
+}
+
 /**
  * A stored document to sanitised, highlighted HTML.
  *
@@ -353,60 +378,10 @@ export async function renderDocument(document: PostDocument): Promise<RenderedAr
     .use(rehypeLabelTaskLists)
     .use(rehypeExternalLinks)
     .use(rehypeCollectHeadings, headings)
-    .use(rehypePrettyCode, {
-      theme: CODE_THEMES,
-      // Workers reject compiling Oniguruma's WASM on a cold dynamic render.
-      // Pretty Code caches this highlighter, including languages loaded later.
-      getHighlighter: (options) =>
-        createHighlighter({ ...options, engine: createJavaScriptRegexEngine() }),
-      // Keeps the wrapper's own background off, so the block inherits the
-      // component token defined in globals.css and matches the card it sits in.
-      keepBackground: false,
-    })
+    .use(rehypeHighlightCode)
     .use(rehypeScrollRegions)
     .use(rehypeStringify)
     .process(html)
 
   return { html: String(file), headings }
-}
-
-/** Every text node in a stored document, in order. */
-function documentText(node: PostDocument): string {
-  const parts: string[] = []
-
-  const walk = (current: PostDocument) => {
-    if (typeof current.text === "string") parts.push(current.text)
-    for (const child of current.content ?? []) walk(child)
-  }
-
-  walk(node)
-
-  return parts.join(" ").replace(/\s+/g, " ").trim()
-}
-
-/**
- * The plain text of a document, for reading time and for an excerpt.
- *
- * Taken from the JSON rather than from the rendered HTML: the rendering is
- * expensive, and everything that would need stripping out of it - markup,
- * highlighting spans, the generated footnote section - is absent here to begin
- * with.
- */
-export const plainText = documentText
-
-/**
- * A plain-text excerpt, for a post that has not been given one.
- *
- * Feeds meta descriptions and feed summaries, so it is cut on a word boundary
- * rather than mid-word.
- */
-export function deriveExcerpt(document: PostDocument, maxLength = 160): string {
-  const plain = documentText(document)
-
-  if (plain.length <= maxLength) return plain
-
-  const cut = plain.slice(0, maxLength)
-  const lastSpace = cut.lastIndexOf(" ")
-
-  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}...`
 }

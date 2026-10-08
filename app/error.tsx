@@ -50,10 +50,14 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             <RotateCw className="h-3.5 w-3.5" aria-hidden />
             Try again
           </button>
-          <Link href="/" className={cn(controlClassNames, "px-5 py-3")}>
+          <Link prefetch={false} href="/" className={cn(controlClassNames, "px-5 py-3")}>
             Home
           </Link>
-          <Link href={WRITING_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
+          <Link
+            prefetch={false}
+            href={WRITING_CONFIG.basePath}
+            className={cn(controlClassNames, "px-5 py-3")}
+          >
             {WRITING_CONFIG.title}
           </Link>
         </div>

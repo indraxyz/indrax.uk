@@ -48,6 +48,7 @@ function Part({ part, index }: { part: SeriesPartDetail; index: number }) {
   return (
     <li className="border-b-2 border-border last:border-b-0">
       <Link
+        prefetch={false}
         href={`${WRITING_CONFIG.basePath}/${part.slug}`}
         className="group flex gap-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >

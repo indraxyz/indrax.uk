@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { connection } from "next/server"
+import { cache } from "react"
 
 import { WritingShell } from "@/features/writing/components/writing-shell"
 import { EmptyState } from "@/features/writing/components/empty-state"
@@ -24,19 +26,18 @@ const pathFor = (slug: string) => `${WRITING_CONFIG.tagPath}/${slug}`
  * is still a draft has no page here and no entry in the sitemap - which is the
  * same thing as saying it 404s (PRD US-2.2).
  */
-async function findTag(slug: string) {
+const findTag = cache(async (slug: string) => {
   const tags = await getTagsInUse()
 
   return tags.find((tag) => tag.slug === slug) ?? null
-}
-
-export async function generateStaticParams() {
-  const tags = await getTagsInUse()
-
-  return tags.map((tag) => ({ tag: tag.slug }))
-}
+})
 
 export async function generateMetadata({ params, searchParams }: TagPageProps): Promise<Metadata> {
+  // Pagination depends on the incoming request. Make that boundary explicit
+  // before reading data, including for tags published after the last build.
+  // The queries retain their own tagged data cache; this opts only the route
+  // out of prerendering/ISR, where searchParams cannot be read during revalidation.
+  await connection()
   const { tag: slug } = await params
   const tag = await findTag(slug)
 
@@ -62,6 +63,7 @@ export async function generateMetadata({ params, searchParams }: TagPageProps): 
 }
 
 export default async function TagPage({ params, searchParams }: TagPageProps) {
+  await connection()
   const { tag: slug } = await params
 
   const tag = await findTag(slug)

@@ -19,7 +19,7 @@ export default async function AdminPostsPage() {
       title="Posts"
       activePage="posts"
       actions={
-        <Link href="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
+        <Link prefetch={false} href="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
           <Plus className="h-3.5 w-3.5" aria-hidden />
           New post
         </Link>
@@ -29,7 +29,7 @@ export default async function AdminPostsPage() {
         <div className="border-2 border-dashed border-border px-6 py-16 text-center">
           <p className="text-sm font-semibold text-muted-foreground">
             Nothing written yet. Start with{" "}
-            <Link href="/admin/new" className="underline">
+            <Link prefetch={false} href="/admin/new" className="underline">
               a new post
             </Link>
             .

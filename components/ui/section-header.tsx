@@ -72,6 +72,7 @@ export function SectionHeader({
         )}
         {link && (
           <Link
+            prefetch={false}
             href={link.href}
             {...(isExternal(link.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-current opacity-85 transition hover:opacity-100 hover:underline"

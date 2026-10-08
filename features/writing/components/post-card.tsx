@@ -31,6 +31,7 @@ export function PostCard({ post, priority = false, headingLevel = 2 }: PostCardP
               nesting them would be invalid. The title carries the navigation and
               stretches its hit area over the card instead. */}
           <Link
+            prefetch={false}
             href={`${WRITING_CONFIG.basePath}/${post.slug}`}
             className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:underline"
           >

@@ -28,6 +28,23 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS",
   },
+  // Separate resources for each environment. OpenNext populates KV and
+  // initializes D1 before Wrangler uploads the Worker.
+  // See docs/worker-cpu-optimization.md. No remote resources are created by build.
+  "kv_namespaces": [
+    {
+      "binding": "NEXT_INC_CACHE_KV",
+      "id": "3b3a56d04aed4aca8492ab4d46002923",
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "NEXT_TAG_CACHE_D1",
+      "database_name": "indrax-next-tags",
+      "database_id": "768e0a3c-8014-4b32-9a7f-39f2b7ee2a58",
+    },
+  ],
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "indrax" }],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -56,6 +73,20 @@
         "directory": ".open-next/assets",
         "binding": "ASSETS",
       },
+      "kv_namespaces": [
+        {
+          "binding": "NEXT_INC_CACHE_KV",
+          "id": "55163065696741c397d875991d3eb8d6",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "NEXT_TAG_CACHE_D1",
+          "database_name": "indrax-dev-next-tags",
+          "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
+        },
+      ],
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "indrax-dev" }],
     },
   },
 }

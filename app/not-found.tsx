@@ -32,11 +32,15 @@ export default function NotFound() {
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link href="/" className={cn(controlClassNames, "px-5 py-3")}>
+          <Link prefetch={false} href="/" className={cn(controlClassNames, "px-5 py-3")}>
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Home
           </Link>
-          <Link href={WRITING_CONFIG.basePath} className={cn(controlClassNames, "px-5 py-3")}>
+          <Link
+            prefetch={false}
+            href={WRITING_CONFIG.basePath}
+            className={cn(controlClassNames, "px-5 py-3")}
+          >
             {WRITING_CONFIG.title}
           </Link>
         </div>
