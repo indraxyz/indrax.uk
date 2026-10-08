@@ -128,9 +128,10 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
 
       setResult(outcome)
 
-      if (outcome.ok && outcome.postId) {
+      // updateTag gives this action read-your-own-writes. Only a new post
+      // needs navigation; refreshing again would request the edit page twice.
+      if (outcome.ok && outcome.postId && outcome.postId !== post?.id) {
         router.replace(`/admin/edit/${outcome.postId}`)
-        router.refresh()
       }
     })
   }

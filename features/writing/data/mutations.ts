@@ -6,7 +6,7 @@ import { updateTag } from "next/cache"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { CACHE_TAGS } from "@/features/writing/data/queries"
 import type { ActionResult, PostDocument, PostStatus } from "@/features/writing/types"
-import { deriveExcerpt, plainText } from "@/features/writing/utils/content"
+import { deriveExcerptText, plainText } from "@/features/writing/utils/plain-text"
 import { computeReadingTime } from "@/features/writing/utils/reading-time"
 import { createPreviewToken } from "@/features/writing/utils/preview-token"
 import { slugify, uniqueSlug } from "@/features/writing/utils/slug"
@@ -200,7 +200,15 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
 
   const input = parsed.data
   const existing = payload.id
-    ? await db.select().from(schema.posts).where(eq(schema.posts.id, payload.id)).limit(1)
+    ? await db
+        .select({
+          id: schema.posts.id,
+          slug: schema.posts.slug,
+          publishedAt: schema.posts.publishedAt,
+        })
+        .from(schema.posts)
+        .where(eq(schema.posts.id, payload.id))
+        .limit(1)
     : []
   const current = existing[0]
 
@@ -263,7 +271,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
   const row = {
     slug,
     title: input.title,
-    excerpt: input.excerpt || deriveExcerpt(document),
+    excerpt: input.excerpt || deriveExcerptText(text),
     contentJson: document,
     coverUrl: input.coverUrl ?? null,
     coverAlt: input.coverAlt ?? null,

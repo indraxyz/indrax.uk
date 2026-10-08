@@ -9,7 +9,7 @@ import { RelatedPosts } from "@/features/writing/components/related-posts"
 import { ViewBeacon } from "@/features/writing/components/view-beacon"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { getPostBySlug, getPublishedSlugs, getRelatedPosts } from "@/features/writing/data/queries"
-import { renderDocument } from "@/features/writing/utils/content"
+import { getRenderedArticle } from "@/features/writing/data/rendered-article"
 import {
   buildArticleStructuredData,
   buildBreadcrumbStructuredData,
@@ -78,10 +78,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   // One render pass. It produces both the body and the headings the contents list
   // is built from, so doing it twice would be paying twice for one answer.
-  const [article, related] = await Promise.all([
-    renderDocument(post.content),
-    getRelatedPosts(post.id),
-  ])
+  const [article, related] = await Promise.all([getRenderedArticle(post), getRelatedPosts(post.id)])
 
   const breadcrumbTrail = [
     { name: "Home", path: "/" },

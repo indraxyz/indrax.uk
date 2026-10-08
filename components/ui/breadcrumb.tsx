@@ -17,6 +17,7 @@ export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
             {index > 0 && <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />}
             {index < items.length - 1 && item.path ? (
               <Link
+                prefetch={false}
                 href={item.path}
                 className="break-words hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >

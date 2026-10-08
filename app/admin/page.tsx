@@ -52,7 +52,7 @@ export default async function AdminPage() {
       title="Overview"
       activePage="home"
       actions={
-        <Link href="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
+        <Link prefetch={false} href="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
           <Plus className="h-3.5 w-3.5" aria-hidden />
           New post
         </Link>
@@ -71,6 +71,7 @@ export default async function AdminPage() {
             </p>
           </div>
           <Link
+            prefetch={false}
             href="/admin/posts"
             className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
@@ -110,6 +111,7 @@ export default async function AdminPage() {
           </p>
         </div>
         <Link
+          prefetch={false}
           href={latestDraft ? "/admin/edit/" + latestDraft.id : "/admin/new"}
           className={cn(controlClassNames, "px-3 py-2")}
         >

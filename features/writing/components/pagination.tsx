@@ -54,7 +54,12 @@ export function Pagination({
   return (
     <nav aria-label={label} className="flex items-center justify-between gap-4 pt-2">
       {previous ? (
-        <Link href={previous} rel="prev" className={cn(controlClassNames, "px-4 py-2")}>
+        <Link
+          prefetch={false}
+          href={previous}
+          rel="prev"
+          className={cn(controlClassNames, "px-4 py-2")}
+        >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
           {previousLabel}
         </Link>
@@ -76,7 +81,12 @@ export function Pagination({
       </p>
 
       {next ? (
-        <Link href={next} rel="next" className={cn(controlClassNames, "px-4 py-2")}>
+        <Link
+          prefetch={false}
+          href={next}
+          rel="next"
+          className={cn(controlClassNames, "px-4 py-2")}
+        >
           {nextLabel}
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>

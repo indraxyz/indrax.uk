@@ -383,6 +383,12 @@ configuration and are not changed by editing this repository.
 
 #### Worker observability
 
+Worker CPU optimizations and the KV/D1 cache setup are documented in
+[Worker CPU optimization](docs/worker-cpu-optimization.md). The first approved
+release needs separate cache resources for dev and production; deploy scripts
+check their IDs before running OpenNext's cache population. Build and local
+preview do not provision remote resources.
+
 Both Workers inherit the observability settings in `wrangler.jsonc`: persisted
 invocation/application logs, automatic traces, and Issues detection. The shared
 head sampling rate is `1` (100%); reduce it if telemetry volume grows. Query

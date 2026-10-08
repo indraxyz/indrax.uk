@@ -33,6 +33,7 @@ export function AdminShell({
         <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex items-center justify-between gap-4">
             <Link
+              prefetch={false}
               href="/admin"
               aria-current={activePage === "home" ? "page" : undefined}
               className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
