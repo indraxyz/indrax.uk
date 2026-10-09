@@ -167,7 +167,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 **AC**
 
 - Given a tag name, when I attach it, then a tag row is created if absent or reused if present — no duplicates by slug.
-- Given tag input, when normalized, then it is case-insensitive and trimmed ("Next.js" and "next.js" resolve to one tag).
+- Given tag input, when normalized, then it is case-insensitive and trimmed ("Vue.js" and "vue.js" resolve to one tag).
 - Given a post, when I remove a tag, then only the join row is deleted; the tag itself survives for other posts.
 
 #### US-3.6 · Add a cover image
@@ -197,7 +197,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 **AC**
 
 - Given no session, when I request any `/admin/*` route, then I am redirected to `/admin/login`.
-- Given no session, when I invoke any mutating server action directly, then it fails authorization — **independently of middleware**.
+- Given no session, when I invoke any mutating API endpoint directly, then it fails authorization — **independently of middleware**.
 - Given a session belonging to a non-allow-listed identity, when any action runs, then it is rejected.
 - Given `robots.txt`, when fetched, then `/admin` is disallowed.
 - Given any `/admin` route, when responded, then `X-Robots-Tag: noindex, nofollow` is set.
@@ -260,21 +260,21 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 
 Single-author writing, public read surface, one privileged account. Realistic risks, ordered by expected damage.
 
-| #    | Threat                            | Vector                                                | Mitigation                                                                                                                                              | Verified by                                                                  |
-| ---- | --------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| T-1  | **Admin account takeover**        | GitHub account compromise                             | OAuth + allow-list by immutable numeric ID (not username — usernames can be changed or reclaimed). Enable 2FA on the GitHub account itself.             | Manual: rename a test account, confirm the ID check still governs            |
-| T-2  | **Stored XSS in article body**    | Tiptap/markdown output rendered as HTML               | `rehype-sanitize` with an explicit allow-list schema on render. Sanitize on **output**, not only on input — stored content may predate a schema change. | Test: store `<script>`, `<img onerror>`, `javascript:` href; assert stripped |
-| T-3  | **Authorization bypass**          | Server action invoked directly, skipping middleware   | Session + allow-list re-checked inside every mutating action                                                                                            | Test: call action with no cookie, assert rejection                           |
-| T-4  | **Draft leakage**                 | Guessable slug, sitemap, RSS, cache                   | Drafts 404 publicly; excluded from sitemap/RSS; preview requires signed token; preview responses `noindex` and uncached                                 | Test: draft slug returns 404; grep sitemap and feed                          |
-| T-5  | **Storage abuse via upload**      | Presigned URL reused or oversized/malicious file      | Server-side MIME and size enforcement, short TTL, single-key scope, auth required to mint                                                               | Test: oversized file, disallowed type, expired URL                           |
-| T-6  | **SSRF via remote image URL**     | Fetching a user-supplied URL server-side              | Do not fetch arbitrary URLs. Only own-storage hosts allowed in `next.config` `images.remotePatterns`                                                    | Config review                                                                |
-| T-7  | **SQL injection**                 | Query construction                                    | Drizzle parameterizes; forbid raw string concatenation into `sql`                                                                                       | Code review + lint                                                           |
-| T-8  | **Session fixation / theft**      | Cookie handling                                       | `httpOnly`, `secure`, `sameSite=strict`, rotate on login, DB-backed and revocable                                                                       | Manual inspection                                                            |
-| T-9  | **CSRF on mutations**             | Cross-origin form post                                | Server actions carry built-in protection; `sameSite=strict` reinforces. Any hand-rolled route handler needs explicit origin checking.                   | Test: cross-origin POST                                                      |
-| T-10 | **Secret exposure**               | Env var referenced client-side                        | Only `NEXT_PUBLIC_*` reaches the browser. `DATABASE_URL`, OAuth secret, `ALLOWED_GITHUB_ID` server-only.                                                | Grep built client bundle for secret fragments                                |
-| T-11 | **Denial of wallet**              | Unthrottled hits waking Neon / burning storage egress | Cached public pages; rate limits on upload and auth; billing alerts                                                                                     | Load check                                                                   |
-| T-12 | **CSP weakened by inline script** | `layout.tsx` injects an inline theme script           | If adding CSP, use a nonce or hash for that script — do not reach for `unsafe-inline`                                                                   | Header inspection                                                            |
-| T-13 | **Dependency compromise**         | Supply chain                                          | Lockfile committed, Dependabot on, `npm audit` in CI                                                                                                    | CI                                                                           |
+| #    | Threat                            | Vector                                                   | Mitigation                                                                                                                                              | Verified by                                                                  |
+| ---- | --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| T-1  | **Admin account takeover**        | GitHub account compromise                                | OAuth + allow-list by immutable numeric ID (not username — usernames can be changed or reclaimed). Enable 2FA on the GitHub account itself.             | Manual: rename a test account, confirm the ID check still governs            |
+| T-2  | **Stored XSS in article body**    | Tiptap/markdown output rendered as HTML                  | `rehype-sanitize` with an explicit allow-list schema on render. Sanitize on **output**, not only on input — stored content may predate a schema change. | Test: store `<script>`, `<img onerror>`, `javascript:` href; assert stripped |
+| T-3  | **Authorization bypass**          | Private API invoked directly, skipping navigation guards | Session + allow-list re-checked inside every mutating data operation                                                                                    | Test: call API with no cookie, assert rejection                              |
+| T-4  | **Draft leakage**                 | Guessable slug, sitemap, RSS, cache                      | Drafts 404 publicly; excluded from sitemap/RSS; preview requires signed token; preview responses `noindex` and uncached                                 | Test: draft slug returns 404; grep sitemap and feed                          |
+| T-5  | **Storage abuse via upload**      | Presigned URL reused or oversized/malicious file         | Server-side MIME and size enforcement, short TTL, single-key scope, auth required to mint                                                               | Test: oversized file, disallowed type, expired URL                           |
+| T-6  | **SSRF via remote image URL**     | Fetching a user-supplied URL server-side                 | Do not fetch arbitrary URLs. Use the centralized `isAllowedMediaUrl` storage-host allowlist                                                             | Config review                                                                |
+| T-7  | **SQL injection**                 | Query construction                                       | Drizzle parameterizes; forbid raw string concatenation into `sql`                                                                                       | Code review + lint                                                           |
+| T-8  | **Session fixation / theft**      | Cookie handling                                          | `httpOnly`, `secure`, `sameSite=strict`, rotate on login, DB-backed and revocable                                                                       | Manual inspection                                                            |
+| T-9  | **CSRF on mutations**             | Cross-origin form post                                   | API mutations require explicit same-origin validation; session cookies reinforce this boundary.                                                         | Test: cross-origin POST                                                      |
+| T-10 | **Secret exposure**               | Env var referenced client-side                           | Only `NEXT_PUBLIC_*` reaches the browser. `DATABASE_URL`, OAuth secret, `ALLOWED_GITHUB_ID` server-only.                                                | Grep built client bundle for secret fragments                                |
+| T-11 | **Denial of wallet**              | Unthrottled hits waking Neon / burning storage egress    | Cached public pages; rate limits on upload and auth; billing alerts                                                                                     | Load check                                                                   |
+| T-12 | **CSP weakened by inline script** | `app/root.tsx` injects an inline theme script            | If adding CSP, use a nonce or hash for that script — do not reach for `unsafe-inline`                                                                   | Header inspection                                                            |
+| T-13 | **Dependency compromise**         | Supply chain                                             | Lockfile committed, Dependabot on, `npm audit` in CI                                                                                                    | CI                                                                           |
 
 **Accepted risks (documented, not mitigated):** no WAF; no bot management beyond platform defaults; view counter is best-effort and trivially inflatable — it is decorative, never used for ranking or billing.
 
@@ -294,7 +294,7 @@ Run before first production deploy.
 
 **Input & output**
 
-- [ ] Zod validation on every server action, server-side
+- [ ] Zod validation on every API mutation, server-side
 - [ ] `rehype-sanitize` applied at render with an explicit schema
 - [ ] Slug regex enforced server-side
 - [ ] Upload MIME and size enforced server-side

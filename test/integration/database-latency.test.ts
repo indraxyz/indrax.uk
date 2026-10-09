@@ -5,7 +5,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest"
 
 // Test actual SQL and HTTP batching against local Postgres. Authentication and
-// Next's cache are covered separately; neither participates in the SQL budget.
+// Application caching are covered separately; neither participates in the SQL budget.
 vi.mock("@/lib/auth-guard", () => ({ requireAuthor: vi.fn().mockResolvedValue({ id: "author" }) }))
 vi.mock("@/lib/cache.server", () => ({
   cachedRead: (_key: string, _tags: string[], fn: () => unknown) => fn(),

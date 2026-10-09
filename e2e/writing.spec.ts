@@ -102,7 +102,7 @@ test.describe("the writing public surface", () => {
       ["/blog?ref=legacy", "/writing?ref=legacy"],
       ["/blog/old-article?ref=legacy", "/writing/old-article?ref=legacy"],
       ["/blog/tag/typescript?page=2", "/writing/tags/typescript?page=2"],
-      ["/blog/search?q=nextjs", "/writing/search?q=nextjs"],
+      ["/blog/search?q=typescript", "/writing/search?q=typescript"],
       ["/blog/series/example?page=2", "/writing/series/example?page=2"],
       ["/blog/an-article/preview?token=example", "/writing/an-article/preview?token=example"],
       ["/rss.xml", "/writing/rss.xml"],
@@ -172,7 +172,7 @@ test.describe("the writing public surface", () => {
     expect(csp).toContain(E2E_POSTHOG_HOST)
 
     // `default-src` is the fallback for `script-src`, so setting it would block
-    // Next's own inline bootstrap and the theme script - the page would render
+    // React Router's inline bootstrap and the theme script - the page would render
     // unstyled and unthemed. Asserted so nobody adds it without meaning to.
     expect(csp).not.toContain("default-src")
   })

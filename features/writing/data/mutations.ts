@@ -55,7 +55,7 @@ async function revalidatePost(...slugs: (string | null | undefined)[]) {
  * Normalize desired tag names before synchronizing their joins.
  *
  * Matching is on the slug, which is what makes it case- and punctuation-
- * insensitive: "Next.js", "next.js" and "NEXT JS" all slugify to `next-js` and
+ * insensitive: "Vue.js", "vue.js" and "VUE JS" all slugify to `vue-js` and
  * resolve to one row rather than three (PRD US-3.5).
  */
 function normalizedTags(names: string[]): Map<string, string> {

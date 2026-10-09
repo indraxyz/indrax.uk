@@ -9,8 +9,6 @@ export default ts.config(
       "public/admin/**",
       "build/**",
       ".react-router/**",
-      ".next/**",
-      ".open-next/**",
       ".wrangler/**",
       "playwright-report/**",
       "test-results/**",

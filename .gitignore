@@ -30,9 +30,6 @@ pnpm-debug.log*
 .env*.local
 .env
 
-# vercel
-.vercel
-
 # cloudflare
 .wrangler/
 .dev.vars
@@ -60,10 +57,6 @@ Thumbs.db
 
 # Generated resume export
 *.pdf
-
-# Legacy generated artifacts during framework migration
-.next/
-.open-next/
 
 # Generated admin assets for Vite development
 /public/admin/

@@ -1,8 +1,7 @@
 # Worker CPU and cache guidance
 
 Current runtime: React Router 8.4.0 public SSR + independent admin CSR, on Cloudflare
-Workers through Vite. This replaces the Next/OpenNext implementation documented in
-[the historical investigation](history/next-worker-cpu-optimization.md).
+Workers through Vite.
 
 ## What changed
 

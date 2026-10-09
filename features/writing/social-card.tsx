@@ -23,9 +23,8 @@ const TAGS_ON_CARD = 3
 /**
  * The banner shown when an article link is unfurled.
  *
- * Drawn through `app/writing/[slug]/opengraph-image.tsx`, whose filename is a Next
- * metadata convention. Next derives `twitter:image` from the same route, so there
- * is no second card to keep in step.
+ * Served by the `/writing/:slug/opengraph-image` Worker resource. Article route
+ * metadata references this card for both Open Graph and Twitter images.
  */
 export async function renderPostCard(post: Post) {
   const { regular, extraBold } = await loadBrandFonts()

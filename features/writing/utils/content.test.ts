@@ -176,7 +176,7 @@ describe("renderDocument — heading structure", () => {
   })
 
   it("namespaces heading ids so they cannot clobber the DOM", async () => {
-    // A heading slugging to `document` or `__next` is a named-window-access
+    // A heading slugging to `document` or `__app` is a named-window-access
     // surface; the prefix is what stops it.
     const html = await render(
       doc({ type: "heading", attrs: { level: 2 }, content: [text("document")] })

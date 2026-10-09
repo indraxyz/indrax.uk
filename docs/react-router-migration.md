@@ -11,14 +11,12 @@ The implementation targets the latest stable release verified for this migration
 React Router **8.4.0**, with matching `@react-router/dev`. The initial request named
 v7; the current implementation follows the subsequently selected stable version.
 React Router Framework Mode supplies route modules, loader data, metadata, generated
-route types and Vite builds. Cloudflare's Vite plugin builds the Worker directly;
-Next.js, OpenNext and React Server Component conventions are removed.
+route types and Vite builds. Cloudflare's Vite plugin builds the Worker directly.
 
 The independent admin uses a second Vite build and browser routing. It shares
 feature components and API contracts without importing server modules. The Worker
 serves its static shell and authenticated APIs separately from the public SSR handler.
-This deliberate split avoids assuming that declaring a Client Component or using
-React Router globally with SSR enabled makes admin server rendering disappear.
+This split keeps private admin routes independent from the public SSR handler.
 
 ## SEO and client rendering
 
@@ -44,8 +42,7 @@ No polling or speculative route data prefetch is added.
 
 Public server data/render caching keeps existing KV/D1 resources with a new cache
 namespace and D1 revision keys. The retained binding and public-environment names
-avoid a remote configuration migration while their implementation becomes independent
-of Next.js. See [cache/CPU guidance](worker-cpu-optimization.md).
+avoid a remote configuration migration. See [cache/CPU guidance](worker-cpu-optimization.md).
 
 ## Documentation verification and Context7
 
@@ -77,8 +74,6 @@ report their results and skipped cases separately.
 
 No migration test proves every Worker request stays below the free-plan CPU ceiling.
 An approved dev deployment and CPU profiling are still required for that conclusion.
-Historical Next/OpenNext reports are retained in `docs/history` as evidence of earlier
-investigations, not current setup instructions.
 
 ### Final local validation — 2026-10-09
 

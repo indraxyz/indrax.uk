@@ -5,7 +5,10 @@ import { whenHydrated } from "./support/hydration"
 test("public links navigate without speculative Worker page requests", async ({ page }) => {
   const prefetched: string[] = []
   page.on("request", (request) => {
-    if (request.headers()["next-router-prefetch"] === "1") prefetched.push(request.url())
+    const url = new URL(request.url())
+    if (url.pathname === "/resume" || url.pathname === "/resume.data") {
+      prefetched.push(request.url())
+    }
   })
 
   await page.goto("/writing")

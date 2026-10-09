@@ -3,7 +3,6 @@
 Personal home page, resume, writing archive, and single-author admin built with
 React Router **8.4.0**, React, TypeScript, and Tailwind CSS v4 on Cloudflare Workers.
 The public site uses Framework Mode; the admin is an independent CSR application.
-Next.js and OpenNext are no longer part of the runtime or build.
 
 ## Rendering and data
 
@@ -97,8 +96,7 @@ when using `npm run start -- --port <port>`. Remote auth uses the deployed HTTPS
 origin. The preview runner explicitly preserves the loopback request origin,
 so production routes cannot rewrite local auth/CSRF headers.
 
-The existing `NEXT_PUBLIC_*` names are retained for configuration compatibility.
-They are an explicit Vite public-variable allowlist, not a Next.js dependency.
+The `NEXT_PUBLIC_*` settings form an explicit Vite public-variable allowlist.
 Only safe public settings use that prefix; never prefix database URLs, tokens, or
 OAuth secrets with it.
 

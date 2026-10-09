@@ -265,7 +265,7 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
               {...describedBy("tags", result?.errors?.tags)}
               value={tags}
               onChange={(event) => setTags(event.target.value)}
-              placeholder="Next.js, TypeScript"
+              placeholder="React Router, TypeScript"
               className={fieldClasses}
             />
             <p className="text-xs font-medium text-muted-foreground">

@@ -63,7 +63,7 @@ describe("POSTHOG_HOST", () => {
   })
 
   it("falls back on anything unparseable rather than throwing", async () => {
-    // It runs inside next.config.ts; a typo in an optional variable must not
+    // It runs inside the shared security-header configuration; a typo in an optional variable must not
     // stop the build.
     expect((await hostFor("not a url")).POSTHOG_HOST).toBe(DEFAULT)
   })

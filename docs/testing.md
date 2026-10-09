@@ -1,8 +1,7 @@
 # Test suite guide
 
 The application now builds React Router 8.4.0 public SSR and a separate CSR admin.
-The browser suite serves production artifacts in **Wrangler/Workerd**, not a Next.js
-Node server. Counts change as the migration adds coverage; use runner output for
+The browser suite serves production artifacts in **Wrangler/Workerd**. Counts change as the migration adds coverage; use runner output for
 current totals rather than treating historical counts as current results.
 
 ## Test layers

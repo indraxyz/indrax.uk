@@ -372,7 +372,7 @@ export async function renderDocument(document: PostDocument): Promise<RenderedAr
     .use(rehypeNormaliseHeadings)
     .use(rehypeSanitize, schema)
     // Namespaced for the same reason footnote ids are: a heading slugging to
-    // `document`, `posthog` or `__next` is a DOM-clobbering surface, and the
+    // `document`, `posthog` or `__app` is a DOM-clobbering surface, and the
     // sanitiser cannot help because it runs before this does.
     .use(rehypeSlug, { prefix: "user-content-" })
     .use(rehypeLabelTaskLists)

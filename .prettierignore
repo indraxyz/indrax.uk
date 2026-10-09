@@ -1,5 +1,4 @@
 node_modules
-.next
 out
 build
 dist
@@ -7,10 +6,8 @@ dist
 package-lock.json
 yarn.lock
 coverage
-.vercel
 
 
-.open-next
 .react-router
 .wrangler
 playwright-report

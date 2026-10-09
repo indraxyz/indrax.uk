@@ -3,7 +3,6 @@
 The site uses React Router **8.4.0** Framework Mode on Cloudflare Workers. The admin
 is a separately built React application using browser routing. Vite produces both
 bundles; the Cloudflare Vite plugin packages the SSR Worker and client assets.
-Next.js/OpenNext conventions and React Server Components are removed.
 
 ## Request paths
 
@@ -33,8 +32,8 @@ underlying data operation verifies the actual session and numeric GitHub allowli
 `lib/runtime.server.ts` stores Request, Worker bindings and execution context in
 AsyncLocalStorage. Concurrent requests keep separate contexts. Server modules use
 this context for runtime secrets; build tools define an explicit safe public
-variable allowlist. The retained `NEXT_PUBLIC_*` names and `NEXT_*` cache binding
-names preserve existing configuration, not Next.js code.
+variable allowlist. Public build settings and cache bindings are configured in
+the environment templates and Wrangler configuration.
 
 ## Rendering policy
 
@@ -102,7 +101,7 @@ save behavior.
 
 `lib/cache.server.ts` memoizes public reads within one Request, even without storage.
 Persistent cache keys include D1 invalidation revisions and use a new namespace
-prefix so old OpenNext entries are never reused. KV entries expire after one hour;
+prefix that isolates the application cache format. KV entries expire after one hour;
 D1 stores tag revisions in the existing `revalidations` table. Mutations await
 invalidation, then clear request memo/version state. Background KV writes use
 `waitUntil` when available. Public rendered articles are keyed by post ID, slug,
@@ -124,8 +123,8 @@ guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 - `components/ui` provides shared primitives and variants; feature CSS uses Tailwind
   and the site theme. Public/admin navigation uses React Router links and explicit
   active-state helpers.
-- Consent gates PostHog initialization and storage; analytics helpers avoid draft,
-  admin, auth and token leakage. Security headers remain centralized at the Worker.
+- Consent gates PostHog initialization and storage; analytics helpers exclude admin/auth tracking and redact preview tokens
+  from public pageview URLs. Security headers remain centralized at the Worker.
 
 ## Build, quality and review
 

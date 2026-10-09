@@ -2,7 +2,7 @@
  * Where analytics events are sent.
  *
  * Its own module because two very different files need the same answer and must
- * not drift: `lib/analytics.ts` points the tracker at it, and `next.config.ts`
+ * not drift: `lib/analytics.ts` points the tracker at it, and `lib/security-headers.ts`
  * names it in `connect-src` so the browser will allow the request. If those two
  * disagree the Content-Security-Policy silently blocks every event, and nothing
  * about that failure looks like a misconfigured constant.
@@ -21,7 +21,7 @@ const DEFAULT_HOST = "https://us.i.posthog.com"
  * makes that impossible to express and normalises the trailing-slash and
  * path-suffix cases that are otherwise a silent mismatch.
  *
- * Falls back rather than throwing: this runs inside `next.config.ts`, and a
+ * Falls back rather than throwing: this runs inside `lib/security-headers.ts`, and a
  * typo in an optional analytics variable should not stop the site building.
  */
 function originOf(value: string | undefined): string {
