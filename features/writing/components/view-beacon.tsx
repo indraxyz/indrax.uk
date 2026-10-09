@@ -16,7 +16,6 @@ interface ViewBeaconProps {
  */
 export function ViewBeacon({ slug }: ViewBeaconProps) {
   return (
-    /* eslint-disable-next-line @next/next/no-img-element */
     <img
       src={`${WRITING_CONFIG.viewPath}/${encodeURIComponent(slug)}`}
       alt=""

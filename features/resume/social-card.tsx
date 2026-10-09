@@ -1,7 +1,8 @@
+import { assetResponse } from "@/lib/assets.server"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 
-import { ImageResponse } from "next/og"
+import { CustomFont, ImageResponse } from "cf-workers-og"
 
 import { SITE_HOST } from "@/features/resume/config"
 import { personalInfo } from "@/features/resume/data/resume"
@@ -19,7 +20,11 @@ const SKILLS_ON_CARD = 2
 async function loadAssets() {
   const [fonts, photo] = await Promise.all([
     loadBrandFonts(),
-    readFile(join(process.cwd(), "public", "foto-profile.jpg")),
+    readFile(join(process.cwd(), "public", "foto-profile.jpg")).catch(async () => {
+      const response = await assetResponse("/foto-profile.jpg")
+      if (!response.ok) throw new Error("Could not read the profile photo.")
+      return Buffer.from(await response.arrayBuffer())
+    }),
   ])
 
   return {
@@ -33,15 +38,14 @@ async function loadAssets() {
  * The banner shown when a link to this site is unfurled - in a Slack channel, on
  * LinkedIn, in a WhatsApp preview.
  *
- * Rendered through `app/opengraph-image.tsx`, whose filename is a Next.js metadata
- * convention rather than a choice. The route is prerendered, so the reads above
- * happen during `next build`, where `public/` is certain to exist.
+ * Served by the Worker's Open Graph resource endpoints. Fonts and the profile
+ * photo are read from the deployment asset binding, with disk support for tests.
  */
 export async function renderSocialCard() {
   const { regular, extraBold, photoSrc } = await loadAssets()
   const skills = (personalInfo.highlightSkills ?? []).slice(0, SKILLS_ON_CARD)
 
-  return new ImageResponse(
+  return ImageResponse.create(
     <div
       style={{
         width: "100%",
@@ -58,10 +62,9 @@ export async function renderSocialCard() {
       <div style={{ display: "flex", width: 180, height: 12, backgroundColor: OG_COLORS.accent }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 48 }}>
-        {/* Satori draws this card, not a browser: `next/image` has no runtime here
+        {/* Satori draws this card, not a browser: image optimization has no runtime here
             and the optimiser the rule points at does not exist. The source is an
             inline data URI, so there is nothing to lazy-load either. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photoSrc}
           width={220}
@@ -135,8 +138,8 @@ export async function renderSocialCard() {
     {
       ...SOCIAL_CARD_SIZE,
       fonts: [
-        { name: "JetBrains Mono", data: regular, weight: 400, style: "normal" },
-        { name: "JetBrains Mono", data: extraBold, weight: 800, style: "normal" },
+        new CustomFont("JetBrains Mono", regular, { weight: 400 }),
+        new CustomFont("JetBrains Mono", extraBold, { weight: 800 }),
       ],
     }
   )

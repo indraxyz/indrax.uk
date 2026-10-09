@@ -1,7 +1,5 @@
-"use server"
-
 import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm"
-import { updateTag } from "next/cache"
+import { invalidateTags } from "@/lib/cache.server"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { CACHE_TAGS } from "@/features/writing/data/queries"
@@ -20,10 +18,8 @@ import { postIdSchema, postInputSchema } from "@/lib/validators/writing"
  *
  * Two rules hold across all of them, and neither is delegated upwards.
  *
- * **Authorisation is re-checked here.** `proxy.ts` redirects a browser away from
- * `/admin`, but a server action is a POST that a caller can make directly, with no
- * routing in the way. So each action starts with `requireAuthor()` rather than
- * assuming that whatever rendered the form was allowed to (threat T-3).
+ * **Authorisation is re-checked here.** Each mutation starts with `requireAuthor()`
+ * rather than trusting a client redirect or the API caller (threat T-3).
  *
  * **Input is validated here.** The Zod schema is the same one the seed uses, and
  * the fields it does not accept are as important as the ones it does:
@@ -46,25 +42,20 @@ const failure = (message: string, errors?: Record<string, string[]>): ActionResu
  * the old URL has to stop being served from cache as much as the new one has to
  * start (PRD US-3.2).
  *
- * `updateTag`, not `revalidateTag`. Next 16 made the latter take a cache-life
- * profile and expire lazily; the former is the server-action form and expires
- * immediately with read-your-own-writes. Which matters here for an obvious reason:
- * the author is redirected straight to the page they just saved, and being shown
- * the previous version of their own edit reads as data loss.
+ * Invalidation completes before the response so the next read sees the save.
  */
-function revalidatePost(...slugs: (string | null | undefined)[]) {
-  updateTag(CACHE_TAGS.posts)
-
-  for (const slug of new Set(slugs.filter((value): value is string => Boolean(value)))) {
-    updateTag(CACHE_TAGS.post(slug))
-  }
+async function revalidatePost(...slugs: (string | null | undefined)[]) {
+  await invalidateTags(
+    CACHE_TAGS.posts,
+    ...new Set(slugs.filter((value): value is string => Boolean(value)).map(CACHE_TAGS.post))
+  )
 }
 
 /**
  * Normalize desired tag names before synchronizing their joins.
  *
  * Matching is on the slug, which is what makes it case- and punctuation-
- * insensitive: "Next.js", "next.js" and "NEXT JS" all slugify to `next-js` and
+ * insensitive: "Vue.js", "vue.js" and "VUE JS" all slugify to `vue-js` and
  * resolve to one row rather than three (PRD US-3.5).
  */
 function normalizedTags(names: string[]): Map<string, string> {
@@ -321,7 +312,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     })
   }
 
-  revalidatePost(saved.slug, current?.slug)
+  await revalidatePost(saved.slug, current?.slug)
 
   return { ok: true, postId: saved.id }
 }
@@ -370,7 +361,7 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
     })
     .where(eq(schema.posts.id, id))
 
-  revalidatePost(current.slug)
+  await revalidatePost(current.slug)
 
   return { ok: true, postId: id }
 }
@@ -393,7 +384,7 @@ export async function deletePost(id: string): Promise<ActionResult> {
     .returning({ slug: schema.posts.slug })
   if (!current) return failure("That post no longer exists.")
 
-  revalidatePost(current.slug)
+  await revalidatePost(current.slug)
 
   return { ok: true }
 }

@@ -41,6 +41,14 @@ test("article, tag and series breadcrumbs match their structured data", async ({
   ]) {
     await page.goto(path)
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
+    // Script contents are excluded from Playwright's rendered-text matching.
+    // Wait for the parsed JSON-LD, including breadcrumbs added after CSR data loads.
+    await expect
+      .poll(async () => {
+        const blocks = await page.locator('script[type="application/ld+json"]').allTextContents()
+        return blocks.filter((block) => JSON.parse(block)["@type"] === "BreadcrumbList").length
+      })
+      .toBe(1)
     const trail = await page
       .locator('script[type="application/ld+json"]')
       .evaluateAll(

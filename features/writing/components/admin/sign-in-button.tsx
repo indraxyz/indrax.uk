@@ -1,10 +1,7 @@
-"use client"
-
 import { useState, useTransition } from "react"
 
 import { GithubIcon } from "@/components/ui/github-icon"
 import { controlClassNames } from "@/components/ui/variants"
-import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
 export function SignInButton({ retry = false }: { retry?: boolean }) {
@@ -20,15 +17,20 @@ export function SignInButton({ retry = false }: { retry?: boolean }) {
         onClick={() => {
           setError(null)
           startTransition(async () => {
-            const result = await authClient.signIn.social({
-              provider: "github",
-              callbackURL: "/admin",
-              // Where GitHub sends someone the allow-list refuses. Back to the
-              // login page rather than to a stack trace.
-              errorCallbackURL: "/admin/login",
-            })
+            try {
+              const { authClient } = await import("@/lib/auth-client")
+              const result = await authClient.signIn.social({
+                provider: "github",
+                callbackURL: "/admin",
+                // Where GitHub sends someone the allow-list refuses. Back to the
+                // login page rather than to a stack trace.
+                errorCallbackURL: "/admin/login",
+              })
 
-            if (result?.error) setError("Sign-in could not start. Please try again.")
+              if (result?.error) setError("Sign-in could not start. Please try again.")
+            } catch {
+              setError("Sign-in could not start. Please try again.")
+            }
           })
         }}
       >

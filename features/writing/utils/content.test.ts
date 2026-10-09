@@ -176,7 +176,7 @@ describe("renderDocument — heading structure", () => {
   })
 
   it("namespaces heading ids so they cannot clobber the DOM", async () => {
-    // A heading slugging to `document` or `__next` is a named-window-access
+    // A heading slugging to `document` or `__app` is a named-window-access
     // surface; the prefix is what stops it.
     const html = await render(
       doc({ type: "heading", attrs: { level: 2 }, content: [text("document")] })
@@ -204,6 +204,20 @@ describe("renderDocument — accessibility of generated markup", () => {
 
     expect(html).toContain("--shiki-light")
     expect(html).toContain("--shiki-dark")
+  })
+
+  it("keeps unsupported code languages readable without loading another grammar", async () => {
+    const html = await render(
+      doc({
+        type: "codeBlock",
+        attrs: { language: "unknown-language" },
+        content: [text("unrecognized <sample> code")],
+      })
+    )
+    expect(html).toContain("unrecognized")
+    expect(html).toMatch(/(?:&lt;|&#x3C;)sample(?:&gt;|>)/)
+    expect(html).toContain("code")
+    expect(html).not.toContain("<sample>")
   })
 
   it("wraps a table in a named, focusable scroll region", async () => {

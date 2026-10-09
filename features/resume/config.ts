@@ -14,7 +14,7 @@ export const absoluteUrl = (path: string) => new URL(path, SITE_URL).toString()
 
 export const RESUME_CONFIG = {
   title: "Indra's Resume",
-  // Resolved from the built revision by next.config.ts, shared by footer/PDF/SEO.
+  // Resolved from the built revision by config/site-updated-at.ts, shared by footer/PDF/SEO.
   // Plain Node scripts without build metadata omit the date rather than invent one.
   updatedAt: process.env.NEXT_PUBLIC_SITE_UPDATED_AT?.trim() || null,
 } as const

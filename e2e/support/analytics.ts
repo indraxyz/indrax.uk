@@ -95,10 +95,13 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
 
     // The host does not resolve, so every request has to be answered here or the
     // library sits in a retry loop for the rest of the test.
+    const script = new URL(route.request().url()).pathname.endsWith(".js")
     await route.fulfill({
       status: 200,
-      contentType: "application/json",
-      body: '{"status":1}',
+      contentType: script ? "application/javascript" : "application/json",
+      // PostHog also loads remote configuration as a script. JSON there throws
+      // a browser syntax error; configuration is intentionally empty in tests.
+      body: script ? "/* No remote analytics configuration in browser tests. */" : '{"status":1}',
     })
   })
 

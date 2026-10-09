@@ -1,14 +1,13 @@
-"use client"
-
 import { AlertTriangle, Loader2, Save } from "lucide-react"
-import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useBeforeUnload, useBlocker, useNavigate } from "react-router"
+import { lazy, Suspense, useEffect, useState, useTransition } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
 import { WRITING_CONFIG } from "@/features/writing/config"
-import { savePost } from "@/features/writing/data/mutations"
+import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
+import { apiErrorMessage } from "@/lib/api-client"
 import type { ActionResult } from "@/features/writing/types"
 import {
   POST_STATUSES,
@@ -19,24 +18,8 @@ import {
 import { slugify } from "@/features/writing/utils/slug"
 import { cn } from "@/lib/utils"
 
-/**
- * Tiptap arrives only when this form does.
- *
- * `ssr: false` behind `next/dynamic` keeps the editor, ProseMirror and the whole
- * toolbar out of every bundle but this one - which is what NFR-6 asks for, and
- * what stops an author's tooling costing a reader anything.
- */
-const PostEditor = dynamic(
-  () => import("@/features/writing/components/admin/editor").then((mod) => mod.PostEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
-        <span className="sr-only">Loading the editor</span>
-      </div>
-    ),
-  }
-)
+// The editor is browser-only and split from dashboard/list routes.
+const PostEditor = lazy(() => import("./editor").then((mod) => ({ default: mod.PostEditor })))
 
 const fieldClasses =
   "w-full border-2 border-border bg-card px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -75,14 +58,34 @@ const describedBy = (field: string, messages?: string[]) =>
   messages?.length ? { "aria-invalid": true, "aria-describedby": `${field}-error` } : {}
 
 export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
-  const router = useRouter()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const save = useMutation({ mutationFn: adminApi.savePost })
   const [pending, startTransition] = useTransition()
+  const [dirty, setDirty] = useState(false)
+  const blocker = useBlocker(dirty && !pending)
+  useBeforeUnload((event) => {
+    if (dirty) {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+  })
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      if (window.confirm("Leave this page? Your unsaved changes will be lost.")) blocker.proceed()
+      else blocker.reset()
+    }
+  }, [blocker])
   const [result, setResult] = useState<ActionResult | null>(null)
 
   const [title, setTitle] = useState(post?.title ?? "")
   const [slug, setSlug] = useState(post?.slug ?? "")
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "")
   const [status, setStatus] = useState<PostStatus>(post?.status ?? "draft")
+  const persistedStatus = post?.status
+  useEffect(() => {
+    if (!dirty && persistedStatus) setStatus(persistedStatus)
+  }, [persistedStatus, dirty])
   const [tags, setTags] = useState(post?.tags.map((tag) => tag.name).join(", ") ?? "")
   const [coverUrl, setCoverUrl] = useState(post?.coverUrl ?? "")
   const [coverAlt, setCoverAlt] = useState(post?.coverAlt ?? "")
@@ -105,39 +108,53 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
     setResult(null)
 
     startTransition(async () => {
-      const outcome = await savePost({
-        id: post?.id,
-        title: title.trim(),
-        slug: slug.trim() || undefined,
-        excerpt: excerpt.trim() || undefined,
-        content: body ?? { type: "doc", content: [] },
-        coverUrl: coverUrl.trim() || undefined,
-        coverAlt: coverAlt.trim() || undefined,
-        status,
-        tags: tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        seriesTitle: seriesTitle.trim() || undefined,
-        seriesDescription: seriesDescription.trim() || undefined,
-        // Undefined rather than NaN for an empty or unparseable box - the schema
-        // reads "absent", which with no series title is the standalone post that
-        // most articles are.
-        seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : undefined,
-      })
+      try {
+        const outcome = await save.mutateAsync({
+          id: post?.id,
+          title: title.trim(),
+          slug: slug.trim() || undefined,
+          excerpt: excerpt.trim() || undefined,
+          content: body ?? { type: "doc", content: [] },
+          coverUrl: coverUrl.trim() || undefined,
+          coverAlt: coverAlt.trim() || undefined,
+          status,
+          tags: tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          seriesTitle: seriesTitle.trim() || undefined,
+          seriesDescription: seriesDescription.trim() || undefined,
+          // Undefined rather than NaN for an empty or unparseable box - the schema
+          // reads "absent", which with no series title is the standalone post that
+          // most articles are.
+          seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : undefined,
+        })
 
-      setResult(outcome)
+        setResult(outcome)
+        if (outcome.ok) {
+          setDirty(false)
+          await Promise.all([
+            ...(post ? [queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) })] : []),
+            queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
+            queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
+            queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+          ])
+        }
 
-      // updateTag gives this action read-your-own-writes. Only a new post
-      // needs navigation; refreshing again would request the edit page twice.
-      if (outcome.ok && outcome.postId && outcome.postId !== post?.id) {
-        router.replace(`/admin/edit/${outcome.postId}`)
+        // Keep unsaved local form fields through background cache updates.
+        // Only newly created posts need navigation to the edit route.
+        if (outcome.ok && outcome.postId && outcome.postId !== post?.id) {
+          navigate(`/admin/edit/${outcome.postId}`, { replace: true })
+        }
+      } catch (error) {
+        setResult({ ok: false, message: apiErrorMessage(error) })
       }
     })
   }
 
   return (
     <form
+      onChange={() => setDirty(true)}
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault()
@@ -177,7 +194,21 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
             <FieldError id="title-error" messages={result?.errors?.title} />
           </div>
 
-          <PostEditor value={body} onChange={setBody} />
+          <Suspense
+            fallback={
+              <div className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
+                <span className="sr-only">Loading the editor</span>
+              </div>
+            }
+          >
+            <PostEditor
+              value={body}
+              onChange={(value) => {
+                setBody(value)
+                setDirty(true)
+              }}
+            />
+          </Suspense>
           <FieldError id="content-error" messages={result?.errors?.content} />
         </div>
 
@@ -234,7 +265,7 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
               {...describedBy("tags", result?.errors?.tags)}
               value={tags}
               onChange={(event) => setTags(event.target.value)}
-              placeholder="Next.js, TypeScript"
+              placeholder="React Router, TypeScript"
               className={fieldClasses}
             />
             <p className="text-xs font-medium text-muted-foreground">

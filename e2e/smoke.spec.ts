@@ -44,6 +44,9 @@ test.describe("the public pages", () => {
       for (const path of ["/writing", "/writing/search"]) {
         await page.goto(path)
 
+        // CSR replaces the loading shell's form when the API resolves. Measure
+        // both controls after that transition so their boxes belong to one layout.
+        await expect(page.getByRole("status")).toHaveCount(0)
         const searchbox = page.getByRole("searchbox", { name: "Search articles" })
         const search = await searchbox.boundingBox()
         const button = page.getByRole("button", { name: "Search" })
@@ -237,7 +240,7 @@ test.describe("the public pages", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
     await expect(page.getByRole("heading", { level: 2, name: "Deployment" })).toBeVisible()
-    await expect(page.getByText(/Cloudflare Workers · OpenNext/)).toBeVisible()
+    await expect(page.getByText(/Cloudflare Workers · React Router/)).toBeVisible()
     await expect(page.getByText("PostHog · structured server logs")).toBeVisible()
     await expect(
       page.getByRole("main").getByRole("link", { name: "See my experience" })
@@ -262,7 +265,7 @@ test.describe("the public pages", () => {
     await expect(local).toContainText(".env.local")
     await expect(local).toContainText("Neon-compatible HTTP proxy")
     await expect(page.getByRole("region", { name: "Architecture overview" })).toContainText(
-      "One Next.js application serves the public site and the author dashboard."
+      "One React Router application serves SEO pages, while a static client application serves the author dashboard."
     )
     const cards = page.locator('[data-slot="stack-cards"]')
     await expect(cards.getByRole("heading", { level: 2 })).toHaveText([
@@ -289,8 +292,8 @@ test.describe("the public pages", () => {
         "https://docs.github.com/en/actions/get-started/understand-github-actions",
       ],
       [
-        "Next.js on Cloudflare Workers",
-        "https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/",
+        "React Router on Cloudflare Workers",
+        "https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/",
       ],
       ["Cloudflare R2 storage", "https://developers.cloudflare.com/r2/"],
       ["Workers observability", "https://developers.cloudflare.com/workers/observability/"],

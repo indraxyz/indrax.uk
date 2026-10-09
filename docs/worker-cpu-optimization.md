@@ -1,158 +1,117 @@
-# Worker CPU optimization
+# Worker CPU and cache guidance
 
-## Problem and implementation plan
+Current runtime: React Router 8.4.0 public SSR + independent admin CSR, on Cloudflare
+Workers through Vite.
 
-Branch: `fix/cloudflare-worker-cpu-limits`, based on `develop`. No ticket number
-was supplied. This change is prepared for review; no deployment, billing
-activation, or remote resource creation is part of implementation.
+## What changed
 
-The `indrax-dev` invocation logs on 7 October 2026 confirmed `exceededCpu`
-on post saves and public navigation, including prefetch requests. One save used
-61 ms CPU and returned 503. Failures also affected `/`, `/writing`, `/resume`,
-`/tech-stack`, and a tag page, so JSON parsing and article highlighting cannot
-explain all failures. The tag page additionally returned HTTP 500 with
-`DYNAMIC_SERVER_USAGE` while revalidating a stale route.
+Initial dev observations showed both CPU-limit errors and long SQL waits. Later
+samples improved wall time while admin CPU still ranged from tens to hundreds of
+milliseconds. JSON parsing alone did not explain expensive GET admin requests.
+The migration separates work by purpose:
 
-The implementation follows these steps:
+- Home/profile/resume/stack and published article content retain SEO SSR.
+- Home writing cards and public archive/tag/search/series results load through APIs.
+- Admin ships a separate static CSR bundle with no public React SSR import.
+- Browser data fetching uses TanStack Query and Ky, with deliberate cache/retry rules.
+- Private APIs retain author verification, server validation, derived fields and
+  atomic writes; CSR cannot move these trust boundaries into the browser.
+- Signed draft previews return sanitized article HTML through an uncached API,
+  avoiding React page SSR while keeping the content policy centralized.
+- Existing minimal queries, Neon batching, lightweight text extraction, lazy Shiki
+  initialization and revision-keyed public rendering remain in use.
 
-1. Remove speculative internal-link prefetch and redundant navigation after save.
-2. Keep save-time text extraction independent of the server rendering libraries;
-   select existing post metadata only and reuse the extracted text for excerpts.
-3. Load syntax highlighting only when sanitized article markup requires it.
-4. Cache public HTML/headings by post ID, slug, saved revision, and renderer
-   version. Expire with the existing per-slug mutation tag. Draft previews remain
-   uncached. Bump `RENDER_VERSION` whenever sanitization/rendering rules change.
-5. Render paginated tag routes explicitly per request with Next's `connection()`.
-   Remove `generateStaticParams` from that route, retaining data caching and
-   deduplicating metadata/page tag reads with React `cache`.
-6. Configure OpenNext's built-in KV incremental cache, D1 Next-mode tag cache,
-   memory revalidation queue, and cache interception. Keep development and
-   production bindings separate.
+This is an architectural reduction of unnecessary Worker work, not evidence that
+all requests now fit a free-tier CPU limit. Database/network waiting contributes
+to wall time separately from JavaScript CPU work.
 
-## Cache choice and limits
+## Existing storage
 
-R2 was not enabled on the account during investigation. KV + D1 is prepared as
-the option that does not require R2 activation. OpenNext recommends R2 for
-stronger consistency; this is a deliberate tradeoff for a small free-tier site.
-KV is eventually consistent, including negative reads. D1 stores invalidation
-timestamps separately, so old KV entries still pass through the tag validity
-check, but propagation delays can produce additional cache misses/recomputation.
-There is no extra regional/CDN cache layer to bypass that check.
-
-The memory queue deduplicates only within an isolate. Article/data edits use
-explicit expiration after mutations; the feed and sitemap retain their existing
-hourly ISR backstop. Concurrent misses across isolates can repeat revalidation.
-For higher traffic, use OpenNext's Durable Object queue; consider R2 for the
-incremental cache.
-
-Caching reduces repeat work, not the first render or the authenticated save
-request. Workers Free allows 10 ms CPU per HTTP request and can terminate
-requests that repeatedly exceed it. These changes do not promise that every
-Next.js render/save fits under that budget. Free KV and D1 also have their own
-daily operation limits; monitor them after release. No `cpu_ms` setting can raise
-the free-tier limit.
-
-## First release prerequisites — after review
-
-The user has created separate development and production KV/D1 resources and
-provided their IDs. Those IDs are now recorded in `wrangler.jsonc`. The agent has
-not created remote resources or deployed the Worker. Local preview continues to
-use local KV/D1.
-
-| Environment | KV namespace ID                    | D1 database            | D1 database ID                         |
+| Environment | KV namespace                       | D1 database            | D1 ID                                  |
 | ----------- | ---------------------------------- | ---------------------- | -------------------------------------- |
 | Development | `55163065696741c397d875991d3eb8d6` | `indrax-dev-next-tags` | `090d17c4-739d-4e61-ae9a-2678fe379a9b` |
 | Production  | `3b3a56d04aed4aca8492ab4d46002923` | `indrax-next-tags`     | `768e0a3c-8014-4b32-9a7f-39f2b7ee2a58` |
 
-Keep the OpenNext binding names `NEXT_INC_CACHE_KV` and `NEXT_TAG_CACHE_D1`.
-Wrangler's generated D1 suggestions (`indrax_dev_next_tags` / `indrax_next_tags`)
-must not replace the binding name expected by the adapter.
+Keep bindings `NEXT_INC_CACHE_KV` and `NEXT_TAG_CACHE_D1` so the existing environment
+configuration continues to work. They are now application bindings rather than
+adapter bindings. Do not recreate or share these resources across environments.
+Neon remains the content/auth database; D1 contains only invalidation revisions.
 
-The commands below document provisioning for a future replacement; do not
-recreate the resources already configured:
+`lib/cache.server.ts` uses the existing `revalidations(tag, revalidatedAt)` table.
+D1 monotonic tag revisions become part of hashed KV keys under `react-router:v1`,
+so old framework cache entries and pre-invalidation entries cannot be served.
+KV data expires after one hour; misses read from Neon and write through `waitUntil`.
+Per-request memoization avoids duplicate data reads without caching author sessions
+across requests. Mutations await invalidation before returning success. Article
+render entries carry saved revision and renderer version. Draft/private reads
+never use the public cache.
 
-```bash
-# Development only
-npx wrangler kv namespace create NEXT_INC_CACHE_KV --env dev
-npx wrangler d1 create indrax-dev-next-tags --env dev
+An existing D1 created for the earlier release should already have the table.
+A replacement/empty D1 needs the same schema before its first invalidation:
 
-# Production only
-npx wrangler kv namespace create NEXT_INC_CACHE_KV --env=""
-npx wrangler d1 create indrax-next-tags --env=""
+```sql
+CREATE TABLE IF NOT EXISTS revalidations (
+  tag TEXT PRIMARY KEY,
+  revalidatedAt INTEGER NOT NULL
+);
 ```
 
-Record each KV namespace's `id` and each D1 database's `database_id`. Never reuse
-development IDs in the top-level production config. Check with:
+Do not run remote database commands merely to check a branch. Confirm resources
+and schema through the approved release procedure. Local preview uses local
+bindings, not remote KV/D1. A missing cache binding permits uncached reads; D1
+failures during invalidation must not be treated as a successful fresh save.
 
-```bash
-node scripts/check-worker-cache.mjs dev
-node scripts/check-worker-cache.mjs
-```
+KV is eventually consistent. Revision keys avoid serving old data, but propagation
+may produce extra misses and repeated renders. Simultaneous misses across isolates
+are not deduplicated. Free storage operation quotas must be monitored independently
+from Worker CPU limits.
 
-The release scripts run this check before building/deploying, failing early if
-resources are missing. Wrangler's automatic provisioning during upload is too
-late here: OpenNext populates caches **before** it invokes Wrangler deploy.
-OpenNext initializes/migrates its D1 `revalidations` table and populates build
-entries during preview/deploy. The application database remains Neon Postgres;
-D1 contains only cache invalidation timestamps.
+## Public social image response cache
 
-The deployment token needs KV and D1 access in addition to the existing Worker
-permissions. Review those scopes when provisioning, then use the existing
-GitHub release pipeline after approval. Do not run the deploy scripts merely
-to validate this branch.
+Public social-card PNG responses use Cloudflare's built-in `caches.default`, in a
+private internal URL namespace reserved for image cache keys. Keys include the
+supported card path and a unique build ID; writing card keys additionally include
+post ID and saved revision. The current public post is resolved before cache lookup,
+so an unpublished post cannot continue serving an old cached card. Arbitrary card
+paths and unbounded slugs are rejected before rendering or cache access.
 
-## Verification
+Successful public PNGs are stored for one hour through `waitUntil`, and a hit skips
+Satori/image rendering. Visitor cookies and Authorization headers never enter the
+key. Error responses, non-PNGs, private/no-store responses and Set-Cookie responses
+are not stored. A Cache API failure logs a safe error and falls back to rendering;
+Node tests may run without this Cloudflare API. HEAD can reuse cached image metadata.
 
-Unit tests cover lightweight text extraction, lazy highlighter initialization,
-sanitization/highlighting without runtime WASM compilation, save validation and
-authorization, published timestamps, old/new slug invalidation, navigation
-behavior, the tag request-rendering boundary, pagination metadata, public render
-cache hits/revisions/invalidation, and environment binding separation.
+The Cache API is local to a Cloudflare data center, not a globally replicated cache.
+A first request in another location may still render; simultaneous misses can render
+more than once. This reduces repeat image CPU without promising a cold-render budget.
+See [Cloudflare Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/).
 
-`npm run cf-typegen` regenerates the Worker binding/runtime declarations after
-binding changes. The generated `cloudflare-env.d.ts` is gitignored and excluded
-from Next.js's DOM-based TypeScript project and ESLint. Its global Workers
-`Response` and required environment declarations must not override browser
-types. OpenNext configuration is still included in application type checks;
-no application code directly accesses these bindings.
+## Measurement procedure
 
-Browser coverage extends the existing authoring lifecycle with a tag that did
-not exist at build time: draft-only 404, publish, canonical/indexability, save,
-revisit/reload, page-two canonical, and unpublish returning 404. Tests must run
-against an isolated local database, never the remote Worker/production database.
+1. Build the production Worker and use `npm run start` to run that artifact in local
+   Workerd. Do not use development React timings as production CPU evidence.
+2. Record CPU profiles separately for public article, admin login/new/edit, list,
+   create and save. Use the Wrangler DevTools profiler; inspect Bottom Up and
+   flame charts for initialization, crypto, validation, serialization and rendering.
+3. Compare the first request after restart with repeated requests. Keep the same
+   body/document and session; test short text and code-heavy content separately.
+4. Keep SQL spans, request counts and wall time beside CPU results. Reduced SQL
+   waits do not demonstrate reduced rendering or validation CPU.
+5. After an approved dev release, inspect invocation CPU time, wall time, status,
+   cache misses and error outcomes on the same scenarios. Production invocation
+   metrics are the final evidence of platform behavior.
 
-Run `npm run check`, the seeded browser suite, the OpenNext build, and Wrangler
-`deploy --dry-run` for packaging. Local Node/Worker tests cannot establish
-production CPU compliance. After an approved release, compare failed invocation
-outcomes, `cpuTimeMs`, HTTP statuses, and prefetch volume in Observability.
+Workers Free documents 10 ms CPU per HTTP request, with limited tolerance for
+occasional spikes. Successful requests above that figure are not a promise that
+sustained usage is safe. Changing a `cpu_ms` setting cannot raise a free-plan limit.
+Rendering/social images and first-time highlighting still run on the server;
+measure them before declaring budget compliance.
 
-### Local results (8 October 2026)
+The suite verifies functional/security behavior, transaction/query budgets and
+packaging, not a production CPU ceiling. Record measured results separately from
+inferred savings. See [testing](testing.md) and [the architecture](../ARCHITECTURE.md).
 
-- `npm run check`: formatting, lint, TypeScript, and all 173 unit cases passed.
-- Seeded full browser suite: 151 passed, 1 skipped. After adding the final
-  navigation/body-cache regression, the focused suite passed 14 cases with 1
-  skipped (media R2 configuration unavailable).
-- Full `opennextjs-cloudflare build --env dev` completed. A regular Next build
-  cannot be reused with `--skipNextBuild` here: OpenNext needs its standalone
-  tracing artifacts, including instrumentation traces.
-- Direct Wrangler `deploy --dry-run` passed for development and production,
-  with `OPEN_NEXT_DEPLOY=true` to bypass adapter deployment hooks. Neither
-  command uploaded or provisioned anything.
-- OpenNext local preview populated 64 local KV entries and initialized local
-  D1. Home, archive, tag, tag pagination, highlighted article, RSS, and sitemap
-  each returned 200 with expected content on two consecutive requests.
-- After recording the user-provided resource IDs, both environment preflight
-  checks and all seven cache configuration/preflight tests passed. Direct
-  Wrangler dry-runs were repeated with the configured dev/production IDs;
-  no remote cache data was populated.
-
-The adapter emitted nonfatal traced-dependency copy messages and its existing
-Node middleware experimental warning; Wrangler emitted a duplicate `axisIndex`
-key warning from bundled font code. The completed build, packaging checks, and
-local runtime smoke passed despite those messages. Local response durations are
-wall time, not evidence of compliance with production CPU limits.
-
-References: [OpenNext caching](https://opennext.js.org/cloudflare/caching),
-[Next.js connection](https://nextjs.org/docs/app/api-reference/functions/connection),
-[Cloudflare limits](https://developers.cloudflare.com/workers/platform/limits/),
-[KV limits](https://developers.cloudflare.com/kv/platform/limits/).
+References: [Workers CPU limits](https://developers.cloudflare.com/workers/platform/limits/#cpu-time),
+[CPU profiling](https://developers.cloudflare.com/workers/observability/dev-tools/cpu-usage/),
+[KV consistency](https://developers.cloudflare.com/kv/concepts/how-kv-works/),
+[React Router rendering](https://reactrouter.com/start/framework/rendering).

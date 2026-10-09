@@ -97,6 +97,24 @@ test.describe("authoring", () => {
     }
   }
 
+  test("serves admin as a static shell and gets private data only through the API", async () => {
+    const response = await context.request.get("/admin/posts")
+    expect(response.status()).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('<div id="root">')
+    expect(html).toContain('aria-label="Loading page"')
+    expect(html).not.toContain(SEEDED_DRAFT_TITLE)
+    expect(html).not.toContain("ProseMirror")
+    const page = await context.newPage()
+    const apiRead = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/posts"
+    )
+    await page.goto("/admin/posts")
+    expect((await apiRead).status()).toBe(200)
+    await expect(page.getByRole("link", { name: SEEDED_DRAFT_TITLE, exact: true })).toBeVisible()
+    await page.close()
+  })
+
   test("lists existing posts, drafts included", async () => {
     const page = await context.newPage()
     await page.goto("/admin")
@@ -391,10 +409,18 @@ test.describe("authoring", () => {
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
-    // Warm the missing page before publishing. A new tag must become available
-    // without rebuilding, even if the route was previously requested as a 404.
-    expect((await request.get(TAG_PATH)).status()).toBe(404)
-    expect(await (await request.get(TAG_PATH)).text()).toContain("noindex")
+    // A CSR tag document contains no private data. Its public API remains empty
+    // until an article is published, including after the shell has been warmed.
+    expect((await request.get(TAG_PATH)).status()).toBe(200)
+    expect((await (await request.get(`/api/writing/posts?tag=${TAG}`)).json()).posts).toEqual([])
+    const publicPage = await context.newPage()
+    await publicPage.goto(TAG_PATH)
+    await expect(publicPage.getByRole("heading", { name: "Not found", exact: true })).toBeVisible()
+    await expect(publicPage.locator('head meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/
+    )
+    await publicPage.close()
     expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
     expect(await (await request.get("/sitemap.xml")).text()).not.toContain(slug)
   })
@@ -419,7 +445,7 @@ test.describe("authoring", () => {
 
     const response = await reader.goto(previewUrl)
     expect(response?.status()).toBe(200)
-    await expect(reader.getByRole("status")).toContainText(/draft preview/i)
+    await expect(reader.getByRole("status").filter({ hasText: /draft preview/i })).toBeVisible()
     const breadcrumb = reader.getByRole("navigation", { name: "Breadcrumb", exact: true })
     await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(`Preview: ${TITLE}`)
     await expect(breadcrumb.getByRole("link")).toHaveCount(2)
@@ -439,13 +465,23 @@ test.describe("authoring", () => {
     const replayed = await reader.goto(
       `/writing/${SEEDED_SECOND_POST_SLUG}/preview?token=${encodeURIComponent(token)}`
     )
-    expect(replayed?.status()).toBe(404)
+    expect(replayed?.status()).toBe(200)
+    await expect(reader.getByRole("heading", { name: "Not found", exact: true })).toBeVisible()
+    expect(
+      (
+        await reader.request.get(
+          `/api/writing/preview/${SEEDED_SECOND_POST_SLUG}?token=${encodeURIComponent(token)}`
+        )
+      ).status()
+    ).toBe(404)
 
     // As must tampering with it.
     const tampered = await reader.goto(
       `${previewUrl.slice(0, -1)}${previewUrl.endsWith("A") ? "B" : "A"}`
     )
-    expect(tampered?.status()).toBe(404)
+    expect(tampered?.status()).toBe(200)
+    await expect(reader.getByRole("heading", { name: "Not found", exact: true })).toBeVisible()
+    await expect(reader.getByRole("heading", { name: TITLE, exact: true })).toHaveCount(0)
 
     await anonymous.close()
     await page.close()
@@ -547,7 +583,8 @@ test.describe("authoring", () => {
     await page.close()
 
     expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
-    expect((await request.get(TAG_PATH)).status()).toBe(404)
+    expect((await request.get(TAG_PATH)).status()).toBe(200)
+    expect((await (await request.get(`/api/writing/posts?tag=${TAG}`)).json()).posts).toEqual([])
     expect(await (await request.get("/writing/rss.xml")).text()).not.toContain(TITLE)
   })
 

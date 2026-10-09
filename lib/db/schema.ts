@@ -134,7 +134,7 @@ export const tags = pgTable("tags", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   // The unique key, and what a URL carries. Names are normalised into this, so
-  // "Next.js" and "next.js" resolve to one row rather than two.
+  // "Vue.js" and "vue.js" resolve to one row rather than two.
   slug: text("slug").notNull().unique(),
 })
 

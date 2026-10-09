@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
@@ -55,8 +55,8 @@ export function Pagination({
     <nav aria-label={label} className="flex items-center justify-between gap-4 pt-2">
       {previous ? (
         <Link
-          prefetch={false}
-          href={previous}
+          prefetch="none"
+          to={previous}
           rel="prev"
           className={cn(controlClassNames, "px-4 py-2")}
         >
@@ -81,12 +81,7 @@ export function Pagination({
       </p>
 
       {next ? (
-        <Link
-          prefetch={false}
-          href={next}
-          rel="next"
-          className={cn(controlClassNames, "px-4 py-2")}
-        >
+        <Link prefetch="none" to={next} rel="next" className={cn(controlClassNames, "px-4 py-2")}>
           {nextLabel}
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>

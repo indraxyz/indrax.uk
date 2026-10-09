@@ -1,9 +1,7 @@
 /**
- * Cloudflare Workers deployment, via @opennextjs/cloudflare.
+ * Cloudflare Workers runtime for React Router SSR and the independent CSR admin.
  *
- * Nothing here affects `npm run build` or `npm run start`. The adapter only runs
- * when `npm run preview` or `npm run deploy` is invoked explicitly, so adding it
- * leaves the existing build path untouched.
+ * Vite builds the Worker and Wrangler runs the local preview and deployments.
  *
  * Secrets are never listed here. `DATABASE_URL` is set with
  * `wrangler secret put DATABASE_URL`, and locally in `.dev.vars`, which is
@@ -19,17 +17,18 @@
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://indrax.uk",
   },
-  "main": ".open-next/worker.js",
+  "main": "workers/app.ts",
   "compatibility_date": "2026-09-01",
-  // The Next.js server and the Neon driver both need Node built-ins. `nodejs_compat`
+  // The request context and Neon driver need Node built-ins. `nodejs_compat`
   // supplies them; without it the Worker fails at import time, not at request time.
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
-    "directory": ".open-next/assets",
+    "directory": "build/client",
     "binding": "ASSETS",
+    "run_worker_first": ["/admin", "/admin/*", "/api/*"],
   },
-  // Separate resources for each environment. OpenNext populates KV and
-  // initializes D1 before Wrangler uploads the Worker.
+  // Separate existing resources for each environment. Public cached reads use KV
+  // and the existing D1 revalidations table; private API responses never use KV.
   // See docs/worker-cpu-optimization.md. No remote resources are created by build.
   "kv_namespaces": [
     {
@@ -44,7 +43,6 @@
       "database_id": "768e0a3c-8014-4b32-9a7f-39f2b7ee2a58",
     },
   ],
-  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "indrax" }],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -70,8 +68,9 @@
         "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk",
       },
       "assets": {
-        "directory": ".open-next/assets",
+        "directory": "build/client",
         "binding": "ASSETS",
+        "run_worker_first": ["/admin", "/admin/*", "/api/*"],
       },
       "kv_namespaces": [
         {
@@ -86,7 +85,6 @@
           "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
         },
       ],
-      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "indrax-dev" }],
     },
   },
 }

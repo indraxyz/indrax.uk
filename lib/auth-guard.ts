@@ -1,7 +1,4 @@
-import "server-only"
-
-import { headers } from "next/headers"
-import { cache } from "react"
+import { getRequest } from "@/lib/runtime.server"
 
 import { allowedGithubId, getAuth, SESSION_ABSOLUTE_MS, type Author } from "@/lib/auth"
 import { logServerError } from "@/lib/observability"
@@ -9,11 +6,9 @@ import { logServerError } from "@/lib/observability"
 /**
  * The signed-in author, or null.
  *
- * This is the authorization boundary. `proxy.ts` redirects an unauthenticated
- * request away from `/admin`, but a redirect is a convenience for a browser, not
- * a control: a server action is a POST to the application, reachable directly,
- * and nothing about routing stands between a caller and one. So every action and
- * every admin page calls through here. React deduplicates the check only within
+ * This is the authorization boundary. Client redirects are a browser convenience;
+ * every private API and data mutation still checks the author here.
+ * The request memo deduplicates the check only within
  * one server request; a subsequent request checks the session again (threat T-3).
  *
  * Four things have to hold, and all four are re-tested on every request:
@@ -28,16 +23,12 @@ import { logServerError } from "@/lib/observability"
  *    the next sign-in.
  * 4. The identity is matched on GitHub's immutable numeric id, never a username.
  */
-export const getAuthor = cache(async (): Promise<Author | null> => {
+async function readAuthor(requestHeaders: Headers): Promise<Author | null> {
   const auth = getAuth()
   if (!auth) return null
 
   const allowed = allowedGithubId()
   if (!allowed) return null
-
-  // Read once and reused: `headers()` is a request-scoped async call and there is
-  // no reason to make it twice.
-  const requestHeaders = await headers()
 
   const session = await auth.api.getSession({ headers: requestHeaders })
   if (!session) return null
@@ -74,17 +65,30 @@ export const getAuthor = cache(async (): Promise<Author | null> => {
     email: user.email ?? "",
     githubId: user.githubId,
   }
-})
+}
+
+const authorRequests = new WeakMap<Request, Promise<Author | null>>()
+
+export function getAuthor(headers?: Headers): Promise<Author | null> {
+  if (headers) return readAuthor(headers)
+  const request = getRequest()
+  let author = authorRequests.get(request)
+  if (!author) {
+    author = readAuthor(request.headers)
+    authorRequests.set(request, author)
+  }
+  return author
+}
 
 /**
  * The signed-in author, or a thrown rejection.
  *
- * The form every mutating server action uses. It throws rather than returning
+ * The guard every private read and mutation uses. It throws rather than returning
  * null so that an action cannot accidentally continue past a failed check by
  * ignoring a return value - the failure mode of a guard that is easy to misuse.
  */
-export async function requireAuthor(): Promise<Author> {
-  const author = await getAuthor()
+export async function requireAuthor(headers?: Headers): Promise<Author> {
+  const author = await getAuthor(headers)
 
   if (!author) {
     // Deliberately uninformative. Whether the session was missing, expired or

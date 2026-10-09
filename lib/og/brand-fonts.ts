@@ -1,4 +1,4 @@
-import { SITE_URL } from "@/features/resume/config"
+import { assetResponse } from "@/lib/assets.server"
 
 export interface BrandFonts {
   regular: ArrayBuffer
@@ -32,25 +32,13 @@ async function fromDisk(file: string): Promise<ArrayBuffer | null> {
 }
 
 async function overHttp(file: string): Promise<ArrayBuffer> {
-  const response = await fetch(new URL(`/fonts/${file}`, SITE_URL))
+  const response = await assetResponse(`/fonts/${file}`)
   if (!response.ok) throw new Error(`Could not fetch /fonts/${file}: ${response.status}`)
 
   return response.arrayBuffer()
 }
 
-/**
- * The two JetBrains Mono faces the social cards are drawn with.
- *
- * Filesystem first, network second, and both paths are needed. The resume card is
- * prerendered during `next build`, where `public/` is certainly there and reading
- * it is free. A per-article card cannot rely on that: an article published after
- * the last deploy draws its card on demand, and a Cloudflare Workers isolate has
- * no filesystem to read - so it fetches the same files from the deployment's own
- * `/fonts` instead.
- *
- * This is the asset-path rule `ARCHITECTURE.md` records, applied to a route that
- * genuinely runs in both places rather than only one.
- */
+/** Load deployment fonts through the asset binding, with disk support for Node tests. */
 async function readBrandFonts(): Promise<BrandFonts> {
   const load = async (file: string) => (await fromDisk(file)) ?? overHttp(file)
   const [regular, extraBold] = await Promise.all([load(FILES.regular), load(FILES.extraBold)])

@@ -1,5 +1,3 @@
-import "server-only"
-
 import { count, desc, eq, sql } from "drizzle-orm"
 
 import type { AdminPost, AdminPostSummary } from "@/features/writing/types"
@@ -17,7 +15,7 @@ import { getDb, schema } from "@/lib/db"
  * function. A boolean flag that switches a query between "public" and "everything"
  * is one wrong argument away from a leak; two functions are not.
  *
- * None of these are cached. The admin is `force-dynamic` because an author who
+ * None of these are persistently cached, because an author who
  * has just saved must see what they saved.
  */
 

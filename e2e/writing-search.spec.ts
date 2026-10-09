@@ -29,6 +29,7 @@ test.describe("search", () => {
     // arbitrary.
     await page.goto("/writing/search?q=renderer")
 
+    await expect(page.getByRole("link", { name: /rendering an article/i })).toBeVisible()
     const links = page.locator(`main a[href^="/writing/"]`)
     const hrefs = await links.evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute("href") ?? "")
@@ -44,6 +45,7 @@ test.describe("search", () => {
     // no path that could list it (threat T-4).
     await page.goto(`/writing/search?q=${encodeURIComponent(SEEDED_DRAFT_TITLE)}`)
 
+    await expect(page.getByText(/nothing matches/i)).toBeVisible()
     await expect(page.getByRole("link", { name: SEEDED_DRAFT_TITLE })).toHaveCount(0)
     expect(await page.content()).not.toContain(SEEDED_DRAFT_SLUG)
   })
@@ -89,7 +91,7 @@ test.describe("search", () => {
     expect(response?.status()).toBe(200)
   })
 
-  test("searches without JavaScript, because it is an ordinary form", async ({ browser }) => {
+  test("keeps search URLs shareable while results require the client API", async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false })
     const page = await context.newPage()
 
@@ -98,7 +100,8 @@ test.describe("search", () => {
     await page.getByRole("button", { name: "Search" }).click()
 
     await expect(page).toHaveURL(/\/writing\/search\?q=renderer/)
-    await expect(page.getByRole("link", { name: /rendering an article/i })).toBeVisible()
+    await expect(page.getByRole("link", { name: /rendering an article/i })).toHaveCount(0)
+    await expect(page.getByRole("status")).toContainText("Loading writing")
 
     await context.close()
   })

@@ -9,9 +9,8 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# framework-generated types
+/.react-router/
 
 # production
 /build
@@ -31,11 +30,7 @@ pnpm-debug.log*
 .env*.local
 .env
 
-# vercel
-.vercel
-
 # cloudflare
-.open-next/
 .wrangler/
 .dev.vars
 .dev.vars.*
@@ -43,7 +38,6 @@ cloudflare-env.d.ts
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # IDE
 .vscode/
@@ -63,3 +57,6 @@ Thumbs.db
 
 # Generated resume export
 *.pdf
+
+# Generated admin assets for Vite development
+/public/admin/

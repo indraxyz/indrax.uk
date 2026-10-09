@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { Link } from "react-router"
 
 import { Badge } from "@/components/ui/badge"
 import { WRITING_CONFIG } from "@/features/writing/config"
@@ -14,8 +14,8 @@ interface TagPillProps {
 export function TagPill({ tag, tone = "tertiary", count }: TagPillProps) {
   return (
     <Link
-      prefetch={false}
-      href={`${WRITING_CONFIG.tagPath}/${tag.slug}`}
+      prefetch="none"
+      to={`${WRITING_CONFIG.tagPath}/${tag.slug}`}
       className="rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Badge variant={tone} className="transition-colors hover:opacity-85">

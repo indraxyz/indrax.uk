@@ -18,9 +18,9 @@ describe("slugify", () => {
   it("collapses punctuation so equivalent names converge", () => {
     // This is what makes tag matching case- and punctuation-insensitive: all
     // three of these are one tag, not three.
-    expect(slugify("Next.js")).toBe("next-js")
-    expect(slugify("next.js")).toBe("next-js")
-    expect(slugify("NEXT JS")).toBe("next-js")
+    expect(slugify("Vue.js")).toBe("vue-js")
+    expect(slugify("vue.js")).toBe("vue-js")
+    expect(slugify("VUE JS")).toBe("vue-js")
   })
 
   it("never leaves a leading, trailing or doubled separator", () => {
@@ -36,7 +36,7 @@ describe("slugify", () => {
   })
 
   it("always produces something the pattern accepts", () => {
-    const inputs = ["Hello World", "Next.js", "Café", "  a  ", "ONE_two-THREE", "2026 in review"]
+    const inputs = ["Hello World", "Vue.js", "Café", "  a  ", "ONE_two-THREE", "2026 in review"]
 
     for (const input of inputs) {
       const slug = slugify(input)
@@ -47,7 +47,7 @@ describe("slugify", () => {
 
 describe("SLUG_PATTERN", () => {
   it("accepts what slugify produces", () => {
-    for (const slug of ["a", "hello-world", "next-js", "post-2", "2026-in-review"]) {
+    for (const slug of ["a", "hello-world", "vue-js", "post-2", "2026-in-review"]) {
       expect(SLUG_PATTERN.test(slug), slug).toBe(true)
     }
   })

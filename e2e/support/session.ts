@@ -28,7 +28,7 @@ import * as schema from "@/lib/db/schema"
  *    token that `createSession` hands back.
  * 2. `npm run start` sets `NODE_ENV=production`, which turns on `useSecureCookies`
  *    - and that renames the cookie to `__Secure-better-auth.session_token`. Under
- *    `next dev` it is the unprefixed name, which is why the suite runs against a
+ *    development mode it is the unprefixed name, which is why the suite runs against a
  *    production build and only the prefixed name is exported here.
  */
 export const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token"

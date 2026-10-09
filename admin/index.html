@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--theme-init-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>Indra’s Admin</title>
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      .admin-boot-loading {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: var(--color-background, #fff);
+        color: var(--component-navigation-progress, #90b800);
+      }
+      .admin-boot-loading svg {
+        width: 32px;
+        height: 32px;
+        animation: admin-boot-spin 1s linear infinite;
+      }
+      @keyframes admin-boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .admin-boot-loading svg {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="admin-boot-loading" role="status" aria-label="Loading page">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M12 3a9 9 0 1 1-9 9" />
+        </svg>
+      </div>
+    </div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

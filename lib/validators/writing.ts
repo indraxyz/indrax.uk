@@ -80,7 +80,7 @@ export const tagNameSchema = z
  * values it has no business asserting (PRD US-3.1).
  *
  * Used to validate the seed today. It is the same shape the authoring phase's
- * server actions will validate, which is why it lives in `lib/validators` rather
+ * API mutations will validate, which is why it lives in `lib/validators` rather
  * than beside the seed that currently happens to be its only caller.
  */
 export const postInputSchema = z

@@ -13,14 +13,24 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
   useState: (initial: unknown) => [initial, vi.fn()],
+  useEffect: vi.fn(),
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
+vi.mock("react-router", () => ({
+  useNavigate: () => (to: string) => mocks.replace(to),
+  useBlocker: () => ({ state: "unblocked" }),
+  useBeforeUnload: vi.fn(),
 }))
-vi.mock("next/dynamic", () => ({ default: () => () => null }))
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  useMutation: ({ mutationFn }: { mutationFn: unknown }) => ({ mutateAsync: mutationFn }),
+}))
 vi.mock("@/features/writing/components/admin/image-upload", () => ({ ImageUpload: () => null }))
-vi.mock("@/features/writing/data/mutations", () => ({ savePost: mocks.savePost }))
+vi.mock("@/features/writing/api/client", () => ({
+  adminApi: { savePost: mocks.savePost },
+  adminKeys: { posts: ["admin", "posts"], overview: ["admin", "overview"] },
+  writingKeys: { all: ["writing"] },
+}))
 
 import { PostForm } from "./post-form"
 

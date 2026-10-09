@@ -1,5 +1,4 @@
-import "server-only"
-
+import { serverEnv } from "@/lib/runtime.server"
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { APIError } from "better-auth/api"
@@ -32,7 +31,7 @@ const DAY_IN_SECONDS = 60 * 60 * 24
  * problem waiting to happen. The numeric id is stable for the life of the account
  * (threat T-1).
  */
-const allowedGithubId = () => process.env.ALLOWED_GITHUB_ID?.trim()
+const allowedGithubId = () => serverEnv("ALLOWED_GITHUB_ID")?.trim()
 
 /**
  * Whether this deployment has an admin at all.
@@ -43,15 +42,15 @@ const allowedGithubId = () => process.env.ALLOWED_GITHUB_ID?.trim()
  */
 export const isAuthConfigured = () =>
   Boolean(
-    process.env.DATABASE_URL?.trim() &&
-    process.env.BETTER_AUTH_SECRET?.trim() &&
-    process.env.GITHUB_CLIENT_ID?.trim() &&
-    process.env.GITHUB_CLIENT_SECRET?.trim() &&
+    serverEnv("DATABASE_URL")?.trim() &&
+    serverEnv("BETTER_AUTH_SECRET")?.trim() &&
+    serverEnv("GITHUB_CLIENT_ID")?.trim() &&
+    serverEnv("GITHUB_CLIENT_SECRET")?.trim() &&
     allowedGithubId()
   )
 
 function requiredEnv(name: string): string {
-  const value = process.env[name]
+  const value = serverEnv(name)
 
   if (!value) {
     throw new Error(
@@ -84,7 +83,7 @@ function create() {
 
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg", schema }),
-    baseURL: process.env.BETTER_AUTH_URL ?? SITE_URL,
+    baseURL: serverEnv("BETTER_AUTH_URL") ?? SITE_URL,
     secret: requiredEnv("BETTER_AUTH_SECRET"),
     onAPIError: { errorURL: "/admin/login" },
 
@@ -147,7 +146,7 @@ function create() {
     },
 
     advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
+      useSecureCookies: serverEnv("NODE_ENV") === "production",
     },
 
     databaseHooks: {

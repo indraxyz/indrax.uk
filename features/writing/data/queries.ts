@@ -1,9 +1,7 @@
-import "server-only"
-
 import { and, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
-import { unstable_cache } from "next/cache"
-import { cache } from "react"
+import { cachedRead } from "@/lib/cache.server"
 
+import { normaliseQuery } from "@/features/writing/utils/search-query"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type {
   PaginatedPosts,
@@ -102,21 +100,6 @@ const EMPTY_PAGE: PaginatedPosts = { posts: [], page: 1, pageCount: 0 }
 export const iso = (value: Date | null) => (value ? value.toISOString() : null)
 
 /**
- * Whether an error is Next's own control flow rather than a failure.
- *
- * Next marks these with a `digest`: `DYNAMIC_SERVER_USAGE`, and the `NEXT_`
- * prefixed signals behind `redirect()` and `notFound()`. They have to travel
- * through any `catch` between where they are thrown and the framework.
- */
-function isFrameworkSignal(error: unknown): boolean {
-  const digest = (error as { digest?: unknown } | null)?.digest
-
-  return (
-    typeof digest === "string" && (digest.startsWith("NEXT_") || digest === "DYNAMIC_SERVER_USAGE")
-  )
-}
-
-/**
  * How long a read may take before it is treated as a failure.
  *
  * Generous against a Neon cold start, which is around half a second, and far
@@ -157,17 +140,6 @@ async function safely<T>(label: string, fallback: T, read: () => Promise<T>): Pr
       }),
     ])
   } catch (error) {
-    // Next signals its own control flow by throwing: `DYNAMIC_SERVER_USAGE` to
-    // bail a route out of static rendering, `NEXT_REDIRECT` and the not-found
-    // fallback for `redirect()` and `notFound()`. Catching those and returning a
-    // fallback does not degrade gracefully - it eats the instruction, and the
-    // render fails somewhere further on with the cause thrown away.
-    //
-    // Found exactly that way: tag pages started answering 500 with a masked
-    // `DYNAMIC_SERVER_USAGE`, because this wrapper was swallowing the very error
-    // Next uses to say "this page is dynamic, render it that way".
-    if (isFrameworkSignal(error)) throw error
-
     logServerError(error, { scope: `writing.${label}` })
 
     return fallback
@@ -246,11 +218,7 @@ async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedP
  * treats its input as a search box rather than as syntax. `to_tsquery` would
  * throw on an unbalanced quote - turning a stray apostrophe into a 500.
  */
-export function normaliseQuery(raw: string | undefined): string {
-  const trimmed = (raw ?? "").replace(/\s+/g, " ").trim()
-
-  return trimmed.length > WRITING_CONFIG.maxQueryLength ? "" : trimmed
-}
+export { normaliseQuery } from "@/features/writing/utils/search-query"
 
 const EMPTY_SEARCH = (query: string): SearchResults => ({ query, posts: [], page: 1, pageCount: 0 })
 
@@ -554,46 +522,19 @@ async function readPublishedSlugs(): Promise<{ slug: string; updatedAt: string }
   return rows.map((row) => ({ slug: row.slug, updatedAt: row.updatedAt.toISOString() }))
 }
 
-/*
- * `unstable_cache` rather than the `"use cache"` directive.
- *
- * Next 16 exports both, but `"use cache"` needs `cacheComponents: true`, which
- * flips the entire application to dynamic-by-default with explicit opt-in
- * caching. That is a site-wide behavioural change and does not belong in a
- * feature branch. Both honour the same tags and the same `revalidateTag` calls,
- * so moving across later is mechanical.
- *
- * The wrappers are built once at module scope. Constructing them per call works,
- * but allocates a fresh closure on every request for no benefit.
- */
+/** Public reads share the platform cache and mutation invalidation tags. */
+function publicRead<A extends unknown[], T>(name: string, read: (...args: A) => Promise<T>) {
+  return (...args: A) =>
+    cachedRead(JSON.stringify(["writing", name, ...args]), [CACHE_TAGS.posts], () => read(...args))
+}
 
-const cachedPublishedPosts = unstable_cache(readPublishedPosts, ["writing", "published-posts"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedPostsByTag = unstable_cache(readPostsByTag, ["writing", "posts-by-tag"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedTagsInUse = unstable_cache(readTagsInUse, ["writing", "tags-in-use"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedFeedPosts = unstable_cache(readFeedPosts, ["writing", "feed-posts"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedRecentPosts = unstable_cache(readRecentPosts, ["writing", "recent-posts"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedRelatedPosts = unstable_cache(readRelatedPosts, ["writing", "related-posts"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedPublishedSlugs = unstable_cache(readPublishedSlugs, ["writing", "published-slugs"], {
-  tags: [CACHE_TAGS.posts],
-})
+const cachedPublishedPosts = publicRead("PublishedPosts", readPublishedPosts)
+const cachedPostsByTag = publicRead("PostsByTag", readPostsByTag)
+const cachedTagsInUse = publicRead("TagsInUse", readTagsInUse)
+const cachedFeedPosts = publicRead("FeedPosts", readFeedPosts)
+const cachedRecentPosts = publicRead("RecentPosts", readRecentPosts)
+const cachedRelatedPosts = publicRead("RelatedPosts", readRelatedPosts)
+const cachedPublishedSlugs = publicRead("PublishedSlugs", readPublishedSlugs)
 
 export const getPublishedPosts = (page = 1) =>
   safely("getPublishedPosts", EMPTY_PAGE, () => cachedPublishedPosts(page))
@@ -619,7 +560,7 @@ export const getPublishedSlugs = () =>
 /**
  * Search, deliberately uncached.
  *
- * Every other read here is wrapped in `unstable_cache`, and this one must not be.
+ * Every other read here is wrapped in the public cache, and this one must not be.
  * The cache key would include the query, and the query is a string a stranger
  * chooses: `?q=aaaa`, `?q=aaab`, and so on are unbounded distinct keys, each one
  * a miss that runs two statements and then writes an entry that will never be
@@ -644,13 +585,8 @@ export const searchPosts = (rawQuery: string | undefined, page = 1) => {
   return safely("searchPosts", EMPTY_SEARCH(query), () => readSearchResults(query, bounded))
 }
 
-const cachedSeriesBySlug = unstable_cache(readSeriesBySlug, ["writing", "series-by-slug"], {
-  tags: [CACHE_TAGS.posts],
-})
-
-const cachedSeriesSlugs = unstable_cache(readSeriesSlugs, ["writing", "series-slugs"], {
-  tags: [CACHE_TAGS.posts],
-})
+const cachedSeriesBySlug = publicRead("series-by-slug", readSeriesBySlug)
+const cachedSeriesSlugs = publicRead("series-slugs", readSeriesSlugs)
 
 /**
  * One series and its published parts.
@@ -661,9 +597,8 @@ const cachedSeriesSlugs = unstable_cache(readSeriesSlugs, ["writing", "series-sl
  * and a database outage returns the empty list instead so the page stays a page.
  */
 // Metadata and page rendering share a read within the current server request.
-export const getSeriesBySlug = cache((slug: string) =>
+export const getSeriesBySlug = (slug: string) =>
   safely("getSeriesBySlug", null as SeriesWithParts | null, () => cachedSeriesBySlug(slug))
-)
 
 export const getSeriesSlugs = () =>
   safely("getSeriesSlugs", [] as { slug: string; updatedAt: string }[], cachedSeriesSlugs)
@@ -673,18 +608,17 @@ export const getSeriesSlugs = () =>
  *
  * Everywhere else an unreachable database renders as an empty archive, which is
  * the right degradation for a list. Here it would be actively harmful: `null` is
- * how this function says "no such post", the route turns that into `notFound()`,
+ * how this function says "no such post", the route turns that into a 404 response,
  * and a published article would answer 404 for as long as the outage lasted. A
- * crawler reads that as "deleted". A thrown error reaches `app/error.tsx` and
+ * crawler reads that as "deleted". A thrown error reaches the route error boundary and
  * answers 500 instead, which is both honest and non-destructive (PRD US-6.2).
  *
  * The one wrapper that cannot be hoisted: its tag list names the slug, so it is a
  * different cache entry per post.
  */
-export const getPostBySlug = cache((slug: string) =>
-  unstable_cache(readPostBySlug, ["writing", "post-by-slug"], {
-    // Tagged both ways so publishing one post does not evict the whole archive,
-    // while a change to the archive still reaches the article page.
-    tags: [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
-  })(slug)
-)
+export const getPostBySlug = (slug: string) =>
+  cachedRead(
+    JSON.stringify(["writing", "post-by-slug", slug]),
+    [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
+    () => readPostBySlug(slug)
+  )

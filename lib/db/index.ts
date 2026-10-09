@@ -1,14 +1,10 @@
+import { serverEnv } from "@/lib/runtime.server"
 import { neon, neonConfig } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 
 import * as schema from "./schema"
 
-// No `import "server-only"` here, deliberately, and this is the one place it looks
-// like an oversight. `lib/db/seed.ts` and `drizzle.config.ts` are plain Node
-// processes that import this module, and `server-only` throws outside a React
-// Server Component - adding it breaks `npm run db:seed`. The guard lives one layer
-// up in `features/writing/data/queries.ts`, which is the only thing the application
-// imports.
+// Shared by Worker server code and local Node migration/seed scripts.
 
 export type Database = ReturnType<typeof createClient>
 
@@ -66,7 +62,7 @@ let client: Database | undefined
 export function getDb(): Database | null {
   if (client) return client
 
-  const url = process.env.DATABASE_URL
+  const url = serverEnv("DATABASE_URL")
   if (!url) return null
 
   client = createClient(url)

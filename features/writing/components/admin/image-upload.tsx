@@ -1,5 +1,5 @@
-"use client"
-
+import ky from "ky"
+import { api } from "@/lib/api-client"
 import { ImageUp, Loader2 } from "lucide-react"
 import { useRef, useState } from "react"
 
@@ -7,7 +7,7 @@ import { controlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
 // Mirrors the route's own limits so the author is told before a request is made.
-// The check that decides is the one in `app/api/upload/route.ts` - this one exists
+// The check that decides is the one in the upload API - this one exists
 // to save a round trip, not to enforce anything (threat T-5).
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"]
 const MAX_BYTES = 5 * 1024 * 1024
@@ -44,26 +44,31 @@ export function ImageUpload({ onUploaded }: ImageUploadProps) {
     setBusy(true)
 
     try {
-      const minted = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const minted = await api.post("/api/upload", {
+        throwHttpErrors: false,
+        json: {
           contentType: file.type,
           size: file.size,
           fileName: file.name,
-        }),
+        },
       })
 
       if (!minted.ok) {
-        const body = await minted.json().catch(() => ({}))
+        const body = await minted.json<{ error?: string }>().catch(() => ({ error: undefined }))
         setError(body.error ?? "That upload was refused.")
         return
       }
 
-      const { uploadUrl, publicUrl, contentType } = await minted.json()
+      const { uploadUrl, publicUrl, contentType } = await minted.json<{
+        uploadUrl: string
+        publicUrl: string
+        contentType: string
+      }>()
 
-      const put = await fetch(uploadUrl, {
-        method: "PUT",
+      const put = await ky.put(uploadUrl, {
+        credentials: "omit",
+        retry: 0,
+        throwHttpErrors: false,
         headers: { "content-type": contentType },
         body: file,
       })

@@ -1,43 +1,17 @@
-import { createRequire } from "node:module"
-import { dirname, join } from "node:path"
-
 import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ getDb: vi.fn(), log: vi.fn() }))
 vi.mock("@/lib/db", async () => ({
   getDb: mocks.getDb,
   schema: await import("@/lib/db/schema"),
 }))
-vi.mock("next/cache", () => ({ unstable_cache: (read: unknown) => read }))
+vi.mock("@/lib/cache.server", () => ({
+  cachedRead: (_key: string, _tags: string[], read: () => Promise<unknown>) => read(),
+}))
 vi.mock("@/lib/observability", () => ({ logServerError: mocks.log }))
 
-vi.mock("react", async () => {
-  const require = createRequire(import.meta.url)
-  return require(join(dirname(require.resolve("react")), "cjs/react.react-server.development.js"))
-})
-const React = await import("react")
-const internals = (
-  React as unknown as {
-    __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: {
-      A: null | { getCacheForType: (factory: () => unknown) => unknown }
-    }
-  }
-).__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE
-
-function newRequest() {
-  const requestCache = new Map<() => unknown, unknown>()
-  internals.A = {
-    getCacheForType(factory) {
-      if (!requestCache.has(factory)) requestCache.set(factory, factory())
-      return requestCache.get(factory)
-    },
-  }
-}
-afterEach(() => {
-  internals.A = null
-})
 import {
   getFeedPosts,
   getPostsByTag,
@@ -156,28 +130,6 @@ describe("public database round trips", () => {
     expect(db.query.mock.calls[0][0]).not.toContain("search_vector")
   })
 
-  it("shares article metadata and page reads only in the current server request", async () => {
-    const content = { type: "doc", content: [] }
-    const row = [...summaryRow, content, "published", 0, null]
-    const db = database([[row], [row]])
-    newRequest()
-    const [metadata, page] = await Promise.all([getPostBySlug("article"), getPostBySlug("article")])
-    expect(metadata).toBe(page)
-    expect(db.query).toHaveBeenCalledTimes(1)
-    newRequest()
-    await getPostBySlug("article")
-    expect(db.query).toHaveBeenCalledTimes(2)
-  })
-
-  it("shares series metadata and page reads while keeping distinct slugs separate", async () => {
-    const db = database([[], []])
-    newRequest()
-    await Promise.all([getSeriesBySlug("series"), getSeriesBySlug("series")])
-    expect(db.query).toHaveBeenCalledTimes(1)
-    await getSeriesBySlug("other-series")
-    expect(db.query).toHaveBeenCalledTimes(2)
-  })
-
   it("decodes JSON text tags without another query", async () => {
     const db = database([[summaryRow.slice(0, -1).concat(JSON.stringify([tag]))]])
     expect(await getRecentPosts(1)).toEqual([expect.objectContaining({ tags: [tag] })])
@@ -217,12 +169,5 @@ describe("public database round trips", () => {
     expect(mocks.log).toHaveBeenCalledWith(expect.any(Error), {
       scope: "writing.getPublishedPosts",
     })
-  })
-
-  it("propagates framework signals rather than hiding them as an empty archive", async () => {
-    const db = database([])
-    const signal = Object.assign(new Error("dynamic"), { digest: "DYNAMIC_SERVER_USAGE" })
-    db.transaction.mockRejectedValue(signal)
-    await expect(getPublishedPosts()).rejects.toBe(signal)
   })
 })

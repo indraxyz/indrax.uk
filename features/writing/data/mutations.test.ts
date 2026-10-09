@@ -10,7 +10,11 @@ const mocks = vi.hoisted(() => ({
   updateTag: vi.fn(),
 }))
 vi.mock("@/lib/auth-guard", () => ({ requireAuthor: mocks.requireAuthor }))
-vi.mock("next/cache", () => ({ updateTag: mocks.updateTag }))
+vi.mock("@/lib/cache.server", () => ({
+  invalidateTags: async (...tags: string[]) => {
+    tags.forEach((tag) => mocks.updateTag(tag))
+  },
+}))
 vi.mock("@/features/writing/data/queries", () => ({
   CACHE_TAGS: { posts: "posts", post: (slug: string) => `post:${slug}` },
 }))
@@ -141,14 +145,14 @@ describe("savePost", () => {
 describe("savePost database round trips", () => {
   it("synchronizes submitted tags atomically while retaining existing desired joins", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
-    expect(await savePost({ ...payload, id: ID, tags: ["REACT", "Next.js", "next js"] })).toEqual({
+    expect(await savePost({ ...payload, id: ID, tags: ["REACT", "Vue.js", "vue js"] })).toEqual({
       ok: true,
       postId: ID,
     })
     expect(db.batch.mock.calls[0][0]).toHaveLength(4)
     expect(db.values).toHaveBeenCalledWith([
       { slug: "react", name: "REACT" },
-      { slug: "next-js", name: "Next.js" },
+      { slug: "vue-js", name: "Vue.js" },
     ])
     const condition = db.deleteWhere.mock.calls[0][0] as SQL
     const { sql: generated } = drizzle.mock().delete(schema.postTags).where(condition).toSQL()
@@ -158,13 +162,13 @@ describe("savePost database round trips", () => {
 
   it("atomically batches changed tag joins with the post and preserves the first display spelling", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
-    expect(await savePost({ ...payload, id: ID, tags: ["Next.js", "NEXT JS"] })).toEqual({
+    expect(await savePost({ ...payload, id: ID, tags: ["Vue.js", "VUE JS"] })).toEqual({
       ok: true,
       postId: ID,
     })
     expect(db.batch).toHaveBeenCalledTimes(1)
     expect(db.batch.mock.calls[0][0]).toHaveLength(4)
-    expect(db.values).toHaveBeenCalledWith([{ slug: "next-js", name: "Next.js" }])
+    expect(db.values).toHaveBeenCalledWith([{ slug: "vue-js", name: "Vue.js" }])
     expect(db.insertSelect).toHaveBeenCalledTimes(1)
     expect(db.delete).toHaveBeenCalledWith(schema.postTags)
   })

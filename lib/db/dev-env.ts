@@ -1,8 +1,8 @@
 /**
  * Loads `.env.local` into `process.env` for the database CLI entry points.
  *
- * Next.js reads `.env.local` itself, but drizzle-kit and the seed script are
- * plain Node processes started outside it, so they see nothing unless the
+ * Drizzle-kit and the seed script run as plain Node processes outside Vite,
+ * so they see nothing unless the
  * variables were exported into the shell. This closes that gap so one file
  * configures every path.
  *

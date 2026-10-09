@@ -17,13 +17,27 @@ vi.mock("react", async (original) => ({
   useState: (initial: unknown) => [initial, mocks.setState],
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
+vi.mock("react-router", () => ({
+  useNavigate: () => (to: string) => mocks.replace(to),
+  useBlocker: () => ({ state: "unblocked" }),
+  useBeforeUnload: vi.fn(),
 }))
-vi.mock("@/features/writing/data/mutations", () => ({
-  setPostStatus: mocks.setPostStatus,
-  deletePost: mocks.deletePost,
-  createPreviewLink: vi.fn(),
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  useMutation: ({ mutationFn }: { mutationFn: unknown }) => ({ mutateAsync: mutationFn }),
+}))
+vi.mock("@/features/writing/api/client", () => ({
+  adminApi: {
+    setPostStatus: mocks.setPostStatus,
+    deletePost: mocks.deletePost,
+    createPreviewLink: vi.fn(),
+  },
+  adminKeys: {
+    posts: ["admin", "posts"],
+    overview: ["admin", "overview"],
+    post: (id: string) => ["admin", "post", id],
+  },
+  writingKeys: { all: ["writing"] },
 }))
 
 import { PostActions } from "./post-actions"
@@ -54,17 +68,14 @@ afterEach(() => vi.unstubAllGlobals())
 it.each([
   ["Publish", "draft", "published"],
   ["Unpublish", "published", "draft"],
-] as const)(
-  "%s relies on the action's server-tree update without a second refresh",
-  async (label, initial, target) => {
-    mocks.setPostStatus.mockResolvedValue({ ok: true, postId: ID })
-    button(label, initial)()
-    await mocks.transition
-    expect(mocks.setPostStatus).toHaveBeenCalledWith(ID, target)
-    expect(mocks.refresh).not.toHaveBeenCalled()
-    expect(mocks.replace).not.toHaveBeenCalled()
-  }
-)
+] as const)("%s updates the API cache without a page refresh", async (label, initial, target) => {
+  mocks.setPostStatus.mockResolvedValue({ ok: true, postId: ID })
+  button(label, initial)()
+  await mocks.transition
+  expect(mocks.setPostStatus).toHaveBeenCalledWith(ID, target)
+  expect(mocks.refresh).not.toHaveBeenCalled()
+  expect(mocks.replace).not.toHaveBeenCalled()
+})
 
 it("navigates once to the list after confirmed deletion", async () => {
   mocks.deletePost.mockResolvedValue({ ok: true })

@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
-
 import { expect, test } from "@playwright/test"
 
 /**
@@ -85,80 +82,51 @@ test.describe("the admin boundary", () => {
     expect(await response.text()).not.toContain("r2.cloudflarestorage.com")
   })
 
-  /**
-   * A real action id from the build's own manifest.
-   *
-   * Invented ids are rejected by Next before any application code runs, so a test
-   * using one passes while proving nothing about the guard.
-   */
-  function mutationActionId(): string {
-    const manifest = JSON.parse(
-      readFileSync(join(process.cwd(), ".next/server/server-reference-manifest.json"), "utf8")
-    ) as { node: Record<string, { filename?: string }> }
-
-    const id = Object.entries(manifest.node).find(([, entry]) =>
-      entry.filename?.includes("features/writing/data/mutations")
-    )?.[0]
-
-    if (!id) throw new Error("No mutation action found in the build manifest.")
-
-    return id
-  }
-
   const INJECTED_TITLE = "Injected by an unauthenticated caller"
 
-  async function assertNothingWasWritten(request: import("@playwright/test").APIRequestContext) {
-    const feed = await (await request.get("/writing/rss.xml")).text()
-    expect(feed).not.toContain(INJECTED_TITLE)
-
-    const sitemap = await (await request.get("/sitemap.xml")).text()
-    expect(sitemap).not.toContain("injected-by-an-unauthenticated-caller")
-  }
-
-  test("turns a server action away at the proxy when no cookie is present", async ({ request }) => {
-    const response = await request.post("/admin/new", {
-      maxRedirects: 0,
-      headers: {
-        "content-type": "text/plain;charset=UTF-8",
-        "next-action": mutationActionId(),
-      },
-      data: JSON.stringify([{ title: INJECTED_TITLE, status: "published", tags: [] }]),
-    })
-
-    expect(response.status()).toBe(307)
-    expect(response.headers().location).toContain("/admin/login")
-    await assertNothingWasWritten(request)
+  test("rejects private API reads without exposing drafts", async ({ request }) => {
+    for (const path of [
+      "/api/admin/posts",
+      "/api/admin/overview",
+      "/api/admin/posts/550e8400-e29b-41d4-a716-446655440000",
+    ]) {
+      const response = await request.get(path)
+      expect(response.status()).toBe(401)
+      expect(response.headers()["cache-control"]).toContain("no-store")
+      expect(await response.text()).not.toContain("contentJson")
+    }
   })
 
-  test("rejects a server action independently of the proxy", async ({ request }) => {
-    // `proxy.ts` only checks that a session cookie is *present*, so a forged one
-    // walks straight past it and reaches the action. That is deliberate - the
-    // proxy is a redirect for browsers, not a control - and this is the request
-    // that proves the real check happens inside the action itself (PRD US-4.2,
-    // threat T-3).
-    const response = await request.post("/admin/new", {
-      maxRedirects: 0,
-      headers: {
-        "content-type": "text/plain;charset=UTF-8",
-        "next-action": mutationActionId(),
-        cookie: "better-auth.session_token=forged.notarealsession",
-      },
-      data: JSON.stringify([{ title: INJECTED_TITLE, status: "published", tags: [] }]),
-    })
+  test("rejects writes with absent or forged sessions", async ({ request, baseURL }) => {
+    for (const cookie of ["", "better-auth.session_token=forged.notarealsession"]) {
+      const response = await request.post("/api/admin/posts", {
+        headers: { origin: baseURL!, ...(cookie ? { cookie } : {}) },
+        data: { title: INJECTED_TITLE, status: "published", tags: [] },
+      })
+      expect(response.status()).toBe(401)
+      const body = await response.text()
+      expect(body).not.toContain("requireAuthor")
+      expect(body).not.toContain(INJECTED_TITLE)
+    }
+    const feed = await (await request.get("/writing/rss.xml")).text()
+    expect(feed).not.toContain(INJECTED_TITLE)
+  })
 
-    const body = await response.text()
-
-    // Next serialises a thrown server action as an error in the RSC stream, so
-    // 200 is the normal status here and says nothing. What the response must
-    // carry is an error and no result...
-    expect(body).toMatch(/"digest"/)
-    expect(body).not.toContain(INJECTED_TITLE)
-    // ...with no stack trace reaching the caller (PRD US-6.2).
-    expect(body).not.toContain("requireAuthor")
-    expect(body).not.toContain("at ")
-
-    // ...and, above all, nothing written.
-    await assertNothingWasWritten(request)
+  test("protects every mutation endpoint independently", async ({ request, baseURL }) => {
+    const id = "550e8400-e29b-41d4-a716-446655440000"
+    for (const [method, path, body] of [
+      ["PATCH", `/api/admin/posts/${id}/status`, { status: "published" }],
+      ["DELETE", `/api/admin/posts/${id}`, {}],
+      ["POST", `/api/admin/posts/${id}/preview`, {}],
+    ] as const) {
+      const response = await request.fetch(path, {
+        method,
+        headers: { origin: baseURL! },
+        data: body,
+      })
+      expect(response.status()).toBe(401)
+      expect(response.headers()["cache-control"]).toContain("no-store")
+    }
   })
 
   test("hands no session to an unauthenticated caller", async ({ request }) => {

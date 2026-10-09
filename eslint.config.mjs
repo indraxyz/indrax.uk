@@ -1,23 +1,26 @@
-import nextVitals from "eslint-config-next/core-web-vitals"
-import nextTypescript from "eslint-config-next/typescript"
-
-const eslintConfig = [
-  ...nextVitals,
-  ...nextTypescript,
+import js from "@eslint/js"
+import ts from "typescript-eslint"
+import hooks from "eslint-plugin-react-hooks"
+import globals from "globals"
+export default ts.config(
   {
     ignores: [
       "node_modules/**",
-      ".next/**",
-      ".open-next/**",
+      "public/admin/**",
+      "build/**",
+      ".react-router/**",
       ".wrangler/**",
       "playwright-report/**",
       "test-results/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
       "cloudflare-env.d.ts",
     ],
   },
-]
-
-export default eslintConfig
+  js.configs.recommended,
+  ...ts.configs.recommended,
+  { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
+  {
+    files: ["**/*.{ts,tsx}"],
+    plugins: { "react-hooks": hooks },
+    rules: { "react-hooks/rules-of-hooks": "error", "react-hooks/exhaustive-deps": "warn" },
+  }
+)

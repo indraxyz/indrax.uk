@@ -1,5 +1,3 @@
-"use client"
-
 import { captureEvent } from "@/lib/analytics"
 
 export function EmailLink({ email }: { email: string }) {

@@ -1,6 +1,6 @@
-"use client"
-
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { adminKeys } from "@/features/writing/api/client"
 import { useState, useTransition, type ReactNode } from "react"
 
 import {
@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { authClient } from "@/lib/auth-client"
 
 interface SignOutButtonProps {
   children: ReactNode
@@ -29,7 +28,8 @@ interface SignOutButtonProps {
  * something rather than merely looking like it (PRD US-4.2).
  */
 export function SignOutButton({ children, className }: SignOutButtonProps) {
-  const router = useRouter()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [pending, startTransition] = useTransition()
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
@@ -38,6 +38,7 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
     setFailed(false)
     startTransition(async () => {
       try {
+        const { authClient } = await import("@/lib/auth-client")
         const result = await authClient.signOut()
         if (result?.error) {
           setFailed(true)
@@ -45,8 +46,9 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
         }
 
         setOpen(false)
-        router.replace("/admin/login")
-        router.refresh()
+        queryClient.removeQueries({ queryKey: adminKeys.all })
+        queryClient.getMutationCache().clear()
+        navigate("/admin/login", { replace: true })
       } catch {
         setFailed(true)
       }

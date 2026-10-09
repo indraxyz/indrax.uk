@@ -2,7 +2,7 @@ import { Separator } from "@/components/ui/separator"
 import { SectionCard } from "@/components/ui/section-card"
 import { certificationGroups } from "@/features/resume/utils/groups"
 import { Award, ExternalLink } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 export function CertificationsCard() {
   return (
@@ -24,7 +24,7 @@ export function CertificationsCard() {
                   <p className="mb-1 text-sm font-bold leading-tight">{certification.title}</p>
                   {certification.link && (
                     <Link
-                      href={certification.link}
+                      to={certification.link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider hover:underline"

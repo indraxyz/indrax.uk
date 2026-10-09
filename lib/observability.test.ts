@@ -42,9 +42,8 @@ describe("logServerError", () => {
     expect(typeof record.at).toBe("string")
   })
 
-  it("carries the digest the reader was shown, so a report becomes a query", () => {
-    // This is the whole point of the file: Next renders this number on the error
-    // page and withholds everything else, so it is the only handle a reader has.
+  it("preserves a diagnostic digest supplied by an upstream error", () => {
+    // Preserve an upstream reference so operators can correlate diagnostics.
     const error = Object.assign(new Error("Boom"), { digest: "1607737151" })
 
     expect(captured(error).record.reference).toBe("1607737151")
@@ -73,10 +72,8 @@ describe("logServerError", () => {
 
 describe("logServerError — a reader who left is not a failure", () => {
   /**
-   * Next prefetches an RSC payload on hover and cancels it when the pointer moves
-   * on. Five of these appeared in a single end-to-end run; a real tag list
-   * produces them steadily. At `error` they bury the failures the digest exists
-   * to make findable.
+   * Navigating away can cancel a request or close its response stream. Logging
+   * these expected disconnects as errors would hide actual server failures.
    */
   const disconnects = [
     new Error("The destination stream closed early."),

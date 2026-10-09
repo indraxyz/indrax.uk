@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest"
 import type { PostDocument } from "@/features/writing/types"
 
 const { createHighlighter } = vi.hoisted(() => ({ createHighlighter: vi.fn() }))
-vi.mock("shiki", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("shiki")>()
+vi.mock("./shiki-bundle", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./shiki-bundle")>()
   createHighlighter.mockImplementation(actual.createHighlighter)
   return { ...actual, createHighlighter }
 })

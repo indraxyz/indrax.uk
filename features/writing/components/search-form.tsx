@@ -1,24 +1,14 @@
+import { Form } from "react-router"
 import { Search } from "lucide-react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
-/**
- * A plain GET form, with no JavaScript behind it.
- *
- * Submitting navigates to `/writing/search?q=...`, which is what makes a search
- * result a URL: it can be linked, bookmarked, shared and read back by the person
- * who ran it. A fetch-on-keystroke box would be smoother and would produce
- * nothing anyone could send to someone else, and it would put a database query
- * behind every keypress rather than behind every search (threat T-11).
- *
- * It also means search works before hydration, and in a browser that never runs
- * the bundle at all - the same property the rest of the reading experience has.
- */
+/** A GET navigation keeps searches shareable and avoids requests on every keypress. */
 export function SearchForm({ query }: { query: string }) {
   return (
-    <form
+    <Form
       action={WRITING_CONFIG.searchPath}
       method="get"
       role="search"
@@ -56,6 +46,6 @@ export function SearchForm({ query }: { query: string }) {
         <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
         <span className="hidden sm:inline">Search</span>
       </button>
-    </form>
+    </Form>
   )
 }

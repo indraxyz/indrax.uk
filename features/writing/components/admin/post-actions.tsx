@@ -1,11 +1,11 @@
-"use client"
-
 import { Check, Eye, EyeOff, Link2, Loader2, Trash2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { useState, useTransition } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { createPreviewLink, deletePost, setPostStatus } from "@/features/writing/data/mutations"
+import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
+import { apiErrorMessage } from "@/lib/api-client"
 import type { AdminPost } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils"
  * "cannot be undone" is the only honest description of a cascade (PRD US-3.4).
  */
 export function PostActions({ post }: { post: AdminPost }) {
-  const router = useRouter()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -28,14 +29,22 @@ export function PostActions({ post }: { post: AdminPost }) {
   const run = (action: () => Promise<{ ok: boolean; message?: string }>, then?: () => void) => {
     setError(null)
     startTransition(async () => {
-      const result = await action()
-      if (!result.ok) {
-        setError(result.message ?? "That did not work.")
-        return
+      try {
+        const result = await action()
+        if (!result.ok) {
+          setError(result.message ?? "That did not work.")
+          return
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
+          queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+        ])
+        then?.()
+      } catch (error) {
+        setError(apiErrorMessage(error))
       }
-      // Status actions updateTag and include the updated server tree. Deletion
-      // navigates to the list; an extra refresh would repeat either page read.
-      then?.()
     })
   }
 
@@ -56,25 +65,29 @@ export function PostActions({ post }: { post: AdminPost }) {
           onClick={() => {
             setError(null)
             startTransition(async () => {
-              const result = await createPreviewLink(post.id)
-              if (!result.ok || !result.url) {
-                setError(result.message ?? "That did not work.")
-                return
-              }
-
-              const absolute = new URL(result.url, location.origin).toString()
-
-              // Shown either way. Clipboard access can be refused - by a policy, a
-              // browser, or a permissions prompt nobody answered - and a link that
-              // was silently not copied is worse than one that was never offered.
-              setPreviewUrl(absolute)
-
               try {
-                await navigator.clipboard.writeText(absolute)
-                setCopied(true)
-                window.setTimeout(() => setCopied(false), 3000)
-              } catch {
-                // Nothing to do: the field below already has it.
+                const result = await adminApi.createPreviewLink(post.id)
+                if (!result.ok || !result.url) {
+                  setError(result.message ?? "That did not work.")
+                  return
+                }
+
+                const absolute = new URL(result.url, location.origin).toString()
+
+                // Shown either way. Clipboard access can be refused - by a policy, a
+                // browser, or a permissions prompt nobody answered - and a link that
+                // was silently not copied is worse than one that was never offered.
+                setPreviewUrl(absolute)
+
+                try {
+                  await navigator.clipboard.writeText(absolute)
+                  setCopied(true)
+                  window.setTimeout(() => setCopied(false), 3000)
+                } catch {
+                  // Nothing to do: the field below already has it.
+                }
+              } catch (error) {
+                setError(apiErrorMessage(error))
               }
             })
           }}
@@ -92,7 +105,9 @@ export function PostActions({ post }: { post: AdminPost }) {
         type="button"
         disabled={pending}
         className={cn(controlClassNames, "px-3 py-2 disabled:opacity-60")}
-        onClick={() => run(() => setPostStatus(post.id, published ? "draft" : "published"))}
+        onClick={() =>
+          run(() => adminApi.setPostStatus(post.id, published ? "draft" : "published"))
+        }
       >
         {pending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -121,8 +136,8 @@ export function PostActions({ post }: { post: AdminPost }) {
           if (!sure) return
 
           run(
-            () => deletePost(post.id),
-            () => router.replace("/admin/posts")
+            () => adminApi.deletePost(post.id),
+            () => navigate("/admin/posts", { replace: true })
           )
         }}
       >

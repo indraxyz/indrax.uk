@@ -20,19 +20,14 @@ interface PostCoverProps {
  * phase lands, and `isAllowedMediaUrl` returns false while no media origin is
  * configured.
  *
- * A plain `<img>` rather than `next/image`, for two reasons. The optimiser's
- * default loader does not run on Cloudflare Workers, which is where this deploys -
- * so the component would work locally and fail in production. And `next/image`
- * costs about 15KB of client JavaScript on a page whose whole point is that it
- * ships none; paying that for a feature that cannot render yet is the wrong trade.
- * Explicit `width` and `height` give the same reserved space the optimiser would.
+ * Native images use explicit dimensions to reserve layout space and browser-native
+ * loading priorities without a server image optimizer.
  */
 export function PostCover({ post, className, priority = false }: PostCoverProps) {
   if (!isAllowedMediaUrl(post.coverUrl)) return null
 
   return (
     <div data-print-clip className={cn("border-b-2 border-border", className)}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={post.coverUrl}
         // Empty alt is correct for a decorative cover, and the validator requires

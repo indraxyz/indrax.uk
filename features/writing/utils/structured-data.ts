@@ -11,7 +11,7 @@ import { personalInfo } from "@/features/resume/data/resume"
  * same discipline `features/resume/utils/structured-data.ts` follows - a
  * hand-maintained duplicate is a claim that quietly stops being true.
  */
-export function buildArticleStructuredData(post: Post) {
+export function buildArticleStructuredData(post: Omit<Post, "content">) {
   const url = absoluteUrl(`${WRITING_CONFIG.basePath}/${post.slug}`)
 
   return {

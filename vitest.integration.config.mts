@@ -15,7 +15,7 @@ export default defineConfig({
   test: {
     ...unitConfig.test,
     include: ["test/integration/**/*.test.ts"],
-    exclude: ["node_modules/**", ".next/**", "e2e/**"],
+    exclude: ["node_modules/**", "build/**", ".react-router/**", "e2e/**"],
     fileParallelism: false,
   },
 })

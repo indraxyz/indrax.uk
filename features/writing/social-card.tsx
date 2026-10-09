@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og"
+import { CustomFont, ImageResponse } from "cf-workers-og"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { Post } from "@/features/writing/types"
@@ -23,15 +23,14 @@ const TAGS_ON_CARD = 3
 /**
  * The banner shown when an article link is unfurled.
  *
- * Drawn through `app/writing/[slug]/opengraph-image.tsx`, whose filename is a Next
- * metadata convention. Next derives `twitter:image` from the same route, so there
- * is no second card to keep in step.
+ * Served by the `/writing/:slug/opengraph-image` Worker resource. Article route
+ * metadata references this card for both Open Graph and Twitter images.
  */
 export async function renderPostCard(post: Post) {
   const { regular, extraBold } = await loadBrandFonts()
   const tags = post.tags.slice(0, TAGS_ON_CARD)
 
-  return new ImageResponse(
+  return ImageResponse.create(
     <div
       style={{
         width: "100%",
@@ -116,8 +115,8 @@ export async function renderPostCard(post: Post) {
     {
       ...POST_CARD_SIZE,
       fonts: [
-        { name: "JetBrains Mono", data: regular, weight: 400, style: "normal" },
-        { name: "JetBrains Mono", data: extraBold, weight: 800, style: "normal" },
+        new CustomFont("JetBrains Mono", regular, { weight: 400 }),
+        new CustomFont("JetBrains Mono", extraBold, { weight: 800 }),
       ],
     }
   )

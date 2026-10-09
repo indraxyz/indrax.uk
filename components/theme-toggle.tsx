@@ -1,5 +1,3 @@
-"use client"
-
 import { Moon, Palette, Sun } from "lucide-react"
 import * as React from "react"
 

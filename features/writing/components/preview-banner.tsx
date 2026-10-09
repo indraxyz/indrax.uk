@@ -1,7 +1,7 @@
 import { EyeOff } from "lucide-react"
 
 import type { PostStatus } from "@/features/writing/types"
-import { PREVIEW_TTL_MS } from "@/features/writing/utils/preview-token"
+import { PREVIEW_TTL_MS } from "@/features/writing/utils/preview-config"
 
 interface PreviewBannerProps {
   status: PostStatus

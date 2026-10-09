@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { isAllowedMediaUrl } from "./media"
 
@@ -12,23 +12,24 @@ import { isAllowedMediaUrl } from "./media"
 const ORIGIN = "https://media.example.com"
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_MEDIA_ORIGIN
+  vi.unstubAllEnvs()
 })
 
 describe("isAllowedMediaUrl", () => {
   it("refuses everything when no origin is configured", () => {
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "")
     // The state of this deployment today: closed rather than open in
     // anticipation of uploads that do not exist yet.
     expect(isAllowedMediaUrl(`${ORIGIN}/covers/a.png`)).toBe(false)
   })
 
   it("accepts an https URL on the exact configured host", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = ORIGIN
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", ORIGIN)
     expect(isAllowedMediaUrl(`${ORIGIN}/covers/a.png`)).toBe(true)
   })
 
   it("refuses the suffix and prefix tricks", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = ORIGIN
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", ORIGIN)
 
     for (const url of [
       "https://media.example.com.evil.test/a.png",
@@ -42,13 +43,13 @@ describe("isAllowedMediaUrl", () => {
   })
 
   it("refuses credentials-in-userinfo, which reads as the right host", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = ORIGIN
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", ORIGIN)
     // The host here is evil.test; everything before the @ is userinfo.
     expect(isAllowedMediaUrl("https://media.example.com@evil.test/a.png")).toBe(false)
   })
 
   it("refuses anything that is not https", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = ORIGIN
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", ORIGIN)
 
     for (const url of [
       "http://media.example.com/a.png",
@@ -61,7 +62,7 @@ describe("isAllowedMediaUrl", () => {
   })
 
   it("refuses empty and unparseable input without throwing", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = ORIGIN
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", ORIGIN)
 
     for (const url of [null, undefined, "", "not a url", "//protocol-relative/a.png"]) {
       expect(isAllowedMediaUrl(url), String(url)).toBe(false)
@@ -69,7 +70,7 @@ describe("isAllowedMediaUrl", () => {
   })
 
   it("refuses everything when the configured origin is itself unparseable", () => {
-    process.env.NEXT_PUBLIC_MEDIA_ORIGIN = "not a url"
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "not a url")
     expect(isAllowedMediaUrl(`${ORIGIN}/a.png`)).toBe(false)
   })
 })

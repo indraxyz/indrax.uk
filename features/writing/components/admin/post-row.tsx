@@ -1,5 +1,5 @@
 import { ExternalLink, PencilLine } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 import { Badge } from "@/components/ui/badge"
 import type { VisualVariant } from "@/components/ui/variants"
@@ -24,8 +24,7 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
           <Badge variant={STATUS_TONE[post.status]}>{post.status}</Badge>
           <div>
             <Link
-              prefetch={false}
-              href={`/admin/edit/${post.id}`}
+              to={`/admin/edit/${post.id}`}
               className="text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {post.title}
@@ -45,8 +44,7 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
 
       <div className="flex items-center gap-2">
         <Link
-          prefetch={false}
-          href={`/admin/edit/${post.id}`}
+          to={`/admin/edit/${post.id}`}
           className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={`Edit ${post.title}`}
         >
@@ -57,8 +55,8 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
             would be a link to a 404. */}
         {post.status === "published" && (
           <Link
-            prefetch={false}
-            href={`${WRITING_CONFIG.basePath}/${post.slug}`}
+            to={`${WRITING_CONFIG.basePath}/${post.slug}`}
+            reloadDocument
             target="_blank"
             rel="noopener noreferrer"
             className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

@@ -8,8 +8,8 @@ export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
  *
  * Accents are decomposed and their marks dropped rather than transliterated, so
  * "Café" becomes "cafe" instead of "caf". Everything else that is not a letter or
- * a digit collapses to a single hyphen - which is why "Next.js" and "next js"
- * both arrive at "next-js", and why tag normalisation can lean on this to
+ * a digit collapses to a single hyphen - which is why "Vue.js" and "vue js"
+ * both arrive at "vue-js", and why tag normalisation can lean on this to
  * de-duplicate.
  */
 export function slugify(input: string): string {

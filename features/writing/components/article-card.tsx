@@ -10,7 +10,7 @@ import { TagPill } from "@/features/writing/components/tag-pill"
 import type { Post, RenderedArticle } from "@/features/writing/types"
 
 interface ArticleCardProps {
-  post: Post
+  post: Omit<Post, "content">
   article: RenderedArticle
   /** Anything extra to sit beside the date and reading time - the view count. */
   meta?: ReactNode

@@ -97,7 +97,7 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
     slug: "rendering-an-article-without-shipping-a-renderer",
     status: "published",
     publishedAt: "2026-08-14T09:00:00.000Z",
-    tags: ["Next.js", "Performance", "TypeScript"],
+    tags: ["React Router", "Performance", "TypeScript"],
     seriesTitle: "Building this site",
     seriesDescription: "How this site was built, in the order the decisions were actually made.",
     seriesOrder: 1,

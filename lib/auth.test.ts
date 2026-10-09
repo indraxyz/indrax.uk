@@ -59,7 +59,7 @@ test.each(["999", undefined, "1"])(
       })
     )
     expect(start.status).toBe(200)
-    const { url } = await start.json()
+    const { url } = (await start.json()) as { url: string }
     const state = new URL(url).searchParams.get("state")
     const cookie = start.headers
       .getSetCookie()
