@@ -151,3 +151,13 @@ upload limits and PDF generation/loading. This includes one new sign-in regressi
 case; the others recheck previously passing coverage. The full migration baseline
 above and this focused run cover 157 distinct passing cases, with one optional R2
 case still skipped.
+
+### Analytics URL attribution follow-up
+
+CI caught an additional preview-token leak in PostHog's initial attribution
+properties sent to `/flags`, which bypasses the event `before_send` hook. Disable
+the SDK's `save_referrer` and `save_campaign_params` options so it does not persist
+the raw landing URL for anonymous attribution. Event URL redaction remains in
+place; pageviews, consent and custom events still work. Initial referrer/campaign
+attribution is no longer collected. The regression test now waits for the flags
+request as well as the pageview before asserting that the token was never sent.

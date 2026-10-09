@@ -85,6 +85,10 @@ export function startAnalytics() {
       // Nobody signs in here, so there is no person to profile and no reason to
       // store one. Visitors stay anonymous.
       person_profiles: "identified_only",
+      // Initial attribution also feeds /flags requests, outside before_send.
+      // Avoid persisting the unfiltered landing URL of signed draft previews.
+      save_referrer: false,
+      save_campaign_params: false,
       respect_dnt: true,
       // Withdrawing consent must remove PostHog's persisted identifiers too.
       opt_out_persistence_by_default: true,

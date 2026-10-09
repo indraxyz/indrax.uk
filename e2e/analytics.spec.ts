@@ -111,6 +111,8 @@ test.describe("analytics", () => {
 
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
 
+    // Remote config/flags can arrive after the pageview and bypass before_send.
+    await expect.poll(() => analytics.everything(), { timeout: 20_000 }).toContain("/flags/")
     const payloads = analytics.everything()
     expect(payloads).not.toContain(token)
     // Redacted rather than dropped, so the page is still countable.
