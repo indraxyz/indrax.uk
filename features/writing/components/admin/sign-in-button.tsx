@@ -2,7 +2,6 @@ import { useState, useTransition } from "react"
 
 import { GithubIcon } from "@/components/ui/github-icon"
 import { controlClassNames } from "@/components/ui/variants"
-import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
 export function SignInButton({ retry = false }: { retry?: boolean }) {
@@ -19,6 +18,7 @@ export function SignInButton({ retry = false }: { retry?: boolean }) {
           setError(null)
           startTransition(async () => {
             try {
+              const { authClient } = await import("@/lib/auth-client")
               const result = await authClient.signIn.social({
                 provider: "github",
                 callbackURL: "/admin",

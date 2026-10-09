@@ -26,6 +26,35 @@ test.describe("sign-in failures", () => {
     await expect(page.getByRole("button", { name: "Try GitHub again" })).toBeVisible()
   })
 
+  test("loads the auth client only when sign-in is requested and handles a rejected start", async ({
+    page,
+  }) => {
+    const authChunks: string[] = []
+    page.on("request", (request) => {
+      if (/\/admin\/assets\/auth-client-[^/]+\.js$/.test(new URL(request.url()).pathname)) {
+        authChunks.push(request.url())
+      }
+    })
+    await page.route("**/api/auth/sign-in/social", async (route) => {
+      expect(route.request().method()).toBe("POST")
+      expect(route.request().postDataJSON().provider).toBe("github")
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "FIXTURE_REJECTED", message: "Fixture rejected sign-in." }),
+      })
+    })
+    await page.goto("/admin/login")
+    const signIn = page.getByRole("button", { name: "Continue with GitHub", exact: true })
+    await expect(signIn).toBeVisible()
+    expect(authChunks).toEqual([])
+    await signIn.click()
+    await expect(page.getByRole("alert")).toHaveText("Sign-in could not start. Please try again.")
+    expect(authChunks).toHaveLength(1)
+    await expect(signIn).toBeEnabled()
+    await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/login`)
+  })
+
   test("mobile sign-in menu offers theme controls without protected navigation", async ({
     page,
   }) => {

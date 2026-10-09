@@ -129,3 +129,25 @@ parser, after checking the resulting lockfile and CSS build.
 build pass after the parser change; generated public and admin CSS is byte-for-byte
 identical to the pre-upgrade build. This parser is used by the build-time typography
 plugin; the advisory is not evidence of the earlier Worker request CPU-limit errors.
+
+### Bundle-size follow-up
+
+The admin entry originally measured 510.37 kB minified (163.83 kB gzip). Loading
+the existing Better Auth client only inside sign-in/sign-out actions reduces it
+to 479.37 kB (152.16 kB gzip), removing the admin's 500 kB chunk warning. Its
+31.09 kB auth module is fetched on demand; no size-warning threshold is raised.
+
+The public PDF renderer remains a large lazy chunk, fetched only on download.
+Splitting it merely to remove a warning would not reduce the PDF work or its
+total download size. Browser tests verify it stays out of initial page loads and
+still generates a real PDF. Server chunks are Worker packaging, not browser
+entry downloads; invocation CPU and total compressed upload size remain separate
+measurements. See [Vite's chunk warning](https://vite.dev/config/build-options.html#build-chunksizewarninglimit)
+and [Rolldown splitting behavior](https://rolldown.rs/reference/OutputOptions.codeSplitting).
+
+After this follow-up, 18 focused Workerd browser tests pass: sign-in errors and
+lazy auth loading, session isolation/logout revocation, cross-origin rejection,
+upload limits and PDF generation/loading. This includes one new sign-in regression
+case; the others recheck previously passing coverage. The full migration baseline
+above and this focused run cover 157 distinct passing cases, with one optional R2
+case still skipped.

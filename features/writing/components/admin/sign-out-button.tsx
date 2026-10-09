@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { authClient } from "@/lib/auth-client"
 
 interface SignOutButtonProps {
   children: ReactNode
@@ -39,6 +38,7 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
     setFailed(false)
     startTransition(async () => {
       try {
+        const { authClient } = await import("@/lib/auth-client")
         const result = await authClient.signOut()
         if (result?.error) {
           setFailed(true)
