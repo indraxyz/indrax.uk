@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Layers } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { SeriesContext } from "@/features/writing/types"
@@ -31,8 +31,8 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
         </span>
         <span aria-hidden>·</span>
         <Link
-          prefetch={false}
-          href={`${WRITING_CONFIG.seriesPath}/${series.slug}`}
+          prefetch="none"
+          to={`${WRITING_CONFIG.seriesPath}/${series.slug}`}
           className="text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           {series.title}
@@ -43,8 +43,8 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
         <div className="mt-2 flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:justify-between sm:gap-4">
           {previous ? (
             <Link
-              prefetch={false}
-              href={articlePath(previous.slug)}
+              prefetch="none"
+              to={articlePath(previous.slug)}
               rel="prev"
               className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
@@ -59,8 +59,8 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
 
           {next ? (
             <Link
-              prefetch={false}
-              href={articlePath(next.slug)}
+              prefetch="none"
+              to={articlePath(next.slug)}
               rel="next"
               className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:justify-end"
             >

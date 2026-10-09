@@ -1,6 +1,4 @@
-import { AsyncLocalStorage } from "node:async_hooks"
-
-import { afterAll, beforeEach, expect, it, vi } from "vitest"
+import { beforeEach, expect, it, vi } from "vitest"
 
 import type { Post } from "@/features/writing/types"
 
@@ -12,38 +10,27 @@ vi.mock("@/features/writing/utils/content", () => ({
   renderDocument: vi.fn(async () => ({ html: "<p>Saved article</p>", headings: [] })),
 }))
 
-// Exercise Next's actual unstable_cache with an isolated storage adapter. This
-// verifies cache hits/invalidation rather than substituting the cache function.
-vi.stubGlobal("AsyncLocalStorage", AsyncLocalStorage)
+const cache = vi.hoisted(() => ({
+  entries: new Map<string, { value: unknown; tags: string[] }>(),
+  invalidated: new Set<string>(),
+}))
+vi.mock("@/lib/cache.server", () => ({
+  cachedRead: async (key: string, tags: string[], read: () => Promise<unknown>) => {
+    const entry = cache.entries.get(key)
+    if (entry && !entry.tags.some((tag) => cache.invalidated.has(tag))) return entry.value
+    const value = await read()
+    cache.entries.set(key, { value, tags })
+    return value
+  },
+}))
 const { getRenderedArticle } = await import("./rendered-article")
 const { renderDocument } = await import("@/features/writing/utils/content")
-
-interface StoredEntry {
-  value: { kind: string; data: { body: string } }
-  tags: string[]
-}
-
-const entries = new Map<string, StoredEntry>()
-const invalidated = new Set<string>()
-
+const { entries, invalidated } = cache
 beforeEach(() => {
   entries.clear()
   invalidated.clear()
   vi.mocked(renderDocument).mockClear()
-  vi.stubGlobal("__incrementalCache", {
-    generateSimpleCacheKey: async (key: string) => key,
-    get: async (key: string) => {
-      const entry = entries.get(key)
-      if (!entry || entry.tags.some((tag) => invalidated.has(tag))) return null
-      return { value: entry.value, isStale: false }
-    },
-    set: async (key: string, value: StoredEntry["value"], context: { tags: string[] }) => {
-      entries.set(key, { value, tags: context.tags })
-    },
-  })
 })
-
-afterAll(() => vi.unstubAllGlobals())
 
 const post = {
   id: "published-id",

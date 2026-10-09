@@ -1,5 +1,10 @@
 # indrax.uk — Writing Feature Spec (v2, codebase-matched)
 
+> Historical design/implementation record from the Next.js release. Feature and
+> security requirements remain useful; framework commands and route conventions
+> have been superseded by [current architecture](../ARCHITECTURE.md) and
+> [the React Router migration](react-router-migration.md).
+
 > **Repository copy.** This is the source technical spec for the writing feature.
 > It was written against `555f5dd` and several of the open questions in §0 have
 > since been resolved — see §1 of

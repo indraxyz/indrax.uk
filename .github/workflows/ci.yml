@@ -74,7 +74,7 @@ jobs:
       # The same stack `npm run db:up` starts locally, on the same ports, from the
       # same docker-compose.yml - so CI and a laptop cannot drift apart. The
       # application reaches Postgres through the Neon HTTP proxy on 4444, because
-      # that is the only protocol Workers can speak; drizzle-kit speaks the wire
+      # that is the transport used by our Worker driver; drizzle-kit speaks the wire
       # protocol and goes to 55432 directly.
       DATABASE_URL: postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require
       DIRECT_DATABASE_URL: postgres://indrax:indrax@127.0.0.1:55432/indrax

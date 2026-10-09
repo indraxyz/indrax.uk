@@ -86,7 +86,6 @@ export function ResumeDocument() {
         {/* Hero */}
         <View style={[styles.card, { backgroundColor: styles.chipPrimary.backgroundColor }]}>
           <View style={[styles.cardBody, styles.hero]}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image takes no alt */}
             <Image src="/foto-profile.jpg" style={styles.heroPhoto} />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroName}>{firstName.toUpperCase()}</Text>

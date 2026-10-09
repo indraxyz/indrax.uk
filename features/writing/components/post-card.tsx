@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 import { Card, CardContent, CardHeader, CardTitle, type CardTitleLevel } from "@/components/ui/card"
 import { PostCover } from "@/features/writing/components/post-cover"
@@ -31,8 +31,8 @@ export function PostCard({ post, priority = false, headingLevel = 2 }: PostCardP
               nesting them would be invalid. The title carries the navigation and
               stretches its hit area over the card instead. */}
           <Link
-            prefetch={false}
-            href={`${WRITING_CONFIG.basePath}/${post.slug}`}
+            prefetch="none"
+            to={`${WRITING_CONFIG.basePath}/${post.slug}`}
             className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:underline"
           >
             {post.title}

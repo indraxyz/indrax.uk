@@ -1,5 +1,3 @@
-"use client"
-
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react"
 import {
   BetweenHorizontalEnd,
@@ -274,9 +272,8 @@ function Toolbar({ editor }: { editor: Editor }) {
  * Reads `WRITING_EXTENSIONS` - the same list the server renderer reads - so what is
  * written here and what is published cannot describe different schemas.
  *
- * `immediatelyRender: false` because this is rendered inside a Next server tree:
- * letting Tiptap paint during SSR produces markup the client then disagrees with,
- * and the hydration error that follows is the confusing kind.
+ * The admin is browser-only. Delaying initialization until the first effect
+ * keeps the editor lifecycle aligned with React mounting and its placeholder.
  */
 export function PostEditor({ value, onChange }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)

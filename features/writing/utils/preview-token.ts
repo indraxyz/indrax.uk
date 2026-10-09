@@ -1,4 +1,5 @@
-import "server-only"
+import { PREVIEW_TTL_MS } from "./preview-config"
+import { serverEnv } from "@/lib/runtime.server"
 
 /**
  * Signed, expiring tokens that make one unpublished post readable.
@@ -20,10 +21,10 @@ const ENCODER = new TextEncoder()
 // Long enough to read a draft and reply, short enough that a link forwarded on
 // months later is dead. The window is deliberately not configurable: an
 // indefinite preview token is just an unpublished post with a secret URL.
-export const PREVIEW_TTL_MS = 60 * 60 * 1000
+export { PREVIEW_TTL_MS } from "./preview-config"
 
 function secret(): string {
-  const value = process.env.BETTER_AUTH_SECRET
+  const value = serverEnv("BETTER_AUTH_SECRET")
 
   if (!value) {
     throw new Error("BETTER_AUTH_SECRET is required to sign preview tokens.")

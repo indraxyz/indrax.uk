@@ -23,6 +23,7 @@ test.describe("a seeded writing archive", () => {
   test("puts archive tags after the search form", async ({ page }) => {
     await page.goto("/writing")
 
+    await expect(page.getByRole("navigation", { name: "Tags" })).toBeVisible()
     const search = await page.getByRole("search").boundingBox()
     const tags = await page.getByRole("navigation", { name: "Tags" }).boundingBox()
     expect(search).not.toBeNull()
@@ -133,7 +134,7 @@ test.describe("a seeded writing archive", () => {
     expect(await page.content()).not.toContain(SEEDED_DRAFT_SLUG)
   })
 
-  test("filters by tag and stays indexable", async ({ page }) => {
+  test("filters writing cards by tag through the client API", async ({ page }) => {
     await page.goto(`/writing/tags/${SEEDED_TAG_SLUG}`)
 
     // Named, or this asserts nothing - every page on the site has a heading.

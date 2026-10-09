@@ -1,7 +1,7 @@
 import { variantClassNames, type VisualVariant } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 import { ArrowRight, ExternalLink } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 import type { ReactNode } from "react"
 
 export interface SectionLink {
@@ -72,8 +72,8 @@ export function SectionHeader({
         )}
         {link && (
           <Link
-            prefetch={false}
-            href={link.href}
+            prefetch="none"
+            to={link.href}
             {...(isExternal(link.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-current opacity-85 transition hover:opacity-100 hover:underline"
           >

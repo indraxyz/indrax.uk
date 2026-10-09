@@ -98,6 +98,7 @@ test.describe("sessions", () => {
     const { context } = await contextWith(browser)
     const page = await context.newPage()
     await page.goto("/admin/posts")
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
     await expect(page.getByRole("main").getByRole("link", { name: /View Writing/i })).toHaveCount(0)
     const desktopLinks = await page
       .getByRole("navigation", { name: "Admin", exact: true })
@@ -271,6 +272,24 @@ test.describe("sessions", () => {
     await expect(replayed).toHaveURL(/\/admin\/login/)
 
     await replay.close()
+    await context.close()
+  })
+
+  test("rejects cross-origin writing mutations even with a valid author session", async ({
+    browser,
+  }) => {
+    const { context } = await contextWith(browser)
+    // APIRequestContext does not automatically replay Secure cookies to HTTP
+    // loopback. Carry the signed cookie explicitly to exercise CSRF after auth.
+    const cookie = (await context.cookies()).map(({ name, value }) => `${name}=${value}`).join("; ")
+    const session = await context.request.get("/api/admin/session", { headers: { cookie } })
+    expect((await session.json()).author).toBeTruthy()
+    const response = await context.request.post("/api/admin/posts", {
+      headers: { origin: "https://attacker.example", cookie },
+      data: { title: "Cross-origin injection", status: "published", tags: [] },
+    })
+    expect(response.status()).toBe(403)
+    expect(await response.text()).not.toContain("requireAuthor")
     await context.close()
   })
 

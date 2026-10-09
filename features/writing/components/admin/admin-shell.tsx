@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { Link } from "react-router"
 import type { ReactNode } from "react"
 
 import { Breadcrumb } from "@/components/ui/breadcrumb"
@@ -33,8 +33,7 @@ export function AdminShell({
         <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex items-center justify-between gap-4">
             <Link
-              prefetch={false}
-              href="/admin"
+              to="/admin"
               aria-current={activePage === "home" ? "page" : undefined}
               className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
             >
@@ -57,7 +56,7 @@ export function AdminShell({
                       ...(backLink ? [{ name: backLink.label, path: backLink.href }] : []),
                       { name: title },
                     ]
-                  : [{ name: "Home", path: "/" }, { name: title }]
+                  : [{ name: "Home", path: "/", reloadDocument: true }, { name: title }]
               }
             />
           )}

@@ -1,7 +1,6 @@
 import type { Root } from "hast"
 import rehypePrettyCode from "rehype-pretty-code"
-import { createHighlighter } from "shiki"
-import { createJavaScriptRegexEngine } from "shiki/engine/javascript"
+import { createHighlighter } from "./shiki-bundle"
 import { unified } from "unified"
 
 // Shiki themes for the two site themes. Both are emitted in one pass as
@@ -22,8 +21,7 @@ const processor = unified()
   .use(rehypePrettyCode, {
     theme: CODE_THEMES,
     // Cloudflare Workers cannot dynamically compile Oniguruma's WASM.
-    getHighlighter: (options) =>
-      createHighlighter({ ...options, engine: createJavaScriptRegexEngine() }),
+    getHighlighter: (options) => createHighlighter(options),
     keepBackground: false,
   })
   .freeze()

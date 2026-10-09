@@ -10,7 +10,11 @@ const mocks = vi.hoisted(() => ({
   updateTag: vi.fn(),
 }))
 vi.mock("@/lib/auth-guard", () => ({ requireAuthor: mocks.requireAuthor }))
-vi.mock("next/cache", () => ({ updateTag: mocks.updateTag }))
+vi.mock("@/lib/cache.server", () => ({
+  invalidateTags: async (...tags: string[]) => {
+    tags.forEach((tag) => mocks.updateTag(tag))
+  },
+}))
 vi.mock("@/features/writing/data/queries", () => ({
   CACHE_TAGS: { posts: "posts", post: (slug: string) => `post:${slug}` },
 }))

@@ -1,10 +1,7 @@
-import "server-only"
-
-import { unstable_cache } from "next/cache"
+import { cachedRead } from "@/lib/cache.server"
 
 import { CACHE_TAGS } from "@/features/writing/data/queries"
 import type { Post, RenderedArticle } from "@/features/writing/types"
-import { renderDocument } from "@/features/writing/utils/content"
 
 // Bump this when the rendering/sanitization rules change. A cached article must
 // never bypass a new sanitizer policy just because its stored document is old.
@@ -16,9 +13,19 @@ export function getRenderedArticle(post: Post): Promise<RenderedArticle> {
     throw new Error("Only published articles may use the public render cache.")
   }
 
-  return unstable_cache(
-    () => renderDocument(post.content),
-    ["writing", "rendered-article", RENDER_VERSION, post.id, post.slug, post.updatedAt],
-    { tags: [CACHE_TAGS.post(post.slug)] }
-  )()
+  return cachedRead(
+    JSON.stringify([
+      "writing",
+      "rendered-article",
+      RENDER_VERSION,
+      post.id,
+      post.slug,
+      post.updatedAt,
+    ]),
+    [CACHE_TAGS.post(post.slug)],
+    async () => {
+      const { renderDocument } = await import("@/features/writing/utils/content")
+      return renderDocument(post.content)
+    }
+  )
 }

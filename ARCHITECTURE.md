@@ -1,306 +1,138 @@
-# Architecture Overview
+# Architecture
 
-This document describes the architecture and design decisions for the Resume/CV website.
+The site uses React Router **8.4.0** Framework Mode on Cloudflare Workers. The admin
+is a separately built React application using browser routing. Vite produces both
+bundles; the Cloudflare Vite plugin packages the SSR Worker and client assets.
+Next.js/OpenNext conventions and React Server Components are removed.
 
-## 📐 Project Structure
+## Request paths
 
-```
-├── app/                      # Next.js App Router
-│   ├── layout.tsx           # Root layout, metadata, and the theme bootstrap
-│   ├── page.tsx             # Server entry for the home page
-│   ├── writing/             # Archive, article, tags, search, series, preview, feed and OG card
-│   ├── admin/               # Authoring, behind the auth guard
-│   ├── api/                 # Better Auth endpoints and presigned uploads
-│   ├── not-found.tsx        # Site-wide 404, also what a draft looks like
-│   ├── robots.ts            # Generated /robots.txt
-│   ├── sitemap.ts           # Generated /sitemap.xml - async, queries the database
-│   └── globals.css          # Global styles with Tailwind v4
-│
-├── components/              # Shared UI primitives
-│   ├── theme-toggle.tsx     # Light / dark / system switcher
-│   └── ui/                  # shadcn/ui base components
-│       ├── avatar.tsx
-│       ├── badge.tsx
-│       ├── breadcrumb.tsx   # Server-rendered public/admin ancestor navigation
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── drawer.tsx
-│       ├── popover.tsx
-│       ├── section-card.tsx # Card + header composition used by every section
-│       ├── section-header.tsx
-│       ├── separator.tsx
-│       ├── timeline.tsx
-│       └── variants.ts      # Visual variant tokens
-│
-├── features/
-│   ├── writing/
-│   │   ├── components/      # Cards, list section, article body, chrome
-│   │   ├── data/            # Drizzle reads, cache-tagged
-│   │   ├── editor/          # The frozen Tiptap extension set
-│   │   ├── utils/           # Content pipeline, slug, reading time, JSON-LD
-│   │   ├── social-card.tsx  # Per-article link-preview banner
-│   │   ├── config.ts        # WRITING_CONFIG and section copy
-│   │   └── types.ts         # Post, Tag, PostStatus
-│   └── resume/
-│       ├── components/      # Feature UI, section cards, and drawer
-│       ├── data/            # Resume source content
-│       ├── utils/           # Feature-specific derived helpers
-│       ├── config.ts        # Resume config and links
-│       └── types.ts         # Resume domain types
-│
-├── lib/                     # Shared, framework-level helpers
-│   ├── auth.ts             # Better Auth instance and the allow-list
-│   ├── auth-guard.ts       # requireAuthor() - the authorization boundary
-│   ├── db/                 # Drizzle schema, client, seed
-│   ├── og/                 # Font loading for the server-drawn cards
-│   ├── validators/         # Zod schemas
-│   ├── theme.ts            # Theme storage key, event, and default
-│   └── utils/
-│       ├── cn.ts           # Class name utility (clsx + tailwind-merge)
-│       ├── date.ts         # Date formatting utilities
-│       ├── media.ts        # Cover-image host allow-list
-│       └── index.ts        # Barrel export
-│
-└── public/                  # Static assets
-    └── foto-profile.jpg    # Profile image
+```mermaid
+flowchart LR
+  Browser --> Worker
+  Worker -->|public SEO route| RR[React Router SSR]
+  Worker -->|admin navigation| Assets[Static admin shell/assets]
+  Worker -->|writing/admin API| API[Backend handlers]
+  Worker -->|feed/image/upload/auth| Resources[Resource handlers]
+  Assets -->|Ky + TanStack Query| API
+  RR --> Public[Public writing reads]
+  API --> Public
+  API --> Guard[Author guard]
+  Guard --> Private[Private reads/mutations]
+  Public --> Cache[KV + D1 revisions]
+  Public --> Neon[Neon HTTP + Drizzle]
+  Private --> Neon
 ```
 
-## 🏗️ Architecture Principles
+`workers/app.ts` dispatches early and dynamically imports the relevant server
+handler. Admin navigation serves `admin/index.html`; it never imports the public
+React SSR tree. A missing session cookie can redirect the browser to login,
+but cookie presence is only a navigation convenience. Every private API and
+underlying data operation verifies the actual session and numeric GitHub allowlist.
 
-### 1. **Separation of Concerns**
+`lib/runtime.server.ts` stores Request, Worker bindings and execution context in
+AsyncLocalStorage. Concurrent requests keep separate contexts. Server modules use
+this context for runtime secrets; build tools define an explicit safe public
+variable allowlist. The retained `NEXT_PUBLIC_*` names and `NEXT_*` cache binding
+names preserve existing configuration, not Next.js code.
 
-- **Feature ownership**: Resume code lives together under `features/resume/`
-- **Data**: Resume source data is separated into `features/resume/data/resume.ts`
-- **Types**: Resume domain types live in `features/resume/types.ts`
-- **Components**: UI components are separated from business logic
-- **Utilities**: Shared utilities stay in `lib/utils/`, while resume-specific derivations live in `features/resume/utils/`
+## Rendering policy
 
-### 2. **Type Safety**
+| Route/content                       | Policy                      | Reason                                                                        |
+| ----------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `/`, `/resume`, `/tech-stack`       | SSR                         | Profile content and metadata are meaningful before JavaScript                 |
+| Home recent-writing section         | CSR/API                     | Avoid querying/rendering cards in profile SSR                                 |
+| `/writing`, tag/search/series cards | CSR/API inside public shell | Browser owns list/search state and loading/error UI                           |
+| `/writing/:slug`                    | SSR                         | Full article HTML, canonical, metadata and JSON-LD for SEO                    |
+| `/writing/:slug/preview`            | CSR/signed API              | Private draft preview does not need SEO or React SSR                          |
+| `/admin/*`                          | Independent CSR application | Dashboard/editor/data are private and do not need SEO                         |
+| RSS/sitemap/robots/social cards     | Resource responses          | Machine-readable metadata and images stay available without client JavaScript |
 
-- Full TypeScript implementation
-- All data structures are typed
-- Component props are strictly typed
-- No `any` types used
+A public writing page shell may still use the public SSR layout; its cards/results
+are not fetched or rendered on the server. Admin is fully independent of SSR.
+CSR does not eliminate server authentication, validation, database or rendering
+work in preview APIs. Published article SSR and first-time syntax highlighting
+remain potentially expensive and must be measured in deployed CPU profiles.
 
-### 3. **Component Reusability**
+## Client state and API contracts
 
-- Shared UI primitives in `components/ui/`
-- Resume-specific components in `features/resume/components/`
-- Base UI components from shadcn/ui
-- Consistent component patterns
+`components/query-provider.tsx` creates the QueryClient for each application.
+Queries have a one-minute stale time, no automatic retry and no focus refetch;
+mutations are never retried. Session queries deliberately require freshness when
+admin access is checked. Save/status/delete invalidate the affected admin/public
+keys rather than reloading the document. Ky uses same-origin credentials and a
+bounded timeout. Loading, empty and error states are different UI states.
 
-### 4. **Maintainability**
+API functions in `features/writing/api/client.ts` return typed DTOs. The backend
+handler is `features/writing/api/server.ts`; SQL stays in the data layer.
 
-- Feature-based folder structure
-- Smaller focused components for sidebar cards and sections
-- Derived values are computed from source data instead of duplicated
-- Single source of truth for data
+| Endpoint                                                                 | Access                                           |
+| ------------------------------------------------------------------------ | ------------------------------------------------ |
+| `GET /api/writing/posts`, `/recent`, `/tags`, `/search`, `/series/:slug` | Published-only query layer                       |
+| `GET /api/writing/preview/:slug?token=...`                               | Valid signed, expiring token for this exact slug |
+| `GET /api/admin/session`                                                 | Session state only; anonymous author is null     |
+| `GET /api/admin/overview`, `/posts`, `/posts/:id`                        | Author session required                          |
+| `POST /api/admin/posts`                                                  | Author, same Origin, JSON, validated save        |
+| `PATCH /api/admin/posts/:id/status`                                      | Author, same Origin, validated status            |
+| `DELETE /api/admin/posts/:id`, `POST /api/admin/posts/:id/preview`       | Author, same Origin, JSON                        |
 
-### 5. **Developer Experience**
+Mutation bodies are streamed with a 512 KiB ceiling before JSON parsing, including
+requests without Content-Length. Untrusted IDs, tags, limits and page numbers are
+validated/bounded before SQL/cache access. Document validation occurs once in the
+mutation; the server computes reading time, derived excerpt and timestamps.
+Responses use structured safe errors and `no-store`. A 401 never returns private
+post data. Preview tokens are bounded and verified before the database; the API
+returns sanitized HTML/headings and metadata without raw document duplication.
 
-- TypeScript for autocomplete and type checking
-- ESLint for code quality
-- Prettier for code formatting
-- Clear naming conventions
-- Comprehensive README
-- [Test suite guide](docs/testing.md): inventory, fixture setup, reports, CI, and coverage limits
+## Database and cache boundaries
 
-## 🔄 Data Flow
+Public reads enforce published status, publication date and content presence.
+There is no boolean flag that can make a public query include drafts. Admin reads
+live separately and never persist in KV. Minimal list projections omit bodies;
+related tags are aggregated within SQL. Count/page pairs and post/tag writes use
+Drizzle's existing Neon HTTP batch API. A failed post/tag write rolls back that
+batch; series metadata resolution remains outside the batch, matching the existing
+save behavior.
 
-The site now has two sources of truth, one per feature slice. The resume is a
-committed file; the writing archive is backed by a database. The shape of the two flows is deliberately
-identical below the source, so a route composes the same way either way.
+`lib/cache.server.ts` memoizes public reads within one Request, even without storage.
+Persistent cache keys include D1 invalidation revisions and use a new namespace
+prefix so old OpenNext entries are never reused. KV entries expire after one hour;
+D1 stores tag revisions in the existing `revalidations` table. Mutations await
+invalidation, then clear request memo/version state. Background KV writes use
+`waitUntil` when available. Public rendered articles are keyed by post ID, slug,
+saved revision and renderer version; bump the renderer version after policy changes.
+Draft preview rendering is always uncached.
 
-```
-features/resume/data/resume.ts (Source of Truth)     Neon Postgres (Source of Truth)
-    ↓                                                     ↓  lib/db/schema.ts
-features/resume/types.ts (Type Definitions)               ↓  features/writing/data/queries.ts
-    ↓                                                     ↓  features/writing/types.ts
-features/resume/components/resume-page.tsx                ↓  app/writing/** (thin route entries)
-    ↓                                                     ↓
-features/resume/components/ (Feature Components)     features/writing/components/
-    ↓                                                     ↓
-components/ui/ (Base UI Components)                  components/ui/
-```
+KV propagation can cause misses/recomputation. D1 revision keys prevent a stale
+KV entry from bypassing invalidation. This cache reduces repeated work but cannot
+guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 
-## 📦 Key Design Decisions
+## Shared feature responsibilities
 
-### Why This Structure?
+- Route modules compose existing feature components and export React Router loaders
+  and metadata. They do not implement separate SQL or authorization rules.
+- `features/home` and `features/resume` own profile data, PDF/social-card compositions.
+  The PDF renderer loads only on download in the browser.
+- `features/writing` owns query contracts, editor extensions, sanitized content,
+  publishing rules, card/article components and preview policy.
+- `components/ui` provides shared primitives and variants; feature CSS uses Tailwind
+  and the site theme. Public/admin navigation uses React Router links and explicit
+  active-state helpers.
+- Consent gates PostHog initialization and storage; analytics helpers avoid draft,
+  admin, auth and token leakage. Security headers remain centralized at the Worker.
 
-1. **Scalability**: Easy to add new sections or features
-2. **Maintainability**: Clear separation makes updates easy
-3. **Testability**: Components and utilities can be tested independently
-4. **Reusability**: Components can be reused across the application
-5. **Type Safety**: TypeScript catches errors at compile time
+## Build, quality and review
 
-### Component Organization
+`npm run build` creates the SSR Worker and admin bundle and checks their assembled
+artifacts. `npm run type-check` generates Wrangler binding/runtime types and React
+Router route types before TypeScript, so fresh checkouts need no pre-existing
+generated files. The generated runtime types replace `@cloudflare/workers-types`.
+Vitest covers deterministic behavior and handler boundaries; isolated database tests
+verify real query counts and transaction rollback. Playwright runs the built app in
+Workerd. Configuration and fixtures are described in [testing](docs/testing.md).
 
-- **Shared page framing**: `WritingShell` composes `PublicShell`; the Stack page
-  uses the same `SectionHeader` as Writing and resume sections. The home hero
-  surface meets the navigation and spans the viewport without a shadow, while its content and other home
-  sections retain `SITE_CONTAINER_CLASS`. `HeroSection` exposes `showSkills` so home
-  can omit the skill badges while resume retains them. Experience content comes
-  from shared resume data consumed by both the public page and PDF.
-- **Breadcrumbs are explicit ancestry**: the shared server component renders a
-  labelled navigation landmark, an ordered list, ancestor links, and an unlinked
-  current page with `aria-current`. Routes supply article, tag, and series labels
-  from their data, sharing the trail with existing JSON-LD. Preview trails omit
-  an unpublished article link and the token. Admin uses the dashboard and Posts
-  as ancestors; sign-in returns to the public home. Home has no ancestor trail.
-- **Resume sections adapt to the viewport**: experience uses one timeline at every
-  viewport size. On mobile its section is capped at 100svh with a keyboard-accessible
-  vertical scroll pane; desktop and print show the full timeline without the cap.
-  The Stack rail extends to both screen edges, with horizontally scrollable
-  cards using the shared rail sizing and bounded content panes, like the portfolio.
-  Its width uses the resume page's inline-size container, excluding the browser
-  scrollbar, and returns to the content width in print.
-- **Scrolling panes are regions**: any pane that scrolls — a height-capped card
-  body or a horizontal rail — is focusable and carries an `aria-label`, so keyboard
-  users can reach content that is off-screen
-- **Print carries everything**: the sidebar lives in a drawer that unmounts while
-  closed, so `resume-page.tsx` renders a print-only copy and `globals.css` drops the
-  portalled drawer from the printed sheet
-- **Asset paths follow the renderer, not the repo**: react-pdf and Satori both pick
-  how to load a font or image from the shape of its `src` - a URL is fetched,
-  anything else is opened as a filesystem path. The social card is drawn on the
-  server, so `features/resume/social-card.tsx` resolves every asset against
-  `process.cwd()`. The PDF is drawn in the browser, so `features/resume/pdf/theme.ts`
-  keeps browser-relative sources such as `/fonts/x.ttf`. Swapping either one for the
-  other's form breaks quietly: on the server a browser path is a silent ENOENT, and
-  in the browser a `process.cwd()` path is fetched as `/public/fonts/...` and 404s
-- **The PDF is drawn in the browser, on demand**: `download-resume-button.tsx`
-  imports react-pdf and the document dynamically, so the renderer is code-split out
-  of the initial bundle and only fetched when someone asks for the file. It stays a
-  client render because a server route would put a Node-native renderer, its font
-  loading, and a build-time prerender in the path of a file almost nobody requests
-- **Section composition**: Every section — the six drawer cards and the three main
-  sections — renders through `components/ui/section-card.tsx`, which owns the card
-  frame, the header bar, and the `card` / `ghost` variants
-- **Content is sanitised on the way out, not on the way in**: article bodies are
-  stored as the editor's own ProseMirror document and pass through
-  `rehype-sanitize` at render, before the highlighter runs. Sanitising on save
-  alone would be a check that stored content can outlive; ordering it before
-  `rehype-pretty-code` is what lets the highlighter's own `style` attributes
-  survive a filter the author cannot reach. The renderer emits stored attributes
-  without judging them - a document carrying `src="javascript:..."` produces
-  exactly that - so this is the only thing between the database and the reader
-- **Code highlighting uses Shiki's JavaScript regex engine**: `rehype-pretty-code`
-  receives the engine through its existing `getHighlighter` option and caches the
-  highlighter. This supports cold dynamic article and preview renders on Workers,
-  which reject runtime compilation of Oniguruma WebAssembly. Sanitization still
-  runs before highlighting; light and dark palettes remain in the HTML.
-- **The extension set is a compatibility surface**: a stored document only means
-  anything against the extensions that produced it, so `WRITING_EXTENSIONS` is one
-  exported constant. Removing an extension makes every document containing that
-  node render wrong, silently, because an unknown node is dropped rather than
-  raised
-- **Reading costs no JavaScript, and the extras keep it that way**: the contents
-  list is server-rendered anchors, the view counter is an `<img>` rather than a
-  beacon - so it counts cached pages and readers with scripting off, which a
-  beacon would miss - and the code-copy buttons are attached after load, so a
-  reader without JavaScript sees no dead controls rather than broken ones
-- **The draft preview is its own route, not a query parameter**: the spec asked
-  for `/writing/{slug}?preview=…`, and building it that way turned every article
-  from prerendered into on-demand, because a page that reads `searchParams`
-  cannot be static. That meant re-running the highlighter on every read of every
-  published article to support a feature used a few times a month
-- **One path to a session, and the allow-list is on it**: OAuth account linking is
-  disabled, because Better Auth's default links an incoming account to an existing
-  user matched by verified email - and that path never calls `createUser`, so the
-  hook the allow-list lives in would never have run. Any future auth change has to
-  keep that property: if there is a second way to get a session, the allow-list has
-  to be on that one too
-- **A guard that cannot evaluate its input denies**: the absolute session cap used
-  to skip itself when `createdAt` was unparseable. Failing open is the default
-  shape of a mistake like that, and the only defence is writing the condition the
-  other way round
-- **`proxy.ts` is a redirect; `requireAuthor()` is the boundary**: a server action
-  is a POST identified by a header, reachable without touching the routing the
-  proxy sees. So every admin page, every mutating action and the upload route
-  re-check authorisation for themselves, and the suite proves it by forging a
-  session cookie - which walks past the proxy and must still be refused
-- **An absent database is a state, not an error**: `getDb()` returns `null` when
-  `DATABASE_URL` is unset and every query returns the empty result, so a fresh
-  clone, a CI build and a preview without a branch all build and serve the resume.
-  Query failures take the same path, so a database outage renders `/writing` empty
-  rather than crashing the only page the site has
-- **Article rendering ships no JavaScript**: the markdown pipeline and Shiki run in
-  a server component and the page receives finished HTML. That is what keeps the
-  article readable with JavaScript disabled, and why theme switching repaints code
-  from CSS custom properties rather than by re-highlighting
-- **Prose overrides are unlayered**: Tailwind Typography emits its `.prose` rule at
-  the same specificity as ours, so source order decides. Anything inside
-  `@layer base` is emitted first and silently loses — which showed up as correct
-  fonts and wrong colours
-- **UI Components** (`components/ui/`): Base design system components
-- **Resume Feature** (`features/resume/`): Domain-specific data, types, config, and components
-- **Page Components** (`app/`): Thin route entry points
-
-### Data Management
-
-- Resume data stays in one feature-owned file for easy updates
-- Data is typed for safety
-- Derived values such as age are computed from raw data
-
-## 🛠️ Development Workflow
-
-1. **Update Data**: Edit `features/resume/data/resume.ts`
-2. **Add Types**: Update `features/resume/types.ts` if needed
-3. **Create Components**: Add feature components under `features/resume/components/` or shared primitives under `components/ui/`
-4. **Use in Pages**: Compose feature entry points from `app/page.tsx`
-
-## 📝 Code Style
-
-- **TypeScript**: Strict mode enabled
-- **Naming**: PascalCase for components, camelCase for functions
-- **Imports**: Absolute imports using `@/` alias
-- **Formatting**: Prettier with consistent config
-- **Linting**: ESLint with Next.js config
-
-## 🚀 Future Improvements
-
-Potential enhancements:
-
-- [x] Add E2E tests with Playwright
-- [x] Add a downloadable PDF export of the resume - react-pdf, rendered client-side
-- [x] Add analytics - PostHog, key-gated and consent-gated
-- [x] Surface contact details in the hero (email, LinkedIn, GitHub)
-- [x] Add unit tests with Vitest — 76 covering slug collision, reading time, the
-      content pipeline, preview tokens and the Zod schemas
-- [x] `style-src`, `connect-src`, `frame-src`, `media-src`, `worker-src` and
-      `manifest-src` added to the Content-Security-Policy
-- [ ] `script-src`, which needs a per-request nonce. Deferred with a measurement
-      rather than a shrug: the nonce forces every prerendered page to render per
-      request, at ~430ms of CPU per cold article, which worsens T-11 (denial of
-      wallet) to buy defence-in-depth behind an already-tested sanitiser. See
-      §15.4 of `docs/writing-implementation-plan.md`
-- [x] Full-text search — Postgres `tsvector`, generated from the Tiptap document
-      and weighted so titles outrank body text
-- [x] Series — an ordered run of posts, with an index page and article navigation
-      that counts only the parts a reader can actually open
-- [ ] `pgvector` semantic search (see `docs/writing-implementation-plan.md` §16)
-- [ ] Giscus comments
-- [ ] Add Storybook for component documentation
-- [ ] Add i18n support for multiple languages
-- [ ] Enforce import ordering with an ESLint rule
-- [x] Cookie-consent gate before analytics runs for UK/EU visitors — the tracker
-      never starts until the visitor agrees, and no cookie is set before then
-- [x] Correlation ids on server errors, keyed on the digest the reader is shown
-- [x] Dependabot, and the CI gate that makes its pull requests verifiable
-- [x] Playwright in CI — the repository's own compose stack, so the runner and a
-      laptop cannot drift apart
-
-### Sign-in failures
-
-GitHub account rejection throws a coded `APIError` (`account_not_permitted`) before any user is created. Better Auth redirects OAuth failures to `/admin/login` through `errorCallbackURL` and the fallback `onAPIError.errorURL`. The existing sign-in screen displays fixed messages for denied accounts, expired state and cancelled attempts, with retry and home navigation. Unknown codes use generic copy; provider descriptions are never rendered. Account linking remains disabled and the author guard still checks every protected request. Callback regression tests use the real Better Auth handler with an isolated memory adapter and stubbed GitHub responses.
-
-### Revision date
-
-`next.config.ts` resolves the latest Git commit date once and injects public build
-metadata through Next.js `env`. Footer, resume PDF, ProfilePage `dateModified`,
-and home/resume/Stack sitemap dates share it. The footer displays the full calendar
-date in UTC. Rebuilding the same revision keeps its date; opening a page does not
-claim a new update. Restart `npm run dev` after changing revisions to refresh
-build metadata. Builds from source archives without Git must supply
-`NEXT_PUBLIC_SITE_UPDATED_AT=YYYY-MM-DD`; malformed dates fail the build.
-Database-authored articles retain their own publication/update dates.
+Changes should use existing feature modules, React Router mechanisms and API
+contracts; avoid reintroducing server-only dependencies into browser imports.
+Build directories and generated type files are ignored. Database schema changes
+use Drizzle migrations. CI owns approved deployment to isolated dev/production
+Worker resources. No migration work itself authorizes shipping.

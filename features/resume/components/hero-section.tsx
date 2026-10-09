@@ -1,5 +1,3 @@
-import Image from "next/image"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { ContactLinks } from "@/features/resume/components/contact-links"
 import { DownloadResumeButton } from "@/features/resume/components/download-resume-button"
@@ -40,17 +38,18 @@ export function HeroSection({
             data-print-clip
             className="relative hidden w-36 shrink-0 self-stretch overflow-hidden border-2 border-[var(--variant-border)] print:block"
           >
-            <Image
+            <img
               src="/foto-profile.jpg"
               alt={personalInfo.name}
-              fill
+              width={320}
+              height={400}
               // It occupies ~25mm on the sheet, so 320px lands just past 300dpi:
               // sharp in print without the file weight of a larger source.
               sizes="320px"
               // Above the fold and the only image on the printed sheet: lazy
               // loading risks the print starting before it decodes.
-              priority
-              className="object-cover object-center"
+              loading="eager"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
           </div>
 

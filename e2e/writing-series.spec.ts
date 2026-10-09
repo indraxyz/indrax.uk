@@ -39,14 +39,16 @@ test.describe("a series", () => {
   test("leaves the unpublished part out entirely", async ({ page }) => {
     await page.goto(`/writing/series/${SEEDED_SERIES_SLUG}`)
 
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(SEEDED_SERIES_TITLE)
     expect(await page.content()).not.toContain(SEEDED_DRAFT_SLUG)
     await expect(page.getByText(SEEDED_DRAFT_TITLE)).toHaveCount(0)
   })
 
-  test("404s a series nobody has written", async ({ page }) => {
+  test("shows an unavailable series after the client API resolves", async ({ page }) => {
     const response = await page.goto("/writing/series/no-such-series")
 
-    expect(response?.status()).toBe(404)
+    expect(response?.status()).toBe(200)
+    await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible()
   })
 
   test("tells a reader where the article sits, counting only what they can open", async ({

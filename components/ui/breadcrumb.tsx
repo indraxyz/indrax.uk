@@ -1,9 +1,10 @@
 import { ChevronRight } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 
 export interface BreadcrumbItem {
   name: string
   path?: string
+  reloadDocument?: boolean
 }
 
 export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
@@ -17,8 +18,9 @@ export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
             {index > 0 && <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />}
             {index < items.length - 1 && item.path ? (
               <Link
-                prefetch={false}
-                href={item.path}
+                prefetch="none"
+                to={item.path}
+                reloadDocument={item.reloadDocument}
                 className="break-words hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {item.name}

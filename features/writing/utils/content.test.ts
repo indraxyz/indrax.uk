@@ -206,6 +206,20 @@ describe("renderDocument — accessibility of generated markup", () => {
     expect(html).toContain("--shiki-dark")
   })
 
+  it("keeps unsupported code languages readable without loading another grammar", async () => {
+    const html = await render(
+      doc({
+        type: "codeBlock",
+        attrs: { language: "unknown-language" },
+        content: [text("unrecognized <sample> code")],
+      })
+    )
+    expect(html).toContain("unrecognized")
+    expect(html).toMatch(/(?:&lt;|&#x3C;)sample(?:&gt;|>)/)
+    expect(html).toContain("code")
+    expect(html).not.toContain("<sample>")
+  })
+
   it("wraps a table in a named, focusable scroll region", async () => {
     const html = await render(
       doc({

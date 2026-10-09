@@ -1,7 +1,5 @@
-"use client"
-
 import { FileText, House, LogOut, Menu, PencilLine, UserRound, X } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router"
 import { useEffect, useState } from "react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -52,9 +50,9 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
           <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
             {links.map(({ href, label, page, icon: Icon }) => (
               <Link
-                prefetch={false}
                 key={href}
-                href={href}
+                reloadDocument={page === null}
+                to={href}
                 aria-label={label}
                 title={page === "home" ? label : undefined}
                 aria-current={activePage === page ? "page" : undefined}
@@ -106,9 +104,9 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
               <nav aria-label="Admin" className="flex flex-col gap-2">
                 {links.map(({ href, label, page, icon: Icon }) => (
                   <Link
-                    prefetch={false}
                     key={href}
-                    href={href}
+                    reloadDocument={page === null}
+                    to={href}
                     onClick={() => setOpen(false)}
                     aria-current={activePage === page ? "page" : undefined}
                     className={cn(

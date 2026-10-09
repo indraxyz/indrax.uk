@@ -21,7 +21,7 @@ test.describe("the social card", () => {
   test("is reused for the Twitter/X card rather than built twice", async ({ page }) => {
     await page.goto("/")
 
-    // Next derives `twitter:image` from the Open Graph route, so there is no second
+    // Shared metadata uses the same image URL for Open Graph and Twitter, with no second
     // card to keep in step - and no `twitter-image` file in a codebase that has
     // nothing else to do with Twitter.
     const twitterImage = await page

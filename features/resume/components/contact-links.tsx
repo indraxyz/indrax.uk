@@ -1,5 +1,3 @@
-"use client"
-
 import { Button } from "@/components/ui/button"
 import { GithubIcon } from "@/components/ui/github-icon"
 import { LinkedinIcon } from "@/components/ui/linkedin-icon"

@@ -1,16 +1,13 @@
-import { createRequire } from "node:module"
-import { dirname, join } from "node:path"
-
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
+import { beforeEach, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
-  headers: vi.fn(async () => new Headers()),
+  request: new Request("https://example.test/admin"),
   getSession: vi.fn(),
   revokeSession: vi.fn(),
   allowed: vi.fn(() => "1"),
 }))
 
-vi.mock("next/headers", () => ({ headers: mocks.headers }))
+vi.mock("@/lib/runtime.server", () => ({ getRequest: () => mocks.request }))
 vi.mock("@/lib/auth", () => ({
   allowedGithubId: mocks.allowed,
   getAuth: () => ({ api: mocks }),
@@ -18,30 +15,10 @@ vi.mock("@/lib/auth", () => ({
 }))
 vi.mock("@/lib/observability", () => ({ logServerError: vi.fn() }))
 
-// Use the actual React server cache. The default client export is intentionally
-// a no-op outside RSC, so supply the request dispatcher normally owned by React.
-vi.mock("react", async () => {
-  const require = createRequire(import.meta.url)
-  return require(join(dirname(require.resolve("react")), "cjs/react.react-server.development.js"))
-})
-const React = await import("react")
-const internals = (
-  React as unknown as {
-    __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: {
-      A: null | { getCacheForType: (factory: () => unknown) => unknown }
-    }
-  }
-).__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE
 const { getAuthor, requireAuthor } = await import("./auth-guard")
 
 function newRequest() {
-  const requestCache = new Map<() => unknown, unknown>()
-  internals.A = {
-    getCacheForType(factory) {
-      if (!requestCache.has(factory)) requestCache.set(factory, factory())
-      return requestCache.get(factory)
-    },
-  }
+  mocks.request = new Request("https://example.test/admin")
 }
 
 function session(createdAt = new Date(), githubId = "1") {
@@ -57,15 +34,11 @@ beforeEach(() => {
   mocks.getSession.mockResolvedValue(session())
   newRequest()
 })
-afterEach(() => {
-  internals.A = null
-})
 
 it("deduplicates concurrent page and data authorization in one server request", async () => {
   const [pageAuthor, queryAuthor] = await Promise.all([getAuthor(), requireAuthor()])
   expect(pageAuthor).toEqual(queryAuthor)
   expect(mocks.getSession).toHaveBeenCalledTimes(1)
-  expect(mocks.headers).toHaveBeenCalledTimes(1)
 })
 
 it("checks a revoked session again in the next request", async () => {
@@ -108,11 +81,10 @@ it("still refuses access when revoking an expired session fails", async () => {
   await expect(requireAuthor()).rejects.toThrow("Not authorised")
 })
 
-it("does not cache authorization outside a React server request", async () => {
-  internals.A = null
-  await requireAuthor()
+it("does not memoize explicit headers between independent callers", async () => {
+  await requireAuthor(new Headers())
   mocks.getSession.mockResolvedValue(null)
-  await expect(requireAuthor()).rejects.toThrow("Not authorised")
+  await expect(requireAuthor(new Headers())).rejects.toThrow("Not authorised")
   expect(mocks.getSession).toHaveBeenCalledTimes(2)
 })
 

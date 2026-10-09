@@ -1,5 +1,10 @@
 # Writing — Implementation Plan
 
+> Historical design/implementation record from the Next.js release. Feature and
+> security requirements remain useful; framework commands and route conventions
+> have been superseded by [current architecture](../ARCHITECTURE.md) and
+> [the React Router migration](react-router-migration.md).
+
 Status: Phases 0–4 implemented on `develop`; historical phase notes below
 Owner: Indra Cahya Edytya
 

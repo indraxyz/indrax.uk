@@ -26,6 +26,43 @@ test.describe("the writing public surface", () => {
     expect(errors).toEqual([])
   })
 
+  test("loads cards from the API and retries only when the reader requests it", async ({
+    page,
+  }) => {
+    let requests = 0
+    await page.route("**/api/writing/posts*", async (route) => {
+      requests += 1
+      if (requests === 1)
+        return route.fulfill({ status: 503, json: { message: "Temporarily unavailable" } })
+      return route.fulfill({
+        json: {
+          posts: [
+            {
+              id: "client-post",
+              slug: "client-card",
+              title: "Client API card",
+              excerpt: "Fetched in the browser",
+              coverUrl: null,
+              coverAlt: null,
+              publishedAt: "2026-10-09T00:00:00Z",
+              updatedAt: "2026-10-09T00:00:00Z",
+              readingTime: 1,
+              tags: [],
+            },
+          ],
+          page: 1,
+          pageCount: 1,
+        },
+      })
+    })
+    await page.goto("/writing")
+    await expect(page.getByRole("alert")).toContainText("Unable to load writing")
+    expect(requests).toBe(1)
+    await page.getByRole("button", { name: "Try again" }).click()
+    await expect(page.getByRole("link", { name: "Client API card" })).toBeVisible()
+    expect(requests).toBe(2)
+  })
+
   test("404s an unknown slug with the site's own not-found page", async ({ page }) => {
     const response = await page.goto("/writing/no-such-article-exists")
 
@@ -33,10 +70,11 @@ test.describe("the writing public surface", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
   })
 
-  test("404s an unknown tag", async ({ page }) => {
+  test("shows an unavailable tag after the client API resolves", async ({ page }) => {
     const response = await page.goto("/writing/tags/no-such-tag")
 
-    expect(response?.status()).toBe(404)
+    expect(response?.status()).toBe(200)
+    await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible()
   })
 
   test("serves a valid RSS 2.0 feed", async ({ request }) => {

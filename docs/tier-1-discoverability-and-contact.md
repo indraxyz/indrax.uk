@@ -1,5 +1,10 @@
 # Tier 1 — Discoverability, Shareability, Contact & Analytics
 
+> Historical design/implementation record from the Next.js release. Feature and
+> security requirements remain useful; framework commands and route conventions
+> have been superseded by [current architecture](../ARCHITECTURE.md) and
+> [the React Router migration](react-router-migration.md).
+
 Status: approved for implementation
 Owner: Indra Cahya Edytya
 Target branch: `feat/tier-1-discoverability-and-contact` → `main`

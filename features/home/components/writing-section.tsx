@@ -1,10 +1,11 @@
 import { Newspaper } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 
 import { SectionCard } from "@/components/ui/section-card"
 import { PostCard } from "@/features/writing/components/post-card"
 import { PostGrid } from "@/features/writing/components/post-grid"
 import { WRITING_CONFIG, SECTION_COPY } from "@/features/writing/config"
-import { getRecentPosts } from "@/features/writing/data/queries"
+import { writingApi, writingKeys } from "@/features/writing/api/client"
 
 // Enough to show recent writing without turning the home page into an archive.
 const POSTS_ON_HOMEPAGE = 3
@@ -18,8 +19,11 @@ const POSTS_ON_HOMEPAGE = 3
  *
  * Composed from the site's `SectionCard` design so it matches the other sections.
  */
-export async function WritingSection() {
-  const posts = await getRecentPosts(POSTS_ON_HOMEPAGE)
+export function WritingSection() {
+  const { data: posts = [] } = useQuery({
+    queryKey: writingKeys.recent(POSTS_ON_HOMEPAGE),
+    queryFn: () => writingApi.recent(POSTS_ON_HOMEPAGE),
+  })
 
   if (posts.length === 0) return null
 
