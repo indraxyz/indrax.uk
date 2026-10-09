@@ -57,6 +57,12 @@ remain potentially expensive and must be measured in deployed CPU profiles.
 ## Client state and API contracts
 
 `components/query-provider.tsx` creates the QueryClient for each application.
+Browser route loaders and components share that cache; SSR requests each create
+their own. Public writing client loaders and admin data loaders prepare destination
+data before committing navigation. Both apps use `react-top-loading-bar` for
+in-app transitions, retaining the current page; hard loads show a centered spinner
+while initial data is pending. The admin HTML includes a spinner before its scripts
+load. Background refreshes do not replace content or restart the indicator.
 Queries have a one-minute stale time, no automatic retry and no focus refetch;
 mutations are never retried. Session queries deliberately require freshness when
 admin access is checked. Save/status/delete invalidate the affected admin/public

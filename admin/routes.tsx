@@ -1,9 +1,35 @@
 import { useEffect, useRef } from "react"
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query"
 import { HTTPError } from "ky"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { AdminSessionContext, AdminLoading, AdminError } from "./shared"
+import { getBrowserQueryClient } from "@/components/query-provider"
+import { NavigationProgress } from "@/components/navigation-progress"
+
+async function loadAdminPage<T>(queryKey: QueryKey, queryFn: () => Promise<T>) {
+  const client = getBrowserQueryClient()
+  // Verify initial access before requesting private page data. APIs also enforce author access.
+  const session = await client.ensureQueryData({
+    queryKey: adminKeys.session,
+    queryFn: adminApi.session,
+  })
+  if (session.author) await client.prefetchQuery({ queryKey, queryFn })
+  return null
+}
+
+function AdminRoot() {
+  return (
+    <>
+      <NavigationProgress initialSpinner={false} />
+      <Outlet />
+    </>
+  )
+}
+
+function AdminInitialLoading() {
+  return <AdminLoading />
+}
 function ProtectedAdmin() {
   const location = useLocation()
   const previousPath = useRef(location.pathname)
@@ -64,17 +90,37 @@ function AdminRouteError() {
   return <AdminError retry={() => window.location.reload()} />
 }
 export const router = createBrowserRouter([
-  { path: "/admin/login", ErrorBoundary: AdminRouteError, lazy: () => import("./login") },
   {
-    path: "/admin",
-    Component: ProtectedAdmin,
+    Component: AdminRoot,
+    HydrateFallback: AdminInitialLoading,
     ErrorBoundary: AdminRouteError,
     children: [
-      { index: true, lazy: () => import("./overview") },
-      { path: "posts", lazy: () => import("./posts") },
-      { path: "new", lazy: () => import("./new") },
-      { path: "edit/:id", lazy: () => import("./edit") },
+      { path: "/admin/login", ErrorBoundary: AdminRouteError, lazy: () => import("./login") },
+      {
+        path: "/admin",
+        Component: ProtectedAdmin,
+        ErrorBoundary: AdminRouteError,
+        children: [
+          {
+            index: true,
+            loader: () => loadAdminPage(adminKeys.overview, adminApi.overview),
+            lazy: () => import("./overview"),
+          },
+          {
+            path: "posts",
+            loader: () => loadAdminPage(adminKeys.posts, adminApi.posts),
+            lazy: () => import("./posts"),
+          },
+          { path: "new", lazy: () => import("./new") },
+          {
+            path: "edit/:id",
+            loader: ({ params }) =>
+              loadAdminPage(adminKeys.post(params.id ?? ""), () => adminApi.post(params.id ?? "")),
+            lazy: () => import("./edit"),
+          },
+        ],
+      },
+      { path: "*", element: <p>Page not found.</p> },
     ],
   },
-  { path: "*", element: <p>Page not found.</p> },
 ])

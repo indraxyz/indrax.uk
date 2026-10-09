@@ -2,7 +2,13 @@ import { buildBreadcrumbStructuredData } from "@/features/writing/utils/structur
 import { serialiseJsonLd } from "@/lib/utils"
 import { SITE_URL } from "@/features/resume/config"
 import { useQuery } from "@tanstack/react-query"
-import { useParams, useSearchParams, type MetaFunction } from "react-router"
+import {
+  useParams,
+  useSearchParams,
+  type MetaFunction,
+  type ClientLoaderFunctionArgs,
+} from "react-router"
+import { getBrowserQueryClient } from "@/components/query-provider"
 
 import { EmptyState } from "@/features/writing/components/empty-state"
 import { PostListSection } from "@/features/writing/components/post-list-section"
@@ -11,6 +17,24 @@ import { WritingShell } from "@/features/writing/components/writing-shell"
 import { writingApi, writingKeys } from "@/features/writing/api/client"
 import { WRITING_CONFIG, EMPTY_COPY, tagSubtitle } from "@/features/writing/config"
 import { parsePageParam } from "@/features/writing/utils/page-param"
+
+export function loader() {
+  return null
+}
+
+export async function clientLoader({ request, params }: ClientLoaderFunctionArgs) {
+  const page = parsePageParam(new URL(request.url).searchParams.get("page") ?? undefined)
+  const slug = params.tag ?? ""
+  const client = getBrowserQueryClient()
+  await Promise.all([
+    client.prefetchQuery({
+      queryKey: writingKeys.posts(page, slug),
+      queryFn: () => writingApi.posts(page, slug),
+    }),
+    client.prefetchQuery({ queryKey: writingKeys.tags(), queryFn: writingApi.tags }),
+  ])
+  return null
+}
 
 export const meta: MetaFunction = ({ params, location }) => {
   const page = parsePageParam(new URLSearchParams(location.search).get("page") ?? undefined)

@@ -1,6 +1,7 @@
 import { normaliseQuery } from "@/features/writing/utils/search-query"
 import { useQuery } from "@tanstack/react-query"
-import { useSearchParams } from "react-router"
+import { useSearchParams, type ClientLoaderFunctionArgs } from "react-router"
+import { getBrowserQueryClient } from "@/components/query-provider"
 
 import { EmptyState } from "@/features/writing/components/empty-state"
 import { PostListSection } from "@/features/writing/components/post-list-section"
@@ -10,6 +11,21 @@ import { WritingShell } from "@/features/writing/components/writing-shell"
 import { writingApi, writingKeys } from "@/features/writing/api/client"
 import { WRITING_CONFIG, EMPTY_COPY } from "@/features/writing/config"
 import { parsePageParam } from "@/features/writing/utils/page-param"
+
+export function loader() {
+  return null
+}
+
+export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+  const params = new URL(request.url).searchParams
+  const query = normaliseQuery(params.get("q") ?? undefined)
+  const page = parsePageParam(params.get("page") ?? undefined)
+  await getBrowserQueryClient().prefetchQuery({
+    queryKey: writingKeys.search(query, page),
+    queryFn: () => writingApi.search(query, page),
+  })
+  return null
+}
 
 export const meta = () => [
   { title: "Search - Writing" },

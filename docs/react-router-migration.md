@@ -161,3 +161,38 @@ the raw landing URL for anonymous attribution. Event URL redaction remains in
 place; pageviews, consent and custom events still work. Initial referrer/campaign
 attribution is no longer collected. The regression test now waits for the flags
 request as well as the pageview before asserting that the token was never sent.
+
+### Navigation feedback on public and admin
+
+Both applications share a `react-top-loading-bar` indicator driven by React
+Router's pending navigation state and observed queries awaiting their first data.
+Cached/background refreshes do not interrupt the page. Unobserved queries from a
+superseded navigation cannot leave the bar running. The bar respects reduced-motion
+preferences and provides a screen-reader loading status without claiming a measured
+percentage.
+The bar and spinner use the existing light green `primitive-brand-500` through a
+shared component token. Failed queries do not retry automatically on component
+mount; the existing retry control remains explicit.
+
+Admin overview, posts and edit routes prepare data with TanStack Query inside
+browser route loaders. Public archive, tags, search and series routes use client
+loaders for the same purpose. The browser provider and loaders share one cache,
+while SSR creates a separate cache per request. These transitions keep the current
+page visible until destination code/data is ready, eliminating the full-page
+“Loading your workspace” flash. Hard reloads/first visits use a centered spinner
+while initial data is pending; navigation after that uses the top bar. SSR
+profile/article policy and client API access remain unchanged. Data errors
+still render the existing retry/not-found UI; server-side authorization remains
+mandatory for every private API request.
+
+References: [React Router pending UI](https://reactrouter.com/start/framework/pending-ui),
+[TanStack router integration](https://tanstack.com/query/latest/docs/framework/react/guides/prefetching),
+and [react-top-loading-bar](https://github.com/klendi/react-top-loading-bar).
+
+Validation: six new browser cases cover first-load/refresh spinners, delayed
+navigation in both apps, cache reuse, superseded navigation and failed-request
+retry. The final targeted navigation/authoring run passes 20 tests with one
+optional R2 skip. The public/read and session coverage also pass in the broader
+run; two authoring selectors were updated for the static spinner and the distinct
+preview/loading statuses. Formatting, lint, TypeScript and all 288 unit tests pass;
+the dependency audit remains at zero vulnerabilities.

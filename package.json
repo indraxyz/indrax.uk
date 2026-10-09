@@ -60,6 +60,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "8.4.0",
+    "react-top-loading-bar": "^3.0.2",
     "reading-time": "^1.5.0",
     "rehype-parse": "^9.0.1",
     "rehype-pretty-code": "^0.14.5",

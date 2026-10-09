@@ -1,5 +1,6 @@
 import { Layers } from "lucide-react"
-import { Link, useParams, type MetaFunction } from "react-router"
+import { Link, useParams, type MetaFunction, type ClientLoaderFunctionArgs } from "react-router"
+import { getBrowserQueryClient } from "@/components/query-provider"
 import { useQuery } from "@tanstack/react-query"
 import { HTTPError } from "ky"
 import { pageMeta } from "@/routes/meta"
@@ -15,6 +16,19 @@ import { formatDate } from "@/lib/utils/date"
 import { serialiseJsonLd } from "@/lib/utils"
 
 const pathFor = (slug: string) => `${WRITING_CONFIG.seriesPath}/${slug}`
+
+export function loader() {
+  return null
+}
+
+export async function clientLoader({ params }: ClientLoaderFunctionArgs) {
+  const slug = params.slug ?? ""
+  await getBrowserQueryClient().prefetchQuery({
+    queryKey: writingKeys.series(slug),
+    queryFn: () => writingApi.series(slug),
+  })
+  return null
+}
 
 export const meta: MetaFunction = ({ params }) =>
   pageMeta(

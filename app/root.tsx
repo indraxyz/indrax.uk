@@ -9,6 +9,7 @@ import {
 } from "react-router"
 import type { ReactNode } from "react"
 import { QueryProvider } from "@/components/query-provider"
+import { NavigationProgress } from "@/components/navigation-progress"
 import { ConsentBanner } from "@/components/consent-banner"
 import { PostHogAnalytics } from "@/components/posthog-analytics"
 import { SiteErrorPage } from "@/components/site-error-page"
@@ -43,6 +44,7 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <QueryProvider>
+      <NavigationProgress />
       <Outlet />
       <ConsentBanner />
       <PostHogAnalytics />

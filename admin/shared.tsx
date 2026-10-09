@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react"
 import { AdminShell } from "@/features/writing/components/admin/admin-shell"
 import type { AdminSession } from "@/features/writing/api/client"
+import { PageLoading } from "@/components/page-loading"
 export const AdminSessionContext = createContext<AdminSession | null>(null)
 export function useAdminSession() {
   const value = useContext(AdminSessionContext)
@@ -8,12 +9,7 @@ export function useAdminSession() {
   return value
 }
 export function AdminLoading() {
-  return (
-    <main aria-busy className="mx-auto min-h-screen max-w-5xl space-y-4 px-6 py-12">
-      <h1 className="text-2xl font-black uppercase tracking-tight">Loading</h1>
-      <p role="status">Loading your workspace…</p>
-    </main>
-  )
+  return <PageLoading />
 }
 export function AdminError({ retry }: { retry: () => void }) {
   return (

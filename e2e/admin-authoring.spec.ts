@@ -101,7 +101,8 @@ test.describe("authoring", () => {
     const response = await context.request.get("/admin/posts")
     expect(response.status()).toBe(200)
     const html = await response.text()
-    expect(html).toContain('<div id="root"></div>')
+    expect(html).toContain('<div id="root">')
+    expect(html).toContain('aria-label="Loading page"')
     expect(html).not.toContain(SEEDED_DRAFT_TITLE)
     expect(html).not.toContain("ProseMirror")
     const page = await context.newPage()
@@ -444,7 +445,7 @@ test.describe("authoring", () => {
 
     const response = await reader.goto(previewUrl)
     expect(response?.status()).toBe(200)
-    await expect(reader.getByRole("status")).toContainText(/draft preview/i)
+    await expect(reader.getByRole("status").filter({ hasText: /draft preview/i })).toBeVisible()
     const breadcrumb = reader.getByRole("navigation", { name: "Breadcrumb", exact: true })
     await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(`Preview: ${TITLE}`)
     await expect(breadcrumb.getByRole("link")).toHaveCount(2)

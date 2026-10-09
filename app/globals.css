@@ -84,6 +84,7 @@
     --semantic-action-tertiary-text: var(--primitive-brand-950);
     --semantic-status-danger: var(--primitive-danger-700);
     --semantic-status-danger-text: var(--primitive-neutral-0);
+    --component-navigation-progress: var(--primitive-brand-500);
 
     --component-variant-primary-bg: var(--semantic-action-primary);
     --component-variant-primary-fg: var(--semantic-action-primary-text);
@@ -671,6 +672,12 @@
  * none of it can reach a reader. */
 .ProseMirror:focus {
   outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress * {
+    transition: none !important;
+  }
 }
 
 /* Block rhythm inside the canvas. Typography's own spacing applies to `.prose`
