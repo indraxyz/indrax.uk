@@ -76,6 +76,9 @@ e2e/                                 Playwright browser and HTTP coverage
 
 See [architecture](ARCHITECTURE.md), [migration decisions](docs/react-router-migration.md),
 [testing](docs/testing.md), and [Worker CPU/cache guidance](docs/worker-cpu-optimization.md).
+For folder ownership, the role of Workers, Cloudflare tooling, `.env.local`,
+database URLs and OAuth origins, read the
+[project structure and environment guide](docs/project-structure-and-environment.md).
 
 ## Local development
 

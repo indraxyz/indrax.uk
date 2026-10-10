@@ -4,6 +4,10 @@ The site uses React Router **8.4.0** Framework Mode on Cloudflare Workers. The a
 is a separately built React application using browser routing. Vite produces both
 bundles; the Cloudflare Vite plugin packages the SSR Worker and client assets.
 
+The [project structure and environment guide](docs/project-structure-and-environment.md)
+explains why `app/`, `admin/` and `workers/` sit at the repository root, where new
+code belongs, and how local environment, database and authentication URLs relate.
+
 ## Request paths
 
 ```mermaid
