@@ -132,12 +132,23 @@ test.describe("a seeded writing archive", () => {
     expect(await page.content()).not.toContain(SEEDED_DRAFT_SLUG)
   })
 
-  test("filters writing cards by tag through the client API", async ({ page }) => {
-    await page.goto(`/writing?tag=${SEEDED_TAG_SLUG}`)
+  test("opens article tags in the unified archive and filters cards through the client API", async ({
+    page,
+  }) => {
+    await page.goto(`/writing/${SEEDED_POST_SLUG}`)
+    await expect(page.locator('a[href^="/writing/tags/"], a[href^="/writing/search"]')).toHaveCount(
+      0
+    )
+    const tag = page.locator("article").getByRole("link", { name: "TypeScript", exact: true })
+    await expect(tag).toHaveAttribute("href", `/writing?tag=${SEEDED_TAG_SLUG}`)
+    await tag.click()
 
-    expect(new URL(page.url()).searchParams.get("tag")).toBe(SEEDED_TAG_SLUG)
+    await expect(page).toHaveURL(/\/writing\?tag=typescript$/)
     await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
     await expect(page.locator("[data-post-grid]")).toBeVisible()
+    await expect(page.locator('a[href^="/writing/tags/"], a[href^="/writing/search"]')).toHaveCount(
+      0
+    )
     await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute("href", /\/writing$/)
     await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", /noindex/)
   })

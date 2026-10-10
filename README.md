@@ -38,33 +38,40 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 
 Legacy `/blog/*`, `/blog/tag/*`, and `/rss.xml` links redirect to the corresponding
 writing URLs. Search, tags, sort, publication dates and read durations share the
-`/writing` archive; the right-hand filter sheet applies changes together. Legacy
-`/writing/search` and `/writing/tags/:tag` permanently redirect to query-based
-archive URLs. The admin Posts page shares these controls, adds status filtering,
+`/writing` archive; the right-hand filter sheet applies changes together.
+The standalone `/writing/search` and `/writing/tags/:tag` routes are removed;
+use query-based archive URLs. `/blog/search` and `/blog/tag/:tag` redirect directly
+to the unified archive. The admin Posts page shares these controls, adds status filtering,
 and defaults to Recently updated; all private filtering and pagination run on
 the authenticated backend. Profile/article social cards and structured data remain server-generated.
 
 ## Structure
 
 ```text
-app/                         React Router root, entry points, route configuration
-routes/                      Public route modules and SEO loaders
-admin/                       Independent CSR entry and admin route composition
-workers/app.ts               Worker dispatcher: assets, APIs, resources, public SSR
-features/writing/api/         Client transport contracts and backend API handler
-features/writing/data/        Public reads, guarded admin reads, atomic mutations
-features/writing/components/ Shared cards, article and authoring components
-features/{home,resume}/      Feature data, composition, PDF and social cards
-components/                  Shared public navigation and UI primitives
-lib/runtime.server.ts        AsyncLocalStorage request/environment context
-lib/cache.server.ts          Public KV cache with D1 revision invalidation
-lib/auth-guard.ts            Per-request author verification
-lib/resources.server.ts      Authenticated uploads, feed, metadata and image resources
-lib/db/                      Drizzle schema, client, fixtures and local environment
-config/                      Build metadata and Worker environment examples
-scripts/                     Build assembly, preview runner and tooling
-test/integration/           Real SQL/transaction/request-budget coverage
-e2e/                        Playwright browser and HTTP coverage
+app/                                 React Router root, entry points, route configuration
+app/routes/                          Public route modules, SEO loaders and colocated tests
+admin/                               Independent CSR entry and admin route composition
+admin/components/                    Common admin shell, navigation and authentication buttons
+workers/app.ts                       Worker dispatcher: assets, APIs, resources, public SSR
+features/writing/api/                Client transport contracts and backend API handler
+features/writing/data/*.server.ts    Public reads, guarded admin reads and atomic mutations
+features/writing/components/         Writing cards, discovery controls and article UI
+features/writing/components/admin/   Editor and post-management domain UI
+features/{home,resume}/               Profile data, compositions, PDF and social cards
+components/layout/public-shell.tsx   Shared public layout
+components/ui/                       Shared UI primitives and variants
+config/site.ts                       Global SITE_URL, SITE_HOST, absoluteUrl and SOCIAL_LINKS
+lib/runtime.server.ts                AsyncLocalStorage request/environment context
+lib/cache.server.ts                  Public KV cache with D1 revision invalidation
+lib/auth-guard.server.ts             Per-request author verification
+lib/resources.server.ts              Uploads, feed, metadata and image resource dispatch
+lib/db/index.server.ts               Server-only database client
+lib/db/                              Drizzle schema, fixtures and local environment
+config/                              Build metadata, dev middleware and environment configuration
+scripts/                             Build assembly, preview runner and colocated tooling tests
+scripts/preview-env.test.ts          Preview environment verification beside its implementation
+test/integration/                    Real SQL/transaction/request-budget coverage
+e2e/                                 Playwright browser and HTTP coverage
 ```
 
 See [architecture](ARCHITECTURE.md), [migration decisions](docs/react-router-migration.md),

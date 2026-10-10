@@ -25,7 +25,7 @@ URL compatibility and verification.
 | Navigation       | Retain current content with top progress bar during route preparation; centered spinner for initial data loads         |
 | Operations       | Worker resource dispatch, generated binding/route types, Vitest, real SQL tests, Playwright and CI                     |
 
-`app/routes.ts` and `routes/` define the public application;
+`app/routes.ts` and `app/routes/` define the public application;
 `admin/routes.tsx` defines browser routing. `workers/app.ts` serves admin assets
 without importing the public SSR tree. Feature components, the API handler in
 `features/writing/api/server.ts` and existing query modules retain their distinct

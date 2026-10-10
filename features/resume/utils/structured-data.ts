@@ -1,4 +1,5 @@
-import { RESUME_CONFIG, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
+import { SITE_URL, SOCIAL_LINKS } from "@/config/site"
+import { RESUME_CONFIG } from "@/features/resume/config"
 import { bio, education, experiences, personalInfo } from "@/features/resume/data/resume"
 
 // "Juicebox ID/AU, Bali" -> "Juicebox ID/AU". schema.org wants the organisation,

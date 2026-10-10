@@ -19,7 +19,7 @@ import type { PostDocument } from "@/features/writing/types"
 import { deriveExcerpt, plainText } from "@/features/writing/utils/content"
 import { computeReadingTime } from "@/features/writing/utils/reading-time"
 import { slugify } from "@/features/writing/utils/slug"
-import { getDb, schema } from "@/lib/db"
+import { getDb, schema } from "@/lib/db/index.server"
 import { postInputSchema, type PostInput } from "@/lib/validators/writing"
 
 import { loadLocalEnv } from "./dev-env"

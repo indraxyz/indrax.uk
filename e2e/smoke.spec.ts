@@ -67,7 +67,13 @@ test.describe("the public pages", () => {
   })
 
   test("uses the same site navigation on every public page", async ({ page }) => {
-    for (const path of ["/", "/resume", "/writing", "/tech-stack"]) {
+    for (const path of [
+      "/",
+      "/resume",
+      "/writing",
+      "/writing?q=renderer&tag=typescript",
+      "/tech-stack",
+    ]) {
       await page.goto(path)
       const navigation = page.getByRole("navigation", { name: "Site" })
       await expect(navigation.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/")

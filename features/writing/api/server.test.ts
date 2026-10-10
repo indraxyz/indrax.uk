@@ -23,25 +23,25 @@ const mocks = vi.hoisted(() => ({
   tagPosts: vi.fn(),
   log: vi.fn(),
 }))
-vi.mock("@/lib/auth-guard", () => ({ getAuthor: mocks.author }))
-vi.mock("@/lib/auth", () => ({ isAuthConfigured: () => true }))
-vi.mock("@/lib/db", () => ({ getDb: () => ({}) }))
-vi.mock("@/lib/cover-storage", () => ({ getCoverStorageConfig: () => null }))
+vi.mock("@/lib/auth-guard.server", () => ({ getAuthor: mocks.author }))
+vi.mock("@/lib/auth.server", () => ({ isAuthConfigured: () => true }))
+vi.mock("@/lib/db/index.server", () => ({ getDb: () => ({}) }))
+vi.mock("@/lib/cover-storage.server", () => ({ getCoverStorageConfig: () => null }))
 vi.mock("@/lib/observability", () => ({ logServerError: mocks.log }))
-vi.mock("@/features/writing/data/admin-queries", () => ({
+vi.mock("@/features/writing/data/admin-queries.server", () => ({
   getAdminOverview: mocks.overview,
   getAdminArchivePosts: mocks.adminArchive,
   getAdminTagsInUse: mocks.adminTags,
   listAllPosts: mocks.list,
   getPostForEdit: mocks.edit,
 }))
-vi.mock("@/features/writing/data/mutations", () => ({
+vi.mock("@/features/writing/data/mutations.server", () => ({
   savePost: mocks.save,
   setPostStatus: mocks.status,
   deletePost: mocks.remove,
   createPreviewLink: mocks.preview,
 }))
-vi.mock("@/features/writing/data/queries", () => ({
+vi.mock("@/features/writing/data/queries.server", () => ({
   getPostForPreview: mocks.previewPost,
   getPublishedPosts: mocks.posts,
   getArchivePosts: mocks.archive,
@@ -52,7 +52,9 @@ vi.mock("@/features/writing/data/queries", () => ({
   getSeriesBySlug: mocks.series,
 }))
 
-vi.mock("@/features/writing/utils/preview-token", () => ({ verifyPreviewToken: mocks.verifyToken }))
+vi.mock("@/features/writing/utils/preview-token.server", () => ({
+  verifyPreviewToken: mocks.verifyToken,
+}))
 vi.mock("@/features/writing/utils/content", () => ({ renderDocument: mocks.render }))
 
 import { handleWritingApi } from "./server"

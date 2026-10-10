@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react"
-import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { AdminShell } from "@/admin/components/admin-shell"
 import type { AdminSession } from "@/features/writing/api/client"
 import { PageLoading } from "@/components/page-loading"
 export const AdminSessionContext = createContext<AdminSession | null>(null)

@@ -6,28 +6,28 @@ import type { Post } from "@/features/writing/types"
 vi.mock("@/features/writing/utils/content", () => {
   throw new Error("Document processor initialized")
 })
-vi.mock("@/features/writing/utils/preview-token", () => {
+vi.mock("@/features/writing/utils/preview-token.server", () => {
   throw new Error("Preview signer initialized")
 })
-vi.mock("@/features/writing/data/admin-queries", () => {
+vi.mock("@/features/writing/data/admin-queries.server", () => {
   throw new Error("Admin queries initialized")
 })
-vi.mock("@/features/writing/data/mutations", () => {
+vi.mock("@/features/writing/data/mutations.server", () => {
   throw new Error("Authoring initialized")
 })
-vi.mock("@/lib/auth", () => {
+vi.mock("@/lib/auth.server", () => {
   throw new Error("Authentication initialized")
 })
-vi.mock("@/lib/auth-guard", () => {
+vi.mock("@/lib/auth-guard.server", () => {
   throw new Error("Author guard initialized")
 })
-vi.mock("@/lib/cover-storage", () => {
+vi.mock("@/lib/cover-storage.server", () => {
   throw new Error("Upload configuration initialized")
 })
 vi.mock("@/lib/validators/writing", () => {
   throw new Error("Authoring validation initialized")
 })
-vi.mock("@/features/writing/data/queries", () => ({
+vi.mock("@/features/writing/data/queries.server", () => ({
   CACHE_TAGS: { post: (slug: string) => `post:${slug}` },
   getArchivePosts: async () => ({ posts: [], page: 1, pageCount: 0, total: 0 }),
   getPublishedPosts: async () => ({ posts: [], page: 1, pageCount: 0 }),
@@ -38,7 +38,7 @@ vi.mock("@/lib/cache.server", () => ({
   cachedRead: async () => ({ html: "<p>Saved HTML</p>", headings: [] }),
 }))
 import { handleWritingApi } from "./server"
-import { getRenderedArticle } from "@/features/writing/data/rendered-article"
+import { getRenderedArticle } from "@/features/writing/data/rendered-article.server"
 it("serves public writing cards without authoring, auth or document processors", async () => {
   for (const path of ["posts", "recent", "tags"]) {
     const response = await handleWritingApi(new Request(`https://example.test/api/writing/${path}`))

@@ -4,19 +4,22 @@ import { inArray } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const auth = vi.hoisted(() => ({ requireAuthor: vi.fn().mockResolvedValue({ id: "author" }) }))
-vi.mock("@/lib/auth-guard", () => ({ requireAuthor: auth.requireAuthor }))
+vi.mock("@/lib/auth-guard.server", () => ({ requireAuthor: auth.requireAuthor }))
 
 vi.mock("@/lib/cache.server", () => ({
   cachedRead: (_key: string, _tags: string[], read: () => unknown) => read(),
 }))
-import { getAdminArchivePosts, getAdminTagsInUse } from "@/features/writing/data/admin-queries"
+import {
+  getAdminArchivePosts,
+  getAdminTagsInUse,
+} from "@/features/writing/data/admin-queries.server"
 import { defaultAdminArchiveOptions } from "@/features/writing/utils/admin-archive-options"
-import { getArchivePosts, getTagsInUse } from "@/features/writing/data/queries"
+import { getArchivePosts, getTagsInUse } from "@/features/writing/data/queries.server"
 import {
   defaultArchiveOptions,
   type ArchiveOptions,
 } from "@/features/writing/utils/archive-options"
-import { getDb, schema } from "@/lib/db"
+import { getDb, schema } from "@/lib/db/index.server"
 
 const db = getDb()!
 const prefix = `archive-${randomUUID()}`

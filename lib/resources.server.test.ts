@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   series: vi.fn(),
 }))
 vi.mock("./rss.server", () => ({ GET: vi.fn() }))
-vi.mock("@/features/writing/data/queries", () => ({
+vi.mock("@/features/writing/data/queries.server", () => ({
   getPostBySlug: mocks.post,
   getPublishedSlugs: mocks.slugs,
   getSeriesSlugs: mocks.series,

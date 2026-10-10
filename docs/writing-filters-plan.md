@@ -2,8 +2,10 @@
 
 ## Scope and decisions
 
-Use one `/writing` discovery surface. Keep old search/tag URLs as permanent
-server redirects and retain existing public APIs for compatibility. Do not change
+Use one `/writing` discovery surface. Remove old writing search/tag page routes
+and their redirect modules; retain existing public APIs for compatibility.
+Keep old `/blog/search` and `/blog/tag/:tag` links as direct permanent redirects
+to query-based archive URLs. Do not change
 article/series reading, admin authoring permissions or publication visibility.
 Extend the same controls to `/admin/posts` with private backend pagination and
 an additional status filter.
@@ -43,7 +45,9 @@ reads and counts.
    private admin discovery; keep admin mutations compatible and use the existing
    schema without migrations.
 3. Add typed public/admin transport/query keys and the shared search/filter sheet interface.
-4. Redirect legacy routes, update tag links and remove retired sitemap entries.
+4. Move public route modules/tests into `app/routes/`, remove standalone writing
+   search/tag routes, point legacy blog redirects directly to the archive and
+   remove retired sitemap entries.
 5. Sync requirements, technical docs, stack information and local examples.
 6. Run targeted tests, type/lint/build checks and browser verification. The
    initial workflow paused delivery for user review; the user subsequently
@@ -57,8 +61,10 @@ reads and counts.
 - Database integration: OR tags plus AND dimensions, correct count/page result,
   stable ordering, admin status/full-set pagination, private tag counts, null
   publication dates and legacy endpoint compatibility.
-- Route/resource coverage: 308 redirects retain query/sort/filter/page state;
-  sitemap excludes retired discovery pages and arbitrary filter combinations.
+- Route/resource coverage: retired writing pages have no redirect and return 404
+  with existing fixtures; legacy blog 308 redirects retain query/sort/filter/page
+  state and target the archive directly. Sitemap excludes retired discovery
+  pages and arbitrary filter combinations.
 - Browser coverage: Apply versus cancel, search preserving filters, dot state,
   reset, empty results, pagination, refresh/back/forward, keyboard focus,
   desktop/mobile layouts and light/dark presentation.

@@ -117,7 +117,8 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given reading duration, then options include Any duration, Short (under 5 minutes), Medium (5–10 inclusive) and Long (over 10 minutes).
 - Given any combination, then count and pagination reflect exactly the published matching set and preserve all committed filters in links.
 - Given no matching published articles or an unknown tag, then an informative empty state appears with a way to clear filters.
-- Given `/writing/search` or `/writing/tags/{slug}`, then a permanent server redirect preserves discovery state at `/writing`; these retired routes are excluded from the sitemap.
+- Given retired `/writing/tags/{slug}` page URLs, then the site returns 404 without a redirect. `/writing/search` follows ordinary article-slug resolution and returns 404 when no published article uses that slug. Neither retired discovery surface appears in the sitemap.
+- Given old `/blog/search` or `/blog/tag/{slug}` URLs, then a permanent redirect targets the unified `/writing` archive directly while preserving query/filter/page state.
 - Given keyboard or mobile use, then sheet controls, Apply, reset and close remain usable, with focus returned to the trigger after closing.
 
 #### US-2.3 · Find articles from the homepage

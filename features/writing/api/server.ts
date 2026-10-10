@@ -5,7 +5,7 @@ import {
   getSeriesBySlug,
   getTagsInUse,
   searchPosts,
-} from "@/features/writing/data/queries"
+} from "@/features/writing/data/queries.server"
 import type { ActionResult } from "@/features/writing/types"
 import {
   isArchiveDate,
@@ -88,7 +88,7 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
         ) {
           throw new ApiError(404, "Preview not found.")
         }
-        const { verifyPreviewToken } = await import("@/features/writing/utils/preview-token")
+        const { verifyPreviewToken } = await import("@/features/writing/utils/preview-token.server")
         if (!(await verifyPreviewToken(token, preview[1])))
           throw new ApiError(404, "Preview not found.")
         const post = await getPostForPreview(preview[1])
@@ -123,12 +123,12 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
     // Public cards never initialize authentication, authoring or validation modules.
     const [adminQueries, mutations, auth, guard, storage, database, validators] = await Promise.all(
       [
-        import("@/features/writing/data/admin-queries"),
-        import("@/features/writing/data/mutations"),
-        import("@/lib/auth"),
-        import("@/lib/auth-guard"),
-        import("@/lib/cover-storage"),
-        import("@/lib/db"),
+        import("@/features/writing/data/admin-queries.server"),
+        import("@/features/writing/data/mutations.server"),
+        import("@/lib/auth.server"),
+        import("@/lib/auth-guard.server"),
+        import("@/lib/cover-storage.server"),
+        import("@/lib/db/index.server"),
         import("@/lib/validators/writing"),
       ]
     )

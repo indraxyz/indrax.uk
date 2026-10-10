@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { GithubIcon } from "@/components/ui/github-icon"
 import { LinkedinIcon } from "@/components/ui/linkedin-icon"
-import { SOCIAL_LINKS } from "@/features/resume/config"
+import { SOCIAL_LINKS } from "@/config/site"
 import { captureEvent, type ContactChannel } from "@/lib/analytics"
 
 function trackContact(channel: ContactChannel) {

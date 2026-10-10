@@ -70,12 +70,13 @@ test.describe("the writing public surface", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
   })
 
-  test("redirects legacy tag pages into archive filters", async ({ page }) => {
-    const response = await page.goto("/writing/tags/no-such-tag")
-
-    expect(response?.status()).toBe(200)
-    await expect(page).toHaveURL(/\/writing\?tag=no-such-tag$/)
-    await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
+  test("retired writing discovery pages return the site not-found response", async ({ page }) => {
+    for (const path of ["/writing/search?q=typescript", "/writing/tags/no-such-tag"]) {
+      const response = await page.goto(path)
+      expect(response?.status()).toBe(404)
+      await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
+      await expect(page).toHaveURL(new RegExp(path.split("?")[0] + "(?:\\?|$)"))
+    }
   })
 
   test("serves a valid RSS 2.0 feed", async ({ request }) => {
@@ -99,13 +100,16 @@ test.describe("the writing public surface", () => {
 
   test("permanently redirects legacy writing and feed URLs", async ({ request }) => {
     const legacyPaths = [
-      ["/writing/search?q=typescript&page=2", "/writing?q=typescript&page=2"],
-      ["/writing/tags/typescript?page=2", "/writing?page=2&tag=typescript"],
       ["/blog", "/writing"],
       ["/blog?ref=legacy", "/writing?ref=legacy"],
       ["/blog/old-article?ref=legacy", "/writing/old-article?ref=legacy"],
-      ["/blog/tag/typescript?page=2", "/writing/tags/typescript?page=2"],
-      ["/blog/search?q=typescript", "/writing/search?q=typescript"],
+      ["/blog/tag/typescript?page=2", "/writing?page=2&tag=typescript"],
+      ["/blog/search?q=typescript", "/writing?q=typescript"],
+      [
+        "/blog/tag/typescript?tag=react&sort=oldest&page=2",
+        "/writing?tag=react&sort=oldest&page=2&tag=typescript",
+      ],
+      ["/blog/tag/typescript?tag=typescript", "/writing?tag=typescript"],
       ["/blog/series/example?page=2", "/writing/series/example?page=2"],
       ["/blog/an-article/preview?token=example", "/writing/an-article/preview?token=example"],
       ["/rss.xml", "/writing/rss.xml"],

@@ -6,7 +6,9 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest"
 
 // Test actual SQL and HTTP batching against local Postgres. Authentication and
 // Application caching are covered separately; neither participates in the SQL budget.
-vi.mock("@/lib/auth-guard", () => ({ requireAuthor: vi.fn().mockResolvedValue({ id: "author" }) }))
+vi.mock("@/lib/auth-guard.server", () => ({
+  requireAuthor: vi.fn().mockResolvedValue({ id: "author" }),
+}))
 vi.mock("@/lib/cache.server", () => ({
   cachedRead: (_key: string, _tags: string[], fn: () => unknown) => fn(),
   invalidateTags: vi.fn(),
@@ -16,16 +18,16 @@ import {
   getAdminOverview,
   getPostForEdit,
   listAllPosts,
-} from "@/features/writing/data/admin-queries"
-import { savePost } from "@/features/writing/data/mutations"
+} from "@/features/writing/data/admin-queries.server"
+import { savePost } from "@/features/writing/data/mutations.server"
 import {
   getPostBySlug,
   getPostsByTag,
   getRecentPosts,
   getSeriesBySlug,
   searchPosts,
-} from "@/features/writing/data/queries"
-import { getDb, schema } from "@/lib/db"
+} from "@/features/writing/data/queries.server"
+import { getDb, schema } from "@/lib/db/index.server"
 
 const prefix = `latency-${randomUUID().slice(0, 18)}`
 const tagName = `${prefix}-tag`

@@ -2,7 +2,7 @@ import { CustomFont, ImageResponse } from "cf-workers-og"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { Post } from "@/features/writing/types"
-import { SITE_HOST } from "@/features/resume/config"
+import { SITE_HOST } from "@/config/site"
 import { personalInfo } from "@/features/resume/data/resume"
 import { loadBrandFonts } from "@/lib/og/brand-fonts"
 import { OG_CARD_CONTENT_TYPE, OG_CARD_SIZE, OG_COLORS } from "@/lib/og/brand"

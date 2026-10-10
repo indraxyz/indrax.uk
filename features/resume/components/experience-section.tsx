@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge"
 import { SectionCard } from "@/components/ui/section-card"
 import { Timeline, TimelineContent, TimelineItem } from "@/components/ui/timeline"
-import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
+import { SOCIAL_LINKS } from "@/config/site"
+import { SECTION_COPY } from "@/features/resume/config"
 import { experiences } from "@/features/resume/data/resume"
 import { Briefcase } from "lucide-react"
 

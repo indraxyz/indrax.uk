@@ -1,4 +1,4 @@
-import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { AdminShell } from "@/admin/components/admin-shell"
 import { PostForm } from "@/features/writing/components/admin/post-form"
 import { useAdminSession } from "./shared"
 export function Component() {

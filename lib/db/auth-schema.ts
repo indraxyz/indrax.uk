@@ -3,12 +3,12 @@
  *
  *   npx @better-auth/cli generate --config <config> --output lib/db/auth-schema.ts
  *
- * The CLI needs a statically-exported `auth` instance, which `lib/auth.ts`
+ * The CLI needs a statically-exported `auth` instance, which `lib/auth.server.ts`
  * deliberately does not have - it is built lazily so an unconfigured deployment
  * still builds. Regenerate from a throwaway config mirroring its options, as the
  * implementation plan describes.
  *
- * `githubId` is here because `lib/auth.ts` declares it as an additional user
+ * `githubId` is here because `lib/auth.server.ts` declares it as an additional user
  * field: it is the allow-list key, and it is GitHub's immutable numeric id rather
  * than a username (threat T-1). `rate_limit` is here because rate limiting is
  * stored in the database rather than per-isolate memory.

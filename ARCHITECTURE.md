@@ -74,8 +74,10 @@ bounded timeout. Loading, empty and error states are different UI states.
 The unified `/writing` archive commits search, sort, tags, publication dates and
 reading durations to URL query state. Its filter sheet keeps changes in a draft
 until Apply; closing discards them. Server validation normalizes the same contract
-for `/api/writing/posts`, and SQL applies filters before count/page queries. Legacy
-search/tag page loaders issue 308 redirects, while compatibility APIs remain.
+for `/api/writing/posts`, and SQL applies filters before count/page queries. Standalone
+writing search/tag page routes are removed, while compatibility APIs remain.
+Legacy `/blog/search` and `/blog/tag/:tag` links redirect directly to `/writing`
+with search/tag query parameters.
 The private `/admin/posts` list shares these controls, adds status filtering and
 defaults to Recently updated. Its backend filters/counts/pages the full set,
 including drafts and archived posts where selected, under session/allowlist
@@ -128,15 +130,28 @@ guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 
 ## Shared feature responsibilities
 
-- Route modules compose existing feature components and export React Router loaders
-  and metadata. They do not implement separate SQL or authorization rules.
-- `features/home` and `features/resume` own profile data, PDF/social-card compositions.
-  The PDF renderer loads only on download in the browser.
+- `app/routes/` owns public route modules and their colocated tests. Modules compose
+  feature components and export React Router loaders/metadata; SQL and authorization
+  stay in backend modules.
+- `admin/components/` owns the common admin shell, navigation and authentication
+  buttons. `features/writing/components/admin/` owns editor and post-management UI.
+- `components/layout/public-shell.tsx` owns the public layout; `components/ui/`
+  provides shared primitives and variants. Public/admin navigation uses React
+  Router links and explicit active-state helpers.
+- `config/site.ts` owns global `SITE_URL`, `SITE_HOST`, `absoluteUrl` and
+  `SOCIAL_LINKS`. Profile-specific configuration remains with its feature.
+- `features/home` and `features/resume` own profile data and PDF/social-card
+  compositions. The PDF renderer loads only on download in the browser.
 - `features/writing` owns query contracts, editor extensions, sanitized content,
   publishing rules, card/article components and preview policy.
-- `components/ui` provides shared primitives and variants; feature CSS uses Tailwind
-  and the site theme. Public/admin navigation uses React Router links and explicit
-  active-state helpers.
+- Writing database reads, archive SQL, mutations and rendered-content caching use
+  `features/writing/data/*.server.ts`. Authentication, author guards and cover
+  storage use `lib/auth.server.ts`, `lib/auth-guard.server.ts` and
+  `lib/cover-storage.server.ts`; `lib/db/index.server.ts` owns the server database
+  client and `features/writing/utils/preview-token.server.ts` owns signing secrets.
+  These explicit server boundaries protect browser bundles from accidental imports.
+- Tooling tests sit beside their implementations, including
+  `scripts/preview-env.test.ts` beside the preview environment helper.
 - Consent gates PostHog initialization and storage; analytics helpers exclude admin/auth tracking and redact preview tokens
   from public pageview URLs. Security headers remain centralized at the Worker.
 

@@ -7,7 +7,6 @@ export const WRITING_CONFIG = {
     "Notes on building and operating software: TypeScript, React, backend APIs, cloud deployment, and agentic workflows.",
   basePath: "/writing",
   feedPath: "/writing/rss.xml",
-  tagPath: "/writing/tags",
   viewPath: "/api/views",
   // Cards per list page. Small enough that page two is reachable early, which is
   // what makes the pagination crawlable rather than decorative.
@@ -23,7 +22,6 @@ export const WRITING_CONFIG = {
   // clamped page one. Clamping inside the query is too late; it has to happen
   // before the value reaches the cache (threat T-11).
   maxPage: 1000,
-  searchPath: "/writing/search",
   seriesPath: "/writing/series",
   /**
    * The longest query that will be run.
@@ -57,15 +55,8 @@ export const SECTION_COPY = {
 
 export const EMPTY_COPY = {
   writing: "No writing published yet. Check back soon.",
-  tag: (name: string) => `Nothing published under ${name} yet.`,
-  // Two different empty states. Arriving at the search page has no result to
-  // report; searching and finding nothing does, and saying which term failed is
-  // the difference between a dead end and a second attempt.
-  searchIdle: "Search the archive by title, summary or anything written in an article.",
   searchNoResults: (query: string) => `Nothing matches ${query}. Try a shorter or different term.`,
 } as const
-
-export const tagSubtitle = (name: string) => `Writing tagged ${name}.`
 
 export const seriesSubtitle = (count: number) =>
   `${count} ${count === 1 ? "part" : "parts"}, meant to be read in order.`

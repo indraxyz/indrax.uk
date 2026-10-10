@@ -5,7 +5,7 @@ import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { AdminError, AdminLoading, useAdminSession } from "./shared"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/features/writing/components/admin/admin-shell"
+import { AdminShell } from "@/admin/components/admin-shell"
 import { cn } from "@/lib/utils"
 
 export function Component() {

@@ -30,8 +30,9 @@ shell; cards load in the browser. Navigation uses the shared progress indicator.
 
 PostgreSQL filters before counting and reading the page in a Neon HTTP batch,
 using `LIMIT 10 OFFSET ((page - 1) * 10)` and a deterministic unique tie-breaker.
-Drafts and archived posts are excluded. Legacy search/tag pages permanently
-redirect to the unified archive; legacy API endpoints remain compatible.
+Drafts and archived posts are excluded. Standalone writing search/tag page
+routes are removed; old blog search/tag links redirect directly to the unified
+archive. Legacy API endpoints remain compatible.
 Public API responses use `no-store`; browser query caching and server KV caching
 are separate layers.
 

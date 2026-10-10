@@ -20,7 +20,7 @@ current implementation. See [architecture](../ARCHITECTURE.md),
 | `/admin/*`                          | Separate static CSR application with browser routing                              |
 | RSS, sitemap, robots, social images | Worker resource responses                                                         |
 
-`app/routes.ts` declares public routes. Modules under `routes/` compose feature
+`app/routes.ts` declares public routes. Modules under `app/routes/` compose feature
 components and export React Router loaders and metadata. `admin/routes.tsx`
 defines the independent admin application. `workers/app.ts` dispatches assets,
 APIs, resources and SSR before loading their implementations.
@@ -63,8 +63,12 @@ Legacy `/api/writing/search` remains available for compatibility. TanStack Query
 keys distinguish all normalized archive options. Drafts and archived posts never
 appear in results or tag counts. Custom archive queries remain out of the sitemap.
 
-`/writing/search` and `/writing/tags/:tag` are compatibility-only server routes
-that issue permanent 308 redirects to `/writing` with query/filter state preserved.
+Standalone `/writing/search` and `/writing/tags/:tag` page routes and their
+redirect loaders are removed. `/writing/tags/:tag` falls through to the not-found
+route; `/writing/search` follows normal article slug resolution and returns 404
+unless a published article actually has slug `search`. Old `/blog/search` and
+`/blog/tag/:tag` links still redirect directly to `/writing`, preserving query
+state and adding the tag as a repeated query parameter when needed.
 The sitemap publishes `/writing`, article URLs and series URLs, not retired tag
 pages or arbitrary filtered combinations.
 

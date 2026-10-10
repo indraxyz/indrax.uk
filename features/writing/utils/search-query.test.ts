@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 
-import { normaliseQuery } from "../data/queries"
+import { normaliseQuery } from "./search-query"
 
 /**
  * The one function standing between `?q=` and the database.

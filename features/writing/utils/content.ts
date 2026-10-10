@@ -7,7 +7,7 @@ import { unified } from "unified"
 
 import type { Element, Root as HastRoot } from "hast"
 
-import { SITE_URL } from "@/features/resume/config"
+import { SITE_URL } from "@/config/site"
 
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
 import type { PostDocument, RenderedArticle, TocEntry } from "@/features/writing/types"

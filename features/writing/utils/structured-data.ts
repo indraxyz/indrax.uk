@@ -1,6 +1,6 @@
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { Post } from "@/features/writing/types"
-import { absoluteUrl, SITE_URL, SOCIAL_LINKS } from "@/features/resume/config"
+import { absoluteUrl, SITE_URL, SOCIAL_LINKS } from "@/config/site"
 import { personalInfo } from "@/features/resume/data/resume"
 
 /**

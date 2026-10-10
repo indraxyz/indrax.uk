@@ -5,8 +5,8 @@ import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { AdminError, AdminLoading } from "./shared"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/features/writing/components/admin/admin-shell"
-import { SignInButton } from "@/features/writing/components/admin/sign-in-button"
+import { AdminShell } from "@/admin/components/admin-shell"
+import { SignInButton } from "@/admin/components/sign-in-button"
 
 export function Component() {
   const [searchParams] = useSearchParams()
