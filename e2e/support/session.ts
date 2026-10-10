@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/neon-http"
 
 import * as schema from "@/lib/db/schema"
+import { E2E_BASE_URL } from "./constants"
 
 /**
  * Mints a real signed-in session for the authoring specs.
@@ -102,6 +103,7 @@ export async function mintAuthorSession(options: MintOptions = {}): Promise<Mint
 
   const db = client(databaseUrl)
   const auth = betterAuth({
+    baseURL: E2E_BASE_URL,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
     socialProviders: { github: { clientId: "unused", clientSecret: "unused" } },

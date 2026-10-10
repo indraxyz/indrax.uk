@@ -301,12 +301,26 @@ test.describe("authoring", () => {
     await expect(upload.locator("svg")).toBeVisible()
     for (const width of [320, 1280]) {
       await page.setViewportSize({ width, height: 900 })
-      const inputBox = await cover.getByLabel("Cover image URL").boundingBox()
-      const uploadBox = await upload.boundingBox()
-      expect(uploadBox!.x).toBeGreaterThanOrEqual(inputBox!.x + inputBox!.width)
-      expect(uploadBox!.height).toBe(44)
-      expect(Math.abs(uploadBox!.y - inputBox!.y)).toBeLessThanOrEqual(1)
-      expect(Math.abs(uploadBox!.height - inputBox!.height)).toBeLessThanOrEqual(1)
+      // Capture both boxes in one layout snapshot: editor/font loading can shift
+      // the page between separate boundingBox calls after resizing.
+      await expect
+        .poll(() =>
+          cover.evaluate((element) => {
+            const input = element.querySelector<HTMLInputElement>("#coverUrl")!
+            const button = element.querySelector<HTMLButtonElement>(
+              'button[aria-label="Upload a cover"]'
+            )!
+            const inputBox = input.getBoundingClientRect()
+            const uploadBox = button.getBoundingClientRect()
+            return {
+              besideInput: uploadBox.x >= inputBox.x + inputBox.width,
+              uploadHeight: uploadBox.height,
+              sameTop: Math.abs(uploadBox.y - inputBox.y) <= 1,
+              sameHeight: Math.abs(uploadBox.height - inputBox.height) <= 1,
+            }
+          })
+        )
+        .toEqual({ besideInput: true, uploadHeight: 44, sameTop: true, sameHeight: true })
     }
     await expect(cover.locator('input[type="file"]')).toBeDisabled()
     await expect(cover).toContainText(/unavailable/i)
