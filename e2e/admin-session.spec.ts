@@ -61,10 +61,20 @@ test.describe("sessions", () => {
     // is broken rather than because the guard works.
     const { context } = await contextWith(browser)
     const page = await context.newPage()
+    const editorChunks: string[] = []
+    page.on("request", (request) => {
+      if (/\/admin\/assets\/editor-[^/]+\.js$/.test(new URL(request.url()).pathname)) {
+        editorChunks.push(request.url())
+      }
+    })
 
     await page.goto("/admin")
     await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole("link", { name: /new/i }).first()).toBeVisible()
+    expect(editorChunks).toEqual([])
+    await page.getByRole("link", { name: /new/i }).first().click()
+    await expect(page.locator(".tiptap")).toBeVisible()
+    expect(editorChunks).toHaveLength(1)
 
     await context.close()
   })

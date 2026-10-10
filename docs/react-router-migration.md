@@ -143,10 +143,14 @@ exports are preserved. Strict execution order protects module initialization. Th
 and allows parallel fetching; it does not remove the work or promise a reduction
 in total download size. Browser tests assert every PDF group stays unloaded before
 download and verify that the generated PDF still embeds its fonts and photo.
-The largest named PDF chunk is now 255.07 kB minified, compared with the original
-1,208.21 kB renderer chunk; shared PDF dependencies have separate automatic chunks.
+The renderer entry is now 378.55 kB minified, compared with its original
+1,208.21 kB. Each named PDF library group is at most 255.07 kB; shared PDF
+dependencies have separate automatic chunks.
 The public and admin builds no longer emit the 500 kB warning, with the default
-threshold unchanged.
+threshold unchanged. Admin React and router runtime groups keep its application
+entry at 37.47 kB; the 459.92 kB editor remains lazy and is not requested by the
+dashboard. Separate runtime chunks improve cache reuse, rather than removing the
+need to download those libraries on the first visit.
 Server chunks are Worker packaging, not browser entry downloads; invocation CPU and total compressed upload size remain separate
 measurements. See [Vite's chunk warning](https://vite.dev/config/build-options.html#build-chunksizewarninglimit)
 and [Rolldown splitting behavior](https://rolldown.rs/reference/OutputOptions.codeSplitting).

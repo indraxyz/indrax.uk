@@ -481,7 +481,13 @@ test.describe("authoring", () => {
     await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
     await expect(excerpt).toHaveValue("Changes made while the previous save was in flight.")
     await page.unroute("**/api/admin/posts")
+    const completedSave = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/admin/posts" &&
+        response.request().method() === "POST"
+    )
     await save.click()
+    expect((await completedSave).ok()).toBe(true)
     await expect(saved).toBeVisible()
     await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
     await page.reload()
