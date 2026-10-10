@@ -17,6 +17,7 @@ vi.mock("react", async (original) => ({
   useId: () => "post-form-test",
   useRef: (initial: unknown) => ({ current: initial }),
   useEffect: vi.fn(),
+  useLayoutEffect: vi.fn(),
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
 vi.mock("react-router", () => ({

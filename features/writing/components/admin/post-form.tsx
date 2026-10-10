@@ -6,6 +6,7 @@ import {
   Suspense,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   useTransition,
@@ -87,12 +88,30 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   const [fields, setFields] = useState(initial)
   const [savedFields, setSavedFields] = useState(initial)
   const currentFields = useRef(fields)
+  const slugSelection = useRef<{
+    input: HTMLInputElement
+    value: string
+    start: number
+    end: number
+  } | null>(null)
   const savedFieldsRef = useRef(savedFields)
   const savedId = useRef(post?.id)
   const [persistedId, setPersistedId] = useState(post?.id)
   const saving = useRef(false)
   const syncedStatus = useRef(post?.status)
   const [result, setResult] = useState<ActionResult | null>(null)
+  // Restore normalized input selection in the same commit, before another
+  // keystroke. Animation-frame callbacks can run after subsequent typing.
+  useLayoutEffect(() => {
+    const selection = slugSelection.current
+    slugSelection.current = null
+    if (
+      selection &&
+      document.activeElement === selection.input &&
+      selection.input.value === selection.value
+    )
+      selection.input.setSelectionRange(selection.start, selection.end)
+  })
   const dirty = postFormSnapshot(fields) !== postFormSnapshot(savedFields)
   const isDirty = () =>
     postFormSnapshot(currentFields.current) !== postFormSnapshot(savedFieldsRef.current)
@@ -351,24 +370,20 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
                 const normalized = slugify(raw, { preserveTrailingSeparator: true })
                 const start = input.selectionStart
                 const end = input.selectionEnd
-                setSlug(normalized)
                 if (
                   raw !== normalized &&
                   start !== null &&
                   end !== null &&
                   typeof document !== "undefined"
                 ) {
-                  const nextStart = slugify(raw.slice(0, start), {
-                    preserveTrailingSeparator: true,
-                  }).length
-                  const nextEnd = slugify(raw.slice(0, end), {
-                    preserveTrailingSeparator: true,
-                  }).length
-                  requestAnimationFrame(() => {
-                    if (document.activeElement === input && input.value === normalized)
-                      input.setSelectionRange(nextStart, nextEnd)
-                  })
+                  slugSelection.current = {
+                    input,
+                    value: normalized,
+                    start: slugify(raw.slice(0, start), { preserveTrailingSeparator: true }).length,
+                    end: slugify(raw.slice(0, end), { preserveTrailingSeparator: true }).length,
+                  }
                 }
+                setSlug(normalized)
               }}
               placeholder="derived from the title"
               className={cn(fieldClasses, "font-mono")}

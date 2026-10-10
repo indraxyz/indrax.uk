@@ -382,9 +382,14 @@ test.describe("authoring", () => {
     await expect
       .poll(() => slugInput.evaluate((element) => (element as HTMLInputElement).selectionStart))
       .toBe(8)
+    await slugInput.pressSequentially(" & Go ")
+    await expect(slugInput).toHaveValue("cafe-vue-go-router")
+    await expect
+      .poll(() => slugInput.evaluate((element) => (element as HTMLInputElement).selectionStart))
+      .toBe(12)
     await slugInput.press("End")
     await slugInput.pressSequentially(" !!! ")
-    await expect(slugInput).toHaveValue("cafe-vue-router-")
+    await expect(slugInput).toHaveValue("cafe-vue-go-router-")
     await slugInput.fill(TITLE.replace("post", "póst").toUpperCase())
     await expect(page.getByLabel("Slug", { exact: true })).toHaveValue(SLUG_PATTERN)
 
