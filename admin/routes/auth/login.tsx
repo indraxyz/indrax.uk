@@ -2,11 +2,11 @@ import { House, ShieldAlert } from "lucide-react"
 import { Navigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
-import { AdminError, AdminLoading } from "./shared"
+import { AdminError, AdminLoading } from "@/admin/components/feedback/request-state"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/admin/components/admin-shell"
-import { SignInButton } from "@/admin/components/sign-in-button"
+import { AdminShell } from "@/admin/components/layout/admin-shell"
+import { SignInButton } from "@/admin/components/auth/sign-in-button"
 
 export function Component() {
   const [searchParams] = useSearchParams()

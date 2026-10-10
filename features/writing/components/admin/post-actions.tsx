@@ -1,8 +1,19 @@
 import { Check, Eye, EyeOff, Link2, Loader2, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { useState, useTransition } from "react"
+import { useState, useTransition, type ReactNode } from "react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { controlClassNames } from "@/components/ui/variants"
 import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
 import { apiErrorMessage } from "@/lib/api-client"
@@ -16,23 +27,37 @@ import { cn } from "@/lib/utils"
  * are two separate gestures. Deleting asks first, and says what it will do -
  * "cannot be undone" is the only honest description of a cascade (PRD US-3.4).
  */
-export function PostActions({ post }: { post: AdminPost }) {
+export function PostActions({
+  post,
+  children,
+  onDeleted,
+}: {
+  post: AdminPost
+  children?: ReactNode
+  onDeleted?: () => void
+}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const published = post.status === "published"
 
-  const run = (action: () => Promise<{ ok: boolean; message?: string }>, then?: () => void) => {
-    setError(null)
+  const run = (
+    action: () => Promise<{ ok: boolean; message?: string }>,
+    then?: () => void,
+    reportError = setError
+  ) => {
+    reportError(null)
     startTransition(async () => {
       try {
         const result = await action()
         if (!result.ok) {
-          setError(result.message ?? "That did not work.")
+          reportError(result.message ?? "That did not work.")
           return
         }
         await Promise.all([
@@ -44,7 +69,7 @@ export function PostActions({ post }: { post: AdminPost }) {
         ])
         then?.()
       } catch (error) {
-        setError(apiErrorMessage(error))
+        reportError(apiErrorMessage(error))
       }
     })
   }
@@ -62,7 +87,7 @@ export function PostActions({ post }: { post: AdminPost }) {
         <button
           type="button"
           disabled={pending}
-          className={cn(controlClassNames, "px-3 py-2 disabled:opacity-60")}
+          className={cn(controlClassNames, "min-h-11 px-3 py-2 disabled:opacity-60")}
           onClick={() => {
             setError(null)
             startTransition(async () => {
@@ -105,7 +130,7 @@ export function PostActions({ post }: { post: AdminPost }) {
       <button
         type="button"
         disabled={pending}
-        className={cn(controlClassNames, "px-3 py-2 disabled:opacity-60")}
+        className={cn(controlClassNames, "min-h-11 px-3 py-2 disabled:opacity-60")}
         onClick={() =>
           run(() => adminApi.setPostStatus(post.id, published ? "draft" : "published"))
         }
@@ -120,31 +145,61 @@ export function PostActions({ post }: { post: AdminPost }) {
         {published ? "Unpublish" : "Publish"}
       </button>
 
-      <button
-        type="button"
-        disabled={pending}
-        className={cn(
-          controlClassNames,
-          "variant-destructive px-3 py-2 text-destructive disabled:opacity-60"
-        )}
-        onClick={() => {
-          // A native confirm, deliberately. A custom dialog here would be more
-          // code and one more thing to get wrong for a keyboard, to guard the one
-          // irreversible action in the application.
-          const sure = window.confirm(
-            `Delete "${post.title}"? This removes the post and its tag links. It cannot be undone.`
-          )
-          if (!sure) return
+      <div className="flex items-center gap-2">
+        <AlertDialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            if (pending) return
+            setDeleteOpen(open)
+            if (open) setDeleteError(null)
+          }}
+        >
+          <AlertDialogTrigger
+            disabled={pending}
+            className={cn(
+              controlClassNames,
+              "variant-destructive min-h-11 px-3 py-2 text-destructive disabled:opacity-60"
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            Delete
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete post?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Delete “{post.title}”? This removes the post and its tag links. It cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError && (
+              <p role="alert" className="mt-4 text-sm font-semibold text-destructive">
+                {deleteError}
+              </p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={pending}
+                onClick={() =>
+                  run(
+                    () => adminApi.deletePost(post.id),
+                    () => {
+                      setDeleteOpen(false)
+                      onDeleted?.()
+                      navigate("/admin/posts", { replace: true })
+                    },
+                    setDeleteError
+                  )
+                }
+              >
+                {pending ? "Deleting…" : "Delete post"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-          run(
-            () => adminApi.deletePost(post.id),
-            () => navigate("/admin/posts", { replace: true })
-          )
-        }}
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        Delete
-      </button>
+        {children}
+      </div>
 
       {previewUrl && (
         <label className="flex w-full items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">

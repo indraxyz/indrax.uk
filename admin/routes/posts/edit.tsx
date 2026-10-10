@@ -2,10 +2,11 @@ import { useParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { HTTPError } from "ky"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
-import { AdminShell } from "@/admin/components/admin-shell"
+import { AdminShell } from "@/admin/components/layout/admin-shell"
 import { PostForm } from "@/features/writing/components/admin/post-form"
 import { PostActions } from "@/features/writing/components/admin/post-actions"
-import { useAdminSession, AdminLoading, AdminError } from "./shared"
+import { useAdminSession } from "@/admin/auth/session"
+import { AdminLoading, AdminError } from "@/admin/components/feedback/request-state"
 export function Component() {
   const { id = "" } = useParams()
   const session = useAdminSession()
@@ -19,16 +20,20 @@ export function Component() {
     )
   if (query.isError) return <AdminError retry={() => void query.refetch()} />
   return (
-    <AdminShell
-      title="Edit post"
-      backLink={{ href: "/admin/posts", label: "Posts" }}
-      actions={<PostActions post={query.data} />}
-    >
-      <PostForm
-        key={id}
-        post={query.data}
-        coverUploadsConfigured={session.coverUploadsConfigured}
-      />
-    </AdminShell>
+    <PostForm key={id} post={query.data} coverUploadsConfigured={session.coverUploadsConfigured}>
+      {({ form, saveButton, onDeleted }) => (
+        <AdminShell
+          title="Edit post"
+          backLink={{ href: "/admin/posts", label: "Posts" }}
+          actions={
+            <PostActions post={query.data} onDeleted={onDeleted}>
+              {saveButton}
+            </PostActions>
+          }
+        >
+          {form}
+        </AdminShell>
+      )}
+    </PostForm>
   )
 }

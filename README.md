@@ -51,7 +51,10 @@ the authenticated backend. Profile/article social cards and structured data rema
 app/                                 React Router root, entry points, route configuration
 app/routes/                          Public route modules, SEO loaders and colocated tests
 admin/                               Independent CSR entry and admin route composition
-admin/components/                    Common admin shell, navigation and authentication buttons
+admin/routes/{auth,dashboard,posts}/  Route modules grouped by admin area
+admin/layouts/                       Protected route layout and session lifecycle
+admin/auth/                          Shared session context and hook
+admin/components/{auth,layout,feedback}/ Common admin UI grouped by responsibility
 workers/app.ts                       Worker dispatcher: assets, APIs, resources, public SSR
 features/writing/api/                Client transport contracts and backend API handler
 features/writing/data/*.server.ts    Public reads, guarded admin reads and atomic mutations
@@ -209,8 +212,9 @@ database for the Worker and seed. See [release preparation and optimization prop
 
 GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
 runs only on enabled pushes to `develop`/`main`, using separate GitHub environments
-and Cloudflare resources. Keep Workers dashboard Git Builds disconnected to avoid
-a second release pipeline.
+and Cloudflare resources. Superseded quality jobs are canceled; deploy jobs
+serialize by branch and let an active upload/activation finish. Keep Workers
+dashboard Git Builds disconnected to avoid a second release pipeline.
 
 | Branch    | GitHub environment | Worker       | Domain                       |
 | --------- | ------------------ | ------------ | ---------------------------- |
@@ -219,8 +223,15 @@ a second release pipeline.
 
 The build emits `build/server/wrangler.json`; deployment uses that generated
 configuration so the matching environment and bundled assets stay together.
-`CLOUDFLARE_ENV=dev` selects the development build. Deploy commands are release
-operations, not validation commands:
+`CLOUDFLARE_ENV=dev` selects the development build. CI builds and validates both
+production and develop targets, then runs browser tests against the production
+build with isolated local fixtures. Before uploading, each deploy command compares
+the generated Worker name, routes, site URL and KV/D1 bindings with the source
+Wrangler configuration resolved for its intended environment. A mismatched
+build fails before upload; for example, an inherited `CLOUDFLARE_ENV=dev` cannot
+make `npm run deploy` upload the development Worker.
+
+Deploy commands are release operations, not validation commands:
 
 ```bash
 npm run deploy:dev
@@ -228,10 +239,21 @@ npm run deploy
 ```
 
 CI needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in each GitHub environment;
-`CLOUDFLARE_DEPLOY_ENABLED=true` enables the deployment job. Its token needs the
+the **repository or organization variable** `CLOUDFLARE_DEPLOY_ENABLED=true`
+enables the deployment job. Do not set that gate only as a Preview/Production
+environment variable: GitHub evaluates the job condition before environment
+variables are available. Use environment-scoped credentials and public build
+variables for Preview and Production. Its token needs the
 existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
 separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
 Configure public analytics/media variables in each GitHub environment as needed.
+
+Remote database and D1 migrations remain a reviewed release step before code
+that needs them is deployed; CI migration/seeding targets only its throwaway
+local database. This discovery/cleanup change requires no schema migration.
+Repository checks cannot prove runtime secrets, database isolation, environment
+protection rules or disabled dashboard Git Builds; verify those in the target
+account before a production release.
 
 Logs/traces redact URL query strings to protect OAuth codes and preview tokens.
 Inspect CPU time separately from wall time in Observability. No local test or

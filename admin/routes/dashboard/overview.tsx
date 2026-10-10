@@ -2,10 +2,11 @@ import { ArrowRight, FilePenLine, Plus } from "lucide-react"
 import { Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
-import { AdminError, AdminLoading, useAdminSession } from "./shared"
+import { AdminError, AdminLoading } from "@/admin/components/feedback/request-state"
+import { useAdminSession } from "@/admin/auth/session"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { AdminShell } from "@/admin/components/admin-shell"
+import { AdminShell } from "@/admin/components/layout/admin-shell"
 import { cn } from "@/lib/utils"
 
 export function Component() {

@@ -8,6 +8,12 @@ The [project structure and environment guide](docs/project-structure-and-environ
 explains why `app/`, `admin/` and `workers/` sit at the repository root, where new
 code belongs, and how local environment, database and authentication URLs relate.
 
+Admin route modules are grouped under `admin/routes/{auth,dashboard,posts}/` and
+mapped explicitly by `admin/routes.tsx`. `admin/layouts/protected-admin.tsx` owns
+the browser session lifecycle, `admin/auth/session.tsx` provides the shared
+context/hook, and common UI is grouped in `admin/components/{auth,layout,feedback}/`.
+Domain UI and behavior remain in `features/`; moving route files does not change URLs.
+
 ## Request paths
 
 ```mermaid

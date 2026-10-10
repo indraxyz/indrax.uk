@@ -75,7 +75,7 @@ const groups = [
     title: "Local development",
     tools: "Node.js · npm · Docker Compose · PostgreSQL · Neon HTTP proxy",
     detail:
-      "npm run dev serves the public site and watches a separate admin build. Public build settings and database tooling use .env.local; local Worker secrets use .dev.vars. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
+      "npm run dev serves the public site and watches a separate admin build. Local Worker secrets, public build settings, and database tooling share .env.local. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
     reason:
       "A local database and HTTP proxy let development and browser tests exercise the same driver as the deployed application.",
   },
@@ -93,7 +93,7 @@ const groups = [
     title: "CI/CD",
     tools: "GitHub Actions · Vite · Wrangler",
     detail:
-      "Pull requests and pushes to main or develop run formatting, linting, type checks, unit tests, production builds, and browser tests against a seeded database. When deployment is enabled, passing checks deploy develop to the preview Worker and main to production using separate GitHub environments.",
+      "Pull requests and pushes to main or develop run formatting, linting, type checks, unit tests, production and develop builds, and browser tests against a seeded database. When deployment is enabled, passing checks deploy develop to the preview Worker and main to production using separate GitHub environments. Superseded quality checks are canceled; deployments finish in sequence for each branch.",
     reason:
       "Keeping checks and deployment in one versioned workflow makes releases repeatable and requires both check and browser-test jobs to pass before deployment.",
   },
@@ -102,7 +102,7 @@ const groups = [
     title: "Deployment",
     tools: "Cloudflare Workers · React Router",
     detail:
-      "Vite builds the public SSR Worker and static admin assets. Wrangler deploys the generated build configuration: develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV and D1 resources.",
+      "Vite builds the public SSR Worker and static admin assets. Before Wrangler uploads the generated configuration, a check verifies its Worker name, domains, site URL, and KV/D1 bindings against the intended environment. Develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV and D1 resources.",
     reason:
       "React Router supports server rendering for SEO and a static browser application for admin, with shared APIs on Workers.",
   },

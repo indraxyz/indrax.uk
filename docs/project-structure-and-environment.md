@@ -32,8 +32,8 @@ run behind the same Worker and origin, rather than separate deployed backends.
 ## Where should new code go?
 
 - Public route composition, loaders and metadata: `app/routes/`.
-- Admin route composition: `admin/`; common admin framing, navigation and login
-  controls: `admin/components/`.
+- Admin route composition: `admin/routes/<area>/`; common admin framing,
+  navigation, login controls and request feedback: `admin/components/`.
 - Domain behavior and UI: `features/<feature>/`. Writing editor and post-management
   components stay in `features/writing/components/admin/`.
 - Shared public layout: `components/layout/`; reusable UI primitives:
@@ -55,6 +55,40 @@ For this architecture, the useful conventions are clear ownership, shared UI,
 and explicit server/browser boundaries. Moving everything into `src/` would also
 require updating framework roots, aliases and tooling; it is not needed to make
 the current layout valid.
+
+## How is the admin organized as it grows?
+
+The admin root keeps its HTML/browser entry points and explicit URL configuration.
+Route modules are grouped by area; shared admin UI and session handling have
+separate owners:
+
+```text
+admin/
+  index.html
+  main.tsx
+  routes.tsx
+  routes/
+    auth/login.tsx
+    dashboard/overview.tsx
+    posts/{list,new,edit}.tsx
+  layouts/protected-admin.tsx
+  auth/session.tsx
+  components/
+    auth/{sign-in-button,sign-out-button}.tsx
+    layout/{admin-shell,admin-navigation}.tsx
+    feedback/request-state.tsx
+```
+
+`routes.tsx` declares URLs, lazy route modules and query prefetching. The protected
+layout handles browser session refresh/expiry and provides the session context;
+server APIs still enforce authorization. The shared session hook lives in
+`auth/session.tsx`, while loading/error UI lives in `components/feedback/`.
+
+For a new admin area, add its route modules to `admin/routes/<area>/` and map them
+in `admin/routes.tsx`. Keep its domain behavior, API contracts and substantial UI
+in `features/<feature>/`, following the existing writing modules. Add admin-wide
+UI only when shared across areas. Folder names do not determine URLs, so this
+organization preserves `/admin/new` and `/admin/edit/:id` and requires no redirects.
 
 ## What does `workers/` do? Can React Router provide the backend?
 

@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
-import { AdminNavigation } from "@/admin/components/admin-navigation"
+import { AdminNavigation } from "@/admin/components/layout/admin-navigation"
 
 interface AdminShellProps {
   title: string

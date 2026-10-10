@@ -89,12 +89,12 @@ export function ImageUpload({ onUploaded }: ImageUploadProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <>
       <input
         ref={input}
         type="file"
         accept={ALLOWED_TYPES.join(",")}
-        className="sr-only"
+        className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (file) void upload(file)
@@ -104,22 +104,30 @@ export function ImageUpload({ onUploaded }: ImageUploadProps) {
       <button
         type="button"
         disabled={busy}
+        aria-label="Upload a cover"
+        title="Upload a cover"
+        aria-busy={busy}
         onClick={() => input.current?.click()}
-        className={cn(controlClassNames, "px-3 py-2 disabled:opacity-60")}
+        className={cn(
+          controlClassNames,
+          "min-h-11 min-w-11 shrink-0 px-3 py-2 disabled:opacity-60"
+        )}
       >
         {busy ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : (
           <ImageUp className="h-3.5 w-3.5" aria-hidden />
         )}
-        {busy ? "Uploading" : "Upload a cover"}
       </button>
 
       {error && (
-        <p role="alert" className="text-xs font-black uppercase tracking-[0.14em] text-destructive">
+        <p
+          role="alert"
+          className="col-span-2 text-xs font-black uppercase tracking-[0.14em] text-destructive"
+        >
           {error}
         </p>
       )}
-    </div>
+    </>
   )
 }

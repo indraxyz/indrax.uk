@@ -154,6 +154,25 @@ in route components. Private responses use `no-store` and safe structured errors
 
 ## Authoring and access control
 
+The form owns saving and dirty state; admin route composition places its native
+submit button in the page heading, after Delete on edit pages and in the same
+position on new-post pages. The button targets its form by ID, retaining keyboard
+submission and browser field validation. It shows Save for unsaved edits, Saving
+while pending, and Saved when the current values are persisted. An orange design
+token marks unsaved changes, with an accessible description so color is not the
+only signal. Success is represented in the button rather than a separate visible
+"Saved." message; failures retain form values and existing error feedback.
+
+Published-slug warnings show the existing article URL below the explanatory text,
+with wrapping for narrow sidebars. Table editing tools remain available without
+the extra shift-click instruction.
+
+The slug field normalizes text with the existing `slugify` function as the author
+types, so `Café & React Router` becomes `cafe-react-router`. Live normalization
+preserves a final separator while entering the next word; submission trims that
+separator to produce a valid stored slug. Inline help explains this behavior,
+and server-side format/uniqueness validation remains authoritative.
+
 GitHub OAuth through Better Auth admits one immutable numeric GitHub ID.
 Implicit account linking is disabled so email matching cannot bypass the
 allowlist. Sessions are DB-backed and revocable, with seven-day idle expiry and
@@ -167,6 +186,15 @@ preserves the original publication date. Delete requires explicit UI confirmatio
 Save/status/delete invalidate affected admin/public query keys and public cache
 revisions. A changed published slug can break existing links and must remain a
 visible authoring concern.
+
+Delete uses the shared alert dialog, matching sign-out interaction and focus
+management. Cancel returns focus to Delete; pending deletion disables confirmation
+and dismissal, and a failed request keeps the dialog open with feedback for retry.
+Successful deletion acknowledges the form before navigation so unsaved edits do
+not trigger a second confirmation; cancellation and failure retain those edits.
+The cover URL and icon-only upload button share one row with matching heights.
+The button retains an accessible name and file-picker behavior; upload errors
+appear below the row.
 
 Mutation request bodies are streamed with a 512 KiB ceiling before JSON parsing,
 including requests without Content-Length. The document limit and structural

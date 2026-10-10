@@ -169,6 +169,9 @@ test.describe("authoring", () => {
     await expect(table.locator("tr")).toHaveCount(3)
     await expect(table.locator("tr").first().locator("th")).toHaveCount(3)
     await expect(tools).toBeVisible()
+    await expect(
+      page.getByText("Shift-click another cell to select cells for merging.", { exact: true })
+    ).toHaveCount(0)
     for (const button of await tools.getByRole("button").all()) {
       const label = await button.getAttribute("aria-label")
       expect(label).toBeTruthy()
@@ -292,6 +295,19 @@ test.describe("authoring", () => {
     await expect(cover.getByLabel("Cover image URL")).toBeDisabled()
     await expect(cover.getByLabel("Cover alt text")).toBeDisabled()
     await expect(cover.getByRole("button", { name: "Upload a cover" })).toBeDisabled()
+    const upload = cover.getByRole("button", { name: "Upload a cover", exact: true })
+    await expect(upload).toHaveText("")
+    await expect(upload).toHaveAttribute("title", "Upload a cover")
+    await expect(upload.locator("svg")).toBeVisible()
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      const inputBox = await cover.getByLabel("Cover image URL").boundingBox()
+      const uploadBox = await upload.boundingBox()
+      expect(uploadBox!.x).toBeGreaterThanOrEqual(inputBox!.x + inputBox!.width)
+      expect(uploadBox!.height).toBe(44)
+      expect(Math.abs(uploadBox!.y - inputBox!.y)).toBeLessThanOrEqual(1)
+      expect(Math.abs(uploadBox!.height - inputBox!.height)).toBeLessThanOrEqual(1)
+    }
     await expect(cover.locator('input[type="file"]')).toBeDisabled()
     await expect(cover).toContainText(/unavailable/i)
     await expect(page.getByRole("button", { name: /^save$/i })).toBeEnabled()
@@ -338,10 +354,12 @@ test.describe("authoring", () => {
       "/admin/posts"
     )
     await page.waitForSelector(".ProseMirror")
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible()
 
     // Exact, because the series fieldset adds a "Series title" field and the
     // default substring match resolves to both.
     await page.getByLabel("Title", { exact: true }).fill(TITLE)
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
     await page.locator(".ProseMirror").click()
     await page.keyboard.type("The opening paragraph, typed by the suite.")
     await page.keyboard.press("Enter")
@@ -352,13 +370,32 @@ test.describe("authoring", () => {
     await page.getByRole("button", { name: "Add row below", exact: true }).click()
     await page.getByRole("button", { name: "Add column after", exact: true }).click()
     await page.getByLabel("Tags").fill(`Testing, typescript, ${TAG}`)
+    const slugInput = page.getByLabel("Slug", { exact: true })
+    await slugInput.fill("")
+    await slugInput.pressSequentially("Café & ")
+    await expect(slugInput).toHaveValue("cafe-")
+    await slugInput.pressSequentially("React Router")
+    await expect(slugInput).toHaveValue("cafe-react-router")
+    await slugInput.evaluate((element) => (element as HTMLInputElement).setSelectionRange(5, 10))
+    await slugInput.pressSequentially("Vue")
+    await expect(slugInput).toHaveValue("cafe-vue-router")
+    await expect
+      .poll(() => slugInput.evaluate((element) => (element as HTMLInputElement).selectionStart))
+      .toBe(8)
+    await slugInput.press("End")
+    await slugInput.pressSequentially(" !!! ")
+    await expect(slugInput).toHaveValue("cafe-vue-router-")
+    await slugInput.fill(TITLE.replace("post", "póst").toUpperCase())
+    await expect(page.getByLabel("Slug", { exact: true })).toHaveValue(SLUG_PATTERN)
 
     await page.getByRole("button", { name: /^save$/i }).click()
     await page.waitForURL(/\/admin\/edit\//)
     await expect(breadcrumb.locator("li")).toHaveText(["Admin", "Posts", "Edit post"])
 
-    // The slug is derived from the title, server-side.
+    // The slug is corrected before saving and validated again by the server.
     await expect(page.getByLabel("Slug")).toHaveValue(SLUG_PATTERN)
+    await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
     expect(errors).toEqual([])
 
     postPath = new URL(page.url()).pathname
@@ -368,6 +405,68 @@ test.describe("authoring", () => {
       "href",
       postPath
     )
+    await page.close()
+  })
+
+  test("keeps the header save action accurate through errors and changes made during a save", async () => {
+    const page = await context.newPage()
+    await page.goto(postPath)
+    const saved = page.getByRole("button", { name: "Saved", exact: true })
+    await expect(saved).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
+    const saveBox = await saved.boundingBox()
+    const deleteBox = await page.getByRole("button", { name: "Delete", exact: true }).boundingBox()
+    expect(saveBox!.x).toBeGreaterThan(deleteBox!.x + deleteBox!.width)
+    expect(
+      Math.abs(saveBox!.y + saveBox!.height / 2 - deleteBox!.y - deleteBox!.height / 2)
+    ).toBeLessThanOrEqual(1)
+    expect(
+      await saved.evaluate((element) => {
+        const formId = element.getAttribute("form")
+        const form = formId ? document.getElementById(formId) : null
+        return form?.tagName === "FORM" && !form.contains(element)
+      })
+    ).toBe(true)
+
+    const excerpt = page.getByLabel("Excerpt", { exact: true })
+    await excerpt.fill("A save status regression excerpt.")
+    const save = page.getByRole("button", { name: "Save", exact: true })
+    await expect(save).toBeVisible()
+    await expect(save).toHaveAccessibleDescription(/unsaved changes/i)
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    await page.route("**/api/admin/posts", (route) =>
+      route.fulfill({ json: { ok: false, message: "Temporary save failure." } })
+    )
+    await save.click()
+    await expect(page.getByRole("alert")).toContainText("Temporary save failure.")
+    await expect(save).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    await page.unroute("**/api/admin/posts")
+
+    let release!: () => void
+    const ready = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route("**/api/admin/posts", async (route) => {
+      await ready
+      await route.continue()
+    })
+    await save.click()
+    try {
+      await expect(page.getByRole("button", { name: "Saving", exact: true })).toBeDisabled()
+      await excerpt.fill("Changes made while the previous save was in flight.")
+    } finally {
+      release()
+    }
+    await expect(save).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    await expect(excerpt).toHaveValue("Changes made while the previous save was in flight.")
+    await page.unroute("**/api/admin/posts")
+    await save.click()
+    await expect(saved).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
+    await page.reload()
+    await expect(excerpt).toHaveValue("Changes made while the previous save was in flight.")
     await page.close()
   })
 
@@ -400,7 +499,8 @@ test.describe("authoring", () => {
     await expect(cover.getByLabel("Cover alt text")).toHaveValue(coverAlt)
     await page.getByLabel("Excerpt").fill("Updated with media storage unavailable.")
     await page.getByRole("button", { name: /^save$/i }).click()
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
     await page.reload()
     await expect(page.getByLabel("Excerpt")).toHaveValue("Updated with media storage unavailable.")
     await expect(cover.getByLabel("Cover image URL")).toHaveValue(coverUrl)
@@ -540,6 +640,41 @@ test.describe("authoring", () => {
     await reader.close()
   })
 
+  test("shows a changed published slug warning with its old URL on a separate line", async () => {
+    const page = await context.newPage()
+    await page.goto(postPath)
+    const slug = page.getByLabel("Slug", { exact: true })
+    const original = await slug.inputValue()
+    await slug.fill(`${original.toUpperCase()} changed`)
+    await expect(slug).toHaveValue(`${original}-changed`)
+    const warning = page.getByText(
+      "This post is published. Changing its slug breaks every existing link to",
+      { exact: true }
+    )
+    const oldUrl = page.getByText(`/writing/${original}`, { exact: true })
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await expect(warning).toBeVisible()
+      await expect(oldUrl).toBeVisible()
+      const saveBox = await page.getByRole("button", { name: "Save", exact: true }).boundingBox()
+      const deleteBox = await page
+        .getByRole("button", { name: "Delete", exact: true })
+        .boundingBox()
+      expect(saveBox!.x).toBeGreaterThan(deleteBox!.x + deleteBox!.width)
+      expect(
+        Math.abs(saveBox!.y + saveBox!.height / 2 - deleteBox!.y - deleteBox!.height / 2)
+      ).toBeLessThanOrEqual(1)
+      const textBox = await warning.boundingBox()
+      const urlBox = await oldUrl.boundingBox()
+      expect(urlBox!.y).toBeGreaterThanOrEqual(textBox!.y + textBox!.height)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true
+      )
+    }
+    await slug.fill(original)
+    await page.close()
+  })
+
   test("finds the published post through authenticated query and status filters", async () => {
     const reader = await context.newPage()
     await reader.goto(
@@ -569,7 +704,8 @@ test.describe("authoring", () => {
     await page.keyboard.insertText(bodyMarker)
     await page.getByLabel("Excerpt").fill(excerpt)
     await page.getByRole("button", { name: /^save$/i }).click()
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
     expect((await page.goto(TAG_PATH))?.status()).toBe(200)
     await expect(page.getByText(excerpt, { exact: true })).toBeVisible()
     expect((await page.reload())?.status()).toBe(200)
@@ -623,33 +759,78 @@ test.describe("authoring", () => {
       timeout: 15_000,
     })
 
-    // Put it back, so the lifecycle below is unaffected by this detour.
+    // Restoring the saved values is clean again; the rejected update never
+    // reached the database and requires no additional save.
     await page.getByLabel("Series title").fill("")
     await page.getByLabel("Part number").fill("")
-    await page.getByRole("button", { name: /^save$/i }).click()
-    await expect(page.getByText(/part 1 of that series already exists/i)).toHaveCount(0, {
-      timeout: 15_000,
-    })
+    await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeDisabled()
+    await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
+    await expect(page.getByLabel("Series title")).toHaveValue("")
+    await expect(page.getByLabel("Part number")).toHaveValue("")
+    await expect(page.getByText(/part 1 of that series already exists/i)).toHaveCount(0)
+    await expect(page.getByRole("alert")).toHaveCount(0)
 
     await page.close()
   })
 
-  test("deletes it, after asking", async () => {
+  test("deletes dirty posts only after confirmation, preserving changes on cancellation or failure", async () => {
     const page = await context.newPage()
-    let asked = false
+    const nativeDialogs: string[] = []
     page.on("dialog", async (dialog) => {
-      asked = true
-      expect(dialog.message()).toMatch(/cannot be undone/i)
-      await dialog.accept()
+      nativeDialogs.push(dialog.message())
+      await dialog.dismiss()
     })
-
     await page.goto(postPath)
-    await page.getByRole("button", { name: /^delete$/i }).click()
-    await page.waitForURL(/\/admin\/posts$/)
+    await page.getByLabel("Excerpt", { exact: true }).fill("An unsaved change before deletion.")
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    const remove = page.getByRole("button", { name: "Delete", exact: true })
+    await remove.click()
+    const dialog = page.getByRole("alertdialog", { name: "Delete post?", exact: true })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText(TITLE)
+    await expect(dialog).toContainText(/cannot be undone/i)
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(dialog).not.toBeVisible()
+    await expect(remove).toBeFocused()
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    await expect(page.getByLabel("Excerpt", { exact: true })).toHaveValue(
+      "An unsaved change before deletion."
+    )
+    await expect(page).toHaveURL(new RegExp(postPath + "$"))
 
-    // Deleting is the one irreversible action here, so it must not be a single
-    // unguarded click.
-    expect(asked).toBe(true)
+    let finishDeletion!: () => void
+    const deletionHeld = new Promise<void>((resolve) => {
+      finishDeletion = resolve
+    })
+    await page.route("**/api/admin/posts/*", async (route) => {
+      if (route.request().method() === "DELETE") {
+        await deletionHeld
+        await route.fulfill({ json: { ok: false, message: "Temporary deletion failure." } })
+      } else {
+        await route.continue()
+      }
+    })
+    await remove.click()
+    await dialog.getByRole("button", { name: "Delete post", exact: true }).click()
+    try {
+      await expect(dialog.getByRole("button", { name: "Deleting…", exact: true })).toBeDisabled()
+      await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled()
+      await page.keyboard.press("Escape")
+      await expect(dialog).toBeVisible()
+    } finally {
+      finishDeletion()
+    }
+    await expect(dialog.getByRole("alert")).toContainText("Temporary deletion failure.")
+    await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
+    await expect(page.getByLabel("Excerpt", { exact: true })).toHaveValue(
+      "An unsaved change before deletion."
+    )
+    await expect(dialog).toBeVisible()
+    await expect(page).toHaveURL(new RegExp(postPath + "$"))
+    await page.unroute("**/api/admin/posts/*")
+    await dialog.getByRole("button", { name: "Delete post", exact: true }).click()
+    await page.waitForURL(/\/admin\/posts$/)
+    expect(nativeDialogs).toEqual([])
     await expect(page.getByText(TITLE)).toHaveCount(0)
     await page.close()
   })

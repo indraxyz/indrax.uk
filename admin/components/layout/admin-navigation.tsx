@@ -15,7 +15,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer"
 import { controlClassNames } from "@/components/ui/variants"
-import { SignOutButton } from "@/admin/components/sign-out-button"
+import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
