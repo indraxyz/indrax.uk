@@ -75,6 +75,8 @@ or production.
    Verify the production Worker's database,
    auth/OAuth origin and credentials, author ID, and optional R2 secrets. Keep
    dev/prod KV and D1 resources isolated. Ensure D1's revalidations table exists.
+   See [D1/KV initialization and inspection](d1-kv-cache.md#deployed-develop-and-production)
+   for environment-specific operator commands and cache recovery considerations.
 4. Review pending SQL migrations against production and apply required ones with
    the production migration connection. The unified public/admin discovery change uses existing columns
    and indexes and introduces no schema migration. Do not run local fixture seeding

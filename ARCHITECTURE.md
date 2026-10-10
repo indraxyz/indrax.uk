@@ -117,6 +117,9 @@ returns sanitized HTML/headings and metadata without raw document duplication.
 
 ## Database and cache boundaries
 
+The [D1 and KV cache guide](docs/d1-kv-cache.md) documents the implementation,
+local persistence roots, environment selection and remote initialization/inspection.
+
 Public reads enforce published status, publication date and content presence.
 There is no boolean flag that can make a public query include drafts. Admin reads
 live separately and never persist in KV. Minimal list projections omit bodies;

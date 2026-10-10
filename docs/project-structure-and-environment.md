@@ -119,6 +119,10 @@ packages so development and CI follow the versions in the lockfile.
 
 ## Which local environment file do we use?
 
+D1 and KV bindings come from Wrangler configuration. Their local state files,
+cache lifecycle and deployed resource setup are explained in the
+[D1 and KV cache guide](d1-kv-cache.md).
+
 Use the root `.env.local`, copied from `.env.example`. It configures public Vite
 builds, local Worker bindings, preview, seed and Drizzle tooling. It is ignored by
 Git; the example contains placeholders rather than private credentials.

@@ -66,7 +66,10 @@ it("supports shell-only CI without a local file and excludes unrelated process c
     PATH: "/bin",
     DIRECT_DATABASE_URL: "tooling-only",
   })
-  const vars = parseEnv(await readFile(result.args[3], "utf8"))
+  expect(result.args).toHaveLength(2)
+  expect(result.args[0]).toBe("--env-file")
+  expect(result.args).not.toContain(join(root, ".env.local"))
+  const vars = parseEnv(await readFile(result.args[1], "utf8"))
   expect(vars).toEqual({
     DATABASE_URL: "fixture-db",
     R2_SECRET_ACCESS_KEY: "fixture-r2",
@@ -79,7 +82,7 @@ it("preserves an explicit shell callback origin and empty values", async () => {
     { BETTER_AUTH_URL: "http://localhost:3100", GITHUB_CLIENT_SECRET: "" },
     "3100"
   )
-  expect(parseEnv(await readFile(result.args[3], "utf8"))).toMatchObject({
+  expect(parseEnv(await readFile(result.args[1], "utf8"))).toMatchObject({
     BETTER_AUTH_URL: "http://localhost:3100",
     GITHUB_CLIENT_SECRET: "",
   })
@@ -89,7 +92,7 @@ it("preserves an explicit shell callback origin and empty values", async () => {
 it("preserves hashes, literal backslashes and multiline fixture secrets without interpolation", async () => {
   const secret = "value#hash\\nliteral\nsecond line"
   const result = await prepare({ BETTER_AUTH_SECRET: secret })
-  expect(parseEnv(await readFile(result.args[3], "utf8")).BETTER_AUTH_SECRET).toBe(secret)
+  expect(parseEnv(await readFile(result.args[1], "utf8")).BETTER_AUTH_SECRET).toBe(secret)
   await result.cleanup()
 })
 it("does not create an override file when the local file already matches shell and preview settings", async () => {
@@ -135,6 +138,7 @@ it.each(["exit", "spawn-error", "initialize-error", "SIGINT", "SIGTERM"])(
         expect(options.env?.CLOUDFLARE_INCLUDE_PROCESS_ENV).toBe("false")
         expect(args[args.indexOf("--config") + 1]).toBe(join(root, "build/server/wrangler.json"))
         expect(args[args.indexOf("--local-upstream") + 1]).toBe("127.0.0.1:3900")
+        expect(args).not.toContain(join(root, ".env.local"))
         envFile = args[args.lastIndexOf("--env-file") + 1]
         queueMicrotask(() => {
           if (outcome === "spawn-error") child.emit("error", new Error("spawn failed"))

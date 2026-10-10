@@ -82,6 +82,8 @@ See [architecture](ARCHITECTURE.md), [migration decisions](docs/react-router-mig
 For folder ownership, the role of Workers, Cloudflare tooling, `.env.local`,
 database URLs and OAuth origins, read the
 [project structure and environment guide](docs/project-structure-and-environment.md).
+For D1/KV responsibilities, local file locations, inspection commands and deployed
+Worker setup, read the [D1 and KV cache guide](docs/d1-kv-cache.md).
 
 ## Local development
 

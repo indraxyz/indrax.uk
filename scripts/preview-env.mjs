@@ -47,8 +47,10 @@ export async function preparePreviewEnvironment({
 }) {
   const localFile = resolve(root, ".env.local")
   let local = {}
+  let hasLocalFile = false
   try {
     local = parseEnv(await readFile(localFile, "utf8"))
+    hasLocalFile = true
   } catch (error) {
     if (error.code !== "ENOENT") throw error
   }
@@ -57,7 +59,9 @@ export async function preparePreviewEnvironment({
   )
   values.BETTER_AUTH_URL = env.BETTER_AUTH_URL ?? `http://127.0.0.1:${port}`
   const overrides = Object.entries(values).filter(([name, value]) => local[name] !== value)
-  const args = ["--env-file", localFile]
+  // Wrangler forwards explicit env files to Node, which rejects missing paths.
+  // CI has shell fixtures but deliberately has no developer .env.local file.
+  const args = hasLocalFile ? ["--env-file", localFile] : []
   let directory
   const cleanup = async () => {
     if (directory) await rm(directory, { recursive: true, force: true })
