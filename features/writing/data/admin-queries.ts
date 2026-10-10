@@ -1,6 +1,22 @@
-import { count, desc, eq, sql } from "drizzle-orm"
+import { and, count, desc, eq, sql } from "drizzle-orm"
 
-import type { AdminPost, AdminPostSummary } from "@/features/writing/types"
+import type {
+  AdminPost,
+  AdminPostSummary,
+  AdminArchiveResults,
+  Tag,
+  TagWithCount,
+} from "@/features/writing/types"
+import { archivePageLimit } from "@/features/writing/utils/archive-options"
+import { WRITING_CONFIG } from "@/features/writing/config"
+import {
+  adminArchiveSearchParams,
+  defaultAdminArchiveOptions,
+  parseAdminArchiveOptions,
+  type AdminArchiveOptions,
+} from "@/features/writing/utils/admin-archive-options"
+import { qualified } from "@/lib/db/qualified-column"
+import { buildArchiveQuery } from "./archive-query"
 import { iso } from "@/features/writing/data/queries"
 import { requireAuthor } from "@/lib/auth-guard"
 import { postIdSchema } from "@/lib/validators/writing"
@@ -137,4 +153,81 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
     seriesDescription: row.series?.description ?? null,
     seriesOrder: row.seriesOrder,
   }
+}
+
+/** Author-only archive, sharing filter semantics while retaining every publication status. */
+export async function getAdminArchivePosts(
+  input: AdminArchiveOptions = defaultAdminArchiveOptions
+): Promise<AdminArchiveResults> {
+  await requireAuthor()
+  const db = getDb()
+  if (!db) return { posts: [], total: 0, page: 1, pageCount: 0 }
+  const options = parseAdminArchiveOptions(adminArchiveSearchParams(input))
+  const criteria = buildArchiveQuery(options)
+  const filter = and(
+    criteria.filter,
+    options.status === "any" ? undefined : eq(schema.posts.status, options.status)
+  )
+  const cards = (page: number) =>
+    db
+      .select({
+        id: schema.posts.id,
+        slug: schema.posts.slug,
+        title: schema.posts.title,
+        status: schema.posts.status,
+        publishedAt: schema.posts.publishedAt,
+        updatedAt: schema.posts.updatedAt,
+        tags: sql<Tag[]>`coalesce((
+      select jsonb_agg(jsonb_build_object('id', ${qualified(schema.tags.id)}, 'name', ${qualified(schema.tags.name)}, 'slug', ${qualified(schema.tags.slug)}) order by ${qualified(schema.tags.name)})
+      from ${schema.postTags}
+      inner join ${schema.tags} on ${qualified(schema.tags.id)} = ${qualified(schema.postTags.tagId)}
+      where ${qualified(schema.postTags.postId)} = ${qualified(schema.posts.id)}
+    ), '[]'::jsonb)`.mapWith((value: Tag[] | string) =>
+          typeof value === "string" ? (JSON.parse(value) as Tag[]) : value
+        ),
+      })
+      .from(schema.posts)
+      .where(filter)
+      .orderBy(...criteria.order)
+      .limit(WRITING_CONFIG.pageSize)
+      .offset((page - 1) * WRITING_CONFIG.pageSize)
+  const [totals, initialRows] = await db.batch([
+    db.select({ total: count() }).from(schema.posts).where(filter),
+    cards(options.page),
+  ])
+  const total = totals[0].total
+  const pageCount = Math.min(
+    Math.ceil(total / WRITING_CONFIG.pageSize),
+    archivePageLimit(options.q)
+  )
+  const page = Math.min(options.page, Math.max(1, pageCount))
+  const rows = page === options.page || pageCount === 0 ? initialRows : await cards(page)
+  return {
+    total,
+    page,
+    pageCount,
+    posts: rows.map((row) => ({
+      ...row,
+      publishedAt: iso(row.publishedAt),
+      updatedAt: row.updatedAt.toISOString(),
+    })),
+  }
+}
+
+/** Badge counts include drafts and archived posts, and are available only to the author. */
+export async function getAdminTagsInUse(): Promise<TagWithCount[]> {
+  await requireAuthor()
+  const db = getDb()
+  if (!db) return []
+  return db
+    .select({
+      id: schema.tags.id,
+      name: schema.tags.name,
+      slug: schema.tags.slug,
+      postCount: count(schema.postTags.postId),
+    })
+    .from(schema.tags)
+    .innerJoin(schema.postTags, eq(schema.postTags.tagId, schema.tags.id))
+    .groupBy(schema.tags.id, schema.tags.name, schema.tags.slug)
+    .orderBy(schema.tags.name)
 }

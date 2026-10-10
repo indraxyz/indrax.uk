@@ -1,13 +1,19 @@
 import {
   getPostForPreview,
-  getPostsByTag,
-  getPublishedPosts,
+  getArchivePosts,
   getRecentPosts,
   getSeriesBySlug,
   getTagsInUse,
   searchPosts,
 } from "@/features/writing/data/queries"
 import type { ActionResult } from "@/features/writing/types"
+import {
+  isArchiveDate,
+  isArchiveTag,
+  MAX_ARCHIVE_TAGS,
+  parseArchiveOptions,
+} from "@/features/writing/utils/archive-options"
+import { parseAdminArchiveOptions } from "@/features/writing/utils/admin-archive-options"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { logServerError } from "@/lib/observability"
 import { serverEnv } from "@/lib/runtime.server"
@@ -23,6 +29,26 @@ function json(value: unknown, status = 200): Response {
       "Referrer-Policy": "no-referrer",
     },
   })
+}
+
+function validateArchiveParams(params: URLSearchParams): void {
+  const tags = params.getAll("tag")
+  if (tags.length > MAX_ARCHIVE_TAGS || tags.some((tag) => !isArchiveTag(tag)))
+    throw new ApiError(400, "Invalid tags. Select up to ten tags.")
+  const query = params.get("q") ?? ""
+  if (query.length > WRITING_CONFIG.maxQueryLength)
+    throw new ApiError(400, "Search must be 120 characters or fewer.")
+  if (params.get("date") === "custom") {
+    const from = params.get("from") ?? ""
+    const to = params.get("to") ?? ""
+    if (
+      (!from && !to) ||
+      (from && !isArchiveDate(from)) ||
+      (to && !isArchiveDate(to)) ||
+      (from && to && from > to)
+    )
+      throw new ApiError(400, "Choose a valid publication date range.")
+  }
 }
 
 function page(value: string | null, max: number): number {
@@ -72,14 +98,9 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
         const { content, ...metadata } = post
         return json({ post: metadata, article: await renderDocument(content) })
       }
-      const currentPage = page(url.searchParams.get("page"), WRITING_CONFIG.maxPage)
       if (path === "/api/writing/posts") {
-        const tag = url.searchParams.get("tag")
-        if (tag && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tag)) throw new ApiError(400, "Invalid tag.")
-        if (tag && tag.length > 120) throw new ApiError(400, "Invalid tag.")
-        return json(
-          tag ? await getPostsByTag(tag, currentPage) : await getPublishedPosts(currentPage)
-        )
+        validateArchiveParams(url.searchParams)
+        return json(await getArchivePosts(parseArchiveOptions(url.searchParams)))
       }
       if (path === "/api/writing/recent")
         return json(await getRecentPosts(page(url.searchParams.get("limit") ?? "3", 10)))
@@ -111,7 +132,13 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
         import("@/lib/validators/writing"),
       ]
     )
-    const { getAdminOverview, getPostForEdit, listAllPosts } = adminQueries
+    const {
+      getAdminOverview,
+      getPostForEdit,
+      listAllPosts,
+      getAdminArchivePosts,
+      getAdminTagsInUse,
+    } = adminQueries
     const { savePost, setPostStatus, deletePost, createPreviewLink } = mutations
     const { postIdSchema, postStatusSchema } = validators
     const author = await guard.getAuthor()
@@ -126,6 +153,12 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
     if (!author) throw new ApiError(401, "Not authorised.")
     if (path === "/api/admin/overview" && request.method === "GET")
       return json(await getAdminOverview())
+    if (path === "/api/admin/posts/archive" && request.method === "GET") {
+      validateArchiveParams(url.searchParams)
+      return json(await getAdminArchivePosts(parseAdminArchiveOptions(url.searchParams)))
+    }
+    if (path === "/api/admin/tags" && request.method === "GET")
+      return json(await getAdminTagsInUse())
     if (path === "/api/admin/posts" && request.method === "GET") return json(await listAllPosts())
     if (path === "/api/admin/posts" && request.method === "POST") {
       const payload = await readJson(request)

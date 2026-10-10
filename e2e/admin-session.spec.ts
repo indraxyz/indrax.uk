@@ -97,7 +97,11 @@ test.describe("sessions", () => {
     test.setTimeout(60_000)
     const { context } = await contextWith(browser)
     const page = await context.newPage()
+    const posts = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+    )
     await page.goto("/admin/posts")
+    expect((await posts).status()).toBe(200)
     await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
     await expect(page.getByRole("main").getByRole("link", { name: /View Writing/i })).toHaveCount(0)
     const desktopLinks = await page

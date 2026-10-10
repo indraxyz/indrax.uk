@@ -103,14 +103,22 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given a list page, when it renders, then it queries excerpt-level columns only; `content` is not selected.
 - Given a post card with a cover image, when it loads, then width and height are set and CLS contribution is 0.
 
-#### US-2.2 · Filter by tag
+#### US-2.2 · Search, filter and sort in one archive
 
 **AC**
 
-- Given a tag with published posts, when I GET `/writing/tags/{slug}`, then only posts carrying that tag appear.
-- Given a tag with no published posts, when I GET it, then 404.
-- Given a tag page, when rendered, then it declares a canonical URL and is not marked `noindex`.
-- Given a draft post carrying a tag, when the tag page renders, then that post is absent.
+- Given a query or filters, when I apply them, then the results remain at `/writing` with shareable query parameters and pagination resets to page one.
+- Given the search controls, when I use the filter icon to the right of Search, then an accessible sheet opens from the right with tags, publication date, read duration and sort controls.
+- Given draft sheet changes, when I close without Apply, then committed results stay unchanged; Apply updates the URL and results together.
+- Given active tags, date or duration, then the filter icon shows a green dot and communicates its active state to assistive technology.
+- Given tags in the sheet, then toggle badges show counts of published articles. Multiple tags match any selected tag (OR); date, duration and search further narrow results (AND).
+- Given sorting, then options include Newest, Oldest, Most viewed, Recently updated, Most Relevant, Title A-Z and Title Z-A. Most Relevant requires a search query; without one its option is disabled with an inline explanation inside the sort control.
+- Given publication dates, then options include Any time, Past 7 days, Past 30 days, This year and Custom range; custom calendar-day boundaries are inclusive in UTC.
+- Given reading duration, then options include Any duration, Short (under 5 minutes), Medium (5–10 inclusive) and Long (over 10 minutes).
+- Given any combination, then count and pagination reflect exactly the published matching set and preserve all committed filters in links.
+- Given no matching published articles or an unknown tag, then an informative empty state appears with a way to clear filters.
+- Given `/writing/search` or `/writing/tags/{slug}`, then a permanent server redirect preserves discovery state at `/writing`; these retired routes are excluded from the sitemap.
+- Given keyboard or mobile use, then sheet controls, Apply, reset and close remain usable, with focus returned to the trigger after closing.
 
 #### US-2.3 · Find articles from the homepage
 
@@ -158,7 +166,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 **AC**
 
 - Given a draft, when I publish it, then `status='published'` and `published_at` is set to now if previously null.
-- Given a published post, when I unpublish it, then it returns 404 publicly and disappears from `/writing`, tag pages, sitemap, and RSS within one revalidation cycle.
+- Given a published post, when I unpublish it, then it returns 404 publicly and disappears from `/writing`, filtered results, sitemap, and RSS within one revalidation cycle.
 - Given a republish of a previously published post, when it happens, then the original `published_at` is preserved.
 - Given a delete request, when issued, then it requires explicit confirmation and cascades to `post_tags`.
 
@@ -178,6 +186,23 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given a file exceeding the cap or of a disallowed type, when I attempt upload, then it is rejected **server-side** (client-side checks alone are insufficient).
 - Given an uploaded cover, when saved, then alt text is required before the post can be published.
 - Given a presigned URL, when issued, then it expires within 5 minutes and is scoped to a single object key.
+
+---
+
+#### US-3.7 · Manage posts with search, filters and sorting
+
+**AC**
+
+- Given authenticated author access to `/admin/posts`, then the same search and right-hand filter sheet as the public archive manage committed URL state and apply changes together.
+- Given no selected sort, then Recently updated is the default, preserving the existing recent-activity order.
+- Given status filters, then Any status, Draft, Published and Archived are available and combine with query, OR tags, publication dates and read duration.
+- Given multiple pages of posts, then search, sorting, filters and totals run on the backend across the full matching set; page links preserve committed options.
+- Given tag counts, then they include all post statuses and are accessible only to the authorized author.
+- Given a draft with no publication timestamp, then it does not match publication-date filters; Newest and Oldest place null publication dates last.
+- Given no query, then Most Relevant is disabled with its explanation inline inside the sort control.
+- Given private discovery requests, then the backend verifies the session and allowlist, sends `no-store`, and never shares these results with public caches.
+- Given refresh or browser history navigation, then committed search/filter/sort/page/status state is restored; closing unapplied sheet changes preserves results.
+- Given this discovery change, then the existing authoring workflow and database schema require no migration.
 
 ---
 
@@ -214,7 +239,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given any published article, when crawled, then it carries a unique title, meta description, canonical URL, OG tags, and Twitter card tags.
 - Given an article, when crawled, then valid `Article` JSON-LD is present with `headline`, `datePublished`, `dateModified`, `author`, `image`.
 - Given `Article` and `BreadcrumbList` JSON-LD, when validated by Google's Rich Results Test, then zero errors.
-- Given `/sitemap.xml`, when fetched, then it contains the root URL, `/writing`, every published article with accurate `lastmod`, and every non-empty tag page — and **no** drafts.
+- Given `/sitemap.xml`, when fetched, then it contains the root URL, `/writing`, every published article with accurate `lastmod`, and published series URLs — and **no** drafts, retired tag/search routes or arbitrary filtered archive URLs.
 - Given a draft, when the sitemap is generated, then its URL is absent.
 
 #### US-5.2 · Subscribe via RSS
@@ -276,7 +301,7 @@ Single-author writing, public read surface, one privileged account. Realistic ri
 | T-12 | **CSP weakened by inline script** | `app/root.tsx` injects an inline theme script            | If adding CSP, use a nonce or hash for that script — do not reach for `unsafe-inline`                                                                   | Header inspection                                                            |
 | T-13 | **Dependency compromise**         | Supply chain                                             | Lockfile committed, Dependabot on, `npm audit` in CI                                                                                                    | CI                                                                           |
 
-**Accepted risks (documented, not mitigated):** no WAF; no bot management beyond platform defaults; view counter is best-effort and trivially inflatable — it is decorative, never used for ranking or billing.
+**Accepted risks (documented, not mitigated):** no WAF; no bot management beyond platform defaults; view counter is best-effort and trivially inflatable — it powers the optional Most viewed sort and is not suitable for billing or trusted popularity metrics.
 
 ---
 
@@ -337,7 +362,7 @@ Run before first production deploy.
 
 **Ready** — a story may start when: AC are written and testable; schema impact known; design tokens identified (no new raw colours); security implications noted; out-of-scope boundaries stated.
 
-**Done** — a story ships when: all AC pass; unit tests for pure logic; Playwright coverage for anything touching the auth boundary; `npm run check` green; both themes verified; keyboard path verified; no new axe violations; docs updated (`ARCHITECTURE.md` for structural change, `README.md` for new env vars); migration applied to a Neon preview branch first.
+**Done** — a story ships when: all AC pass; unit tests for pure logic; Playwright coverage for anything touching the auth boundary; `npm run check` green; both themes verified; keyboard path verified; no new axe violations; docs updated (`ARCHITECTURE.md` for structural change, `README.md` for new env vars); any required migration applied to a Neon preview branch first.
 
 ---
 
@@ -350,7 +375,7 @@ Run before first production deploy.
 | 2 — Public read      | US-1.1, 1.2, 1.3, 2.1, 2.2 | NFR-1..5, 9, 10 pass                                                        |
 | 3 — SEO              | US-5.1, 5.2, 5.3           | Rich Results and feed validators clean; drafts absent from sitemap and RSS  |
 | 4 — Auth             | US-4.1, 4.2                | T-1, T-3, T-8 tests pass                                                    |
-| 5 — Authoring        | US-3.1..3.6                | T-2, T-5 tests pass; NFR-6 confirmed                                        |
+| 5 — Authoring        | US-3.1..3.7                | T-2, T-5 tests pass; NFR-6 confirmed                                        |
 | 6 — Homepage tie-in  | US-2.3                     | Resume page unregressed, print unaffected                                   |
 | 7 — Ops              | US-6.1, 6.2                | Restore rehearsed; rollback rehearsed                                       |
 
@@ -365,7 +390,7 @@ Note the ordering: **auth lands before authoring**. Building the write UI first 
 | Unit        | Vitest                 | slug generation and collision, reading time, markdown pipeline including sanitization, Zod schemas, date formatting                             |
 | Integration | Vitest + Neon branch   | queries, cascade deletes, tag dedupe, draft exclusion                                                                                           |
 | E2E         | Playwright             | sign-in, allow-list rejection, `/admin` redirect when signed out, draft 404, preview token valid/expired, create→publish→visible, unpublish→404 |
-| A11y        | `@axe-core/playwright` | `/writing`, `/writing/[slug]`, `/writing/tags/[tag]`, both themes                                                                               |
+| A11y        | `@axe-core/playwright` | `/writing`, `/writing/[slug]`, `/writing?tag=...`, both themes                                                                                  |
 | Perf        | Lighthouse CI          | NFR-1, NFR-2                                                                                                                                    |
 | Security    | Manual + scripted      | The T-# table above                                                                                                                             |
 

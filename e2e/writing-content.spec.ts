@@ -20,15 +20,13 @@ test.describe("a seeded writing archive", () => {
     "needs a seeded database - see npm run db:up / db:migrate / db:seed"
   )
 
-  test("puts archive tags after the search form", async ({ page }) => {
+  test("keeps archive tags inside the filter sheet", async ({ page }) => {
     await page.goto("/writing")
-
-    await expect(page.getByRole("navigation", { name: "Tags" })).toBeVisible()
-    const search = await page.getByRole("search").boundingBox()
-    const tags = await page.getByRole("navigation", { name: "Tags" }).boundingBox()
-    expect(search).not.toBeNull()
-    expect(tags).not.toBeNull()
-    expect(tags!.y).toBeGreaterThan(search!.y + search!.height)
+    await expect(page.locator("[data-post-grid]")).toBeVisible()
+    await expect(page.getByRole("navigation", { name: "Tags" })).toHaveCount(0)
+    await page.getByRole("button", { name: "Filters and sort" }).click()
+    const dialog = page.getByRole("dialog", { name: "Filters and sort" })
+    await expect(dialog.getByRole("button", { name: /typescript/i })).toBeVisible()
   })
 
   test("renders an article, its dates and its reading time", async ({ page }) => {
@@ -135,15 +133,13 @@ test.describe("a seeded writing archive", () => {
   })
 
   test("filters writing cards by tag through the client API", async ({ page }) => {
-    await page.goto(`/writing/tags/${SEEDED_TAG_SLUG}`)
+    await page.goto(`/writing?tag=${SEEDED_TAG_SLUG}`)
 
-    // Named, or this asserts nothing - every page on the site has a heading.
-    await expect(page.getByRole("heading", { level: 1, name: /typescript/i })).toBeVisible()
-    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
-      "href",
-      new RegExp(`/writing/tags/${SEEDED_TAG_SLUG}$`)
-    )
-    await expect(page.locator('head meta[name="robots"][content*="noindex"]')).toHaveCount(0)
+    expect(new URL(page.url()).searchParams.get("tag")).toBe(SEEDED_TAG_SLUG)
+    await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
+    await expect(page.locator("[data-post-grid]")).toBeVisible()
+    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute("href", /\/writing$/)
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", /noindex/)
   })
 
   test("emits Article and BreadcrumbList structured data", async ({ page }) => {
@@ -186,11 +182,15 @@ test.describe("a seeded writing archive", () => {
     )
     expect(overflows).toBe(false)
 
-    const fontSize = await page
-      .locator(".prose p")
-      .first()
-      .evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))
-    expect(fontSize).toBeGreaterThanOrEqual(16)
+    // Hydration can replace the measured node; retry against the current paragraph.
+    await expect
+      .poll(() =>
+        page
+          .locator(".prose p")
+          .first()
+          .evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))
+      )
+      .toBeGreaterThanOrEqual(16)
 
     await context.close()
   })
@@ -300,6 +300,7 @@ test.describe("a seeded writing archive", () => {
   test("matches the main site width and lays out article lists for each screen size", async ({
     page,
   }) => {
+    test.setTimeout(60_000)
     for (const { width, columns } of [
       { width: 390, columns: 1 },
       { width: 768, columns: 2 },
@@ -316,18 +317,13 @@ test.describe("a seeded writing archive", () => {
         "/resume",
         "/tech-stack",
         "/writing",
-        "/writing/search?q=renderer",
-        `/writing/tags/${SEEDED_TAG_SLUG}`,
+        "/writing?q=renderer",
+        `/writing?tag=${SEEDED_TAG_SLUG}`,
         `/writing/${SEEDED_POST_SLUG}`,
       ]) {
         await page.goto(path)
         if (
-          [
-            "/",
-            "/writing",
-            "/writing/search?q=renderer",
-            `/writing/tags/${SEEDED_TAG_SLUG}`,
-          ].includes(path)
+          ["/", "/writing", "/writing?q=renderer", `/writing?tag=${SEEDED_TAG_SLUG}`].includes(path)
         ) {
           const grid = page.locator("[data-post-grid]").first()
           await expect(grid).toBeVisible()

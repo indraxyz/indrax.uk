@@ -37,6 +37,7 @@ export function PostActions({ post }: { post: AdminPost }) {
         }
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
           queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) }),
           queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
           queryClient.invalidateQueries({ queryKey: writingKeys.all }),

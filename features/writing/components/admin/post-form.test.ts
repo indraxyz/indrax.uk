@@ -6,6 +6,7 @@ import type { AdminPost, ActionResult } from "@/features/writing/types"
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   refresh: vi.fn(),
+  invalidate: vi.fn().mockResolvedValue(undefined),
   savePost: vi.fn(),
   transition: undefined as Promise<void> | undefined,
 }))
@@ -22,13 +23,18 @@ vi.mock("react-router", () => ({
   useBeforeUnload: vi.fn(),
 }))
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: ({ mutationFn }: { mutationFn: unknown }) => ({ mutateAsync: mutationFn }),
 }))
 vi.mock("@/features/writing/components/admin/image-upload", () => ({ ImageUpload: () => null }))
 vi.mock("@/features/writing/api/client", () => ({
   adminApi: { savePost: mocks.savePost },
-  adminKeys: { posts: ["admin", "posts"], overview: ["admin", "overview"] },
+  adminKeys: {
+    tags: () => ["admin", "tags"],
+    post: (id: string) => ["admin", "post", id],
+    posts: ["admin", "posts"],
+    overview: ["admin", "overview"],
+  },
   writingKeys: { all: ["writing"] },
 }))
 
@@ -70,6 +76,7 @@ it("navigates once to the created post without an extra refresh", async () => {
   await submit(null, { ok: true, postId: ID })
   expect(mocks.replace.mock.calls).toEqual([[`/admin/edit/${ID}`]])
   expect(mocks.refresh).not.toHaveBeenCalled()
+  expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "tags"] })
 })
 
 it("keeps the existing edit form after saving without requesting its page again", async () => {

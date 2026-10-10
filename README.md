@@ -6,14 +6,14 @@ The public site uses Framework Mode; the admin is an independent CSR application
 
 ## Rendering and data
 
-| Area                                  | Rendering                                             | Data                                                          |
-| ------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
-| Home, resume, tech stack              | SSR for SEO and initial content                       | Static feature data; recent writing cards load in the browser |
-| Writing archive, tags, search, series | Public page shell; cards/results use CSR              | Writing API with TanStack Query                               |
-| Published writing detail              | SSR with metadata, Article JSON-LD and sanitized HTML | Public-only database reads and revision cache                 |
-| Admin dashboard, list, editor, login  | Independent static CSR bundle; no React SSR           | Authenticated backend APIs                                    |
-| Shared draft preview                  | CSR page with signed preview API                      | Uncached sanitized article DTO after signature verification   |
-| RSS, sitemap, robots, social images   | Resource endpoints                                    | Public-only reads and server image rendering                  |
+| Area                                 | Rendering                                             | Data                                                          |
+| ------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
+| Home, resume, tech stack             | SSR for SEO and initial content                       | Static feature data; recent writing cards load in the browser |
+| Writing archive and series           | Public page shell; cards/results use CSR              | Writing API with TanStack Query                               |
+| Published writing detail             | SSR with metadata, Article JSON-LD and sanitized HTML | Public-only database reads and revision cache                 |
+| Admin dashboard, list, editor, login | Independent static CSR bundle; no React SSR           | Authenticated backend APIs                                    |
+| Shared draft preview                 | CSR page with signed preview API                      | Uncached sanitized article DTO after signature verification   |
+| RSS, sitemap, robots, social images  | Resource endpoints                                    | Public-only reads and server image rendering                  |
 
 TanStack Query owns client loading/error/cache state and mutation invalidation.
 Ky is the same-origin HTTP transport; requests use native Fetch underneath.
@@ -37,7 +37,12 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
   browser PDF download, contents navigation and code-copy controls.
 
 Legacy `/blog/*`, `/blog/tag/*`, and `/rss.xml` links redirect to the corresponding
-writing URLs. Profile/article social cards and structured data remain server-generated.
+writing URLs. Search, tags, sort, publication dates and read durations share the
+`/writing` archive; the right-hand filter sheet applies changes together. Legacy
+`/writing/search` and `/writing/tags/:tag` permanently redirect to query-based
+archive URLs. The admin Posts page shares these controls, adds status filtering,
+and defaults to Recently updated; all private filtering and pagination run on
+the authenticated backend. Profile/article social cards and structured data remain server-generated.
 
 ## Structure
 
@@ -84,11 +89,24 @@ npm run preview
 npm run preview:dev
 ```
 
+During development, a Vite middleware reads generated admin assets directly from
+disk so new chunk filenames remain available after watched rebuilds. Admin HTML
+and authentication still pass through the Worker. Production serves the assembled
+assets through the normal `ASSETS` binding.
+
 Use `.dev.vars` for local default Worker secrets and `.dev.vars.dev` for the dev
 Worker. Templates live in `config/worker-env.production.example` and
 `config/worker-env.dev.example`. Local preview uses local KV/D1; it does not
 provision remote resources. Public environment variables are compiled by Vite;
 changing them requires rebuilding both bundles.
+
+Worker authentication does not read secrets from `.env.local`. Put `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
+`ALLOWED_GITHUB_ID` in `.dev.vars` (or `.dev.vars.dev` for the dev Worker). If the
+login page says “Author access is unavailable,” check that these settings are
+present there. Keep the browser host and port, `BETTER_AUTH_URL`, and the GitHub
+OAuth callback `<origin>/api/auth/callback/github` consistent; `localhost` and
+`127.0.0.1` are different origins.
 
 For local auth, set `BETTER_AUTH_URL` to the browser origin: `http://127.0.0.1:3000`
 for preview, or the Vite URL printed by development. Match a custom preview port
@@ -152,6 +170,18 @@ actual SQL round trips and rollback. Playwright builds the production applicatio
 and serves it through Wrangler/Workerd, with read cases before write cases.
 Fixture-dependent tests may skip without local database/auth configuration.
 See [the test guide](docs/testing.md) for setup, reports and coverage limits.
+
+For 25 additional local writing samples, run the seed with an explicit local URL:
+
+```bash
+DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run db:seed -- --pagination
+```
+
+The optional samples are idempotent and restricted to loopback databases. Browse
+`/writing?tag=pagination-demo` or `/writing?q=pagination%20demo` for
+10 / 10 / 5 results. The archive also includes the two original published fixtures,
+giving 10 / 10 / 7 results. Configure the local Worker's `DATABASE_URL` in
+`.dev.vars` to use this database. See [release preparation and optimization proposals](docs/public-site-release.md).
 
 ## Delivery
 

@@ -1,9 +1,19 @@
-import { and, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
+import { and, asc, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
+import { buildArchiveQuery } from "./archive-query"
 import { cachedRead } from "@/lib/cache.server"
+
+import {
+  archivePageLimit,
+  archiveSearchParams,
+  defaultArchiveOptions,
+  parseArchiveOptions,
+  type ArchiveOptions,
+} from "@/features/writing/utils/archive-options"
 
 import { normaliseQuery } from "@/features/writing/utils/search-query"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type {
+  ArchiveResults,
   PaginatedPosts,
   Post,
   PostSummary,
@@ -158,9 +168,11 @@ async function readPage(
   filter: SQL | undefined,
   page: number,
   pageSize: number,
-  order: SQL[]
-): Promise<PaginatedPosts> {
-  const requested = Math.max(page, 1)
+  order: SQL[],
+  includeTotal = false,
+  maxPage = archivePageLimit("")
+): Promise<PaginatedPosts & { total?: number }> {
+  const requested = Math.min(Math.max(page, 1), maxPage)
   const pageQuery = (current: number) =>
     db
       .select(summaryWithTags)
@@ -174,18 +186,42 @@ async function readPage(
     db.select({ total: count() }).from(schema.posts).where(filter),
     pageQuery(requested),
   ])
-  const pageCount = Math.ceil(totals[0].total / pageSize)
+  const pageCount = Math.min(Math.ceil(totals[0].total / pageSize), maxPage)
   const current = Math.min(requested, Math.max(pageCount, 1))
   const rows = current === requested || pageCount === 0 ? initialRows : await pageQuery(current)
 
-  return { posts: summaries(rows), page: current, pageCount }
+  return {
+    posts: summaries(rows),
+    page: current,
+    pageCount,
+    ...(includeTotal ? { total: totals[0].total } : {}),
+  }
 }
 
 async function readPublishedPosts(page: number): Promise<PaginatedPosts> {
   const db = getDb()
   if (!db) return EMPTY_PAGE
 
-  return readPage(db, isPublic, page, WRITING_CONFIG.pageSize, [desc(schema.posts.publishedAt)])
+  return readPage(db, isPublic, page, WRITING_CONFIG.pageSize, [
+    desc(schema.posts.publishedAt),
+    asc(schema.posts.id),
+  ])
+}
+
+/** Compose indexed filters before the batched count/cards read; tags match any selected tag. */
+async function readArchivePosts(options: ArchiveOptions): Promise<ArchiveResults> {
+  const db = getDb()
+  if (!db) return { ...EMPTY_PAGE, total: 0 }
+  const { filter, order } = buildArchiveQuery(options)
+  return (await readPage(
+    db,
+    and(isPublic, filter),
+    options.page,
+    WRITING_CONFIG.pageSize,
+    order,
+    true,
+    archivePageLimit(options.q)
+  )) as ArchiveResults
 }
 
 async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedPosts> {
@@ -202,7 +238,10 @@ async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedP
     )`
   )
 
-  return readPage(db, carriesTag, page, WRITING_CONFIG.pageSize, [desc(schema.posts.publishedAt)])
+  return readPage(db, carriesTag, page, WRITING_CONFIG.pageSize, [
+    desc(schema.posts.publishedAt),
+    asc(schema.posts.id),
+  ])
 }
 
 /**
@@ -231,11 +270,20 @@ async function readSearchResults(query: string, page: number): Promise<SearchRes
   const tsquery = sql`websearch_to_tsquery('english', ${query})`
   const matches = and(isPublic, sql`${schema.posts.searchVector} @@ ${tsquery}`)
 
-  const results = await readPage(db, matches, page, WRITING_CONFIG.searchPageSize, [
-    // Proximity rank first; publication date breaks ties.
-    sql`ts_rank_cd(${schema.posts.searchVector}, ${tsquery}) desc`,
-    desc(schema.posts.publishedAt),
-  ])
+  const results = await readPage(
+    db,
+    matches,
+    page,
+    WRITING_CONFIG.searchPageSize,
+    [
+      // Proximity rank first; publication date breaks ties.
+      sql`ts_rank_cd(${schema.posts.searchVector}, ${tsquery}) desc`,
+      desc(schema.posts.publishedAt),
+      asc(schema.posts.id),
+    ],
+    false,
+    archivePageLimit(query)
+  )
 
   return { query, ...results }
 }
@@ -528,6 +576,7 @@ function publicRead<A extends unknown[], T>(name: string, read: (...args: A) => 
     cachedRead(JSON.stringify(["writing", name, ...args]), [CACHE_TAGS.posts], () => read(...args))
 }
 
+const cachedArchivePosts = publicRead("ArchivePosts", readArchivePosts)
 const cachedPublishedPosts = publicRead("PublishedPosts", readPublishedPosts)
 const cachedPostsByTag = publicRead("PostsByTag", readPostsByTag)
 const cachedTagsInUse = publicRead("TagsInUse", readTagsInUse)
@@ -535,6 +584,25 @@ const cachedFeedPosts = publicRead("FeedPosts", readFeedPosts)
 const cachedRecentPosts = publicRead("RecentPosts", readRecentPosts)
 const cachedRelatedPosts = publicRead("RelatedPosts", readRelatedPosts)
 const cachedPublishedSlugs = publicRead("PublishedSlugs", readPublishedSlugs)
+
+/** Normalize again at the data boundary so internal callers cannot bypass URL limits.
+ * Only the bounded default archive uses KV; arbitrary filter combinations and
+ * mutable view rankings must never create unbounded or stale cache entries.
+ */
+export function getArchivePosts(
+  input: ArchiveOptions = defaultArchiveOptions
+): Promise<ArchiveResults> {
+  const options = parseArchiveOptions(archiveSearchParams(input))
+  const isDefault =
+    !options.q &&
+    !options.tags.length &&
+    options.sort === "newest" &&
+    options.date === "any" &&
+    options.duration === "any"
+  return safely("getArchivePosts", { ...EMPTY_PAGE, total: 0 }, () =>
+    isDefault ? cachedArchivePosts(options) : readArchivePosts(options)
+  )
+}
 
 export const getPublishedPosts = (page = 1) =>
   safely("getPublishedPosts", EMPTY_PAGE, () => cachedPublishedPosts(page))

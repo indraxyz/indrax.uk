@@ -106,6 +106,13 @@ test("public navigation keeps the current page until writing data is ready", asy
 })
 
 test("admin navigation retains the workspace and reuses completed query data", async ({ page }) => {
+  await page.context().addCookies([
+    {
+      name: "better-auth.session_token",
+      value: "browser-fixture",
+      url: test.info().project.use.baseURL as string,
+    },
+  ])
   await page.route("**/api/admin/session", (route) =>
     route.fulfill({
       json: {
@@ -133,11 +140,12 @@ test("admin navigation retains the workspace and reuses completed query data", a
     release = resolve
   })
   let requests = 0
-  await page.route("**/api/admin/posts", async (route) => {
+  await page.route("**/api/admin/posts/archive*", async (route) => {
     requests++
     await ready
-    await route.fulfill({ json: [] })
+    await route.fulfill({ json: { posts: [], total: 0, page: 1, pageCount: 0 } })
   })
+  await page.route("**/api/admin/tags", (route) => route.fulfill({ json: [] }))
   await page.goto("/admin")
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Overview")
   await page.getByRole("link", { name: "Manage posts" }).click()

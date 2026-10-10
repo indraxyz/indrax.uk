@@ -9,6 +9,7 @@ import {
   LockKeyhole,
   PencilLine,
   Radar,
+  Route,
   Terminal,
 } from "lucide-react"
 import { pageMeta } from "@/routes/meta"
@@ -29,25 +30,34 @@ const groups = [
     title: "Interface",
     tools: "React Router 8.4 · React 19 · TypeScript · Tailwind CSS 4",
     detail:
-      "React Router renders SEO pages on the server; TanStack Query and ky fetch writing cards and admin data in the browser. Tailwind CSS, shared components, and accessible UI primitives keep the interface consistent.",
+      "React Router Framework Mode renders profile pages and published articles on the server. The unified writing archive and series load their results in the browser; the author dashboard is a separately built client application. Tailwind CSS and shared accessible components keep both interfaces consistent.",
     reason:
       "Server rendering keeps content and metadata together, while TypeScript and shared UI components make changes easier to maintain.",
+  },
+  {
+    icon: Route,
+    title: "Data fetching & navigation",
+    tools: "TanStack Query · Ky · react-top-loading-bar",
+    detail:
+      "TanStack Query manages loading, errors, a one-minute freshness window, and cache invalidation after edits. Ky sends same-origin API requests. A shared top progress bar follows route transitions and visible queries that have no data yet; an initial loading spinner and retry controls cover first visits and failed requests.",
+    reason:
+      "Cached results make return visits quicker. Search, sorting, and applied tag, publication date, and read-duration filters share one archive URL. A right-hand filter sheet keeps changes together, and pagination links preserve them, while progress feedback makes waiting visible. Automatic query retries, focus refetching, and speculative link prefetching are disabled to limit repeated requests.",
   },
   {
     icon: PencilLine,
     title: "Content",
     tools: "Tiptap · Shiki · rehype · React PDF · cf-workers-og",
     detail:
-      "Tiptap powers the article editor; Shiki and rehype render formatted, sanitized articles. React PDF generates the downloadable resume.",
+      "Tiptap powers the article editor; Shiki and rehype render sanitized articles on the server, with syntax highlighting loaded when needed. React PDF and the resume document load only when a reader requests a download. cf-workers-og generates social preview images.",
     reason:
       "A structured editor makes publishing practical; server-side article rendering keeps the editor out of the reader’s JavaScript bundle.",
   },
   {
     icon: Database,
     title: "Data",
-    tools: "PostgreSQL · Drizzle ORM · Neon serverless driver · Cloudflare R2",
+    tools: "PostgreSQL · Drizzle ORM · Neon HTTP · Cloudflare KV / D1 / R2",
     detail:
-      "PostgreSQL stores articles, tags, and sessions. Drizzle ORM handles queries and migrations; the Neon serverless driver connects from Cloudflare Workers. R2 stores article media when configured.",
+      "PostgreSQL stores articles, tags, series, and sessions. Drizzle and the Neon HTTP driver batch list counts and page results in one database round trip. KV caches public data and rendered articles; D1 tracks revisions for invalidation. Search uses PostgreSQL full-text indexing, and optional R2 stores article media. Private APIs and draft previews are uncached.",
     reason:
       "Relational storage fits posts, tags, and sessions. Typed queries and migrations keep the schema explicit, while HTTP access suits the Worker runtime.",
   },
@@ -65,16 +75,16 @@ const groups = [
     title: "Local development",
     tools: "Node.js · npm · Docker Compose · PostgreSQL · Neon HTTP proxy",
     detail:
-      "React Router runs locally with npm run dev and .env.local configuration. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy, so the app uses the same database driver locally and on Workers. Drizzle applies migrations and seeds sample articles; a Neon connection can also be used for local development.",
+      "npm run dev serves the public site and watches a separate admin build. Public build settings and database tooling use .env.local; local Worker secrets use .dev.vars. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
     reason:
       "A local database and HTTP proxy let development and browser tests exercise the same driver as the deployed application.",
   },
   {
     icon: FlaskConical,
     title: "Quality",
-    tools: "Vitest · Playwright · ESLint · Prettier",
+    tools: "TypeScript · Vitest · Playwright · axe · ESLint · Prettier",
     detail:
-      "Type checks, unit tests, and browser tests cover application behavior and accessibility.",
+      "Type checks and unit tests cover focused behavior. Real PostgreSQL integration tests check request budgets and atomic writes; Playwright runs browser journeys against the built Worker, including accessibility checks with axe.",
     reason:
       "Unit tests check focused behavior; browser tests verify complete journeys, and shared checks catch issues before deployment.",
   },
@@ -92,16 +102,16 @@ const groups = [
     title: "Deployment",
     tools: "Cloudflare Workers · React Router",
     detail:
-      "Vite builds the React Router application and static admin assets for Cloudflare Workers.",
+      "Vite builds the public SSR Worker and static admin assets. Wrangler deploys the generated build configuration: develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV and D1 resources.",
     reason:
       "React Router supports server rendering for SEO and a static browser application for admin, with shared APIs on Workers.",
   },
   {
     icon: Radar,
     title: "Measurement & monitoring",
-    tools: "PostHog · structured server logs",
+    tools: "PostHog · Workers logs & traces · structured server logs",
     detail:
-      "PostHog records analytics after consent. Server errors are captured in structured logs.",
+      "PostHog records analytics after consent. Structured errors and Cloudflare Workers logs and traces support diagnosis; request query strings are redacted to protect OAuth codes and preview tokens. Worker CPU time and request duration measure different costs.",
     reason:
       "Consent-based analytics helps understand readership, while structured errors make server failures easier to investigate.",
   },
@@ -122,6 +132,12 @@ const resources = [
     href: "https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/",
   },
   { label: "Cloudflare R2 storage", href: "https://developers.cloudflare.com/r2/" },
+  {
+    label: "TanStack Query",
+    href: "https://tanstack.com/query/latest/docs/framework/react/overview",
+  },
+  { label: "Ky HTTP client", href: "https://github.com/sindresorhus/ky" },
+  { label: "Navigation progress bar", href: "https://github.com/klendi/react-top-loading-bar" },
   {
     label: "Workers observability",
     href: "https://developers.cloudflare.com/workers/observability/",
@@ -160,7 +176,8 @@ export default function TechStackPage() {
               <dt className="text-xs font-black uppercase tracking-wide">Reading</dt>
               <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Resume content comes from typed project data. Published articles come from
-                PostgreSQL and are rendered and sanitized on the server before reaching readers.
+                PostgreSQL and are rendered and sanitized on the server. Writing lists load through
+                Ky and TanStack Query in the browser, with shared navigation progress feedback.
               </dd>
             </div>
             <div>

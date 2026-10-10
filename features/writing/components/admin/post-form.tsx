@@ -136,6 +136,7 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
           await Promise.all([
             ...(post ? [queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) })] : []),
             queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
+            queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
             queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
             queryClient.invalidateQueries({ queryKey: writingKeys.all }),
           ])

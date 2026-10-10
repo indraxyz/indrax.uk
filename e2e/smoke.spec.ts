@@ -41,15 +41,15 @@ test.describe("the public pages", () => {
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 })
 
-      for (const path of ["/writing", "/writing/search"]) {
+      for (const path of ["/writing", "/writing?q=typescript"]) {
         await page.goto(path)
 
         // CSR replaces the loading shell's form when the API resolves. Measure
         // both controls after that transition so their boxes belong to one layout.
-        await expect(page.getByRole("status")).toHaveCount(0)
+        await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
         const searchbox = page.getByRole("searchbox", { name: "Search articles" })
         const search = await searchbox.boundingBox()
-        const button = page.getByRole("button", { name: "Search" })
+        const button = page.getByRole("button", { name: "Search", exact: true })
         const action = await button.boundingBox()
 
         expect(search).not.toBeNull()
@@ -61,7 +61,7 @@ test.describe("the public pages", () => {
 
         await searchbox.fill("typescript")
         await button.click()
-        await expect(page).toHaveURL(/\/writing\/search\?q=typescript/)
+        await expect(page).toHaveURL(/\/writing\?q=typescript/)
       }
     }
   })
@@ -241,7 +241,9 @@ test.describe("the public pages", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
     await expect(page.getByRole("heading", { level: 2, name: "Deployment" })).toBeVisible()
     await expect(page.getByText(/Cloudflare Workers · React Router/)).toBeVisible()
-    await expect(page.getByText("PostHog · structured server logs")).toBeVisible()
+    await expect(
+      page.getByText("PostHog · Workers logs & traces · structured server logs")
+    ).toBeVisible()
     await expect(
       page.getByRole("main").getByRole("link", { name: "See my experience" })
     ).toHaveCount(0)
@@ -252,7 +254,7 @@ test.describe("the public pages", () => {
     const deployment = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Deployment", exact: true }) })
-    await expect(data.getByText(/Cloudflare R2/)).toBeVisible()
+    await expect(data.getByText(/Cloudflare KV \/ D1 \/ R2/)).toBeVisible()
     await expect(data.getByText(/R2 stores article media/)).toBeVisible()
     await expect(deployment).not.toContainText("R2")
     const auth = page.getByRole("region", { name: "Author access", exact: true })
@@ -270,6 +272,7 @@ test.describe("the public pages", () => {
     const cards = page.locator('[data-slot="stack-cards"]')
     await expect(cards.getByRole("heading", { level: 2 })).toHaveText([
       "Interface",
+      "Data fetching & navigation",
       "Content",
       "Data",
       "Author access",
@@ -279,7 +282,7 @@ test.describe("the public pages", () => {
       "Deployment",
       "Measurement & monitoring",
     ])
-    await expect(cards.getByText("Why:", { exact: true })).toHaveCount(9)
+    await expect(cards.getByText("Why:", { exact: true })).toHaveCount(10)
     const resources = page.getByRole("region", { name: "Sources", exact: true })
     for (const [name, href] of [
       ["Source on GitHub", "https://github.com/indraxyz/indrax.uk"],

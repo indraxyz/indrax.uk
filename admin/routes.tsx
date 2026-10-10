@@ -6,6 +6,7 @@ import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { AdminSessionContext, AdminLoading, AdminError } from "./shared"
 import { getBrowserQueryClient } from "@/components/query-provider"
 import { NavigationProgress } from "@/components/navigation-progress"
+import { parseAdminArchiveOptions } from "@/features/writing/utils/admin-archive-options"
 
 async function loadAdminPage<T>(queryKey: QueryKey, queryFn: () => Promise<T>) {
   const client = getBrowserQueryClient()
@@ -108,7 +109,12 @@ export const router = createBrowserRouter([
           },
           {
             path: "posts",
-            loader: () => loadAdminPage(adminKeys.posts, adminApi.posts),
+            loader: ({ request }) => {
+              const options = parseAdminArchiveOptions(new URL(request.url).searchParams)
+              return loadAdminPage(adminKeys.archive(options), () =>
+                adminApi.archive(options, request.signal)
+              )
+            },
             lazy: () => import("./posts"),
           },
           { path: "new", lazy: () => import("./new") },

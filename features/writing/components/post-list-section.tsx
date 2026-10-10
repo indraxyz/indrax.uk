@@ -47,6 +47,7 @@ export function PostListSection({
       // top-level heading. Without it the page has no h1 at all, which axe reports
       // and which leaves heading navigation with no entry point.
       headingLevel={1}
+      contentClassName="space-y-6"
     >
       {children}
 

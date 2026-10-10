@@ -70,11 +70,12 @@ test.describe("the writing public surface", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
   })
 
-  test("shows an unavailable tag after the client API resolves", async ({ page }) => {
+  test("redirects legacy tag pages into archive filters", async ({ page }) => {
     const response = await page.goto("/writing/tags/no-such-tag")
 
     expect(response?.status()).toBe(200)
-    await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible()
+    await expect(page).toHaveURL(/\/writing\?tag=no-such-tag$/)
+    await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
   })
 
   test("serves a valid RSS 2.0 feed", async ({ request }) => {
@@ -98,6 +99,8 @@ test.describe("the writing public surface", () => {
 
   test("permanently redirects legacy writing and feed URLs", async ({ request }) => {
     const legacyPaths = [
+      ["/writing/search?q=typescript&page=2", "/writing?q=typescript&page=2"],
+      ["/writing/tags/typescript?page=2", "/writing?page=2&tag=typescript"],
       ["/blog", "/writing"],
       ["/blog?ref=legacy", "/writing?ref=legacy"],
       ["/blog/old-article?ref=legacy", "/writing/old-article?ref=legacy"],

@@ -1,11 +1,15 @@
+import {
+  adminArchiveSearchParams,
+  type AdminArchiveOptions,
+} from "@/features/writing/utils/admin-archive-options"
 import { api } from "@/lib/api-client"
+import { archiveSearchParams, type ArchiveOptions } from "@/features/writing/utils/archive-options"
 import type {
   ActionResult,
+  ArchiveResults,
+  AdminArchiveResults,
   AdminPost,
-  AdminPostSummary,
-  PaginatedPosts,
   PostSummary,
-  SearchResults,
   SeriesWithParts,
   TagWithCount,
 } from "@/features/writing/types"
@@ -26,10 +30,9 @@ export interface AdminOverview {
 }
 export const writingKeys = {
   all: ["writing"] as const,
-  posts: (page = 1, tag = "") => ["writing", "posts", page, tag] as const,
+  archive: (options: ArchiveOptions) => ["writing", "archive", options] as const,
   recent: (limit = 3) => ["writing", "recent", limit] as const,
   tags: () => ["writing", "tags"] as const,
-  search: (q: string, page = 1) => ["writing", "search", q, page] as const,
   series: (slug: string) => ["writing", "series", slug] as const,
 }
 export const adminKeys = {
@@ -37,25 +40,29 @@ export const adminKeys = {
   session: ["admin", "session"] as const,
   overview: ["admin", "overview"] as const,
   posts: ["admin", "posts"] as const,
+  archive: (options: AdminArchiveOptions) => ["admin", "posts", "archive", options] as const,
+  tags: () => ["admin", "tags"] as const,
   post: (id: string) => ["admin", "post", id] as const,
 }
 export const writingApi = {
-  posts: (page = 1, tag = "") =>
+  archive: (options: ArchiveOptions, signal?: AbortSignal) =>
     api
-      .get("/api/writing/posts", { searchParams: { page, ...(tag ? { tag } : {}) } })
-      .json<PaginatedPosts>(),
+      .get("/api/writing/posts", { searchParams: archiveSearchParams(options), signal })
+      .json<ArchiveResults>(),
   recent: (limit = 3) =>
     api.get("/api/writing/recent", { searchParams: { limit } }).json<PostSummary[]>(),
   tags: () => api.get("/api/writing/tags").json<TagWithCount[]>(),
-  search: (q: string, page = 1) =>
-    api.get("/api/writing/search", { searchParams: { q, page } }).json<SearchResults>(),
   series: (slug: string) =>
     api.get(`/api/writing/series/${encodeURIComponent(slug)}`).json<SeriesWithParts>(),
 }
 export const adminApi = {
+  archive: (options: AdminArchiveOptions, signal?: AbortSignal) =>
+    api
+      .get("/api/admin/posts/archive", { searchParams: adminArchiveSearchParams(options), signal })
+      .json<AdminArchiveResults>(),
+  tags: () => api.get("/api/admin/tags").json<TagWithCount[]>(),
   session: () => api.get("/api/admin/session").json<AdminSession>(),
   overview: () => api.get("/api/admin/overview").json<AdminOverview>(),
-  posts: () => api.get("/api/admin/posts").json<AdminPostSummary[]>(),
   post: (id: string) => api.get(`/api/admin/posts/${encodeURIComponent(id)}`).json<AdminPost>(),
   savePost: (input: unknown) =>
     api

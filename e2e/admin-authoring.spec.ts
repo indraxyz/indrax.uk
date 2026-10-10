@@ -34,7 +34,7 @@ test.describe("authoring", () => {
   const TITLE = `A post written by the suite ${Date.now()}`
   const SLUG_PATTERN = /a-post-written-by-the-suite-\d+/
   const TAG = `authoring-regression-${Date.now()}`
-  const TAG_PATH = `/writing/tags/${TAG}`
+  const TAG_PATH = `/writing?tag=${TAG}`
 
   let context: BrowserContext
   let authorId = ""
@@ -107,7 +107,7 @@ test.describe("authoring", () => {
     expect(html).not.toContain("ProseMirror")
     const page = await context.newPage()
     const apiRead = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === "/api/admin/posts"
+      (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
     )
     await page.goto("/admin/posts")
     expect((await apiRead).status()).toBe(200)
@@ -117,7 +117,11 @@ test.describe("authoring", () => {
 
   test("lists existing posts, drafts included", async () => {
     const page = await context.newPage()
+    const overview = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/overview"
+    )
     await page.goto("/admin")
+    expect((await overview).status()).toBe(200)
 
     await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
@@ -367,6 +371,16 @@ test.describe("authoring", () => {
     await page.close()
   })
 
+  test("finds the saved draft in authenticated search and excludes it from published results", async () => {
+    const reader = await context.newPage()
+    await reader.goto(`/admin/posts?q=${encodeURIComponent(TITLE)}&status=draft&tag=${TAG}`)
+    await expect(reader.getByRole("link", { name: TITLE, exact: true })).toBeVisible()
+    await reader.goto(`/admin/posts?q=${encodeURIComponent(TITLE)}&status=published&tag=${TAG}`)
+    await expect(reader.getByText(/no posts match these filters/i)).toBeVisible()
+    await expect(reader.getByRole("link", { name: TITLE, exact: true })).toHaveCount(0)
+    await reader.close()
+  })
+
   test("preserves an existing cover when saving with storage unavailable", async () => {
     test.skip(Boolean(process.env.R2_ACCOUNT_ID), "run with R2 variables explicitly empty")
     const databaseUrl = process.env.DATABASE_URL!
@@ -415,7 +429,7 @@ test.describe("authoring", () => {
     expect((await (await request.get(`/api/writing/posts?tag=${TAG}`)).json()).posts).toEqual([])
     const publicPage = await context.newPage()
     await publicPage.goto(TAG_PATH)
-    await expect(publicPage.getByRole("heading", { name: "Not found", exact: true })).toBeVisible()
+    await expect(publicPage.getByText(/no articles match these filters/i)).toBeVisible()
     await expect(publicPage.locator('head meta[name="robots"]')).toHaveAttribute(
       "content",
       /noindex/
@@ -521,11 +535,19 @@ test.describe("authoring", () => {
     const reader = await context.newPage()
     expect((await reader.goto(TAG_PATH))?.status()).toBe(200)
     await expect(reader.getByRole("link", { name: TITLE, exact: true })).toBeVisible()
-    await expect(reader.locator('head link[rel="canonical"]')).toHaveAttribute(
-      "href",
-      new RegExp(`${TAG_PATH}$`)
+    await expect(reader.locator('head link[rel="canonical"]')).toHaveAttribute("href", /\/writing$/)
+    await expect(reader.locator('head meta[name="robots"]')).toHaveAttribute("content", /noindex/)
+    await reader.close()
+  })
+
+  test("finds the published post through authenticated query and status filters", async () => {
+    const reader = await context.newPage()
+    await reader.goto(
+      `/admin/posts?q=${encodeURIComponent(TITLE)}&status=published&tag=${TAG}&sort=title-asc`
     )
-    await expect(reader.locator('head meta[name="robots"][content*="noindex"]')).toHaveCount(0)
+    await expect(reader.getByRole("link", { name: TITLE, exact: true })).toBeVisible()
+    await reader.goto(`/admin/posts?q=${encodeURIComponent(TITLE)}&status=draft&tag=${TAG}`)
+    await expect(reader.getByText(/no posts match these filters/i)).toBeVisible()
     await reader.close()
   })
 
@@ -553,11 +575,8 @@ test.describe("authoring", () => {
     expect((await page.reload())?.status()).toBe(200)
     await expect(page.getByText(excerpt, { exact: true })).toBeVisible()
 
-    expect((await page.goto(`${TAG_PATH}?page=2`))?.status()).toBe(200)
-    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
-      "href",
-      new RegExp(`${TAG_PATH}\\?page=2$`)
-    )
+    expect((await page.goto(`${TAG_PATH}&page=2`))?.status()).toBe(200)
+    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute("href", /\/writing$/)
     expect((await page.goto(articlePath))?.status()).toBe(200)
     await expect(page.locator(".prose")).toContainText(bodyMarker)
     expect((await page.reload())?.status()).toBe(200)

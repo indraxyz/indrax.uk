@@ -28,7 +28,7 @@ boundaries so database behavior is the subject of the test. It deletes only its 
 rows and refuses non-loopback database hosts.
 
 The browser suite covers routes/SEO, accessibility, mobile/print/layout, consent and
-analytics, PDF/social images, writing/search/tag/series content, navigation, signed
+analytics, PDF/social images, writing search/filter/sort and series content, navigation, signed
 previews, authoring and session isolation. Database/auth/media prerequisites can
 cause skips; a passing subset does not verify skipped flows.
 

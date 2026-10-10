@@ -9,13 +9,16 @@ Related documents: [product requirements](writing-prd.md),
 [technical specification](writing-spec.md), [architecture](../ARCHITECTURE.md),
 [migration/setup guide](react-router-migration.md) and [testing](testing.md).
 
+See [the unified archive change plan](writing-filters-plan.md) for public/admin discovery controls,
+URL compatibility and verification.
+
 ## Implemented scope
 
 | Area             | Current implementation                                                                                                 |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Content/data     | Neon HTTP + Drizzle, JSON documents, tags, publication lifecycle, full-text search, ordered series                     |
 | Public reading   | SSR article bodies and metadata; sanitized HTML, table of contents, highlighting, related posts and view beacon        |
-| Public discovery | CSR/API cards on home, archive, tags, search and series; RSS, sitemap and social cards                                 |
+| Public discovery | CSR/API cards on home, unified searchable/filterable archive and series; RSS, sitemap and social cards                 |
 | Access           | Better Auth GitHub OAuth, immutable numeric allowlist, revocable DB sessions and private API guards                    |
 | Authoring        | Lazy Tiptap editor, create/update, status changes, explicit delete confirmation, cover upload and signed draft preview |
 | Cache            | Request memoization, revision-keyed KV/D1 public reads, rendered article cache and cached resource responses           |
