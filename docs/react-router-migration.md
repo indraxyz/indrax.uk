@@ -100,10 +100,11 @@ An approved dev deployment and CPU profiling are still required for that conclus
 
 Earlier browser runs exposed missing admin CSS utilities, a local Wrangler Origin
 rewrite, and assertions assuming SSR tag data. These were corrected and affected
-projects rerun successfully. Local build warnings about large lazy chunks and
-root-relative font URLs remain; generated fonts/assets and lazy PDF/editor loading
-work in the browser suite. Workerd also logs occasional broken pipes when browser
-navigation cancels requests; these did not fail the final suites.
+projects rerun successfully. Root-relative admin font URL warnings remain; the
+public build serves those files, verified by HTTP responses and browser PDF tests.
+Workerd also logs occasional disconnected-stream errors; the final suites completed
+without runtime termination. Request cancellation is a possible trigger, not a
+confirmed diagnosis. See [runtime diagnostics](testing.md#local-workerd-diagnostics).
 
 No remote resource/schema changes or deployment were performed. Delivery consists
 of the migration commit and a pull request targeting `develop`, without co-author
@@ -132,11 +133,21 @@ the existing Better Auth client only inside sign-in/sign-out actions reduces it
 to 479.37 kB (152.16 kB gzip), removing the admin's 500 kB chunk warning. Its
 31.09 kB auth module is fetched on demand; no size-warning threshold is raised.
 
-The public PDF renderer remains a large lazy chunk, fetched only on download.
-Splitting it merely to remove a warning would not reduce the PDF work or its
-total download size. Browser tests verify it stays out of initial page loads and
-still generates a real PDF. Server chunks are Worker packaging, not browser
-entry downloads; invocation CPU and total compressed upload size remain separate
+The public PDF renderer is fetched only on download. Client-only Rolldown groups
+separate font processing, PDF writing, text shaping, reconciliation and layout.
+Shared React has higher priority and shared dependency helpers stay under automatic
+splitting so grouping PDF dependencies does not pull the renderer into initial page
+loads. A client-only Vite environment hook changes React Router's entry signature
+mode to `allow-extension`, required by non-recursive Rolldown groups; existing route
+exports are preserved. Strict execution order protects module initialization. This gives library chunks independent cache keys
+and allows parallel fetching; it does not remove the work or promise a reduction
+in total download size. Browser tests assert every PDF group stays unloaded before
+download and verify that the generated PDF still embeds its fonts and photo.
+The largest named PDF chunk is now 255.07 kB minified, compared with the original
+1,208.21 kB renderer chunk; shared PDF dependencies have separate automatic chunks.
+The public and admin builds no longer emit the 500 kB warning, with the default
+threshold unchanged.
+Server chunks are Worker packaging, not browser entry downloads; invocation CPU and total compressed upload size remain separate
 measurements. See [Vite's chunk warning](https://vite.dev/config/build-options.html#build-chunksizewarninglimit)
 and [Rolldown splitting behavior](https://rolldown.rs/reference/OutputOptions.codeSplitting).
 

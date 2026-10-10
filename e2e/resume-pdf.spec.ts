@@ -47,6 +47,11 @@ test.describe("the CV download", () => {
 
     await page.goto("/", { waitUntil: "networkidle" })
     const beforeClick = scripts.size
+    const pdfScripts = () =>
+      [...scripts].filter((url) =>
+        /\/(?:pdf-|generate-resume\.client-)/.test(new URL(url).pathname)
+      )
+    expect(pdfScripts()).toEqual([])
 
     // Idle and usable with the renderer still unfetched: that is the point of the
     // dynamic import, and a static import would quietly undo it.
@@ -56,5 +61,14 @@ test.describe("the CV download", () => {
     await Promise.all([page.waitForEvent("download"), control.click()])
 
     expect(scripts.size).toBeGreaterThan(beforeClick)
+    expect(pdfScripts()).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("/pdf-fonts-"),
+        expect.stringContaining("/pdf-writer-"),
+        expect.stringContaining("/pdf-text-"),
+        expect.stringContaining("/pdf-reconciler-"),
+        expect.stringContaining("/pdf-layout-"),
+      ])
+    )
   })
 })

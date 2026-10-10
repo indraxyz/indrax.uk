@@ -218,3 +218,34 @@ cases and evidence locations when presenting results.
 `npm run db:up` idempotently initializes the local Neon proxy control-plane table
 from `config/local-neon.sql`, including on existing local volumes. This is local
 Docker setup and is never applied to a remote Neon database.
+
+## Local workerd diagnostics
+
+A message such as `kj::getCaughtExceptionAsKj() ... disconnected: write():
+Broken pipe (os error 32)` is emitted by the local workerd runtime. In its
+[Rust/KJ I/O adapter](https://github.com/cloudflare/workerd/blob/main/src/rust/cxx/kj-rs-io/error.rs),
+`BrokenPipe`/`EPIPE` is classified as `DISCONNECTED`: the receiving side of a
+stream has closed while the runtime is writing. It does not identify the affected
+URL, peer, or the reason that peer disconnected.
+
+Browser navigation, aborted fetches and test teardown can close connections.
+These are possible explanations, not a confirmed cause for this repository's CI
+messages. The error was also observed during the local public browser suite.
+Local trace inspection also found Chromium `net::ERR_NETWORK_CHANGED` errors
+interrupting JS/CSS asset loads. This is consistent with disconnected client
+requests, but does not identify the stream behind the earlier CI message.
+Both the local tests and the observed CI run kept serving after the messages; there was no accompanying runtime exit or connection-refused failure.
+Keep these logs visible. If requests fail, retain the preceding logs and trace,
+check whether Wrangler exited, and correlate the first error with the request
+rather than treating later browser timeouts as independent product failures.
+
+Cloudflare also tracks a
+[stdout EPIPE report under Playwright](https://github.com/cloudflare/workers-sdk/issues/15202).
+That report describes runtime termination while writing captured logs; it is not
+evidence that our socket-adapter error has the same cause. Do not redirect logs
+or suppress errors as a substitute for establishing which stream failed.
+
+`State not found access_denied` is expected from the login test that deliberately
+sends an OAuth callback without state. Better Auth's missing-base-URL warning is
+not expected: both the Worker and the session-minting fixture configure their
+auth origins, with the fixture using the shared Playwright base URL.
