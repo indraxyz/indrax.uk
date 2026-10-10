@@ -87,6 +87,8 @@ test.describe("the admin boundary", () => {
   test("rejects private API reads without exposing drafts", async ({ request }) => {
     for (const path of [
       "/api/admin/posts",
+      "/api/admin/posts/archive?q=private&status=draft",
+      "/api/admin/tags",
       "/api/admin/overview",
       "/api/admin/posts/550e8400-e29b-41d4-a716-446655440000",
     ]) {

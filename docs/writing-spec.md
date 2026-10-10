@@ -10,15 +10,15 @@ current implementation. See [architecture](../ARCHITECTURE.md),
 
 ## Rendering and route boundaries
 
-| Surface                                                                      | Rendering and data                                                                |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `/`, `/resume`, `/tech-stack`                                                | Public SSR for profile content and metadata                                       |
-| Home recent-writing section                                                  | Browser query of published summaries                                              |
-| `/writing`, `/writing/tags/:tag`, `/writing/search`, `/writing/series/:slug` | Public shell with browser-loaded cards, filters and pagination                    |
-| `/writing/:slug`                                                             | SSR of the full published article, metadata and structured data                   |
-| `/writing/:slug/preview`                                                     | Browser-rendered signed preview; backend verifies the token and sanitizes content |
-| `/admin/*`                                                                   | Separate static CSR application with browser routing                              |
-| RSS, sitemap, robots, social images                                          | Worker resource responses                                                         |
+| Surface                             | Rendering and data                                                                |
+| ----------------------------------- | --------------------------------------------------------------------------------- |
+| `/`, `/resume`, `/tech-stack`       | Public SSR for profile content and metadata                                       |
+| Home recent-writing section         | Browser query of published summaries                                              |
+| `/writing`, `/writing/series/:slug` | Public shell with browser-loaded cards, filters and pagination                    |
+| `/writing/:slug`                    | SSR of the full published article, metadata and structured data                   |
+| `/writing/:slug/preview`            | Browser-rendered signed preview; backend verifies the token and sanitizes content |
+| `/admin/*`                          | Separate static CSR application with browser routing                              |
+| RSS, sitemap, robots, social images | Worker resource responses                                                         |
 
 `app/routes.ts` declares public routes. Modules under `routes/` compose feature
 components and export React Router loaders and metadata. `admin/routes.tsx`
@@ -33,6 +33,66 @@ centered spinner; background refreshes retain content without restarting the bar
 CSR moves list/editor rendering to the browser. Authentication, validation,
 mutations and article sanitization remain server responsibilities; this design
 does not guarantee a deployed Worker CPU ceiling.
+
+## Unified writing archive
+
+Discovery uses `/writing` for search, filters, sorting and pagination. The URL is
+shareable and remains the committed source of truth: `q`, repeated `tag`, `sort`,
+`date`, `from`, `to`, `duration` and `page`. Search submissions preserve committed
+filters and reset pagination. Opening the right-hand filter sheet edits a draft;
+Apply commits its state and resets the page, while closing without applying keeps
+the current results. The filter button has an active-state green dot and an
+accessible active-state label. Tag badges live inside the sheet and show published
+post counts; cards still link their tags to the same archive.
+
+Tags use OR matching, combined with search, date and duration using AND. Sorting
+supports `newest`, `oldest`, `views`, `updated`, `relevance`, `title-asc` and
+`title-desc`, defaulting to `newest`. Relevance requires a nonempty search query; its option is disabled without one
+and the select includes an inline explanation. Publication date options
+are `any`, `7d`, `30d`, `year` and `custom`; custom `from`/`to` dates include the
+entire selected UTC calendar days. Read duration options are `any`, `short`,
+`medium` and `long`: under 5, 5–10 inclusive and over 10 minutes. API validation normalizes malformed values and bounds input
+before SQL/cache use. Deterministic ordering includes a unique final tie-breaker.
+
+`GET /api/writing/posts` accepts the same archive parameters. All public filters
+apply before count and pagination; summaries continue to exclude full bodies.
+Totals include every match; navigable page counts obey the shared limits of 20
+pages for search queries and 1,000 pages without a query, so pagination never
+links beyond the accepted request range. The admin archive uses the same limits.
+Legacy `/api/writing/search` remains available for compatibility. TanStack Query
+keys distinguish all normalized archive options. Drafts and archived posts never
+appear in results or tag counts. Custom archive queries remain out of the sitemap.
+
+`/writing/search` and `/writing/tags/:tag` are compatibility-only server routes
+that issue permanent 308 redirects to `/writing` with query/filter state preserved.
+The sitemap publishes `/writing`, article URLs and series URLs, not retired tag
+pages or arbitrary filtered combinations.
+
+## Admin posts discovery parity
+
+`/admin/posts` uses the same search, filter-sheet, sort and URL-state contract as
+`/writing`, with an additional `status` option: `any`, `draft`, `published` or
+`archived`. Its default sort is `updated` to retain the existing recent-activity
+order. Search, filters, sorting, totals and pagination run on the authenticated
+backend; they do not filter an already-downloaded subset. Tag counts include
+posts across all statuses and remain private. Multiple tags use the same OR
+matching, combined with other filters using AND.
+
+`GET /api/admin/posts/archive` accepts those options and returns a paginated
+private result. `GET /api/admin/tags` supplies private all-status badge counts.
+The existing `GET /api/admin/posts` list contract remains available for
+compatibility. All protected list/count/tag operations verify the session and author
+allowlist, use `no-store`, and stay outside public KV/data caches. TanStack Query
+keys include committed options; mutations invalidate the affected private and
+public query families. The existing authoring editor and publication rules remain
+unchanged.
+
+Drafts without a publication date cannot match a publication-date filter.
+Newest/Oldest place null publication dates last; recently updated sorts use the
+update timestamp. Relevance requires a nonempty query in both interfaces, with
+the disabled option explained inline inside the sort control. Custom calendar
+ranges use the same inclusive UTC-day boundaries as the public archive. This
+change reuses the current database schema and requires no migration.
 
 ## Feature modules and data model
 
@@ -49,7 +109,8 @@ Neon Postgres is the content source of truth, accessed with the Neon HTTP driver
 and Drizzle. Posts store a Tiptap/ProseMirror JSON document in `content_json`, not
 Markdown source. They include a unique slug, title, excerpt, optional cover/alt,
 status (`draft`, `published`, `archived`), publication and update timestamps,
-reading time, decorative view count and optional ordered series membership.
+reading time, best-effort view count (used by Most viewed sorting) and optional
+ordered series membership.
 Tags are shared rows joined through `post_tags`; deleting a post cascades its
 joins. Series positions are unique within a series.
 
@@ -71,17 +132,17 @@ Default queries have a one-minute stale time, no automatic retries and no focus
 refetch; session checks require fresh authorization state. Mutations are not
 retried. Loading, empty, not-found and failure states remain distinct.
 
-| Endpoints                                                                | Access                                                |
-| ------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `GET /api/writing/posts`, `/recent`, `/tags`, `/search`, `/series/:slug` | Published-only data                                   |
-| `GET /api/writing/preview/:slug?token=...`                               | Valid, expiring signature for that exact slug         |
-| `GET /api/admin/session`                                                 | Session/configuration state; anonymous author is null |
-| `GET /api/admin/overview`, `/posts`, `/posts/:id`                        | Authorized author                                     |
-| `POST /api/admin/posts`                                                  | Authorized, same-origin validated create/update       |
-| `PATCH /api/admin/posts/:id/status`                                      | Authorized, same-origin status change                 |
-| `DELETE /api/admin/posts/:id`                                            | Authorized, same-origin deletion                      |
-| `POST /api/admin/posts/:id/preview`                                      | Authorized, same-origin preview link                  |
-| `POST /api/upload`                                                       | Authorized, validated R2 upload authorization         |
+| Endpoints                                                                    | Access                                                |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `GET /api/writing/posts`, `/recent`, `/tags`, `/search`, `/series/:slug`     | Published-only data                                   |
+| `GET /api/writing/preview/:slug?token=...`                                   | Valid, expiring signature for that exact slug         |
+| `GET /api/admin/session`                                                     | Session/configuration state; anonymous author is null |
+| `GET /api/admin/overview`, `/posts`, `/posts/archive`, `/tags`, `/posts/:id` | Authorized author                                     |
+| `POST /api/admin/posts`                                                      | Authorized, same-origin validated create/update       |
+| `PATCH /api/admin/posts/:id/status`                                          | Authorized, same-origin status change                 |
+| `DELETE /api/admin/posts/:id`                                                | Authorized, same-origin deletion                      |
+| `POST /api/admin/posts/:id/preview`                                          | Authorized, same-origin preview link                  |
+| `POST /api/upload`                                                           | Authorized, validated R2 upload authorization         |
 
 The complete prefix applies to grouped endpoint suffixes above. API response
 contracts are defined in feature types; SQL and authorization are not duplicated

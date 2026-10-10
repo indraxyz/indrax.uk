@@ -9,10 +9,13 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   edit: vi.fn(),
   overview: vi.fn(),
+  adminArchive: vi.fn(),
+  adminTags: vi.fn(),
   remove: vi.fn(),
   status: vi.fn(),
   preview: vi.fn(),
   posts: vi.fn(),
+  archive: vi.fn(),
   tags: vi.fn(),
   recent: vi.fn(),
   search: vi.fn(),
@@ -27,6 +30,8 @@ vi.mock("@/lib/cover-storage", () => ({ getCoverStorageConfig: () => null }))
 vi.mock("@/lib/observability", () => ({ logServerError: mocks.log }))
 vi.mock("@/features/writing/data/admin-queries", () => ({
   getAdminOverview: mocks.overview,
+  getAdminArchivePosts: mocks.adminArchive,
+  getAdminTagsInUse: mocks.adminTags,
   listAllPosts: mocks.list,
   getPostForEdit: mocks.edit,
 }))
@@ -39,6 +44,7 @@ vi.mock("@/features/writing/data/mutations", () => ({
 vi.mock("@/features/writing/data/queries", () => ({
   getPostForPreview: mocks.previewPost,
   getPublishedPosts: mocks.posts,
+  getArchivePosts: mocks.archive,
   getPostsByTag: mocks.tagPosts,
   getTagsInUse: mocks.tags,
   getRecentPosts: mocks.recent,
@@ -68,7 +74,7 @@ async function response(input: Request) {
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.author.mockResolvedValue({ id: "author", name: "Author" })
-  mocks.posts.mockResolvedValue({ posts: [], page: 1, pageCount: 0 })
+  mocks.archive.mockResolvedValue({ posts: [], page: 1, pageCount: 0, total: 0 })
   mocks.save.mockResolvedValue({ ok: true, postId: id })
   mocks.status.mockResolvedValue({ ok: true, postId: id })
   mocks.remove.mockResolvedValue({ ok: true })
@@ -126,14 +132,14 @@ describe("writing HTTP API", () => {
   })
   it("public lists use exclusively published query functions without admin authentication", async () => {
     const result = await response(request("/api/writing/posts?page=1000000"))
-    expect(await result.json()).toEqual({ posts: [], page: 1, pageCount: 0 })
-    expect(mocks.posts).toHaveBeenCalledWith(1000)
+    expect(await result.json()).toEqual({ posts: [], page: 1, pageCount: 0, total: 0 })
+    expect(mocks.archive).toHaveBeenCalledWith(expect.objectContaining({ page: 1000 }))
     expect(mocks.list).not.toHaveBeenCalled()
     expect(mocks.author).not.toHaveBeenCalled()
   })
   it("bounds and normalizes pagination and recent limits before data/cache access", async () => {
     await response(request("/api/writing/posts?page=NaN"))
-    expect(mocks.posts).toHaveBeenCalledWith(1)
+    expect(mocks.archive).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
     await response(request("/api/writing/recent?limit=99999"))
     expect(mocks.recent).toHaveBeenCalledWith(10)
     await response(request("/api/writing/search?q=hello&page=999"))
@@ -141,11 +147,81 @@ describe("writing HTTP API", () => {
   })
   it("rejects invalid tag keys without reaching the database", async () => {
     expect((await response(request("/api/writing/posts?tag=bad%20tag"))).status).toBe(400)
-    expect(mocks.tagPosts).not.toHaveBeenCalled()
+    expect(mocks.archive).not.toHaveBeenCalled()
+  })
+  it("passes combined filters and bounded relevance pagination to the archive", async () => {
+    await response(
+      request(
+        "/api/writing/posts?q=database&tag=react&tag=postgres&sort=relevance&date=custom&from=2026-01-01&to=2026-02-01&duration=medium&page=500"
+      )
+    )
+    expect(mocks.archive).toHaveBeenCalledWith({
+      q: "database",
+      tags: ["postgres", "react"],
+      sort: "relevance",
+      date: "custom",
+      from: "2026-01-01",
+      to: "2026-02-01",
+      duration: "medium",
+      page: 20,
+    })
+  })
+  it.each([
+    "?q=" + "x".repeat(121),
+    "?" + Array.from({ length: 11 }, (_, i) => `tag=tag-${i}`).join("&"),
+    "?date=custom&from=2026-02-30",
+    "?date=custom&from=2026-02-01&to=2026-01-01",
+    "?date=custom",
+  ])("rejects invalid archive inputs before any data access: %s", async (query) => {
+    expect((await response(request("/api/writing/posts" + query))).status).toBe(400)
+    expect(mocks.archive).not.toHaveBeenCalled()
+  })
+  it("serves filtered private archives and all-status tag counts only to the author", async () => {
+    mocks.adminArchive.mockResolvedValue({ posts: [], total: 0, page: 1, pageCount: 0 })
+    mocks.adminTags.mockResolvedValue([{ slug: "draft-tag", postCount: 2 }])
+    expect(
+      (
+        await response(
+          request(
+            "/api/admin/posts/archive?status=draft&q=body&tag=react&sort=relevance&duration=short&page=900"
+          )
+        )
+      ).status
+    ).toBe(200)
+    expect(mocks.adminArchive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "draft",
+        q: "body",
+        tags: ["react"],
+        sort: "relevance",
+        duration: "short",
+        page: 20,
+      })
+    )
+    expect(await (await response(request("/api/admin/tags"))).json()).toEqual([
+      { slug: "draft-tag", postCount: 2 },
+    ])
+    mocks.author.mockResolvedValue(null)
+    expect((await response(request("/api/admin/posts/archive"))).status).toBe(401)
+    expect((await response(request("/api/admin/tags"))).status).toBe(401)
+    expect(mocks.adminArchive).toHaveBeenCalledTimes(1)
+    expect(mocks.adminTags).toHaveBeenCalledTimes(1)
+  })
+  it("validates private archive filters before querying", async () => {
+    expect(
+      (await response(request("/api/admin/posts/archive?date=custom&from=2026-02-30"))).status
+    ).toBe(400)
+    expect(mocks.adminArchive).not.toHaveBeenCalled()
   })
   it("does not expose private data to an unauthenticated caller", async () => {
     mocks.author.mockResolvedValue(null)
-    for (const path of ["/api/admin/posts", "/api/admin/overview", `/api/admin/posts/${id}`])
+    for (const path of [
+      "/api/admin/posts",
+      "/api/admin/posts/archive",
+      "/api/admin/tags",
+      "/api/admin/overview",
+      `/api/admin/posts/${id}`,
+    ])
       expect((await response(request(path))).status).toBe(401)
     expect(mocks.list).not.toHaveBeenCalled()
     expect(mocks.edit).not.toHaveBeenCalled()

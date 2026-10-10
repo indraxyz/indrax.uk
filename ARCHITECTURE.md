@@ -37,15 +37,15 @@ the environment templates and Wrangler configuration.
 
 ## Rendering policy
 
-| Route/content                       | Policy                      | Reason                                                                        |
-| ----------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| `/`, `/resume`, `/tech-stack`       | SSR                         | Profile content and metadata are meaningful before JavaScript                 |
-| Home recent-writing section         | CSR/API                     | Avoid querying/rendering cards in profile SSR                                 |
-| `/writing`, tag/search/series cards | CSR/API inside public shell | Browser owns list/search state and loading/error UI                           |
-| `/writing/:slug`                    | SSR                         | Full article HTML, canonical, metadata and JSON-LD for SEO                    |
-| `/writing/:slug/preview`            | CSR/signed API              | Private draft preview does not need SEO or React SSR                          |
-| `/admin/*`                          | Independent CSR application | Dashboard/editor/data are private and do not need SEO                         |
-| RSS/sitemap/robots/social cards     | Resource responses          | Machine-readable metadata and images stay available without client JavaScript |
+| Route/content                   | Policy                      | Reason                                                                        |
+| ------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `/`, `/resume`, `/tech-stack`   | SSR                         | Profile content and metadata are meaningful before JavaScript                 |
+| Home recent-writing section     | CSR/API                     | Avoid querying/rendering cards in profile SSR                                 |
+| `/writing`, series cards        | CSR/API inside public shell | Browser owns list/search state and loading/error UI                           |
+| `/writing/:slug`                | SSR                         | Full article HTML, canonical, metadata and JSON-LD for SEO                    |
+| `/writing/:slug/preview`        | CSR/signed API              | Private draft preview does not need SEO or React SSR                          |
+| `/admin/*`                      | Independent CSR application | Dashboard/editor/data are private and do not need SEO                         |
+| RSS/sitemap/robots/social cards | Resource responses          | Machine-readable metadata and images stay available without client JavaScript |
 
 A public writing page shell may still use the public SSR layout; its cards/results
 are not fetched or rendered on the server. Admin is fully independent of SSR.
@@ -67,6 +67,17 @@ mutations are never retried. Session queries deliberately require freshness when
 admin access is checked. Save/status/delete invalidate the affected admin/public
 keys rather than reloading the document. Ky uses same-origin credentials and a
 bounded timeout. Loading, empty and error states are different UI states.
+
+The unified `/writing` archive commits search, sort, tags, publication dates and
+reading durations to URL query state. Its filter sheet keeps changes in a draft
+until Apply; closing discards them. Server validation normalizes the same contract
+for `/api/writing/posts`, and SQL applies filters before count/page queries. Legacy
+search/tag page loaders issue 308 redirects, while compatibility APIs remain.
+The private `/admin/posts` list shares these controls, adds status filtering and
+defaults to Recently updated. Its backend filters/counts/pages the full set,
+including drafts and archived posts where selected, under session/allowlist
+checks and `no-store`. Private tag counts cover all statuses; publication-date
+filters exclude null dates. The schema is unchanged.
 
 API functions in `features/writing/api/client.ts` return typed DTOs. The backend
 handler is `features/writing/api/server.ts`; SQL stays in the data layer.

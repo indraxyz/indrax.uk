@@ -24,11 +24,9 @@ const PATHS = [
   { name: "tech stack", path: "/tech-stack" },
   { name: "archive", path: "/writing" },
   { name: "article", path: `/writing/${SEEDED_POST_SLUG}` },
-  { name: "tag", path: `/writing/tags/${SEEDED_TAG_SLUG}` },
+  { name: "tag filter", path: `/writing?tag=${SEEDED_TAG_SLUG}` },
   { name: "series", path: `/writing/series/${SEEDED_SERIES_SLUG}` },
-  // Both states: the search box on its own, and the box with results under it.
-  { name: "search", path: "/writing/search" },
-  { name: "search results", path: "/writing/search?q=postgres" },
+  { name: "search results", path: "/writing?q=postgres" },
   { name: "not found", path: "/writing/no-such-article" },
   { name: "sign in", path: "/admin/login" },
   { name: "sign-in failure", path: "/admin/login?error=account_not_permitted" },
@@ -42,6 +40,35 @@ async function scan(page: Page) {
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`accessibility (${theme})`, () => {
+    for (const width of [375, 1232]) {
+      test(`filter sheet has no serious or critical violations at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.addInitScript((value) => localStorage.setItem("indrax-theme", value), theme)
+        await page.route("**/api/writing/tags", (route) =>
+          route.fulfill({ json: [{ id: "react", slug: "react", name: "React", postCount: 2 }] })
+        )
+        await page.route("**/api/writing/posts*", (route) =>
+          route.fulfill({ json: { posts: [], page: 1, pageCount: 0, total: 0 } })
+        )
+        await page.goto(
+          "/writing?tag=react&date=custom&from=2026-01-01&duration=short&sort=updated"
+        )
+        await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
+        await page.getByRole("button", { name: "Filters and sort" }).click()
+        await expect(page.getByRole("dialog", { name: "Filters and sort" })).toBeVisible()
+        const results = await scan(page)
+        expect(
+          results.violations
+            .filter(
+              (violation) => violation.impact === "serious" || violation.impact === "critical"
+            )
+            .map((violation) => ({
+              id: violation.id,
+              nodes: violation.nodes.map((node) => node.target.join(" ")),
+            }))
+        ).toEqual([])
+      })
+    }
     for (const { name, path } of PATHS) {
       test(`${name} has no serious or critical violations`, async ({ page }) => {
         await page.addInitScript((value) => {

@@ -3,28 +3,31 @@ import { useQuery } from "@tanstack/react-query"
 import { useSearchParams, type MetaFunction, type ClientLoaderFunctionArgs } from "react-router"
 import { getBrowserQueryClient } from "@/components/query-provider"
 
+import { ArchiveControls } from "@/features/writing/components/archive-controls"
 import { EmptyState } from "@/features/writing/components/empty-state"
 import { PostListSection } from "@/features/writing/components/post-list-section"
 import { QueryState } from "@/features/writing/components/query-state"
-import { SearchForm } from "@/features/writing/components/search-form"
-import { TagPill } from "@/features/writing/components/tag-pill"
 import { WritingShell } from "@/features/writing/components/writing-shell"
 import { writingApi, writingKeys } from "@/features/writing/api/client"
 import { WRITING_CONFIG, EMPTY_COPY, SECTION_COPY } from "@/features/writing/config"
-import { parsePageParam } from "@/features/writing/utils/page-param"
+import {
+  archiveSearchParams,
+  hasArchiveFilters,
+  parseArchiveOptions,
+} from "@/features/writing/utils/archive-options"
 
-// Render the public shell on first visits; clientLoader runs on subsequent navigation.
+// Public lists keep the migration's browser loading model; article detail retains SSR.
 export function loader() {
   return null
 }
 
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
-  const page = parsePageParam(new URL(request.url).searchParams.get("page") ?? undefined)
+  const options = parseArchiveOptions(new URL(request.url).searchParams)
   const client = getBrowserQueryClient()
   await Promise.all([
     client.prefetchQuery({
-      queryKey: writingKeys.posts(page),
-      queryFn: () => writingApi.posts(page),
+      queryKey: writingKeys.archive(options),
+      queryFn: ({ signal }) => writingApi.archive(options, signal),
     }),
     client.prefetchQuery({ queryKey: writingKeys.tags(), queryFn: writingApi.tags }),
   ])
@@ -32,53 +35,70 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 }
 
 export const meta: MetaFunction = ({ location }) => {
-  const page = parsePageParam(new URLSearchParams(location.search).get("page") ?? undefined)
+  const options = parseArchiveOptions(new URLSearchParams(location.search))
+  const filtered = !!options.q || hasArchiveFilters(options)
   return [
-    { title: page > 1 ? `Writing - page ${page}` : "Writing" },
+    { title: options.page > 1 ? `Writing - page ${options.page}` : "Writing" },
+    ...(filtered ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
       tagName: "link",
       rel: "canonical",
-      href: new URL(page > 1 ? `/writing?page=${page}` : "/writing", SITE_URL).href,
+      href: new URL(
+        !filtered && options.page > 1 ? `/writing?page=${options.page}` : "/writing",
+        SITE_URL
+      ).href,
     },
   ]
 }
 
 export default function WritingPage() {
   const [params] = useSearchParams()
-  const page = parsePageParam(params.get("page") ?? undefined)
+  const options = parseArchiveOptions(params)
   const posts = useQuery({
-    queryKey: writingKeys.posts(page),
-    queryFn: () => writingApi.posts(page),
+    queryKey: writingKeys.archive(options),
+    queryFn: ({ signal }) => writingApi.archive(options, signal),
   })
   const tags = useQuery({ queryKey: writingKeys.tags(), queryFn: writingApi.tags })
+  const query = archiveSearchParams(options, { includePage: false }).toString()
+  const results = posts.data ?? { posts: [], page: options.page, pageCount: 0 }
+  const empty = options.q
+    ? EMPTY_COPY.searchNoResults(options.q)
+    : hasArchiveFilters(options)
+      ? "No articles match these filters. Adjust or clear them to explore more writing."
+      : EMPTY_COPY.writing
+
   return (
     <WritingShell>
-      {posts.data ? (
-        <PostListSection
-          title={WRITING_CONFIG.title}
-          subtitle={SECTION_COPY.writing}
-          results={posts.data}
-          basePath={WRITING_CONFIG.basePath}
-          emptyState={<EmptyState message={EMPTY_COPY.writing} />}
-        >
-          <div className="space-y-4 pb-2">
-            <SearchForm query="" />
-            {!!tags.data?.length && (
-              <nav aria-label="Tags" className="flex flex-wrap items-center gap-2">
-                {tags.data.map((tag) => (
-                  <TagPill key={tag.id} tag={tag} count={tag.postCount} />
-                ))}
-              </nav>
-            )}
-          </div>
-        </PostListSection>
-      ) : (
-        <>
-          <h1 className="text-2xl font-black uppercase">Writing</h1>
-          <SearchForm query="" />
-          <QueryState error={posts.isError} retry={() => void posts.refetch()} />
-        </>
-      )}
+      <PostListSection
+        title={WRITING_CONFIG.title}
+        subtitle={SECTION_COPY.writing}
+        results={results}
+        basePath={query ? `/writing?${query}` : "/writing"}
+        previousLabel="Previous"
+        nextLabel="Next"
+        emptyState={
+          posts.isPending || posts.isError ? (
+            <QueryState error={posts.isError} retry={() => void posts.refetch()} />
+          ) : (
+            <EmptyState message={empty} />
+          )
+        }
+      >
+        <div className="space-y-4">
+          <ArchiveControls
+            options={options}
+            tags={tags.data}
+            tagsError={tags.isError}
+            retryTags={() => void tags.refetch()}
+          />
+          {posts.data && (
+            <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+              {posts.data.total} {posts.data.total === 1 ? "article" : "articles"}
+              {options.q ? ` matching “${options.q}”` : ""}
+            </p>
+          )}
+        </div>
+      </PostListSection>
     </WritingShell>
   )
 }

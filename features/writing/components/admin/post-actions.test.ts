@@ -6,6 +6,7 @@ import type { AdminPost, PostStatus } from "@/features/writing/types"
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   refresh: vi.fn(),
+  invalidate: vi.fn().mockResolvedValue(undefined),
   setPostStatus: vi.fn(),
   deletePost: vi.fn(),
   setState: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("react-router", () => ({
   useBeforeUnload: vi.fn(),
 }))
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: ({ mutationFn }: { mutationFn: unknown }) => ({ mutateAsync: mutationFn }),
 }))
 vi.mock("@/features/writing/api/client", () => ({
@@ -33,6 +34,7 @@ vi.mock("@/features/writing/api/client", () => ({
     createPreviewLink: vi.fn(),
   },
   adminKeys: {
+    tags: () => ["admin", "tags"],
     posts: ["admin", "posts"],
     overview: ["admin", "overview"],
     post: (id: string) => ["admin", "post", id],
@@ -73,6 +75,7 @@ it.each([
   button(label, initial)()
   await mocks.transition
   expect(mocks.setPostStatus).toHaveBeenCalledWith(ID, target)
+  expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "tags"] })
   expect(mocks.refresh).not.toHaveBeenCalled()
   expect(mocks.replace).not.toHaveBeenCalled()
 })
@@ -83,6 +86,7 @@ it("navigates once to the list after confirmed deletion", async () => {
   await mocks.transition
   expect(mocks.confirm).toHaveBeenCalledOnce()
   expect(mocks.deletePost).toHaveBeenCalledWith(ID)
+  expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "tags"] })
   expect(mocks.replace.mock.calls).toEqual([["/admin/posts"]])
   expect(mocks.refresh).not.toHaveBeenCalled()
 })

@@ -15,7 +15,7 @@ export function TagPill({ tag, tone = "tertiary", count }: TagPillProps) {
   return (
     <Link
       prefetch="none"
-      to={`${WRITING_CONFIG.tagPath}/${tag.slug}`}
+      to={`${WRITING_CONFIG.basePath}?tag=${encodeURIComponent(tag.slug)}`}
       className="rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Badge variant={tone} className="transition-colors hover:opacity-85">

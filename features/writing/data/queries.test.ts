@@ -2,17 +2,21 @@ import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ getDb: vi.fn(), log: vi.fn() }))
+const mocks = vi.hoisted(() => ({ getDb: vi.fn(), log: vi.fn(), cache: vi.fn() }))
 vi.mock("@/lib/db", async () => ({
   getDb: mocks.getDb,
   schema: await import("@/lib/db/schema"),
 }))
 vi.mock("@/lib/cache.server", () => ({
-  cachedRead: (_key: string, _tags: string[], read: () => Promise<unknown>) => read(),
+  cachedRead: (key: string, _tags: string[], read: () => Promise<unknown>) => {
+    mocks.cache(key)
+    return read()
+  },
 }))
 vi.mock("@/lib/observability", () => ({ logServerError: mocks.log }))
 
 import {
+  getArchivePosts,
   getFeedPosts,
   getPostsByTag,
   getPostBySlug,
@@ -23,6 +27,11 @@ import {
   getSeriesBySlug,
   searchPosts,
 } from "./queries"
+
+import {
+  defaultArchiveOptions,
+  parseArchiveOptions,
+} from "@/features/writing/utils/archive-options"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 
@@ -169,5 +178,114 @@ describe("public database round trips", () => {
     expect(mocks.log).toHaveBeenCalledWith(expect.any(Error), {
       scope: "writing.getPublishedPosts",
     })
+  })
+})
+
+describe("unified archive SQL", () => {
+  it("combines search, OR tags, inclusive UTC dates and duration in one batch without caching", async () => {
+    const db = database([[[11]], [summaryRow]])
+    const options = parseArchiveOptions(
+      new URLSearchParams(
+        "q=database&tag=react&tag=postgres&sort=relevance&date=custom&from=2026-01-01&to=2026-01-31&duration=medium&page=2"
+      )
+    )
+    expect(await getArchivePosts(options)).toMatchObject({ total: 11, page: 2, pageCount: 2 })
+    expect(db.transaction).toHaveBeenCalledOnce()
+    expect(db.query).toHaveBeenCalledTimes(2)
+    expect(mocks.cache).not.toHaveBeenCalled()
+    for (const [statement, parameters] of db.query.mock.calls) {
+      expect(statement).toContain('"tags"."slug" in (')
+      expect(statement).toContain('"post_tags"."post_id" = "posts"."id"')
+      expect(statement).toContain('"posts"."search_vector" @@')
+      expect(statement).toContain('"posts"."reading_time" >=')
+      expect(statement).toContain('"posts"."reading_time" <=')
+      expect(statement).not.toContain("'postgres'")
+      expect(parameters).toEqual(
+        expect.arrayContaining([
+          "database",
+          "postgres",
+          "react",
+          "2026-01-01T00:00:00.000Z",
+          "2026-02-01T00:00:00.000Z",
+          5,
+          10,
+        ])
+      )
+    }
+    expect(db.query.mock.calls[1][0]).toContain("ts_rank_cd")
+    expect(db.query.mock.calls[1][0]).toContain('"posts"."id" asc')
+  })
+  it.each([
+    ["newest", '"posts"."published_at" desc'],
+    ["oldest", '"posts"."published_at" asc'],
+    ["views", '"posts"."view_count" desc'],
+    ["updated", '"posts"."updated_at" desc'],
+    ["title-asc", 'lower("posts"."title") asc'],
+    ["title-desc", 'lower("posts"."title") desc'],
+  ])("uses deterministic %s ordering with a final ID tie-breaker", async (sort, order) => {
+    const db = database([[[1]], [summaryRow]])
+    await getArchivePosts(parseArchiveOptions(new URLSearchParams({ sort })))
+    const statement = db.query.mock.calls[1][0]
+    expect(statement).toContain(order)
+    expect(statement).toContain('"posts"."id" asc')
+    expect(mocks.cache).toHaveBeenCalledTimes(sort === "newest" ? 1 : 0)
+  })
+  it.each([
+    ["short", '"posts"."reading_time" <', 5],
+    ["long", '"posts"."reading_time" >', 10],
+  ])(
+    "filters %s reading time without selecting the article body",
+    async (duration, operator, boundary) => {
+      const db = database([[[1]], [summaryRow]])
+      await getArchivePosts(parseArchiveOptions(new URLSearchParams({ duration })))
+      expect(db.query.mock.calls[0][0]).toContain(operator)
+      expect(db.query.mock.calls[0][1]).toContain(boundary)
+      expect(db.query.mock.calls[1][0].split(" from ")[0]).not.toContain('"posts"."content_json"')
+    }
+  )
+  it.each([
+    ["7d", "2026-01-03T12:00:00.000Z", "2026-01-10T12:00:00.000Z"],
+    ["30d", "2025-12-11T12:00:00.000Z", "2026-01-10T12:00:00.000Z"],
+    ["year", "2026-01-01T00:00:00.000Z", "2027-01-01T00:00:00.000Z"],
+  ])("bounds %s dates with UTC calendar boundaries", async (date, from, to) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-01-10T12:00:00Z"))
+    try {
+      const db = database([[[0]], []])
+      await getArchivePosts(parseArchiveOptions(new URLSearchParams({ date })))
+      expect(db.query.mock.calls[0][1]).toEqual(expect.arrayContaining([from, to]))
+      expect(db.query.mock.calls[0][0]).toContain(
+        date === "year" ? '"posts"."published_at" <' : '"posts"."published_at" <='
+      )
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+  it.each([
+    ["search", 201, 20],
+    ["", 10001, 1000],
+  ])("caps navigable pages for query %s while retaining total %s", async (q, total, limit) => {
+    const db = database([[[total]], [summaryRow]])
+    const result = await getArchivePosts({ ...defaultArchiveOptions, q, page: limit + 1 })
+    expect(result).toMatchObject({ total, page: limit, pageCount: limit })
+    expect(db.query).toHaveBeenCalledTimes(2)
+  })
+  it("keeps legacy search pagination within the same accepted depth", async () => {
+    database([[[201]], [summaryRow]])
+    expect(await searchPosts("search", 21)).toMatchObject({ page: 20, pageCount: 20 })
+  })
+  it("keeps legacy plain archives within their accepted depth", async () => {
+    database([[[10001]], [summaryRow]])
+    expect(await getPublishedPosts(1001)).toMatchObject({ page: 1000, pageCount: 1000 })
+  })
+  it("revalidates internal options before reaching the cache", async () => {
+    database([[[0]], []])
+    await getArchivePosts({ ...defaultArchiveOptions, page: Infinity })
+    expect(mocks.cache).toHaveBeenCalledWith(expect.stringContaining('"page":1'))
+  })
+  it("returns the total with empty and missing-database fallbacks", async () => {
+    mocks.getDb.mockReturnValue(null)
+    expect(await getArchivePosts()).toEqual({ posts: [], page: 1, pageCount: 0, total: 0 })
+    database([[[0]], []])
+    expect(await getArchivePosts()).toEqual({ posts: [], page: 1, pageCount: 0, total: 0 })
   })
 })

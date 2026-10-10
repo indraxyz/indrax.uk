@@ -29,6 +29,7 @@ vi.mock("@/lib/validators/writing", () => {
 })
 vi.mock("@/features/writing/data/queries", () => ({
   CACHE_TAGS: { post: (slug: string) => `post:${slug}` },
+  getArchivePosts: async () => ({ posts: [], page: 1, pageCount: 0, total: 0 }),
   getPublishedPosts: async () => ({ posts: [], page: 1, pageCount: 0 }),
   getRecentPosts: async () => [],
   getTagsInUse: async () => [],

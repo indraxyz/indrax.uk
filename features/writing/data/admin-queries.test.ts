@@ -1,13 +1,23 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { beforeEach, expect, it, vi } from "vitest"
 
+import {
+  defaultAdminArchiveOptions,
+  parseAdminArchiveOptions,
+} from "@/features/writing/utils/admin-archive-options"
 import * as schema from "@/lib/db/schema"
 
 const mocks = vi.hoisted(() => ({ requireAuthor: vi.fn(), getDb: vi.fn() }))
 vi.mock("@/lib/auth-guard", () => ({ requireAuthor: mocks.requireAuthor }))
 vi.mock("@/lib/db", async () => ({ getDb: mocks.getDb, schema: await import("@/lib/db/schema") }))
 
-import { getAdminOverview, getPostForEdit, listAllPosts } from "./admin-queries"
+import {
+  getAdminArchivePosts,
+  getAdminTagsInUse,
+  getAdminOverview,
+  getPostForEdit,
+  listAllPosts,
+} from "./admin-queries"
 
 const ID = "550e8400-e29b-41d4-a716-446655440000"
 const date = "2026-10-08T00:00:00.000Z"
@@ -31,6 +41,8 @@ it("guards both reads before touching the database", async () => {
   mocks.requireAuthor.mockRejectedValue(new Error("Not authorised"))
   await expect(getAdminOverview()).rejects.toThrow("Not authorised")
   await expect(listAllPosts()).rejects.toThrow("Not authorised")
+  await expect(getAdminArchivePosts()).rejects.toThrow("Not authorised")
+  await expect(getAdminTagsInUse()).rejects.toThrow("Not authorised")
   await expect(getPostForEdit(ID)).rejects.toThrow("Not authorised")
   expect(mocks.getDb).not.toHaveBeenCalled()
 })
@@ -175,3 +187,99 @@ it("provides an empty overview when the database is unconfigured", async () => {
     latestDraft: null,
   })
 })
+
+function archiveDatabase(results: unknown[][][]) {
+  const query = vi.fn().mockImplementation(() => Promise.resolve({ rows: results.shift() ?? [] }))
+  const transaction = vi
+    .fn()
+    .mockImplementation((queries: Promise<unknown>[]) => Promise.all(queries))
+  mocks.getDb.mockReturnValue(drizzle({ client: { query, transaction } as never, schema }))
+  return { query, transaction }
+}
+const adminCard = [ID, "draft", "Draft", "draft", null, date, tags]
+
+it("batches private archive count and summaries, includes drafts and excludes bodies", async () => {
+  const db = archiveDatabase([[[11]], [adminCard]])
+  expect(await getAdminArchivePosts({ ...defaultAdminArchiveOptions, page: 2 })).toEqual({
+    total: 11,
+    page: 2,
+    pageCount: 2,
+    posts: [expect.objectContaining({ id: ID, status: "draft", tags, publishedAt: null })],
+  })
+  expect(mocks.requireAuthor).toHaveBeenCalledOnce()
+  expect(db.transaction).toHaveBeenCalledOnce()
+  expect(db.query).toHaveBeenCalledTimes(2)
+  const statement = db.query.mock.calls[1][0]
+  expect(statement).not.toContain('"content_json"')
+  expect(statement).not.toContain('"status" =')
+  expect(statement).toContain('"updated_at" desc')
+  expect(statement).toContain('"published_at" desc nulls last')
+  expect(statement).toContain('"posts"."id" asc')
+})
+it("combines authenticated status, fulltext, OR tags, date and reading filters in both SQL statements", async () => {
+  const db = archiveDatabase([[[1]], [adminCard]])
+  const options = parseAdminArchiveOptions(
+    new URLSearchParams(
+      "status=archived&q=search&tag=react&tag=postgres&date=custom&from=2026-01-01&to=2026-02-01&duration=medium&sort=relevance"
+    )
+  )
+  await getAdminArchivePosts(options)
+  for (const [statement, parameters] of db.query.mock.calls) {
+    expect(statement).toContain('"posts"."status" =')
+    expect(statement).toContain('"posts"."search_vector" @@')
+    expect(statement).toContain('"tags"."slug" in (')
+    expect(parameters).toEqual(
+      expect.arrayContaining([
+        "archived",
+        "search",
+        "react",
+        "postgres",
+        5,
+        10,
+        "2026-01-01T00:00:00.000Z",
+        "2026-02-02T00:00:00.000Z",
+      ])
+    )
+  }
+  expect(db.query.mock.calls[1][0]).toContain("ts_rank_cd")
+})
+it("corrects stale admin pages and returns exact total", async () => {
+  const db = archiveDatabase([[[11]], [], [adminCard]])
+  expect(await getAdminArchivePosts({ ...defaultAdminArchiveOptions, page: 999 })).toMatchObject({
+    total: 11,
+    page: 2,
+    pageCount: 2,
+    posts: [expect.anything()],
+  })
+  expect(db.query).toHaveBeenCalledTimes(3)
+})
+it("returns all-status tag counts without selecting private content", async () => {
+  const query = database([["tag-id", "Tag", "tag", 7]])
+  expect(await getAdminTagsInUse()).toEqual([
+    { id: "tag-id", name: "Tag", slug: "tag", postCount: 7 },
+  ])
+  expect(mocks.requireAuthor).toHaveBeenCalledOnce()
+  const statement = (query.mock.calls[0] as unknown as [string])[0]
+  expect(statement).not.toContain('"content_json"')
+  expect(statement).not.toContain("status")
+})
+it("keeps admin archive and tag fallbacks guarded when the database is unconfigured", async () => {
+  mocks.getDb.mockReturnValue(null)
+  expect(await getAdminArchivePosts()).toEqual({ total: 0, page: 1, pageCount: 0, posts: [] })
+  expect(await getAdminTagsInUse()).toEqual([])
+  expect(mocks.requireAuthor).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  ["search", 201, 20],
+  ["", 10001, 1000],
+])(
+  "caps private navigable pages for query %s while preserving total %s",
+  async (q, total, limit) => {
+    const db = archiveDatabase([[[total]], [adminCard]])
+    expect(
+      await getAdminArchivePosts({ ...defaultAdminArchiveOptions, q, page: limit + 1 })
+    ).toMatchObject({ total, page: limit, pageCount: limit })
+    expect(db.query).toHaveBeenCalledTimes(2)
+  }
+)

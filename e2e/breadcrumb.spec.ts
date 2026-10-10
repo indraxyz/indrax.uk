@@ -1,27 +1,23 @@
 import { expect, test } from "@playwright/test"
 
-import { SEEDED_POST_SLUG, SEEDED_SERIES_SLUG, SEEDED_TAG_SLUG } from "./support/constants"
+import { SEEDED_POST_SLUG, SEEDED_SERIES_SLUG } from "./support/constants"
 
 const pages = [
   { path: "/resume", current: "Resume" },
   { path: "/tech-stack", current: "Stack" },
   { path: "/writing", current: "Writing" },
-  { path: "/writing/search?q=postgres", current: "Search", parent: true },
+  { path: "/writing?q=postgres", current: "Writing" },
   { path: "/writing/no-such-article", current: "Not found" },
 ]
 
 test("public breadcrumbs expose the current page and navigate to ancestors", async ({ page }) => {
   for (const width of [320, 1600]) {
     await page.setViewportSize({ width, height: 900 })
-    for (const { path, current, parent } of pages) {
+    for (const { path, current } of pages) {
       await page.goto(path)
       const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
       await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(current)
       await expect(breadcrumb.getByRole("link", { name: current, exact: true })).toHaveCount(0)
-      if (parent) {
-        await breadcrumb.getByRole("link", { name: "Writing", exact: true }).click()
-        await expect(page).toHaveURL(/\/writing$/)
-      }
       const home = breadcrumb.getByRole("link", { name: "Home", exact: true })
       await home.focus()
       await page.keyboard.press("Enter")
@@ -31,14 +27,10 @@ test("public breadcrumbs expose the current page and navigate to ancestors", asy
   }
 })
 
-test("article, tag and series breadcrumbs match their structured data", async ({ page }) => {
+test("article and series breadcrumbs match their structured data", async ({ page }) => {
   test.skip(!process.env.DATABASE_URL, "needs seeded writing fixtures")
   await page.setViewportSize({ width: 320, height: 900 })
-  for (const path of [
-    `/writing/${SEEDED_POST_SLUG}`,
-    `/writing/tags/${SEEDED_TAG_SLUG}`,
-    `/writing/series/${SEEDED_SERIES_SLUG}`,
-  ]) {
+  for (const path of [`/writing/${SEEDED_POST_SLUG}`, `/writing/series/${SEEDED_SERIES_SLUG}`]) {
     await page.goto(path)
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
     // Script contents are excluded from Playwright's rendered-text matching.

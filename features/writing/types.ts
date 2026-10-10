@@ -125,7 +125,7 @@ export interface Post extends PostSummary {
   content: PostDocument
   status: PostStatus
   // Decorative and best-effort, by design. Counted by an image request, so it is
-  // trivially inflatable and is never used for ranking or billing.
+  // trivially inflatable; the archive uses it only as an optional popularity sort.
   viewCount: number
   /** Null for a standalone post, which is most of them. */
   seriesContext: SeriesContext | null
@@ -135,6 +135,10 @@ export interface PaginatedPosts {
   posts: PostSummary[]
   page: number
   pageCount: number
+}
+
+export interface ArchiveResults extends PaginatedPosts {
+  total: number
 }
 
 /** A tag with the number of published posts carrying it. */
@@ -168,6 +172,13 @@ export interface AdminPostSummary {
   publishedAt: string | null
   updatedAt: string
   tags: Tag[]
+}
+
+export interface AdminArchiveResults {
+  posts: AdminPostSummary[]
+  total: number
+  page: number
+  pageCount: number
 }
 
 /** A post as the edit form sees it. */

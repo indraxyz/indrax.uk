@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { runWithRequest } from "./runtime.server"
-const mocks = vi.hoisted(() => ({ post: vi.fn(), card: vi.fn(), generic: vi.fn(), log: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  post: vi.fn(),
+  card: vi.fn(),
+  generic: vi.fn(),
+  log: vi.fn(),
+  slugs: vi.fn(),
+  series: vi.fn(),
+}))
 vi.mock("./rss.server", () => ({ GET: vi.fn() }))
 vi.mock("@/features/writing/data/queries", () => ({
   getPostBySlug: mocks.post,
-  getPublishedSlugs: vi.fn(),
-  getSeriesSlugs: vi.fn(),
+  getPublishedSlugs: mocks.slugs,
+  getSeriesSlugs: mocks.series,
   getTagsInUse: vi.fn(),
 }))
 vi.mock("@/features/writing/social-card", () => ({ renderPostCard: mocks.card }))
@@ -103,4 +110,18 @@ it("HEAD reuses cached PNG metadata without sending a body", async () => {
   expect(await response.text()).toBe("")
   expect(response.headers.get("content-type")).toBe("image/png")
   expect(mocks.generic).toHaveBeenCalledTimes(1)
+})
+
+it("lists the archive, articles and series without retired discovery pages in the sitemap", async () => {
+  mocks.slugs.mockResolvedValue([{ slug: "article", updatedAt: "2026-10-10T00:00:00.000Z" }])
+  mocks.series.mockResolvedValue([{ slug: "guide", updatedAt: "2026-10-10T00:00:00.000Z" }])
+  const response = await handle(request("/sitemap.xml"))
+  expect(response.status).toBe(200)
+  const xml = await response.text()
+  expect(xml).toContain("/writing</loc>")
+  expect(xml).toContain("/writing/article</loc>")
+  expect(xml).toContain("/writing/series/guide</loc>")
+  expect(xml).not.toContain("/writing/tags/")
+  expect(xml).not.toContain("/writing/search")
+  expect(xml).not.toContain("?tag=")
 })

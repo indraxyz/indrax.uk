@@ -4,11 +4,17 @@ import { cloudflare } from "@cloudflare/vite-plugin"
 import { reactRouter } from "@react-router/dev/vite"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
+import { adminDevAssets } from "./config/admin-dev-assets.ts"
 import { publicEnvDefinitions } from "./config/public-env.ts"
 
 export default defineConfig(({ mode }) => {
   return {
-    plugins: [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), reactRouter()],
+    plugins: [
+      adminDevAssets(),
+      cloudflare({ viteEnvironment: { name: "ssr" } }),
+      tailwindcss(),
+      reactRouter(),
+    ],
     resolve: {
       alias: [
         {

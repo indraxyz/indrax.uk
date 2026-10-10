@@ -45,9 +45,13 @@ test.describe("a series", () => {
   })
 
   test("shows an unavailable series after the client API resolves", async ({ page }) => {
+    const lookup = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/writing/series/no-such-series"
+    )
     const response = await page.goto("/writing/series/no-such-series")
 
     expect(response?.status()).toBe(200)
+    expect((await lookup).status()).toBe(404)
     await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible()
   })
 

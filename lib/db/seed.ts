@@ -11,6 +11,7 @@
  * The set is chosen to exercise the read path rather than to read well: one
  * published post using every node type the renderer handles, one published post
  * that shares a tag with it, one draft that must never appear anywhere public.
+ * Pass --pagination to add 25 published local-only pagination demo posts.
  */
 import { eq, inArray, sql } from "drizzle-orm"
 
@@ -24,6 +25,15 @@ import { postInputSchema, type PostInput } from "@/lib/validators/writing"
 import { loadLocalEnv } from "./dev-env"
 
 loadLocalEnv()
+
+const includePagination = process.argv.includes("--pagination")
+if (
+  includePagination &&
+  (!process.env.DATABASE_URL ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(new URL(process.env.DATABASE_URL).hostname))
+) {
+  throw new Error("Pagination demo posts require an explicit loopback DATABASE_URL.")
+}
 
 /*
  * Terse constructors for ProseMirror nodes.
@@ -254,6 +264,28 @@ const file = await unified()
     ),
   },
 ]
+
+if (includePagination) {
+  for (let index = 1; index <= 25; index++) {
+    const number = String(index).padStart(2, "0")
+    SEED.push({
+      title: `Pagination demo ${number}: local writing sample`,
+      slug: `pagination-demo-${number}`,
+      status: "published",
+      publishedAt: new Date(Date.UTC(2026, 8, index, 9)).toISOString(),
+      tags: ["Pagination Demo"],
+      content: doc(
+        h(2, `Local pagination sample ${number}`),
+        p(
+          text(
+            `Pagination demo entry ${number} is local sample content for checking the writing archive, tag filters, and search results. Search for "pagination demo" to see all 25 samples across three pages.`
+          )
+        ),
+        p(text("Use Older and Newer in the archive, or More and Previous in search."))
+      ),
+    })
+  }
+}
 
 async function main() {
   const db = getDb()

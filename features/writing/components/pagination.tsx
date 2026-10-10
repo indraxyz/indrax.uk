@@ -7,25 +7,23 @@ import { cn } from "@/lib/utils"
 interface PaginationProps {
   page: number
   pageCount: number
-  // The path pages hang off, e.g. "/writing", "/writing/tags/typescript", or
-  // "/writing/search?q=postgres".
+  // The path pages hang off, e.g. "/writing" or "/writing?q=postgres&tag=react".
   basePath: string
   label: string
   /**
    * What the two directions are called.
    *
-   * The archive and the tag pages are in date order, so "Newer" and "Older" say
-   * something true about where a link leads. Search results are ranked by
-   * relevance, where the same words would be a lie - page two is less relevant,
-   * not older.
+   * The unified archive supplies Previous/Next because its selected ordering
+   * can be dates, relevance, views or titles. Date-ordered callers can instead
+   * use Newer/Older.
    */
   previousLabel?: string
   nextLabel?: string
 }
 
 /**
- * `basePath` may already carry a query string - search hangs its pages off
- * `?q=`. Appending a second `?` would produce a URL whose page number is part of
+ * `basePath` may already carry a query string with search, tags and other filters.
+ * Appending a second `?` would produce a URL whose page number is part of
  * the search term, so the separator is chosen rather than assumed.
  */
 const hrefFor = (basePath: string, page: number) =>
@@ -67,7 +65,7 @@ export function Pagination({
         <span
           className={cn(
             controlClassNames,
-            "px-4 py-2 cursor-default opacity-40 hover:bg-transparent"
+            "px-4 py-2 cursor-default text-muted-foreground hover:bg-transparent"
           )}
           aria-hidden
         >
@@ -89,7 +87,7 @@ export function Pagination({
         <span
           className={cn(
             controlClassNames,
-            "px-4 py-2 cursor-default opacity-40 hover:bg-transparent"
+            "px-4 py-2 cursor-default text-muted-foreground hover:bg-transparent"
           )}
           aria-hidden
         >

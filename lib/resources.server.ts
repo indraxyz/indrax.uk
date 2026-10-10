@@ -1,10 +1,5 @@
 import { GET as rss } from "./rss.server"
-import {
-  getPublishedSlugs,
-  getSeriesSlugs,
-  getTagsInUse,
-  getPostBySlug,
-} from "@/features/writing/data/queries"
+import { getPublishedSlugs, getSeriesSlugs, getPostBySlug } from "@/features/writing/data/queries"
 import { absoluteUrl, RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
 import { logServerError } from "./observability"
 import { cachedResponse, OG_CACHE_PATH } from "./cache-response.server"
@@ -17,11 +12,7 @@ const xmlEscape = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;")
 async function sitemap() {
-  const [posts, tags, series] = await Promise.all([
-    getPublishedSlugs(),
-    getTagsInUse(),
-    getSeriesSlugs(),
-  ])
+  const [posts, series] = await Promise.all([getPublishedSlugs(), getSeriesSlugs()])
   const pages = ["/", "/resume", "/tech-stack"].map((path) => ({
     url: absoluteUrl(path),
     date: RESUME_CONFIG.updatedAt,
@@ -41,14 +32,6 @@ async function sitemap() {
         date: post.updatedAt,
         frequency: "monthly",
         priority: 0.7,
-      }))
-    )
-    pages.push(
-      ...tags.map((tag) => ({
-        url: absoluteUrl(`/writing/tags/${tag.slug}`),
-        date: null,
-        frequency: "weekly",
-        priority: 0.4,
       }))
     )
     pages.push(
