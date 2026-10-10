@@ -227,18 +227,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </div>
       {editor.isActive("table") && (
         <div className="border-t-2 border-border">
-          <p
-            id="table-selection-help"
-            className="px-2 pt-2 text-xs font-medium text-muted-foreground"
-          >
-            Shift-click another cell to select cells for merging.
-          </p>
-          <div
-            role="toolbar"
-            aria-label="Table editing"
-            aria-describedby="table-selection-help"
-            className="flex gap-1 overflow-x-auto p-2"
-          >
+          <div role="toolbar" aria-label="Table editing" className="flex gap-1 overflow-x-auto p-2">
             {TABLE_ACTIONS.map(([command, label, Icon, Badge]) => (
               <Tool
                 key={command}

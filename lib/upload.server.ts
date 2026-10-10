@@ -2,8 +2,8 @@ import { AwsClient } from "aws4fetch"
 import { z } from "zod"
 import { readJson, RequestError } from "./request-body.server"
 
-import { requireAuthor } from "@/lib/auth-guard"
-import { getCoverStorageConfig } from "@/lib/cover-storage"
+import { requireAuthor } from "@/lib/auth-guard.server"
+import { getCoverStorageConfig } from "@/lib/cover-storage.server"
 
 /**
  * What may be uploaded.

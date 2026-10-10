@@ -117,7 +117,8 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given reading duration, then options include Any duration, Short (under 5 minutes), Medium (5–10 inclusive) and Long (over 10 minutes).
 - Given any combination, then count and pagination reflect exactly the published matching set and preserve all committed filters in links.
 - Given no matching published articles or an unknown tag, then an informative empty state appears with a way to clear filters.
-- Given `/writing/search` or `/writing/tags/{slug}`, then a permanent server redirect preserves discovery state at `/writing`; these retired routes are excluded from the sitemap.
+- Given retired `/writing/tags/{slug}` page URLs, then the site returns 404 without a redirect. `/writing/search` follows ordinary article-slug resolution and returns 404 when no published article uses that slug. Neither retired discovery surface appears in the sitemap.
+- Given old `/blog/search` or `/blog/tag/{slug}` URLs, then a permanent redirect targets the unified `/writing` archive directly while preserving query/filter/page state.
 - Given keyboard or mobile use, then sheet controls, Apply, reset and close remain usable, with focus returned to the trigger after closing.
 
 #### US-2.3 · Find articles from the homepage
@@ -139,6 +140,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given I am authenticated, when I POST a valid new post, then it is persisted with `status='draft'` and `published_at` null.
 - Given a title, when I create a post, then a URL-safe slug is generated; on collision a numeric suffix is appended and the result is unique.
 - Given a manually edited slug, when saved, then it is validated against `^[a-z0-9]+(?:-[a-z0-9]+)*$` and rejected with a field-level message if invalid.
+- Given a slug typed in the editor, then typing normalizes it with the shared slug function: lowercase, accent normalization and single hyphens for spaces/punctuation. A final separator remains while typing the next word and is trimmed on submission. Backend validation still rejects invalid direct API input.
 - Given invalid input (empty title, content over limit), when submitted, then the server rejects it via Zod, returns field errors, and writes nothing.
 - Given a save, when it succeeds, then `reading_time` is computed and stored server-side (never trusted from the client).
 
@@ -147,10 +149,14 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 **AC**
 
 - Given an existing post, when I open `/admin/edit/{id}`, then the form is populated with current values.
+- Given the post form, then its save button is in the page heading actions, immediately after Delete on edit pages; new-post pages use the same heading placement.
+- Given unsaved changes, then the button reads Save and shows an orange indicator with an accessible description. Successful saves show Saved in the button, without a separate visible success message; further edits restore Save and the indicator.
+- Given saving is in progress, then the button shows Saving and prevents duplicate submissions. Failed saves keep unsaved changes and display the existing validation/error feedback.
 - Given an edit, when saved, then `updated_at` is set server-side and `created_at` is unchanged.
 - Given an edit to a published post, when saved, then `published_at` does **not** change.
 - Given a save, when it completes, then `revalidateTag('posts')` and `revalidateTag('post:{slug}')` both fire.
 - Given a slug change on a published post, when saved, then I am warned that existing links will break.
+- Given that warning, then the existing writing URL appears below its message and wraps within the sidebar on narrow screens.
 
 #### US-3.3 · Preview before publishing
 
@@ -169,6 +175,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 - Given a published post, when I unpublish it, then it returns 404 publicly and disappears from `/writing`, filtered results, sitemap, and RSS within one revalidation cycle.
 - Given a republish of a previously published post, when it happens, then the original `published_at` is preserved.
 - Given a delete request, when issued, then it requires explicit confirmation and cascades to `post_tags`.
+- Given Delete is selected, then the shared confirmation dialog offers Cancel and Delete post. Cancellation restores focus; pending deletion prevents duplicate requests and dismissal. Failed deletion keeps the dialog open with error feedback so the author can retry.
 
 #### US-3.5 · Manage tags
 
@@ -183,6 +190,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 **AC**
 
 - Given an image under the size cap and of an allowed MIME type, when I upload it, then a presigned URL is issued and the file uploads directly to storage.
+- Given the cover URL input, then an icon-only Upload a cover button sits immediately to its right, at the same height, with an accessible name and upload errors below the row.
 - Given a file exceeding the cap or of a disallowed type, when I attempt upload, then it is rejected **server-side** (client-side checks alone are insufficient).
 - Given an uploaded cover, when saved, then alt text is required before the post can be published.
 - Given a presigned URL, when issued, then it expires within 5 minutes and is scoped to a single object key.
@@ -344,7 +352,7 @@ Run before first production deploy.
 
 - [ ] All secrets set via platform secret storage, not committed
 - [ ] Built client bundle grepped for secret fragments
-- [ ] `.dev.vars` gitignored if using Wrangler
+- [ ] `.env.local` and environment-specific local files gitignored
 
 **Quality gates**
 

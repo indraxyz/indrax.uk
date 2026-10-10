@@ -30,8 +30,9 @@ shell; cards load in the browser. Navigation uses the shared progress indicator.
 
 PostgreSQL filters before counting and reading the page in a Neon HTTP batch,
 using `LIMIT 10 OFFSET ((page - 1) * 10)` and a deterministic unique tie-breaker.
-Drafts and archived posts are excluded. Legacy search/tag pages permanently
-redirect to the unified archive; legacy API endpoints remain compatible.
+Drafts and archived posts are excluded. Standalone writing search/tag page
+routes are removed; old blog search/tag links redirect directly to the unified
+archive. Legacy API endpoints remain compatible.
 Public API responses use `no-store`; browser query caching and server KV caching
 are separate layers.
 
@@ -53,7 +54,7 @@ rerunning it updates the same records and preserves unrelated posts.
 | `/writing?tag=pagination-demo`        | 10     | 10     | 5      |
 | `/writing?q=pagination%20demo`        | 10     | 10     | 5      |
 
-Use the loopback URL in local Worker secrets (`.dev.vars`) to browse those records.
+Use the loopback URL in `.env.local` to browse those records with the local Worker.
 `.env.local` can point to hosted Neon; the explicit URL above overrides it for
 this command without editing that file. Direct SQL fixtures bypass application
 cache invalidation, so an already-running local Worker may need its local public
@@ -69,9 +70,13 @@ or production.
    PDF, media uploads when configured, RSS, sitemap, and legacy redirects.
    Confirm the deployed revision rather than inferring it from a merged PR.
 3. Verify Production environment CI credentials, public build variables, and
-   `CLOUDFLARE_DEPLOY_ENABLED=true`. Verify the production Worker's database,
+   the repository/organization gate `CLOUDFLARE_DEPLOY_ENABLED=true`. Preview and
+   Production environment variables cannot enable a job-level gate on their own.
+   Verify the production Worker's database,
    auth/OAuth origin and credentials, author ID, and optional R2 secrets. Keep
    dev/prod KV and D1 resources isolated. Ensure D1's revalidations table exists.
+   See [D1/KV initialization and inspection](d1-kv-cache.md#deployed-develop-and-production)
+   for environment-specific operator commands and cache recovery considerations.
 4. Review pending SQL migrations against production and apply required ones with
    the production migration connection. The unified public/admin discovery change uses existing columns
    and indexes and introduces no schema migration. Do not run local fixture seeding
@@ -81,6 +86,12 @@ or production.
    suites plus the normal check/build gates.
 6. Merge the approved release PR. GitHub Actions deploys main using the generated
    `build/server/wrangler.json`, targeting indrax and its production domains.
+   Before upload, `scripts/assert-deploy-target.mjs` resolves source configuration
+   through Wrangler and verifies generated Worker name, routes, site URL and
+   KV/D1 bindings. CI validates both production and develop builds; the seeded
+   browser suite keeps its production-config/local-fixture coverage. Quality jobs
+   cancel superseded runs independently; active deployments finish and deployment
+   jobs serialize per branch.
    The dev build selects its environment with `CLOUDFLARE_ENV=dev`; use the
    project's npm scripts to keep build and deployment configuration aligned.
 7. Verify production journeys, metadata/canonical origins and cold/warm request
@@ -123,3 +134,20 @@ References: [React Router rendering](https://reactrouter.com/start/framework/ren
 [Cloudflare Vite environments](https://developers.cloudflare.com/workers/vite-plugin/reference/cloudflare-environments/),
 [static asset headers](https://developers.cloudflare.com/workers/static-assets/headers/),
 and [Worker rollback limitations](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
+
+## Deployment verification limits
+
+The repository defines distinct Worker/routes/KV/D1 targets and validates their
+generated deployment configuration. Credentials and public analytics/media build
+variables come from the branch-selected GitHub environment. Runtime secrets
+remain separately configured on each deployed Worker and are not uploaded from
+local `.env.local` or the CI fixture environment.
+
+Production environment approvals/branch restrictions, Cloudflare API token scope,
+remote database separation, D1 initialization and dashboard Git Builds state need
+account-level evidence. Do not infer those controls from a passing local dry run.
+No production migration or deployment is part of local validation.
+
+References: [Cloudflare Vite environment selection](https://developers.cloudflare.com/workers/vite-plugin/reference/cloudflare-environments/),
+[GitHub variable availability](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#vars-context),
+and [GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).

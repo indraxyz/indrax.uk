@@ -1,6 +1,11 @@
 import { GET as rss } from "./rss.server"
-import { getPublishedSlugs, getSeriesSlugs, getPostBySlug } from "@/features/writing/data/queries"
-import { absoluteUrl, RESUME_CONFIG, SITE_URL } from "@/features/resume/config"
+import {
+  getPublishedSlugs,
+  getSeriesSlugs,
+  getPostBySlug,
+} from "@/features/writing/data/queries.server"
+import { absoluteUrl, SITE_URL } from "@/config/site"
+import { RESUME_CONFIG } from "@/features/resume/config"
 import { logServerError } from "./observability"
 import { cachedResponse, OG_CACHE_PATH } from "./cache-response.server"
 

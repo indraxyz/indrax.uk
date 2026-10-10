@@ -24,6 +24,26 @@ export default defineConfig(({ mode }) => {
       ...publicEnvDefinitions(mode),
       "process.env.NODE_ENV": JSON.stringify(mode === "production" ? "production" : "development"),
     },
-    build: { outDir: "../build/client/admin", emptyOutDir: true },
+    build: {
+      outDir: "../build/client/admin",
+      emptyOutDir: true,
+      rolldownOptions: {
+        preserveEntrySignatures: "allow-extension",
+        output: {
+          strictExecutionOrder: true,
+          codeSplitting: {
+            includeDependenciesRecursively: false,
+            groups: [
+              {
+                name: "react-runtime",
+                test: /node_modules[\\/]react(?:-dom)?[\\/]/,
+                priority: 20,
+              },
+              { name: "router-runtime", test: /node_modules[\\/]react-router[\\/]/ },
+            ],
+          },
+        },
+      },
+    },
   }
 })

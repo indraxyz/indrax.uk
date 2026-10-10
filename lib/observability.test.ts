@@ -95,10 +95,10 @@ describe("logServerError — a reader who left is not a failure", () => {
 
   it("still records it rather than swallowing it", () => {
     // Demoted, not hidden. A flood of these is itself a signal.
-    const { record } = captured(new Error("aborted"), { scope: "render:/writing/tags/[tag]" })
+    const { record } = captured(new Error("aborted"), { scope: "render:/writing" })
 
     expect(record.message).toBe("aborted")
-    expect(record.scope).toBe("render:/writing/tags/[tag]")
+    expect(record.scope).toBe("render:/writing")
   })
 
   it("does not demote a real error that merely mentions aborting", () => {

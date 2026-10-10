@@ -16,17 +16,14 @@ on:
   push:
     branches: [main, develop]
 
-# A second push supersedes the first; no point finishing a run for a commit that
-# has already been replaced.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
 jobs:
   check:
+    concurrency:
+      group: check-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -48,7 +45,15 @@ jobs:
       # No DATABASE_URL here on purpose. Every read degrades to an empty result
       # rather than throwing, so the site builds without one - and asserting that
       # keeps the property true, since it is also what a fresh clone gets.
-      - run: npm run build
+      - name: Build and validate production target
+        run: |
+          npm run build
+          node scripts/assert-deploy-target.mjs production
+
+      - name: Build and validate develop target
+        run: |
+          CLOUDFLARE_ENV=dev npm run build
+          node scripts/assert-deploy-target.mjs dev
 
       # Advisories appear between commits, not because of them, so this reports
       # rather than blocks - a high finding in a transitive dependency should not
@@ -67,6 +72,9 @@ jobs:
   # Seeded-content and authenticated specs skip without their fixture environment,
   # so a database-free smoke run cannot establish the same coverage.
   e2e:
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -155,8 +163,15 @@ jobs:
           retention-days: 14
 
   deploy:
+    # This job condition intentionally reads the repository/organization variable;
+    # environment variables are unavailable until the job starts.
     if: github.event_name == 'push' && vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     needs: [check, e2e]
+    # Do not interrupt an upload/activation already in progress. Quality jobs still
+    # cancel superseded runs independently above.
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}

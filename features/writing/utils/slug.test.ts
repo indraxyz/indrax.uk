@@ -35,6 +35,24 @@ describe("slugify", () => {
     expect(slugify("")).toBe("")
   })
 
+  it("keeps word separators through successive live input changes", () => {
+    let value = ""
+    for (const character of "Café & React Router") {
+      value = slugify(value + character, { preserveTrailingSeparator: true })
+    }
+    expect(value).toBe("cafe-react-router")
+    expect(slugify("Hello ", { preserveTrailingSeparator: true })).toBe("hello-")
+    expect(slugify("hello---", { preserveTrailingSeparator: true })).toBe("hello-")
+    expect(slugify("---", { preserveTrailingSeparator: true })).toBe("")
+  })
+
+  it("trims live trailing separators before persistence", () => {
+    const value = slugify("Café & React Router!", { preserveTrailingSeparator: true })
+    expect(value).toBe("cafe-react-router-")
+    expect(slugify(value)).toBe("cafe-react-router")
+    expect(SLUG_PATTERN.test(slugify(value))).toBe(true)
+  })
+
   it("always produces something the pattern accepts", () => {
     const inputs = ["Hello World", "Vue.js", "Café", "  a  ", "ONE_two-THREE", "2026 in review"]
 

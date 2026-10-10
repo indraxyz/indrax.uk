@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SECTION_COPY, SOCIAL_LINKS } from "@/features/resume/config"
+import { SOCIAL_LINKS } from "@/config/site"
+import { SECTION_COPY } from "@/features/resume/config"
 import { SectionCard } from "@/components/ui/section-card"
 import { portfolioItems } from "@/features/resume/data/resume"
 import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"

@@ -31,13 +31,23 @@ export default {
         const path = url.pathname
         let response: Response
         if (path === "/blog" || path.startsWith("/blog/") || path === "/rss.xml") {
-          const target =
-            path === "/rss.xml"
-              ? "/writing/rss.xml"
-              : path.replace(/^\/blog\/tag\//, "/writing/tags/").replace(/^\/blog/, "/writing")
-          response = Response.redirect(new URL(`${target}${url.search}`, url), 308)
+          const target = new URL(request.url)
+          if (path === "/rss.xml") target.pathname = "/writing/rss.xml"
+          else if (path === "/blog/search") target.pathname = "/writing"
+          else if (path.startsWith("/blog/tag/")) {
+            target.pathname = "/writing"
+            let tag = path.slice("/blog/tag/".length)
+            try {
+              tag = decodeURIComponent(tag)
+            } catch {
+              // Retain malformed input safely as query text; archive validation owns it.
+            }
+            if (!target.searchParams.getAll("tag").includes(tag))
+              target.searchParams.append("tag", tag)
+          } else target.pathname = path.replace(/^\/blog/, "/writing")
+          response = Response.redirect(target, 308)
         } else if (path.startsWith("/api/auth/")) {
-          const { getAuth } = await import("../lib/auth")
+          const { getAuth } = await import("../lib/auth.server")
           const auth = getAuth()
           response = auth
             ? await auth.handler(request)

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/neon-http"
 
 import * as schema from "@/lib/db/schema"
+import { E2E_BASE_URL } from "./constants"
 
 /**
  * Mints a real signed-in session for the authoring specs.
@@ -35,7 +36,7 @@ export const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token"
 
 // Loopback only. This module creates a real allow-listed author and a valid
 // signed session, so pointed at production it would provision an admin identity
-// there - one exported `DATABASE_URL` away. `lib/db/index.ts` guards its own
+// there - one exported `DATABASE_URL` away. `lib/db/index.server.ts` guards its own
 // local-endpoint override the same way, and for the same reason.
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
 
@@ -53,7 +54,7 @@ function assertLocal(databaseUrl: string) {
 function client(databaseUrl: string) {
   assertLocal(databaseUrl)
 
-  // The local stack speaks Neon's protocol over plain HTTP; see lib/db/index.ts.
+  // The local stack speaks Neon's protocol over plain HTTP; see lib/db/index.server.ts.
   const { hostname, port } = new URL(databaseUrl)
   if (LOCAL_HOSTS.has(hostname)) {
     neonConfig.fetchEndpoint = `http://${hostname}:${port || "4444"}/sql`
@@ -102,6 +103,7 @@ export async function mintAuthorSession(options: MintOptions = {}): Promise<Mint
 
   const db = client(databaseUrl)
   const auth = betterAuth({
+    baseURL: E2E_BASE_URL,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
     socialProviders: { github: { clientId: "unused", clientSecret: "unused" } },

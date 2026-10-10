@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb"
-import { PublicShell } from "@/features/resume/components/public-shell"
+import { PublicShell } from "@/components/layout/public-shell"
 import { WRITING_CONFIG } from "@/features/writing/config"
 
 interface WritingShellProps {

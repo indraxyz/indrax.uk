@@ -9,14 +9,14 @@ and [testing](testing.md). Writing-specific distribution requirements live in
 
 ## Profile identity and metadata
 
-`routes/home.tsx` emits `ProfilePage` JSON-LD with a `Person` main entity.
+`app/routes/home.tsx` emits `ProfilePage` JSON-LD with a `Person` main entity.
 `features/resume/utils/structured-data.ts` derives identity, role, organization,
 education, skills and social links from existing resume data/configuration;
 those facts must not be copied into a second source. The canonical URL and profile
 image are absolute. `telephone` and `birthDate` are deliberately omitted.
 The JSON-LD serializer escapes unsafe HTML characters before embedding data.
 
-`routes/meta.ts` supplies title, description, canonical, Open Graph and Twitter
+`app/routes/meta.ts` supplies title, description, canonical, Open Graph and Twitter
 metadata through React Router route exports. Public profile pages remain readable
 in the initial HTML. Shared cards use absolute image URLs and
 `summary_large_image`, with one image source for both metadata formats.

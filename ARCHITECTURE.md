@@ -4,6 +4,16 @@ The site uses React Router **8.4.0** Framework Mode on Cloudflare Workers. The a
 is a separately built React application using browser routing. Vite produces both
 bundles; the Cloudflare Vite plugin packages the SSR Worker and client assets.
 
+The [project structure and environment guide](docs/project-structure-and-environment.md)
+explains why `app/`, `admin/` and `workers/` sit at the repository root, where new
+code belongs, and how local environment, database and authentication URLs relate.
+
+Admin route modules are grouped under `admin/routes/{auth,dashboard,posts}/` and
+mapped explicitly by `admin/routes.tsx`. `admin/layouts/protected-admin.tsx` owns
+the browser session lifecycle, `admin/auth/session.tsx` provides the shared
+context/hook, and common UI is grouped in `admin/components/{auth,layout,feedback}/`.
+Domain UI and behavior remain in `features/`; moving route files does not change URLs.
+
 ## Request paths
 
 ```mermaid
@@ -32,8 +42,11 @@ underlying data operation verifies the actual session and numeric GitHub allowli
 `lib/runtime.server.ts` stores Request, Worker bindings and execution context in
 AsyncLocalStorage. Concurrent requests keep separate contexts. Server modules use
 this context for runtime secrets; build tools define an explicit safe public
-variable allowlist. Public build settings and cache bindings are configured in
-the environment templates and Wrangler configuration.
+variable allowlist. `.env.example` documents the shared `.env.local` settings used
+by Vite, local Worker bindings and database tooling. Preview passes the root file
+explicitly to Wrangler and puts exported overrides in a protected temporary dotenv
+file outside the build. Deployed secrets and resource bindings remain configured
+through Cloudflare and Wrangler.
 
 ## Rendering policy
 
@@ -71,8 +84,10 @@ bounded timeout. Loading, empty and error states are different UI states.
 The unified `/writing` archive commits search, sort, tags, publication dates and
 reading durations to URL query state. Its filter sheet keeps changes in a draft
 until Apply; closing discards them. Server validation normalizes the same contract
-for `/api/writing/posts`, and SQL applies filters before count/page queries. Legacy
-search/tag page loaders issue 308 redirects, while compatibility APIs remain.
+for `/api/writing/posts`, and SQL applies filters before count/page queries. Standalone
+writing search/tag page routes are removed, while compatibility APIs remain.
+Legacy `/blog/search` and `/blog/tag/:tag` links redirect directly to `/writing`
+with search/tag query parameters.
 The private `/admin/posts` list shares these controls, adds status filtering and
 defaults to Recently updated. Its backend filters/counts/pages the full set,
 including drafts and archived posts where selected, under session/allowlist
@@ -102,6 +117,9 @@ returns sanitized HTML/headings and metadata without raw document duplication.
 
 ## Database and cache boundaries
 
+The [D1 and KV cache guide](docs/d1-kv-cache.md) documents the implementation,
+local persistence roots, environment selection and remote initialization/inspection.
+
 Public reads enforce published status, publication date and content presence.
 There is no boolean flag that can make a public query include drafts. Admin reads
 live separately and never persist in KV. Minimal list projections omit bodies;
@@ -125,15 +143,28 @@ guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 
 ## Shared feature responsibilities
 
-- Route modules compose existing feature components and export React Router loaders
-  and metadata. They do not implement separate SQL or authorization rules.
-- `features/home` and `features/resume` own profile data, PDF/social-card compositions.
-  The PDF renderer loads only on download in the browser.
+- `app/routes/` owns public route modules and their colocated tests. Modules compose
+  feature components and export React Router loaders/metadata; SQL and authorization
+  stay in backend modules.
+- `admin/components/` owns the common admin shell, navigation and authentication
+  buttons. `features/writing/components/admin/` owns editor and post-management UI.
+- `components/layout/public-shell.tsx` owns the public layout; `components/ui/`
+  provides shared primitives and variants. Public/admin navigation uses React
+  Router links and explicit active-state helpers.
+- `config/site.ts` owns global `SITE_URL`, `SITE_HOST`, `absoluteUrl` and
+  `SOCIAL_LINKS`. Profile-specific configuration remains with its feature.
+- `features/home` and `features/resume` own profile data and PDF/social-card
+  compositions. The PDF renderer loads only on download in the browser.
 - `features/writing` owns query contracts, editor extensions, sanitized content,
   publishing rules, card/article components and preview policy.
-- `components/ui` provides shared primitives and variants; feature CSS uses Tailwind
-  and the site theme. Public/admin navigation uses React Router links and explicit
-  active-state helpers.
+- Writing database reads, archive SQL, mutations and rendered-content caching use
+  `features/writing/data/*.server.ts`. Authentication, author guards and cover
+  storage use `lib/auth.server.ts`, `lib/auth-guard.server.ts` and
+  `lib/cover-storage.server.ts`; `lib/db/index.server.ts` owns the server database
+  client and `features/writing/utils/preview-token.server.ts` owns signing secrets.
+  These explicit server boundaries protect browser bundles from accidental imports.
+- Tooling tests sit beside their implementations, including
+  `scripts/preview-env.test.ts` beside the preview environment helper.
 - Consent gates PostHog initialization and storage; analytics helpers exclude admin/auth tracking and redact preview tokens
   from public pageview URLs. Security headers remain centralized at the Worker.
 

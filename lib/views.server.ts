@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm"
 
-import { getDb, schema } from "@/lib/db"
+import { getDb, schema } from "@/lib/db/index.server"
 import { logServerError } from "@/lib/observability"
 
 // Counting is the whole job; there is nothing here to cache.

@@ -12,13 +12,20 @@ export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
  * both arrive at "vue-js", and why tag normalisation can lean on this to
  * de-duplicate.
  */
-export function slugify(input: string): string {
-  return input
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+export function slugify(
+  input: string,
+  { preserveTrailingSeparator = false }: { preserveTrailingSeparator?: boolean } = {}
+): string {
+  return (
+    input
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      // Live inputs retain a final separator so the next word is not joined to the
+      // previous one. Persisted slugs always use the default trimming behavior.
+      .replace(preserveTrailingSeparator ? /^-+/g : /^-+|-+$/g, "")
+  )
 }
 
 /**

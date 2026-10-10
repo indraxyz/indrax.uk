@@ -13,8 +13,11 @@ const mocks = vi.hoisted(() => ({
 // These tests exercise the form's submit handler without a DOM or the editor.
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
-  useState: (initial: unknown) => [initial, vi.fn()],
+  useState: (initial: unknown) => [typeof initial === "function" ? initial() : initial, vi.fn()],
+  useId: () => "post-form-test",
+  useRef: (initial: unknown) => ({ current: initial }),
   useEffect: vi.fn(),
+  useLayoutEffect: vi.fn(),
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
 vi.mock("react-router", () => ({
@@ -63,7 +66,11 @@ const post: AdminPost = {
 
 async function submit(existing: AdminPost | null, result: ActionResult) {
   mocks.savePost.mockResolvedValue(result)
-  const form = PostForm({ post: existing, coverUploadsConfigured: false }) as ReactElement<{
+  const form = PostForm({
+    post: existing,
+    coverUploadsConfigured: false,
+    children: ({ form }) => form,
+  }) as ReactElement<{
     onSubmit: (event: { preventDefault: () => void }) => void
   }>
   form.props.onSubmit({ preventDefault: vi.fn() })
@@ -92,4 +99,37 @@ it("does not navigate away from validation errors", async () => {
   await submit(post, { ok: false, message: "That could not be saved." })
   expect(mocks.replace).not.toHaveBeenCalled()
   expect(mocks.refresh).not.toHaveBeenCalled()
+})
+
+it("associates the external header submit button with its form", () => {
+  let headerButton: ReactElement<{ form: string; type: string }> | undefined
+  const form = PostForm({
+    post,
+    coverUploadsConfigured: false,
+    children: ({ form, saveButton }) => {
+      headerButton = saveButton as ReactElement<{ form: string; type: string }>
+      return form
+    },
+  }) as ReactElement<{ id: string }>
+  expect(form.props.id).toContain("post-form-test")
+  expect(headerButton?.props.form).toBe(form.props.id)
+  expect(headerButton?.props.type).toBe("submit")
+})
+
+it("keeps the form and its caches unchanged after a failed save request", async () => {
+  mocks.savePost.mockRejectedValue(new Error("Network unavailable"))
+  const form = PostForm({
+    post,
+    coverUploadsConfigured: false,
+    children: ({ form }) => form,
+  }) as ReactElement<{ onSubmit: (event: { preventDefault: () => void }) => void }>
+  form.props.onSubmit({ preventDefault: vi.fn() })
+  await mocks.transition
+  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(mocks.invalidate).not.toHaveBeenCalled()
+})
+
+it("normalizes a slug at submit even when its blur handler has not run", async () => {
+  await submit({ ...post, slug: "  Café React & API!!!  " }, { ok: true, postId: ID })
+  expect(mocks.savePost).toHaveBeenCalledWith(expect.objectContaining({ slug: "cafe-react-api" }))
 })

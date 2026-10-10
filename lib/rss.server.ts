@@ -1,6 +1,6 @@
 import { WRITING_CONFIG } from "@/features/writing/config"
-import { getFeedPosts } from "@/features/writing/data/queries"
-import { absoluteUrl } from "@/features/resume/config"
+import { getFeedPosts } from "@/features/writing/data/queries.server"
+import { absoluteUrl } from "@/config/site"
 import { personalInfo } from "@/features/resume/data/resume"
 
 // The feed is a pure function of published posts, so it is cached like the pages

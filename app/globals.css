@@ -66,6 +66,7 @@
     --primitive-neutral-900: #152111;
     --primitive-danger-700: #b42318;
     --primitive-danger-50: #fff1ef;
+    --primitive-warning-600: #ea580c;
 
     --semantic-surface-page: var(--primitive-neutral-0);
     --semantic-surface-card: rgba(255, 255, 255, 0.92);
@@ -84,6 +85,8 @@
     --semantic-action-tertiary-text: var(--primitive-brand-950);
     --semantic-status-danger: var(--primitive-danger-700);
     --semantic-status-danger-text: var(--primitive-neutral-0);
+    --semantic-status-warning: var(--primitive-warning-600);
+    --component-status-unsaved: var(--semantic-status-warning);
     --component-navigation-progress: var(--primitive-brand-500);
 
     --component-variant-primary-bg: var(--semantic-action-primary);

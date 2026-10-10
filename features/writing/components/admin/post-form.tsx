@@ -1,7 +1,17 @@
 import { AlertTriangle, Loader2, Save } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useBeforeUnload, useBlocker, useNavigate } from "react-router"
-import { lazy, Suspense, useEffect, useState, useTransition } from "react"
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
@@ -15,6 +25,11 @@ import {
   type PostDocument,
   type PostStatus,
 } from "@/features/writing/types"
+import {
+  createPostFormFields,
+  postFormSnapshot,
+  type PostFormFields,
+} from "@/features/writing/utils/post-form-state"
 import { slugify } from "@/features/writing/utils/slug"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +44,11 @@ const labelClasses = "text-xs font-black uppercase tracking-[0.14em] text-muted-
 interface PostFormProps {
   post: AdminPost | null
   coverUploadsConfigured: boolean
+  children: (controls: {
+    form: ReactNode
+    saveButton: ReactNode
+    onDeleted: () => void
+  }) => ReactNode
 }
 
 /**
@@ -57,15 +77,47 @@ function FieldError({ id, messages }: { id: string; messages?: string[] }) {
 const describedBy = (field: string, messages?: string[]) =>
   messages?.length ? { "aria-invalid": true, "aria-describedby": `${field}-error` } : {}
 
-export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
+export function PostForm({ post, coverUploadsConfigured, children }: PostFormProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const save = useMutation({ mutationFn: adminApi.savePost })
   const [pending, startTransition] = useTransition()
-  const [dirty, setDirty] = useState(false)
-  const blocker = useBlocker(dirty && !pending)
+  const formId = useId()
+  const saveStatusId = `${formId}-save-status`
+  const initial = createPostFormFields(post)
+  const [fields, setFields] = useState(initial)
+  const [savedFields, setSavedFields] = useState(initial)
+  const currentFields = useRef(fields)
+  const slugSelection = useRef<{
+    input: HTMLInputElement
+    value: string
+    start: number
+    end: number
+  } | null>(null)
+  const savedFieldsRef = useRef(savedFields)
+  const savedId = useRef(post?.id)
+  const [persistedId, setPersistedId] = useState(post?.id)
+  const saving = useRef(false)
+  const syncedStatus = useRef(post?.status)
+  const [result, setResult] = useState<ActionResult | null>(null)
+  // Restore normalized input selection in the same commit, before another
+  // keystroke. Animation-frame callbacks can run after subsequent typing.
+  useLayoutEffect(() => {
+    const selection = slugSelection.current
+    slugSelection.current = null
+    if (
+      selection &&
+      document.activeElement === selection.input &&
+      selection.input.value === selection.value
+    )
+      selection.input.setSelectionRange(selection.start, selection.end)
+  })
+  const dirty = postFormSnapshot(fields) !== postFormSnapshot(savedFields)
+  const isDirty = () =>
+    postFormSnapshot(currentFields.current) !== postFormSnapshot(savedFieldsRef.current)
+  const blocker = useBlocker(isDirty)
   useBeforeUnload((event) => {
-    if (dirty) {
+    if (isDirty()) {
       event.preventDefault()
       event.returnValue = ""
     }
@@ -76,92 +128,158 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
       else blocker.reset()
     }
   }, [blocker])
-  const [result, setResult] = useState<ActionResult | null>(null)
 
-  const [title, setTitle] = useState(post?.title ?? "")
-  const [slug, setSlug] = useState(post?.slug ?? "")
-  const [excerpt, setExcerpt] = useState(post?.excerpt ?? "")
-  const [status, setStatus] = useState<PostStatus>(post?.status ?? "draft")
+  function updateFields(patch: Partial<PostFormFields>) {
+    const next = { ...currentFields.current, ...patch }
+    currentFields.current = next
+    setFields(next)
+    if (result?.ok === false) setResult(null)
+  }
   const persistedStatus = post?.status
   useEffect(() => {
-    if (!dirty && persistedStatus) setStatus(persistedStatus)
-  }, [persistedStatus, dirty])
-  const [tags, setTags] = useState(post?.tags.map((tag) => tag.name).join(", ") ?? "")
-  const [coverUrl, setCoverUrl] = useState(post?.coverUrl ?? "")
-  const [coverAlt, setCoverAlt] = useState(post?.coverAlt ?? "")
-  const [body, setBody] = useState<PostDocument | null>(post?.content ?? null)
-  const [seriesTitle, setSeriesTitle] = useState(post?.seriesTitle ?? "")
-  const [seriesDescription, setSeriesDescription] = useState(post?.seriesDescription ?? "")
-  // A string, not a number: an empty box is "" and `Number("")` is 0, which would
-  // silently claim part zero of a series nobody named.
-  const [seriesOrder, setSeriesOrder] = useState(
-    post?.seriesOrder === null || post?.seriesOrder === undefined ? "" : String(post.seriesOrder)
-  )
+    if (!dirty && !pending && persistedStatus && persistedStatus !== syncedStatus.current) {
+      syncedStatus.current = persistedStatus
+      currentFields.current = { ...currentFields.current, status: persistedStatus }
+      savedFieldsRef.current = { ...savedFieldsRef.current, status: persistedStatus }
+      setFields(currentFields.current)
+      setSavedFields(savedFieldsRef.current)
+    }
+  }, [persistedStatus, dirty, pending])
+
+  const {
+    title,
+    slug,
+    excerpt,
+    status,
+    tags,
+    coverUrl,
+    coverAlt,
+    body,
+    seriesTitle,
+    seriesDescription,
+    seriesOrder,
+  } = fields
+  const setTitle = (title: string) => updateFields({ title })
+  const setSlug = (slug: string) => updateFields({ slug })
+  const setExcerpt = (excerpt: string) => updateFields({ excerpt })
+  const setStatus = (status: PostStatus) => updateFields({ status })
+  const setTags = (tags: string) => updateFields({ tags })
+  const setCoverUrl = (coverUrl: string) => updateFields({ coverUrl })
+  const setCoverAlt = (coverAlt: string) => updateFields({ coverAlt })
+  const setBody = (body: PostDocument) => updateFields({ body })
+  const setSeriesTitle = (seriesTitle: string) => updateFields({ seriesTitle })
+  const setSeriesDescription = (seriesDescription: string) => updateFields({ seriesDescription })
+  const setSeriesOrder = (seriesOrder: string) => updateFields({ seriesOrder })
 
   // Changing the address of something already published breaks every link to it
   // that exists in the world. Worth saying out loud, at the moment it is being
   // done, rather than in a changelog afterwards (PRD US-3.2).
   const slugWillBreakLinks =
-    post?.status === "published" && slug.trim().length > 0 && slug.trim() !== post.slug
+    post?.status === "published" && slugify(slug).length > 0 && slugify(slug) !== post.slug
 
   const submit = () => {
+    if (saving.current) return
+    saving.current = true
+    // Enter can submit before another blur. Save and acknowledge the canonical
+    // slug visible in the form rather than the trailing separator being typed.
+    const submitted = {
+      ...currentFields.current,
+      slug: slugify(currentFields.current.slug),
+    }
+    updateFields(submitted)
     setResult(null)
-
     startTransition(async () => {
       try {
         const outcome = await save.mutateAsync({
-          id: post?.id,
-          title: title.trim(),
-          slug: slug.trim() || undefined,
-          excerpt: excerpt.trim() || undefined,
-          content: body ?? { type: "doc", content: [] },
-          coverUrl: coverUrl.trim() || undefined,
-          coverAlt: coverAlt.trim() || undefined,
-          status,
-          tags: tags
+          id: savedId.current,
+          title: submitted.title.trim(),
+          slug: submitted.slug || undefined,
+          excerpt: submitted.excerpt.trim() || undefined,
+          content: submitted.body ?? { type: "doc", content: [] },
+          coverUrl: submitted.coverUrl.trim() || undefined,
+          coverAlt: submitted.coverAlt.trim() || undefined,
+          status: submitted.status,
+          tags: submitted.tags
             .split(",")
             .map((tag) => tag.trim())
             .filter(Boolean),
-          seriesTitle: seriesTitle.trim() || undefined,
-          seriesDescription: seriesDescription.trim() || undefined,
-          // Undefined rather than NaN for an empty or unparseable box - the schema
-          // reads "absent", which with no series title is the standalone post that
-          // most articles are.
-          seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : undefined,
+          seriesTitle: submitted.seriesTitle.trim() || undefined,
+          seriesDescription: submitted.seriesDescription.trim() || undefined,
+          seriesOrder: submitted.seriesOrder.trim() ? Number(submitted.seriesOrder) : undefined,
         })
-
         setResult(outcome)
-        if (outcome.ok) {
-          setDirty(false)
-          await Promise.all([
-            ...(post ? [queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) })] : []),
-            queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
-            queryClient.invalidateQueries({ queryKey: writingKeys.all }),
-          ])
+        if (!outcome.ok) return
+        savedFieldsRef.current = submitted
+        setSavedFields(submitted)
+        if (outcome.postId) {
+          savedId.current = outcome.postId
+          setPersistedId(outcome.postId)
         }
-
-        // Keep unsaved local form fields through background cache updates.
-        // Only newly created posts need navigation to the edit route.
-        if (outcome.ok && outcome.postId && outcome.postId !== post?.id) {
+        await Promise.all([
+          ...(savedId.current
+            ? [queryClient.invalidateQueries({ queryKey: adminKeys.post(savedId.current) })]
+            : []),
+          queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
+          queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+        ])
+        // An author can keep editing while a request runs. Retain those fields
+        // and the created ID; the next save updates that post without losing edits.
+        if (outcome.postId && outcome.postId !== post?.id && !isDirty())
           navigate(`/admin/edit/${outcome.postId}`, { replace: true })
-        }
       } catch (error) {
         setResult({ ok: false, message: apiErrorMessage(error) })
+      } finally {
+        saving.current = false
       }
     })
   }
 
-  return (
+  const saveButton = (
+    <button
+      type="submit"
+      form={formId}
+      disabled={pending || (!dirty && Boolean(persistedId))}
+      aria-describedby={saveStatusId}
+      className={cn(
+        controlClassNames,
+        "relative min-h-11 whitespace-nowrap px-3 py-2 disabled:opacity-60"
+      )}
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      ) : (
+        <Save className="h-3.5 w-3.5" aria-hidden />
+      )}
+      {pending ? "Saving" : !dirty && persistedId ? "Saved" : "Save"}
+      {dirty && (
+        <span
+          data-unsaved-changes
+          aria-hidden
+          className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[var(--component-status-unsaved)]"
+        />
+      )}
+    </button>
+  )
+  const form = (
     <form
-      onChange={() => setDirty(true)}
+      id={formId}
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault()
         submit()
       }}
     >
+      <span id={saveStatusId} role="status" aria-live="polite" className="sr-only">
+        {pending
+          ? "Saving changes"
+          : dirty
+            ? "Unsaved changes"
+            : persistedId
+              ? "All changes saved"
+              : "No unsaved changes"}
+      </span>
       {result?.ok === false && result.message && (
         <p
           role="alert"
@@ -206,7 +324,6 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
               value={body}
               onChange={(value) => {
                 setBody(value)
-                setDirty(true)
               }}
             />
           </Suspense>
@@ -239,21 +356,57 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
             <input
               id="slug"
               {...describedBy("slug", result?.errors?.slug)}
+              aria-describedby={[
+                "slug-help",
+                result?.errors?.slug?.length ? "slug-error" : null,
+                slugWillBreakLinks ? "slug-warning" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               value={slug}
-              onChange={(event) => setSlug(event.target.value)}
+              onChange={(event) => {
+                const input = event.currentTarget
+                const raw = input.value
+                const normalized = slugify(raw, { preserveTrailingSeparator: true })
+                const start = input.selectionStart
+                const end = input.selectionEnd
+                if (
+                  raw !== normalized &&
+                  start !== null &&
+                  end !== null &&
+                  typeof document !== "undefined"
+                ) {
+                  slugSelection.current = {
+                    input,
+                    value: normalized,
+                    start: slugify(raw.slice(0, start), { preserveTrailingSeparator: true }).length,
+                    end: slugify(raw.slice(0, end), { preserveTrailingSeparator: true }).length,
+                  }
+                }
+                setSlug(normalized)
+              }}
               placeholder="derived from the title"
               className={cn(fieldClasses, "font-mono")}
             />
+            <p id="slug-help" className="text-xs font-medium text-muted-foreground">
+              Spaces and punctuation become hyphens as you type.
+            </p>
             <FieldError id="slug-error" messages={result?.errors?.slug} />
             {slugWillBreakLinks && (
-              <p className="flex items-start gap-2 border-2 border-border bg-[var(--color-muted)] px-3 py-2 text-xs font-semibold leading-relaxed">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                This post is published. Changing its slug breaks every existing link to{" "}
-                <span className="font-mono">
+              <div
+                id="slug-warning"
+                className="space-y-2 border-2 border-border bg-[var(--color-muted)] px-3 py-2 text-xs font-semibold leading-relaxed"
+              >
+                <p className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span>
+                    This post is published. Changing its slug breaks every existing link to
+                  </span>
+                </p>
+                <p className="break-words font-mono">
                   {WRITING_CONFIG.basePath}/{post?.slug}
-                </span>
-                .
-              </p>
+                </p>
+              </div>
             )}
           </div>
 
@@ -358,17 +511,18 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
             <label htmlFor="coverUrl" className={labelClasses}>
               Cover image URL
             </label>
-            <input
-              id="coverUrl"
-              {...describedBy("coverUrl", result?.errors?.coverUrl)}
-              value={coverUrl}
-              onChange={(event) => setCoverUrl(event.target.value)}
-              placeholder="https://..."
-              className={cn(fieldClasses, "font-mono text-xs")}
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+              <input
+                id="coverUrl"
+                {...describedBy("coverUrl", result?.errors?.coverUrl)}
+                value={coverUrl}
+                onChange={(event) => setCoverUrl(event.target.value)}
+                placeholder="https://..."
+                className={cn(fieldClasses, "min-h-11 min-w-0 font-mono text-xs")}
+              />
+              <ImageUpload onUploaded={setCoverUrl} />
+            </div>
             <FieldError id="coverUrl-error" messages={result?.errors?.coverUrl} />
-
-            <ImageUpload onUploaded={setCoverUrl} />
 
             <label htmlFor="coverAlt" className={cn(labelClasses, "block pt-2")}>
               Cover alt text
@@ -384,25 +538,14 @@ export function PostForm({ post, coverUploadsConfigured }: PostFormProps) {
           </fieldset>
         </div>
       </div>
-
-      <div className="flex items-center gap-3 border-t-2 border-border pt-6">
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(controlClassNames, "px-5 py-3 disabled:opacity-60")}
-        >
-          {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Save className="h-3.5 w-3.5" aria-hidden />
-          )}
-          {pending ? "Saving" : "Save"}
-        </button>
-
-        <p aria-live="polite" className={labelClasses}>
-          {result?.ok ? "Saved." : ""}
-        </p>
-      </div>
     </form>
   )
+  return children({
+    form,
+    saveButton,
+    onDeleted: () => {
+      savedFieldsRef.current = currentFields.current
+      setSavedFields(currentFields.current)
+    },
+  })
 }

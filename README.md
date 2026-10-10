@@ -38,37 +38,52 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 
 Legacy `/blog/*`, `/blog/tag/*`, and `/rss.xml` links redirect to the corresponding
 writing URLs. Search, tags, sort, publication dates and read durations share the
-`/writing` archive; the right-hand filter sheet applies changes together. Legacy
-`/writing/search` and `/writing/tags/:tag` permanently redirect to query-based
-archive URLs. The admin Posts page shares these controls, adds status filtering,
+`/writing` archive; the right-hand filter sheet applies changes together.
+The standalone `/writing/search` and `/writing/tags/:tag` routes are removed;
+use query-based archive URLs. `/blog/search` and `/blog/tag/:tag` redirect directly
+to the unified archive. The admin Posts page shares these controls, adds status filtering,
 and defaults to Recently updated; all private filtering and pagination run on
 the authenticated backend. Profile/article social cards and structured data remain server-generated.
 
 ## Structure
 
 ```text
-app/                         React Router root, entry points, route configuration
-routes/                      Public route modules and SEO loaders
-admin/                       Independent CSR entry and admin route composition
-workers/app.ts               Worker dispatcher: assets, APIs, resources, public SSR
-features/writing/api/         Client transport contracts and backend API handler
-features/writing/data/        Public reads, guarded admin reads, atomic mutations
-features/writing/components/ Shared cards, article and authoring components
-features/{home,resume}/      Feature data, composition, PDF and social cards
-components/                  Shared public navigation and UI primitives
-lib/runtime.server.ts        AsyncLocalStorage request/environment context
-lib/cache.server.ts          Public KV cache with D1 revision invalidation
-lib/auth-guard.ts            Per-request author verification
-lib/resources.server.ts      Authenticated uploads, feed, metadata and image resources
-lib/db/                      Drizzle schema, client, fixtures and local environment
-config/                      Build metadata and Worker environment examples
-scripts/                     Build assembly, preview runner and tooling
-test/integration/           Real SQL/transaction/request-budget coverage
-e2e/                        Playwright browser and HTTP coverage
+app/                                 React Router root, entry points, route configuration
+app/routes/                          Public route modules, SEO loaders and colocated tests
+admin/                               Independent CSR entry and admin route composition
+admin/routes/{auth,dashboard,posts}/  Route modules grouped by admin area
+admin/layouts/                       Protected route layout and session lifecycle
+admin/auth/                          Shared session context and hook
+admin/components/{auth,layout,feedback}/ Common admin UI grouped by responsibility
+workers/app.ts                       Worker dispatcher: assets, APIs, resources, public SSR
+features/writing/api/                Client transport contracts and backend API handler
+features/writing/data/*.server.ts    Public reads, guarded admin reads and atomic mutations
+features/writing/components/         Writing cards, discovery controls and article UI
+features/writing/components/admin/   Editor and post-management domain UI
+features/{home,resume}/               Profile data, compositions, PDF and social cards
+components/layout/public-shell.tsx   Shared public layout
+components/ui/                       Shared UI primitives and variants
+config/site.ts                       Global SITE_URL, SITE_HOST, absoluteUrl and SOCIAL_LINKS
+lib/runtime.server.ts                AsyncLocalStorage request/environment context
+lib/cache.server.ts                  Public KV cache with D1 revision invalidation
+lib/auth-guard.server.ts             Per-request author verification
+lib/resources.server.ts              Uploads, feed, metadata and image resource dispatch
+lib/db/index.server.ts               Server-only database client
+lib/db/                              Drizzle schema, fixtures and local environment
+config/                              Build metadata, dev middleware and environment configuration
+scripts/                             Build assembly, preview runner and colocated tooling tests
+scripts/preview-env.test.ts          Preview environment verification beside its implementation
+test/integration/                    Real SQL/transaction/request-budget coverage
+e2e/                                 Playwright browser and HTTP coverage
 ```
 
 See [architecture](ARCHITECTURE.md), [migration decisions](docs/react-router-migration.md),
 [testing](docs/testing.md), and [Worker CPU/cache guidance](docs/worker-cpu-optimization.md).
+For folder ownership, the role of Workers, Cloudflare tooling, `.env.local`,
+database URLs and OAuth origins, read the
+[project structure and environment guide](docs/project-structure-and-environment.md).
+For D1/KV responsibilities, local file locations, inspection commands and deployed
+Worker setup, read the [D1 and KV cache guide](docs/d1-kv-cache.md).
 
 ## Local development
 
@@ -94,25 +109,37 @@ disk so new chunk filenames remain available after watched rebuilds. Admin HTML
 and authentication still pass through the Worker. Production serves the assembled
 assets through the normal `ASSETS` binding.
 
-Use `.dev.vars` for local default Worker secrets and `.dev.vars.dev` for the dev
-Worker. Templates live in `config/worker-env.production.example` and
-`config/worker-env.dev.example`. Local preview uses local KV/D1; it does not
-provision remote resources. Public environment variables are compiled by Vite;
-changing them requires rebuilding both bundles.
+Use `.env.local` as the shared local configuration for Vite, Worker bindings,
+database tooling and preview. Copy `.env.example` and fill in the settings you need.
+Cloudflare loads this file natively during development; remove legacy `.dev.vars`
+files after migrating their values because they take precedence over dotenv files.
+The same `.env.local` is used when selecting `CLOUDFLARE_ENV=dev`; additional
+environment-specific local configuration is not required. Local preview uses local
+KV/D1 and does not provision remote resources. Public environment variables are
+compiled by Vite; changing them requires rebuilding both bundles.
 
-Worker authentication does not read secrets from `.env.local`. Put `DATABASE_URL`,
+Put `DATABASE_URL`,
 `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
-`ALLOWED_GITHUB_ID` in `.dev.vars` (or `.dev.vars.dev` for the dev Worker). If the
+`ALLOWED_GITHUB_ID` in `.env.local`. Keep `DIRECT_DATABASE_URL` there for Drizzle's
+direct PostgreSQL connection; the Worker and seed use the HTTP `DATABASE_URL`. If the
 login page says “Author access is unavailable,” check that these settings are
 present there. Keep the browser host and port, `BETTER_AUTH_URL`, and the GitHub
 OAuth callback `<origin>/api/auth/callback/github` consistent; `localhost` and
 `127.0.0.1` are different origins.
 
-For local auth, set `BETTER_AUTH_URL` to the browser origin: `http://127.0.0.1:3000`
-for preview, or the Vite URL printed by development. Match a custom preview port
-when using `npm run start -- --port <port>`. Remote auth uses the deployed HTTPS
-origin. The preview runner explicitly preserves the loopback request origin,
-so production routes cannot rewrite local auth/CSRF headers.
+For local development auth, set `BETTER_AUTH_URL` to the Vite browser origin.
+Preview explicitly reads the root `.env.local` even though its Worker configuration
+lives in `build/server`. It uses `http://127.0.0.1:<port>` for auth by default,
+including custom ports; export `BETTER_AUTH_URL` to override it. Exported runtime
+settings also override `.env.local`, so CI and browser tests use their isolated
+database/auth fixtures. Overrides are written only to a protected temporary file
+outside the build and removed when preview exits. Remote auth uses the deployed
+HTTPS origin. The preview runner preserves the loopback request origin so production
+routes cannot rewrite local auth/CSRF headers.
+
+The final build step removes the local secret file generated by Cloudflare's Vite
+plugin. Preview reads `.env.local` directly, so this copy is not needed in build
+artifacts.
 
 The `NEXT_PUBLIC_*` settings form an explicit Vite public-variable allowlist.
 Only safe public settings use that prefix; never prefix database URLs, tokens, or
@@ -180,15 +207,16 @@ DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' np
 The optional samples are idempotent and restricted to loopback databases. Browse
 `/writing?tag=pagination-demo` or `/writing?q=pagination%20demo` for
 10 / 10 / 5 results. The archive also includes the two original published fixtures,
-giving 10 / 10 / 7 results. Configure the local Worker's `DATABASE_URL` in
-`.dev.vars` to use this database. See [release preparation and optimization proposals](docs/public-site-release.md).
+giving 10 / 10 / 7 results. Configure `DATABASE_URL` in `.env.local` to use this
+database for the Worker and seed. See [release preparation and optimization proposals](docs/public-site-release.md).
 
 ## Delivery
 
 GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
 runs only on enabled pushes to `develop`/`main`, using separate GitHub environments
-and Cloudflare resources. Keep Workers dashboard Git Builds disconnected to avoid
-a second release pipeline.
+and Cloudflare resources. Superseded quality jobs are canceled; deploy jobs
+serialize by branch and let an active upload/activation finish. Keep Workers
+dashboard Git Builds disconnected to avoid a second release pipeline.
 
 | Branch    | GitHub environment | Worker       | Domain                       |
 | --------- | ------------------ | ------------ | ---------------------------- |
@@ -197,8 +225,15 @@ a second release pipeline.
 
 The build emits `build/server/wrangler.json`; deployment uses that generated
 configuration so the matching environment and bundled assets stay together.
-`CLOUDFLARE_ENV=dev` selects the development build. Deploy commands are release
-operations, not validation commands:
+`CLOUDFLARE_ENV=dev` selects the development build. CI builds and validates both
+production and develop targets, then runs browser tests against the production
+build with isolated local fixtures. Before uploading, each deploy command compares
+the generated Worker name, routes, site URL and KV/D1 bindings with the source
+Wrangler configuration resolved for its intended environment. A mismatched
+build fails before upload; for example, an inherited `CLOUDFLARE_ENV=dev` cannot
+make `npm run deploy` upload the development Worker.
+
+Deploy commands are release operations, not validation commands:
 
 ```bash
 npm run deploy:dev
@@ -206,10 +241,21 @@ npm run deploy
 ```
 
 CI needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in each GitHub environment;
-`CLOUDFLARE_DEPLOY_ENABLED=true` enables the deployment job. Its token needs the
+the **repository or organization variable** `CLOUDFLARE_DEPLOY_ENABLED=true`
+enables the deployment job. Do not set that gate only as a Preview/Production
+environment variable: GitHub evaluates the job condition before environment
+variables are available. Use environment-scoped credentials and public build
+variables for Preview and Production. Its token needs the
 existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
 separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
 Configure public analytics/media variables in each GitHub environment as needed.
+
+Remote database and D1 migrations remain a reviewed release step before code
+that needs them is deployed; CI migration/seeding targets only its throwaway
+local database. This discovery/cleanup change requires no schema migration.
+Repository checks cannot prove runtime secrets, database isolation, environment
+protection rules or disabled dashboard Git Builds; verify those in the target
+account before a production release.
 
 Logs/traces redact URL query strings to protect OAuth codes and preview tokens.
 Inspect CPU time separately from wall time in Observability. No local test or
