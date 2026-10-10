@@ -344,7 +344,7 @@ Run before first production deploy.
 
 - [ ] All secrets set via platform secret storage, not committed
 - [ ] Built client bundle grepped for secret fragments
-- [ ] `.dev.vars` gitignored if using Wrangler
+- [ ] `.env.local` and environment-specific local files gitignored
 
 **Quality gates**
 

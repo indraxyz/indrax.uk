@@ -32,8 +32,11 @@ underlying data operation verifies the actual session and numeric GitHub allowli
 `lib/runtime.server.ts` stores Request, Worker bindings and execution context in
 AsyncLocalStorage. Concurrent requests keep separate contexts. Server modules use
 this context for runtime secrets; build tools define an explicit safe public
-variable allowlist. Public build settings and cache bindings are configured in
-the environment templates and Wrangler configuration.
+variable allowlist. `.env.example` documents the shared `.env.local` settings used
+by Vite, local Worker bindings and database tooling. Preview passes the root file
+explicitly to Wrangler and puts exported overrides in a protected temporary dotenv
+file outside the build. Deployed secrets and resource bindings remain configured
+through Cloudflare and Wrangler.
 
 ## Rendering policy
 

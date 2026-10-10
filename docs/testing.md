@@ -78,9 +78,10 @@ npm run test:e2e
 
 These credentials are local fixtures, not real GitHub/R2/PostHog secrets. DB tooling
 loads `.env.local`/`.env`, while test helpers use exported variables. Explicit exports
-avoid accidentally selecting a saved Neon URL. Wrangler preview reads matching local
-`.dev.vars` files; ensure the built/served Worker gets the same isolated fixture
-settings. Public variables are compiled into both Vite bundles, so rebuild when they
+avoid accidentally selecting a saved Neon URL. Wrangler preview explicitly loads
+the root `.env.local`; exported fixture variables override those local settings
+through a temporary environment file outside the build, removed when preview exits.
+Public variables are compiled into both Vite bundles, so rebuild when they
 change. The Playwright configuration supplies its own origin and dummy analytics
 settings; real ingestion/provider credentials are unnecessary.
 

@@ -53,7 +53,7 @@ rerunning it updates the same records and preserves unrelated posts.
 | `/writing?tag=pagination-demo`        | 10     | 10     | 5      |
 | `/writing?q=pagination%20demo`        | 10     | 10     | 5      |
 
-Use the loopback URL in local Worker secrets (`.dev.vars`) to browse those records.
+Use the loopback URL in `.env.local` to browse those records with the local Worker.
 `.env.local` can point to hosted Neon; the explicit URL above overrides it for
 this command without editing that file. Direct SQL fixtures bypass application
 cache invalidation, so an already-running local Worker may need its local public

@@ -4,7 +4,7 @@
  * Vite builds the Worker and Wrangler runs the local preview and deployments.
  *
  * Secrets are never listed here. `DATABASE_URL` is set with
- * `wrangler secret put DATABASE_URL`, and locally in `.dev.vars`, which is
+ * `wrangler secret put DATABASE_URL`, and locally in `.env.local`, which is
  * gitignored.
  */
 {
