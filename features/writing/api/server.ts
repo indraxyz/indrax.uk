@@ -143,13 +143,20 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
     const { postIdSchema, postStatusSchema } = validators
     const author = await guard.getAuthor()
     if (path === "/api/admin/session" && request.method === "GET")
-      return json({
-        author,
-        authConfigured: auth.isAuthConfigured(),
-        databaseConfigured: Boolean(database.getDb()),
-        coverUploadsConfigured: author ? Boolean(storage.getCoverStorageConfig()) : false,
-        previewConfigured: author ? Boolean(serverEnv("BETTER_AUTH_SECRET")) : false,
-      })
+      // Anonymous callers get only what the login page needs. Whether a
+      // database, storage or preview signing is configured describes the
+      // deployment, and a scanner has no business learning it.
+      return json(
+        author
+          ? {
+              author,
+              authConfigured: auth.isAuthConfigured(),
+              databaseConfigured: Boolean(database.getDb()),
+              coverUploadsConfigured: Boolean(storage.getCoverStorageConfig()),
+              previewConfigured: Boolean(serverEnv("BETTER_AUTH_SECRET")),
+            }
+          : { author: null, authConfigured: auth.isAuthConfigured() }
+      )
     if (!author) throw new ApiError(401, "Not authorised.")
     if (path === "/api/admin/overview" && request.method === "GET")
       return json(await getAdminOverview())

@@ -87,3 +87,29 @@ test.each(["999", undefined, "1"])(
     expect(callback.headers.getSetCookie().join(";")).not.toContain("session_token=")
   }
 )
+
+test("rate-limits OAuth sign-in per Cloudflare client IP, ignoring spoofable forwarding headers", async () => {
+  const { getAuth } = await import("./auth.server")
+  const auth = getAuth()!
+  const signIn = (ip: string, forwardedFor: string) =>
+    auth.handler(
+      new Request("http://localhost:3000/api/auth/sign-in/social", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "cf-connecting-ip": ip,
+          // A client can prefix this header with anything; it must not pick the bucket.
+          "x-forwarded-for": forwardedFor,
+        },
+        body: JSON.stringify({ provider: "github", callbackURL: "/admin" }),
+      })
+    )
+  for (let attempt = 0; attempt < 10; attempt++)
+    expect((await signIn("203.0.113.7", `198.51.100.${attempt}`)).status).toBe(200)
+  const limited = await signIn("203.0.113.7", "198.51.100.200")
+  expect(limited.status).toBe(429)
+  expect(Number(limited.headers.get("x-retry-after"))).toBeGreaterThan(0)
+  // A different real client is unaffected.
+  expect((await signIn("203.0.113.8", "198.51.100.1")).status).toBe(200)
+})

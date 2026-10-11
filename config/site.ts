@@ -1,6 +1,17 @@
 // The deployed origin, used to resolve the absolute URLs metadata and the sitemap
 // need. Overridable so a preview deployment advertises itself, not production.
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://indrax.uk"
+export const PRODUCTION_SITE_URL = "https://indrax.uk"
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? PRODUCTION_SITE_URL
+
+/**
+ * Whether search engines may index this deployment.
+ *
+ * Only production. dev.indrax.uk and local previews are copies of the site: they
+ * get a robots.txt that disallows everything and a site-wide `X-Robots-Tag`, so
+ * they are neither indexed as duplicates nor a map of paths for crawlers.
+ */
+export const isIndexableSite = (siteUrl: string) => new URL(siteUrl).origin === PRODUCTION_SITE_URL
+export const SITE_INDEXABLE = isIndexableSite(SITE_URL)
 
 // The bare host, for the places that print the site's name rather than link to it -
 // the footer credit, the social cards, the PDF. Derived once so it cannot drift

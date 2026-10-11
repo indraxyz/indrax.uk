@@ -36,6 +36,17 @@
       "id": "3b3a56d04aed4aca8492ab4d46002923",
     },
   ],
+  // Edge request limits per client IP, ahead of any database work. See
+  // lib/edge-rate-limit.ts. Namespace ids are account-scoped labels, not secrets;
+  // each environment gets its own so dev traffic never spends production's budget.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_STRICT",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 },
+    },
+    { "name": "RATE_LIMIT_API", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+  ],
   "d1_databases": [
     {
       "binding": "NEXT_TAG_CACHE_D1",
@@ -76,6 +87,18 @@
         {
           "binding": "NEXT_INC_CACHE_KV",
           "id": "55163065696741c397d875991d3eb8d6",
+        },
+      ],
+      "ratelimits": [
+        {
+          "name": "RATE_LIMIT_STRICT",
+          "namespace_id": "2001",
+          "simple": { "limit": 30, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_API",
+          "namespace_id": "2002",
+          "simple": { "limit": 120, "period": 60 },
         },
       ],
       "d1_databases": [

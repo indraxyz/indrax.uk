@@ -26,9 +26,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# local env files
-.env*.local
-.env
+# env files - every variant, so a future .env.production cannot be committed
+.env*
+!.env.example
 
 # cloudflare
 .wrangler/

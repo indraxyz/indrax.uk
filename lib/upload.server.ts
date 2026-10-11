@@ -9,17 +9,17 @@ import { getCoverStorageConfig } from "@/lib/cover-storage.server"
  * What may be uploaded.
  *
  * These decide whether a URL is minted at all, which is a real gate: a caller who
- * asks for `text/html` or fifty megabytes gets nothing. What they do **not** do is
- * constrain the upload itself. `aws4fetch` treats `content-type` and
- * `content-length` as unsignable, so a presigned URL authorises any body of any
- * length to that one key - the signature covers the method and the object, and
- * nothing else.
+ * asks for `text/html` or fifty megabytes gets nothing. The content type is also
+ * bound into the signature (`allHeaders` below), so the URL cannot store an object
+ * R2 would later serve as `text/html`: a PUT with any other `Content-Type` fails
+ * the signature check.
  *
- * So the honest description of the control is: only an authenticated author can
- * obtain a URL, it dies in five minutes, and it can only ever write one generated
- * key. Enforcing the size and type of what actually lands is R2's job, via a
- * bucket policy - and until that exists this is the gap in T-5, stated rather than
- * papered over.
+ * Size is still not bound. A browser sets `Content-Length` itself and a presigned
+ * URL cannot pin it, so a holder of the URL could write a larger image body to
+ * that one key. The control there is: only an authenticated author can obtain a
+ * URL, it dies in five minutes, and it can only ever write one generated key.
+ * Capping stored size is R2's job, via a bucket rule - the remaining gap in T-5,
+ * stated rather than papered over.
  */
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const
 const MAX_BYTES = 5 * 1024 * 1024
@@ -37,7 +37,7 @@ const requestSchema = z.object({
   contentType: z.enum(ALLOWED_TYPES),
   // The browser reports this and it is checked before a URL exists. A client that
   // lies gets a URL anyway - see the note above - so this bounds the honest case,
-  // not the hostile one.
+  // not the hostile one. (The type, unlike the size, is enforced by the signature.)
   size: z.number().int().positive().max(MAX_BYTES),
   fileName: z.string().min(1).max(200),
 })
@@ -116,7 +116,8 @@ export async function POST(request: Request) {
       method: "PUT",
       headers: { "content-type": contentType },
     }),
-    { aws: { signQuery: true } }
+    // `allHeaders` signs `content-type`, which aws4fetch otherwise skips.
+    { aws: { signQuery: true, allHeaders: true } }
   )
 
   return Response.json({

@@ -64,8 +64,11 @@ test.describe("the admin boundary", () => {
   })
 
   test("keeps the admin out of robots.txt and the sitemap", async ({ request }) => {
+    // Not even as a Disallow line: robots.txt is public, and naming the admin
+    // there hands scanners the path. `noindex` on every admin response (above)
+    // is what keeps it out of search.
     const robots = await (await request.get("/robots.txt")).text()
-    expect(robots).toContain("Disallow: /admin")
+    expect(robots).not.toContain("/admin")
 
     const sitemap = await (await request.get("/sitemap.xml")).text()
     expect(sitemap).not.toContain("/admin")

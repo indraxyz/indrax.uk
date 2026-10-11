@@ -18,7 +18,7 @@ vi.mock("@/features/writing/data/queries.server", () => ({
 vi.mock("@/features/writing/social-card", () => ({ renderPostCard: mocks.card }))
 vi.mock("@/features/resume/social-card", () => ({ renderSocialCard: mocks.generic }))
 vi.mock("./observability", () => ({ logServerError: mocks.log }))
-import { handleResources } from "./resources.server"
+import { handleResources, robotsTxt } from "./resources.server"
 const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 const entries = new Map<string, Response>()
 const match = vi.fn(async (request: Request) => entries.get(request.url)?.clone())
@@ -124,4 +124,28 @@ it("lists the archive, articles and series without retired discovery pages in th
   expect(xml).not.toContain("/writing/tags/")
   expect(xml).not.toContain("/writing/search")
   expect(xml).not.toContain("?tag=")
+})
+
+it("production robots.txt advertises the sitemap without naming the admin", () => {
+  const robots = robotsTxt(true)
+  expect(robots).toContain("Allow: /\n")
+  expect(robots).toContain("Disallow: /api/\n")
+  expect(robots).toMatch(/^Sitemap: https?:\/\/.+\/sitemap\.xml$/m)
+  expect(robots).not.toContain("/admin")
+})
+
+it("other deployments disallow everything and advertise nothing", () => {
+  expect(robotsTxt(false)).toBe("User-Agent: *\nDisallow: /\n")
+})
+
+it("serves robots.txt as plain text", async () => {
+  const result = await handle(request("/robots.txt"))
+  expect(result.status).toBe(200)
+  expect(result.headers.get("Content-Type")).toContain("text/plain")
+  expect(await result.text()).not.toContain("/admin")
+})
+
+it("answers malformed view-counter encoding with 400 instead of throwing", async () => {
+  const result = await handle(request("/api/views/%E0%A4%A"))
+  expect(result.status).toBe(400)
 })

@@ -1,4 +1,6 @@
+import { SITE_INDEXABLE } from "../config/site"
 import { runWithRequest } from "../lib/runtime.server"
+import { enforceRateLimit } from "../lib/edge-rate-limit"
 import { applySecurityHeaders } from "../lib/security-headers"
 
 type WorkerEnv = CloudflareEnv
@@ -30,7 +32,9 @@ export default {
         const url = new URL(request.url)
         const path = url.pathname
         let response: Response
-        if (path === "/blog" || path.startsWith("/blog/") || path === "/rss.xml") {
+        const limited = await enforceRateLimit(request, path, env)
+        if (limited) response = limited
+        else if (path === "/blog" || path.startsWith("/blog/") || path === "/rss.xml") {
           const target = new URL(request.url)
           if (path === "/rss.xml") target.pathname = "/writing/rss.xml"
           else if (path === "/blog/search") target.pathname = "/writing"
@@ -85,7 +89,10 @@ export default {
           const { handler, Context } = await getPublicRuntime()
           response = await handler(request, new Context())
         }
-        return applySecurityHeaders(response, path)
+        return applySecurityHeaders(response, path, {
+          strictScripts: import.meta.env.PROD,
+          noindex: !SITE_INDEXABLE,
+        })
       }
     )
   },

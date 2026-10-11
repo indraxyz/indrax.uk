@@ -233,11 +233,17 @@ describe("writing HTTP API", () => {
     mocks.author.mockResolvedValue(null)
     const result = await response(request("/api/admin/session"))
     expect(result.status).toBe(200)
-    expect(await result.json()).toMatchObject({
-      author: null,
+    // Exactly these keys: nothing about the database, storage or preview signing.
+    expect(await result.json()).toStrictEqual({ author: null, authConfigured: true })
+  })
+  it("gives the signed-in author the deployment details the dashboard shows", async () => {
+    const result = await response(request("/api/admin/session"))
+    expect(await result.json()).toStrictEqual({
+      author: { id: "author", name: "Author" },
       authConfigured: true,
+      databaseConfigured: true,
       coverUploadsConfigured: false,
-      previewConfigured: false,
+      previewConfigured: expect.any(Boolean),
     })
   })
   it.each([undefined, "https://evil.test"])(
