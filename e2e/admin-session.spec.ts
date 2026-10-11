@@ -314,22 +314,33 @@ test.describe("sessions", () => {
     // about the *validation* rather than about authentication. The client-side
     // checks in the upload component are a courtesy; these are the control
     // (threat T-5, PRD US-3.6).
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d])
+    const html = Buffer.from("<!doctype html><script>alert(document.cookie)</script>")
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')
+    const oversized = Buffer.concat([png, Buffer.alloc(6 * 1024 * 1024)])
     const refusals = [
-      { label: "a script pretending to be an image", contentType: "text/html", size: 1024 },
-      { label: "an SVG, which can carry script", contentType: "image/svg+xml", size: 1024 },
-      { label: "a file over the size cap", contentType: "image/png", size: 50 * 1024 * 1024 },
-      { label: "a negative size", contentType: "image/png", size: -1 },
-      { label: "no file name", contentType: "image/png", size: 1024, fileName: "" },
+      { label: "a script pretending to be an image", type: "image/png", data: html, status: 415 },
+      { label: "an SVG, which can carry script", type: "image/svg+xml", data: svg, status: 415 },
+      { label: "a PNG labelled as JPEG", type: "image/jpeg", data: png, status: 415 },
+      { label: "a file over the size cap", type: "image/png", data: oversized, status: 413 },
+      { label: "an empty file", type: "image/png", data: Buffer.alloc(0), status: 400 },
+      { label: "an unknown purpose", type: "image/png", data: png, status: 400, purpose: "x" },
     ]
 
-    for (const { label, contentType, size, fileName } of refusals) {
-      const response = await context.request.post("/api/upload", {
-        data: { contentType, size, fileName: fileName ?? "payload" },
+    // Carried explicitly: APIRequestContext does not replay Secure cookies to
+    // HTTP loopback, and sends no Origin. Without both, every case would stop at
+    // the session or origin check and prove nothing about validation.
+    const cookie = (await context.cookies()).map(({ name, value }) => `${name}=${value}`).join("; ")
+    const origin = new URL(E2E_BASE_URL).origin
+    for (const { label, type, data, status, purpose = "cover" } of refusals) {
+      const response = await context.request.post(`/api/upload?purpose=${purpose}`, {
+        data,
+        headers: { "content-type": type, cookie, origin },
       })
 
-      expect(response.ok(), `${label} was accepted`).toBe(false)
-      // Above all: no signed URL was handed back.
-      expect(await response.text()).not.toContain("r2.cloudflarestorage.com")
+      expect(response.status(), label).toBe(status)
+      // Above all: nothing was stored, so no public URL came back.
+      expect(await response.text()).not.toContain("publicUrl")
     }
 
     await context.close()

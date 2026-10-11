@@ -32,7 +32,7 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
   content pipeline with lazy Shiki highlighting.
 - Existing Cloudflare KV/D1 resources cache public data and article revisions;
   private admin and preview responses always use `Cache-Control: no-store`.
-- Optional R2 cover uploads and consent-gated PostHog analytics.
+- Optional R2 cover uploads, verified server-side, and consent-gated PostHog analytics.
 - Shared accessible components, theme controls, print-friendly resume, lazy
   browser PDF download, contents navigation and code-copy controls.
 
@@ -249,6 +249,8 @@ variables for Preview and Production. Its token needs the
 existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
 separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
 Configure public analytics/media variables in each GitHub environment as needed.
+The dev hostname is meant to sit behind Cloudflare Access; see
+[Cloudflare Access for dev.indrax.uk](docs/cloudflare-access.md).
 
 Remote database and D1 migrations remain a reviewed release step before code
 that needs them is deployed; CI migration/seeding targets only its throwaway
