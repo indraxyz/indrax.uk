@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 
+import { isIndexableSite } from "../config/site"
 import { E2E_POSTHOG_HOST } from "./support/constants"
 
 /**
@@ -138,10 +139,6 @@ test.describe("the writing public surface", () => {
   })
 
   test("serves a well-formed sitemap and keeps the admin out of robots", async ({ request }) => {
-    const robots = await (await request.get("/robots.txt")).text()
-    expect(robots).toContain("Disallow: /admin")
-    expect(robots).toContain("Sitemap:")
-
     const sitemap = await request.get("/sitemap.xml")
     expect(sitemap.status()).toBe(200)
 
@@ -150,7 +147,20 @@ test.describe("the writing public surface", () => {
     // The root entry is unconditional, so it can be asserted with no database.
     // The /writing entry depends on something being published and is covered in
     // writing-content.spec.ts instead.
-    expect(xml).toMatch(/<loc>https?:\/\/[^<]+<\/loc>/)
+    const loc = /<loc>(https?:\/\/[^<]+)<\/loc>/.exec(xml)?.[1]
+    expect(loc).toBeTruthy()
+
+    // The build's own site URL decides the policy, and the sitemap reports it:
+    // CI previews the production URL, a local build may use another.
+    const siteUrl = new URL(loc!).origin
+    const robots = await (await request.get("/robots.txt")).text()
+    expect(robots).not.toContain("/admin")
+    if (isIndexableSite(siteUrl)) {
+      expect(robots).toContain("Disallow: /api/\n")
+      expect(robots).toContain(`Sitemap: ${siteUrl}/sitemap.xml`)
+    } else {
+      expect(robots).toBe("User-Agent: *\nDisallow: /\n")
+    }
   })
 
   test("sets the baseline security headers", async ({ request }) => {
@@ -169,18 +179,15 @@ test.describe("the writing public surface", () => {
     expect(csp).toContain("frame-src 'none'")
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")
 
-    // With no `script-src` this is what bounds an injected script: it may still
-    // run, but only this origin and the analytics endpoint will accept what it
-    // tries to send.
+    // Scripts need this origin, the theme hash or the response's nonce; an
+    // injected one has none of these. `e2e/security.spec.ts` proves it in a browser.
+    expect(csp).toContain("default-src 'self'")
+    expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval' 'sha256-[^']+' 'nonce-[^']+'/)
+    expect(csp).not.toContain("'unsafe-inline' 'unsafe-eval'")
     expect(csp).toContain("connect-src 'self' ")
     // Derived from the same constant the tracker uses. A policy naming a
     // different host blocks every event, which looks like an outage rather than
     // a typo - so the two are asserted to agree.
     expect(csp).toContain(E2E_POSTHOG_HOST)
-
-    // `default-src` is the fallback for `script-src`, so setting it would block
-    // React Router's inline bootstrap and the theme script - the page would render
-    // unstyled and unthemed. Asserted so nobody adds it without meaning to.
-    expect(csp).not.toContain("default-src")
   })
 })

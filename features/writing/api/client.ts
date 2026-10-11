@@ -14,13 +14,24 @@ import type {
   TagWithCount,
 } from "@/features/writing/types"
 
-export interface AdminSession {
-  author: { id: string; name: string; email: string } | null
+/**
+ * What `/api/admin/session` answers.
+ *
+ * Anonymous callers learn only whether sign-in exists, which the login page
+ * needs. Deployment details are for the author alone.
+ */
+export interface AnonymousAdminSession {
+  author: null
+  authConfigured: boolean
+}
+export interface AuthorSession {
+  author: { id: string; name: string; email: string }
   authConfigured: boolean
   coverUploadsConfigured: boolean
   databaseConfigured: boolean
   previewConfigured: boolean
 }
+export type AdminSession = AnonymousAdminSession | AuthorSession
 export interface AdminOverview {
   total: number
   published: number

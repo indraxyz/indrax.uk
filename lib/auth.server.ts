@@ -143,10 +143,37 @@ function create() {
        * (threat T-11).
        */
       storage: "database",
+      /**
+       * Explicitly on.
+       *
+       * Better Auth defaults `enabled` to `process.env.NODE_ENV === "production"`,
+       * read once at module load. On Workers that global is never "production" -
+       * the Worker only sets NODE_ENV on its own request-scoped env - so the
+       * default left the limiter silently off in every deployment.
+       */
+      enabled: true,
+      window: 60,
+      max: 60,
+      // Starting OAuth and finishing it are the two endpoints worth hammering.
+      // One author signs in a handful of times a month; ten a minute is generous.
+      customRules: {
+        "/sign-in/*": { window: 60, max: 10 },
+        "/callback/*": { window: 60, max: 10 },
+      },
     },
 
     advanced: {
       useSecureCookies: serverEnv("NODE_ENV") === "production",
+      ipAddress: {
+        /**
+         * Cloudflare sets `cf-connecting-ip` itself and overwrites any value the
+         * client sends. The default, `x-forwarded-for`, is appended to rather
+         * than replaced, and Better Auth reads its first entry - which the
+         * client chose. Keying the limit on that would let every request pick a
+         * fresh bucket.
+         */
+        ipAddressHeaders: ["cf-connecting-ip"],
+      },
     },
 
     databaseHooks: {

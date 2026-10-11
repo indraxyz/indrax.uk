@@ -4,7 +4,7 @@ import {
   getSeriesSlugs,
   getPostBySlug,
 } from "@/features/writing/data/queries.server"
-import { absoluteUrl, SITE_URL } from "@/config/site"
+import { absoluteUrl, SITE_INDEXABLE, SITE_URL } from "@/config/site"
 import { RESUME_CONFIG } from "@/features/resume/config"
 import { logServerError } from "./observability"
 import { cachedResponse, OG_CACHE_PATH } from "./cache-response.server"
@@ -56,6 +56,18 @@ async function sitemap() {
     },
   })
 }
+/**
+ * Production lists only what crawlers should skip that is not already private.
+ *
+ * `/admin` is deliberately absent: it is login-gated and sends `X-Robots-Tag`
+ * itself, and naming it here only hands scanners the path. Every other
+ * deployment disallows everything and advertises no sitemap.
+ */
+export function robotsTxt(indexable: boolean): string {
+  if (!indexable) return "User-Agent: *\nDisallow: /\n"
+  return `User-Agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE_URL}/sitemap.xml\n`
+}
+
 export async function handleResources(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname
   if (path === "/api/upload") {
@@ -68,17 +80,21 @@ export async function handleResources(request: Request): Promise<Response> {
     return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } })
   let response: Response
   if (path === "/robots.txt")
-    response = new Response(
-      `User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${SITE_URL}/sitemap.xml\n`,
-      { headers: { "Content-Type": "text/plain; charset=utf-8" } }
-    )
+    response = new Response(robotsTxt(SITE_INDEXABLE), {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
   else if (path === "/sitemap.xml") response = await sitemap()
   else if (path === "/writing/rss.xml") response = await rss()
   else if (path.startsWith("/api/views/")) {
     const { GET } = await import("./views.server")
-    response = await GET(request, {
-      params: Promise.resolve({ slug: decodeURIComponent(path.slice("/api/views/".length)) }),
-    })
+    let slug: string
+    try {
+      slug = decodeURIComponent(path.slice("/api/views/".length))
+    } catch {
+      // Malformed percent-encoding is a bad request, not a Worker exception.
+      return new Response("Bad request", { status: 400 })
+    }
+    response = await GET(request, { params: Promise.resolve({ slug }) })
   } else if (path.endsWith("/opengraph-image")) {
     const match = /^\/writing\/([a-z0-9]+(?:-[a-z0-9]+)*)\/opengraph-image$/.exec(path)
     const generic = [
