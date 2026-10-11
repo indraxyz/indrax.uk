@@ -1,27 +1,26 @@
-import ky from "ky"
 import { api } from "@/lib/api-client"
 import { ImageUp, Loader2 } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
+import { describeTypes, UPLOAD_POLICIES } from "@/lib/uploads/policy"
 import { cn } from "@/lib/utils"
 
-// Mirrors the route's own limits so the author is told before a request is made.
-// The check that decides is the one in the upload API - this one exists
+// The same policy the upload route enforces, so the author is told before a
+// request is made. The server's check is the one that decides - this one exists
 // to save a round trip, not to enforce anything (threat T-5).
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"]
-const MAX_BYTES = 5 * 1024 * 1024
+const POLICY = UPLOAD_POLICIES.cover
+const ACCEPTED: readonly string[] = POLICY.types
 
 interface ImageUploadProps {
   onUploaded: (url: string) => void
 }
 
 /**
- * Uploads a cover straight to storage using a URL the server mints.
+ * Uploads a cover through the upload route, which verifies it before storing.
  *
- * The file never touches the application: the server signs a short-lived,
- * single-key URL and the browser PUTs to it directly. That keeps a
- * multi-megabyte body out of a Worker's memory and time budget entirely.
+ * The file goes to the Worker rather than straight to storage so its size and
+ * its actual format are checked server-side; see `lib/upload.server.ts`.
  */
 export function ImageUpload({ onUploaded }: ImageUploadProps) {
   const input = useRef<HTMLInputElement>(null)
@@ -31,52 +30,35 @@ export function ImageUpload({ onUploaded }: ImageUploadProps) {
   const upload = async (file: File) => {
     setError(null)
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Images only: JPEG, PNG, WebP or AVIF.")
+    if (!ACCEPTED.includes(file.type)) {
+      setError(`Images only: ${describeTypes(POLICY)}.`)
       return
     }
 
-    if (file.size > MAX_BYTES) {
-      setError(`That file is larger than ${MAX_BYTES / 1024 / 1024}MB.`)
+    if (file.size > POLICY.maxBytes) {
+      setError(`That file is larger than ${POLICY.maxBytes / 1024 / 1024}MB.`)
       return
     }
 
     setBusy(true)
 
     try {
-      const minted = await api.post("/api/upload", {
+      const response = await api.post("/api/upload", {
+        searchParams: { purpose: "cover" },
+        headers: { "content-type": file.type },
+        body: file,
         throwHttpErrors: false,
-        json: {
-          contentType: file.type,
-          size: file.size,
-          fileName: file.name,
-        },
+        // A few megabytes on a slow uplink outlasts the default.
+        timeout: 120_000,
       })
 
-      if (!minted.ok) {
-        const body = await minted.json<{ error?: string }>().catch(() => ({ error: undefined }))
+      if (!response.ok) {
+        const body = await response.json<{ error?: string }>().catch(() => ({ error: undefined }))
         setError(body.error ?? "That upload was refused.")
         return
       }
 
-      const { uploadUrl, publicUrl, contentType } = await minted.json<{
-        uploadUrl: string
-        publicUrl: string
-        contentType: string
-      }>()
-
-      const put = await ky.put(uploadUrl, {
-        credentials: "omit",
-        retry: 0,
-        throwHttpErrors: false,
-        headers: { "content-type": contentType },
-        body: file,
-      })
-
-      if (!put.ok) {
-        setError("Storage refused the upload.")
-        return
-      }
+      const { publicUrl } = await response.json<{ publicUrl: string }>()
 
       onUploaded(publicUrl)
     } catch {
@@ -93,7 +75,7 @@ export function ImageUpload({ onUploaded }: ImageUploadProps) {
       <input
         ref={input}
         type="file"
-        accept={ALLOWED_TYPES.join(",")}
+        accept={ACCEPTED.join(",")}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0]

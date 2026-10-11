@@ -160,7 +160,8 @@ guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 - Writing database reads, archive SQL, mutations and rendered-content caching use
   `features/writing/data/*.server.ts`. Authentication, author guards and cover
   storage use `lib/auth.server.ts`, `lib/auth-guard.server.ts` and
-  `lib/cover-storage.server.ts`; `lib/db/index.server.ts` owns the server database
+  `lib/cover-storage.server.ts`; uploads share one verified pipeline in
+  `lib/upload.server.ts`, driven by per-purpose policies in `lib/uploads/`; `lib/db/index.server.ts` owns the server database
   client and `features/writing/utils/preview-token.server.ts` owns signing secrets.
   These explicit server boundaries protect browser bundles from accidental imports.
 - Tooling tests sit beside their implementations, including

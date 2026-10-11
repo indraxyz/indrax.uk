@@ -74,15 +74,15 @@ test.describe("the admin boundary", () => {
     expect(sitemap).not.toContain("/admin")
   })
 
-  test("refuses an unauthenticated upload without minting a URL", async ({ request }) => {
-    const response = await request.post("/api/upload", {
-      data: { contentType: "image/png", size: 1024, fileName: "x.png" },
-      // Deliberately no session cookie: this is the request that skips the form.
-      headers: { "content-type": "application/json" },
+  test("refuses an unauthenticated upload without storing it", async ({ request }) => {
+    const response = await request.post("/api/upload?purpose=cover", {
+      // A real PNG signature: the refusal must come from the missing session.
+      data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      headers: { "content-type": "image/png" },
     })
 
-    expect(response.ok()).toBe(false)
-    expect(await response.text()).not.toContain("r2.cloudflarestorage.com")
+    expect(response.status()).toBe(401)
+    expect(await response.text()).not.toContain("publicUrl")
   })
 
   const INJECTED_TITLE = "Injected by an unauthenticated caller"
