@@ -1,5 +1,11 @@
 import { AwsClient } from "aws4fetch"
-import { assertSameOrigin, mediaTypeOf, readBoundedBody, RequestError } from "./request-body.server"
+import {
+  assertSameOrigin,
+  discardBody,
+  mediaTypeOf,
+  readBoundedBody,
+  RequestError,
+} from "./request-body.server"
 import { detectImageType, IMAGE_FORMATS, SIGNATURE_BYTES } from "./uploads/file-signature"
 import { describeTypes, getUploadPolicy } from "./uploads/policy"
 
@@ -26,6 +32,23 @@ type StorageSettings = NonNullable<ReturnType<typeof getCoverStorageConfig>>
  * write to R2 is wall time, not CPU time.
  */
 export async function POST(request: Request) {
+  const response = await handleUpload(request)
+  // Every refusal can arrive before the file has finished sending; drain what is
+  // left so the client sees the status, not a dropped connection.
+  if (!response.ok) await discardBody(request, DISCARD_LIMIT_BYTES)
+  return response
+}
+
+/**
+ * How much of a refused upload is drained so its status arrives cleanly.
+ *
+ * Comfortably above any policy cap, so an honest file that is a little too large
+ * gets a readable 413. Anything bigger is cut off, and the edge rate limit
+ * bounds how often anyone can try.
+ */
+const DISCARD_LIMIT_BYTES = 16 * 1024 * 1024
+
+async function handleUpload(request: Request): Promise<Response> {
   // Answered as a 401 rather than allowed to throw, so an unauthenticated caller
   // gets the same shape of response as every other refusal here.
   try {

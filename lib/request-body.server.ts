@@ -27,8 +27,8 @@ export function mediaTypeOf(request: Request): string {
  * Reads the whole body, refusing it once it passes `maxBytes`.
  *
  * Bounded while streaming, not after: a declared `Content-Length` is checked up
- * front, and a body that lies about it or omits it is cancelled at the cap, so
- * nothing larger is ever held in memory.
+ * front, and a body that lies about it or omits it stops being read at the cap,
+ * so nothing larger is ever held in memory.
  */
 export async function readBoundedBody(
   request: Request,
@@ -46,10 +46,9 @@ export async function readBoundedBody(
       const { value, done } = await reader.read()
       if (done) break
       size += value.byteLength
-      if (size > maxBytes) {
-        await reader.cancel()
-        throw new RequestError(413, "The request body is too large.")
-      }
+      // Stop reading at the cap. The rest is left unread rather than cancelled,
+      // so a route can still `discardBody` it and deliver its 413 cleanly.
+      if (size > maxBytes) throw new RequestError(413, "The request body is too large.")
       chunks.push(value)
     }
   } catch (error) {
@@ -65,6 +64,36 @@ export async function readBoundedBody(
     offset += chunk.length
   }
   return body
+}
+
+/**
+ * Reads and drops whatever is left of a refused body, up to `limitBytes`.
+ *
+ * Answering before the client has finished sending makes many clients and
+ * proxies report a dropped connection instead of the status, so a refusal of
+ * a few-megabyte upload would surface as a network error. Draining lets the
+ * 401/413/415 arrive. Past `limitBytes` - declared or actual - the body is
+ * cancelled instead: nobody gets to keep the Worker reading indefinitely.
+ */
+export async function discardBody(request: Request, limitBytes: number): Promise<void> {
+  const body = request.body
+  if (!body || body.locked) return
+  const reader = body.getReader()
+  try {
+    const declared = Number(request.headers.get("content-length"))
+    if (Number.isFinite(declared) && declared > limitBytes) return void (await reader.cancel())
+    let size = 0
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) return
+      size += value.byteLength
+      if (size > limitBytes) return void (await reader.cancel())
+    }
+  } catch {
+    // The client went away; there is nothing left to drain.
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 /** Bound the stream before JSON parsing, including bodies without Content-Length. */

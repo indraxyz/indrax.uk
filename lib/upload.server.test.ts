@@ -78,22 +78,39 @@ it.each([
   expect(mocks.fetch).not.toHaveBeenCalled()
 })
 
-it("stops reading a streamed body that passes the cap without declaring a length", async () => {
+it("refuses a streamed body past the cap, drains a bounded amount, then cuts it off", async () => {
   let sent = 0
+  let cancelled = false
   const chunk = new Uint8Array(1024 * 1024)
   chunk.set(PNG)
   const stream = new ReadableStream<Uint8Array>({
     pull(controller) {
       sent += 1
       controller.enqueue(chunk)
-      if (sent > 20) controller.close()
+      if (sent >= 40) controller.close()
+    },
+    cancel() {
+      cancelled = true
     },
   })
   const result = await upload(stream)
   expect(result.status).toBe(413)
-  // Cancelled at the cap, not drained to the end.
-  expect(sent).toBeLessThanOrEqual(7)
+  // Drained up to the 16 MiB discard limit so the 413 can arrive, then
+  // cancelled: a 40 MiB body is never read to the end.
+  expect(cancelled).toBe(true)
+  expect(sent).toBeLessThan(40)
   expect(mocks.fetch).not.toHaveBeenCalled()
+})
+
+it("drains a refused body so its status is delivered rather than a dropped connection", async () => {
+  mocks.author.mockRejectedValue(new Error("Not authorised."))
+  const request = new Request("https://example.test/api/upload?purpose=cover", {
+    method: "POST",
+    headers: { origin: "https://example.test", "content-type": "image/png" },
+    body: new Uint8Array(2 * 1024 * 1024),
+  })
+  expect((await POST(request)).status).toBe(401)
+  expect(request.bodyUsed).toBe(true)
 })
 
 it("validates fully even when no storage is configured", async () => {
