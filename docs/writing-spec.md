@@ -242,12 +242,15 @@ Admin responses carry `noindex, nofollow`; robots excludes admin/API paths.
 Same-origin mutation checks supplement cookie protections. Logged server failures
 include correlation context and do not expose stack traces to visitors.
 
-R2 authorization permits JPEG, PNG, WebP and AVIF up to a reported 5 MiB, with a
-five-minute PUT URL for a server-generated single object key. The presigned URL
-itself does **not** cryptographically enforce the uploaded body size or MIME type;
-actual stored-object enforcement requires an additional storage/upload control.
-Do not claim the author-only request validation closes that gap. Auth rate limits
-use shared DB storage; broader upload/traffic controls require deployment review.
+Uploads go through `/api/upload?purpose=<name>`, never straight to R2. Each
+purpose is a policy in `lib/uploads/policy.ts` (key prefix, size cap, allowed
+types); covers allow JPEG, PNG, WebP and AVIF up to 5 MiB. The route requires the
+author session and a same-origin request, bounds the body while streaming, checks
+the file's leading bytes against the declared type (`lib/uploads/file-signature.ts`),
+then stores it under a server-generated key with the verified `Content-Type`. R2
+has no object-size rule of its own, so this route is the size control. SVG is
+never accepted. Auth rate limits use shared DB storage, and edge rate limits per
+client IP cover every `/api/*` route a stranger can reach.
 
 Runtime secrets and safe public configuration are documented in
 [README](../README.md) and environment templates. Use existing Wrangler bindings,
