@@ -43,3 +43,17 @@ it("rejects malformed JSON and reads valid bounded JSON", async () => {
     )
   ).resolves.toEqual({ title: "saved" })
 })
+
+it("reads a bounded binary body and refuses a missing one", async () => {
+  const { readBoundedBody } = await import("./request-body.server")
+  const bytes = new Uint8Array([1, 2, 3])
+  expect(
+    await readBoundedBody(new Request("https://example.test", { method: "POST", body: bytes }), 3)
+  ).toEqual(bytes)
+  await expect(
+    readBoundedBody(new Request("https://example.test", { method: "POST", body: bytes }), 2)
+  ).rejects.toMatchObject({ status: 413 })
+  await expect(
+    readBoundedBody(new Request("https://example.test", { method: "POST" }), 2)
+  ).rejects.toMatchObject({ status: 400 })
+})

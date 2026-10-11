@@ -1,135 +1,114 @@
 import { AwsClient } from "aws4fetch"
-import { z } from "zod"
-import { readJson, RequestError } from "./request-body.server"
+import { assertSameOrigin, mediaTypeOf, readBoundedBody, RequestError } from "./request-body.server"
+import { detectImageType, IMAGE_FORMATS, SIGNATURE_BYTES } from "./uploads/file-signature"
+import { describeTypes, getUploadPolicy } from "./uploads/policy"
 
 import { requireAuthor } from "@/lib/auth-guard.server"
 import { getCoverStorageConfig } from "@/lib/cover-storage.server"
 
-/**
- * What may be uploaded.
- *
- * These decide whether a URL is minted at all, which is a real gate: a caller who
- * asks for `text/html` or fifty megabytes gets nothing. The content type is also
- * bound into the signature (`allHeaders` below), so the URL cannot store an object
- * R2 would later serve as `text/html`: a PUT with any other `Content-Type` fails
- * the signature check.
- *
- * Size is still not bound. A browser sets `Content-Length` itself and a presigned
- * URL cannot pin it, so a holder of the URL could write a larger image body to
- * that one key. The control there is: only an authenticated author can obtain a
- * URL, it dies in five minutes, and it can only ever write one generated key.
- * Capping stored size is R2's job, via a bucket rule - the remaining gap in T-5,
- * stated rather than papered over.
- */
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const
-const MAX_BYTES = 5 * 1024 * 1024
+type StorageSettings = NonNullable<ReturnType<typeof getCoverStorageConfig>>
 
 /**
- * How long a minted URL is good for.
+ * The one upload route. `?purpose=` picks a policy from `lib/uploads/policy.ts`.
  *
- * Short, because the only thing that needs to happen inside the window is one
- * upload that the author has already initiated. A long-lived presigned URL is a
- * credential that has escaped, and a five-minute one is barely worth stealing.
- */
-const URL_TTL_SECONDS = 300
-
-const requestSchema = z.object({
-  contentType: z.enum(ALLOWED_TYPES),
-  // The browser reports this and it is checked before a URL exists. A client that
-  // lies gets a URL anyway - see the note above - so this bounds the honest case,
-  // not the hostile one. (The type, unlike the size, is enforced by the signature.)
-  size: z.number().int().positive().max(MAX_BYTES),
-  fileName: z.string().min(1).max(200),
-})
-
-const EXTENSIONS: Record<(typeof ALLOWED_TYPES)[number], string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-}
-
-/**
- * Mints a short-lived, single-object URL the browser uploads straight to.
+ * The file passes through the Worker on purpose. R2 has no rule that caps an
+ * object's size, and a presigned PUT cannot pin the body the browser sends - so
+ * a URL handed to the browser authorised any body, of any length, at that key.
+ * Here every byte is checked before anything is stored (threat T-5):
  *
- * The file never passes through this application, which is the point: a Worker
- * has neither the memory nor the time budget to proxy a five-megabyte image, and
- * routing one through it would only add a place for it to go wrong.
+ * 1. an author session, then a same-origin request (T-3, T-9);
+ * 2. a known purpose, and a declared type that purpose allows;
+ * 3. the body, bounded while streaming - nothing past `maxBytes` is held;
+ * 4. the bytes themselves, which must be the format the type declared;
+ * 5. a key the server generates, under the purpose's prefix.
  *
- * `aws4fetch` rather than the AWS SDK. It is a SigV4 signer and nothing else,
- * which is all R2 needs, and it is a few kilobytes against the SDK's megabytes -
- * which matters on a runtime with a bundle-size limit.
+ * Images are capped at a few megabytes, well inside a Worker's memory, and the
+ * write to R2 is wall time, not CPU time.
  */
 export async function POST(request: Request) {
-  // Before anything else, and independently of `proxy.ts`: this is a route
-  // handler, so nothing about routing has authorised the caller (threat T-3).
-  //
   // Answered as a 401 rather than allowed to throw, so an unauthenticated caller
-  // gets the same shape of response as every other refusal here instead of a 500.
+  // gets the same shape of response as every other refusal here.
   try {
     await requireAuthor(request.headers)
   } catch {
     return Response.json({ error: "Not authorised." }, { status: 401 })
   }
 
-  const settings = getCoverStorageConfig()
-  if (!settings) {
-    return Response.json(
-      { error: "No media storage is configured for this deployment." },
-      { status: 501 }
-    )
-  }
-
-  let payload: unknown
   try {
-    payload = await readJson(request, 4096)
+    assertSameOrigin(request)
+    const policy = getUploadPolicy(new URL(request.url).searchParams.get("purpose"))
+    if (!policy) throw new RequestError(400, "Unknown upload purpose.")
+
+    const declared = mediaTypeOf(request)
+    const type = policy.types.find((allowed) => allowed === declared)
+    if (!type) throw new RequestError(415, `Images only: ${describeTypes(policy)}.`)
+
+    const body = await readBoundedBody(request, policy.maxBytes)
+    if (body.byteLength === 0) throw new RequestError(400, "The file is empty.")
+    if (detectImageType(body.subarray(0, SIGNATURE_BYTES)) !== type)
+      throw new RequestError(415, "That file is not the image it claims to be.")
+
+    // Checked last, so a deployment without storage still refuses bad files the
+    // same way, and its validation can be tested without credentials.
+    const settings = getCoverStorageConfig()
+    if (!settings)
+      return Response.json(
+        { error: "No media storage is configured for this deployment." },
+        { status: 501 }
+      )
+
+    // Generated, never taken from the client. A caller-supplied name is how an
+    // upload ends up overwriting something else, or escaping its prefix.
+    const key = `${policy.prefix}/${crypto.randomUUID()}.${IMAGE_FORMATS[type].extension}`
+    if (!(await putObject(settings, key, body, type)))
+      return Response.json({ error: "Storage refused the upload." }, { status: 502 })
+
+    return Response.json(
+      {
+        // Must match NEXT_PUBLIC_MEDIA_ORIGIN or `isAllowedMediaUrl` will refuse to
+        // render it - the same check twice on purpose (threat T-6).
+        publicUrl: new URL(`/${key}`, settings.publicUrl).toString(),
+      },
+      { status: 201 }
+    )
   } catch (error) {
     if (error instanceof RequestError)
       return Response.json({ error: error.message }, { status: error.status })
     throw error
   }
-  const parsed = requestSchema.safeParse(payload)
-  if (!parsed.success) {
-    return Response.json(
-      { error: "That file cannot be uploaded.", details: parsed.error.flatten().fieldErrors },
-      { status: 400 }
-    )
-  }
+}
 
-  const { contentType, fileName } = parsed.data
-
-  // The key is generated, never taken from the client. A caller-supplied name is
-  // how an upload ends up overwriting something else, or escaping its prefix.
-  const key = `covers/${crypto.randomUUID()}.${EXTENSIONS[contentType]}`
-
+/**
+ * Writes one verified object to R2 over its S3 API.
+ *
+ * `aws4fetch` rather than the AWS SDK: it is a SigV4 signer and nothing else,
+ * a few kilobytes against the SDK's megabytes on a size-limited runtime. The
+ * stored `Content-Type` is the verified one, and keys are unique per upload, so
+ * the object can be cached as immutable.
+ */
+async function putObject(
+  settings: StorageSettings,
+  key: string,
+  body: Uint8Array<ArrayBuffer>,
+  contentType: string
+): Promise<boolean> {
   const client = new AwsClient({
     accessKeyId: settings.accessKeyId,
     secretAccessKey: settings.secretAccessKey,
     service: "s3",
     region: "auto",
   })
-
-  const endpoint = `https://${settings.accountId}.r2.cloudflarestorage.com/${settings.bucket}/${key}`
-
-  const signed = await client.sign(
-    new Request(`${endpoint}?X-Amz-Expires=${URL_TTL_SECONDS}`, {
+  const response = await client.fetch(
+    `https://${settings.accountId}.r2.cloudflarestorage.com/${settings.bucket}/${key}`,
+    {
       method: "PUT",
-      headers: { "content-type": contentType },
-    }),
-    // `allHeaders` signs `content-type`, which aws4fetch otherwise skips.
-    { aws: { signQuery: true, allHeaders: true } }
+      body,
+      headers: {
+        "content-type": contentType,
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-disposition": "inline",
+      },
+    }
   )
-
-  return Response.json({
-    // Scoped to this one key and this one method, and expiring in minutes.
-    uploadUrl: signed.url,
-    contentType,
-    // Where it will be readable once uploaded. Must match NEXT_PUBLIC_MEDIA_ORIGIN
-    // or `isAllowedMediaUrl` will refuse to render it - which is the same check
-    // twice on purpose (threat T-6).
-    publicUrl: new URL(`/${key}`, settings.publicUrl).toString(),
-    // Echoed back for display only. The key above is generated; nothing the client
-    // sent is used to build it.
-    originalName: fileName,
-  })
+  return response.ok
 }
