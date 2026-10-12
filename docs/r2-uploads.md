@@ -18,12 +18,26 @@ The local loopback media override is ignored by production builds, so it cannot
 replace the deployed media origin. Production validators/renderers reject local
 cover URLs.
 
-Production covers are public. Dev's site and media hostname both require
-Cloudflare Access using the existing Cloudflare identity provider, an author-only
-Allow policy and a 24-hour session. Access cookies are hostname-specific: open
-[dev media](https://dev-media.indrax.uk) and sign in once if cover images cannot
-load after signing in to the dev site. App GitHub authentication is still required
-for uploads. These buckets are for covers, not private documents.
+Production covers are public. Dev uses Cloudflare Access with the existing identity
+provider, an author-only Allow policy and a 24-hour session. The `indrax dev`
+application protects both `dev.indrax.uk` and `dev-media.indrax.uk/covers/*`, with
+`eager_redirect_cookie_setting: true`. A fresh Access login establishes cookies
+on both hosts before embedded cover requests. App GitHub authentication is still
+required for uploads. These buckets are for covers, not private documents.
+
+On 2026-10-13, a saved cover redirected to a separate media Access application,
+so its bytes could not load inside the admin or public post. The cover path was
+added to the site application without deleting the media-wide application: that
+original application still protects other media paths. Both policies retain the
+same author-only identity. Signed-out site and cover responses were verified to
+redirect to the same application audience after propagation. Existing browser
+sessions must renew Access once; authenticated image loading requires the owner's
+browser to verify. No Worker proxy, image processing or deployment is involved.
+To roll back, remove the cover destination from the site application; the media-wide
+application continues protecting the host, with separate login required again.
+
+See [Access multi-domain cookies](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/)
+and [path precedence](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/).
 
 ## Lightweight enforcement
 
@@ -105,12 +119,14 @@ Worker URLs. CI now runs `npm run security:smoke -- dev` or `production` after
 deployment. The smoke checks are signed-out reads and an empty refused production
 upload; they never create an object and do not exercise author login.
 
-Live signed-out dev site/API/static/media checks passed. Production media's
+Live signed-out dev site/API/static/media checks passed. The smoke check also
+requires one shared Access audience for dev site and covers to detect separate
+media-login regressions. Production media's
 missing-object response was verified with nosniff and the sandboxed policy.
 Both `r2.dev` URLs were verified disabled. An authenticated browser should verify
 the final login and cover-upload flow after deployment.
 
-Formatting, lint, generated types, TypeScript and all 515 unit tests passed.
+Formatting, lint, generated types, TypeScript and all 518 unit tests passed.
 Production and dev builds, deployment-target guards and Wrangler deployment dry
 runs passed with their respective bucket bindings. No Worker was deployed.
 
