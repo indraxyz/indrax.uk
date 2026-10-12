@@ -297,6 +297,7 @@ The Stack smoke check keeps its implementation-content assertions and opens the
 related disclosure before checking its reason text.
 
 Admin card checks in `e2e/admin-filters.spec.ts` exercise excerpts and configured
-left-side covers at 320px and 1280px, with two-line truncation and no horizontal
+full-height left covers at 768px/1280px and full-width top covers at 320px,
+with two-line truncation and no horizontal
 overflow. Unit checks retain media-origin validation and absent-cover behavior;
 query tests verify cover/excerpt summaries without loading article bodies.

@@ -84,7 +84,7 @@ async function filters(page: Page) {
 test.describe("admin post discovery", () => {
   test.beforeEach(async ({ page }) => adminArchive(page))
 
-  for (const width of [320, 1280]) {
+  for (const width of [320, 768, 1280]) {
     test(`shows responsive card excerpts and configured left covers at ${width}px`, async ({
       page,
     }) => {
@@ -116,10 +116,17 @@ test.describe("admin post discovery", () => {
         const imageBox = await image.boundingBox()
         const titleBox = await title.boundingBox()
         const cardBox = await card.boundingBox()
-        expect(Math.abs(imageBox!.height - (cardBox!.height - 4))).toBeLessThan(1)
         expect(imageBox!.x - cardBox!.x).toBeCloseTo(2, 0)
-        expect(imageBox!.y - cardBox!.y).toBeCloseTo(2, 0)
-        expect(imageBox!.x + imageBox!.width).toBeLessThan(titleBox!.x)
+        if (width < 640) {
+          expect(Math.abs(imageBox!.width - (cardBox!.width - 4))).toBeLessThan(1)
+          expect(imageBox!.y - cardBox!.y).toBeCloseTo(2, 0)
+          expect(imageBox!.y + imageBox!.height).toBeLessThan(titleBox!.y)
+        } else {
+          expect(Math.abs(imageBox!.height - (cardBox!.height - 4))).toBeLessThan(1)
+          expect(imageBox!.y - cardBox!.y).toBeCloseTo(2, 0)
+          expect(imageBox!.width).toBeGreaterThanOrEqual(190)
+          expect(imageBox!.x + imageBox!.width).toBeLessThan(titleBox!.x)
+        }
       } else await expect(card.locator("img")).toHaveCount(0)
       await expect(
         card.getByRole("link", { name: "Edit Admin archive fixture 1", exact: true })

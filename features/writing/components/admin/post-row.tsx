@@ -19,10 +19,10 @@ const DATE_FORMAT: Intl.DateTimeFormatOptions = { year: "numeric", month: "short
 
 export function PostRow({ post }: { post: AdminPostSummary }) {
   return (
-    <li className="flex items-stretch border-2 border-border bg-card">
+    <li className="flex flex-col items-stretch border-2 border-border bg-card sm:flex-row">
       <PostCover
         post={post}
-        className="relative w-20 shrink-0 self-stretch overflow-hidden border-b-0 border-r-2 border-border sm:w-32 [&_img]:absolute [&_img]:inset-0 [&_img]:h-full [&_img]:w-full [&_img]:aspect-auto"
+        className="relative h-40 w-full shrink-0 self-stretch overflow-hidden border-b-2 border-border sm:h-auto sm:w-48 sm:border-b-0 sm:border-r-2 lg:w-56 [&_img]:absolute [&_img]:inset-0 [&_img]:h-full [&_img]:w-full [&_img]:aspect-auto"
       />
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
         <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">

@@ -74,10 +74,11 @@ pages or arbitrary filtered combinations.
 
 ## Admin posts discovery parity
 
-Admin post cards show a trusted cover thumbnail on the left, when present, and
+Admin post cards show a wider trusted cover on the left, when present, and
 the same stored excerpt as public writing cards, including generated ellipses.
-Excerpts are clamped to two visible lines; narrow cards wrap their actions below
-the content. Summary queries include cover URL/alt and excerpt without selecting
+Excerpts are clamped to two visible lines. Covers fill the card height on larger
+screens and stack above the text at full width on mobile. Narrow cards wrap their
+actions below the content. Summary queries include cover URL/alt and excerpt without selecting
 article bodies or adding database round trips.
 
 `/admin/posts` uses the same search, filter-sheet, sort and URL-state contract as
