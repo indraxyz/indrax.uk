@@ -23,6 +23,26 @@ export function mediaTypeOf(request: Request): string {
   return request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? ""
 }
 
+/** One timer per body, independent of its chunk count. Uses standard Worker APIs. */
+function boundedReader(reader: ReadableStreamDefaultReader<Uint8Array>, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new RequestError(408, "The request body took too long to arrive."))
+      // A sender's cancellation hook may itself stall. Do not await it before
+      // delivering the timeout; cancelling resolves any pending stream read.
+      void reader.cancel().catch(() => {})
+    }, timeoutMs)
+  })
+  return {
+    run: <T>(consume: () => Promise<T>) => Promise.race([consume(), timeout]),
+    close: () => {
+      clearTimeout(timer)
+      reader.releaseLock()
+    },
+  }
+}
+
 /**
  * Reads the whole body, refusing it once it passes `maxBytes`.
  *
@@ -32,30 +52,33 @@ export function mediaTypeOf(request: Request): string {
  */
 export async function readBoundedBody(
   request: Request,
-  maxBytes: number
+  maxBytes: number,
+  timeoutMs = 10_000
 ): Promise<Uint8Array<ArrayBuffer>> {
   const length = Number(request.headers.get("content-length"))
   if (Number.isFinite(length) && length > maxBytes)
     throw new RequestError(413, "The request body is too large.")
   const reader = request.body?.getReader()
   if (!reader) throw new RequestError(400, "A request body is required.")
+  const bounded = boundedReader(reader, timeoutMs)
   const chunks: Uint8Array[] = []
   let size = 0
   try {
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      size += value.byteLength
-      // Stop reading at the cap. The rest is left unread rather than cancelled,
-      // so a route can still `discardBody` it and deliver its 413 cleanly.
-      if (size > maxBytes) throw new RequestError(413, "The request body is too large.")
-      chunks.push(value)
-    }
+    await bounded.run(async () => {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        size += value.byteLength
+        // Leave the remainder unread so the route can drain a bounded amount.
+        if (size > maxBytes) throw new RequestError(413, "The request body is too large.")
+        chunks.push(value)
+      }
+    })
   } catch (error) {
     if (error instanceof RequestError) throw error
     throw new RequestError(400, "The request body could not be read.")
   } finally {
-    reader.releaseLock()
+    bounded.close()
   }
   const body = new Uint8Array(size)
   let offset = 0
@@ -75,24 +98,37 @@ export async function readBoundedBody(
  * 401/413/415 arrive. Past `limitBytes` - declared or actual - the body is
  * cancelled instead: nobody gets to keep the Worker reading indefinitely.
  */
-export async function discardBody(request: Request, limitBytes: number): Promise<void> {
+export async function discardBody(
+  request: Request,
+  limitBytes: number,
+  timeoutMs = 2_000
+): Promise<void> {
   const body = request.body
   if (!body || body.locked) return
   const reader = body.getReader()
+  const bounded = boundedReader(reader, timeoutMs)
   try {
-    const declared = Number(request.headers.get("content-length"))
-    if (Number.isFinite(declared) && declared > limitBytes) return void (await reader.cancel())
-    let size = 0
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) return
-      size += value.byteLength
-      if (size > limitBytes) return void (await reader.cancel())
-    }
+    await bounded.run(async () => {
+      const declared = Number(request.headers.get("content-length"))
+      if (Number.isFinite(declared) && declared > limitBytes) {
+        void reader.cancel().catch(() => {})
+        return
+      }
+      let size = 0
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) return
+        size += value.byteLength
+        if (size > limitBytes) {
+          void reader.cancel().catch(() => {})
+          return
+        }
+      }
+    })
   } catch {
     // The client went away; there is nothing left to drain.
   } finally {
-    reader.releaseLock()
+    bounded.close()
   }
 }
 

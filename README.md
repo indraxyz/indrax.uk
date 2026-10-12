@@ -145,21 +145,23 @@ The `NEXT_PUBLIC_*` settings form an explicit Vite public-variable allowlist.
 Only safe public settings use that prefix; never prefix database URLs, tokens, or
 OAuth secrets with it.
 
-| Setting                                                                  | Purpose                                                     |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`                                                   | Canonical origin; defaults to `https://indrax.uk`           |
-| `NEXT_PUBLIC_SITE_UPDATED_AT`                                            | Optional `YYYY-MM-DD` override; otherwise Git revision date |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                    | Optional consent-gated analytics                            |
-| `NEXT_PUBLIC_MEDIA_ORIGIN`                                               | HTTPS origin allowed for cover images                       |
-| `DATABASE_URL`                                                           | Server-only Neon HTTP connection; absent is supported       |
-| `DIRECT_DATABASE_URL`                                                    | Plain Postgres connection for migration tooling             |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                                  | Server session/preview signing and callback origin          |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_ID`          | GitHub single-author authentication                         |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Optional cover storage                                      |
+| Setting                                                         | Purpose                                                     |
+| --------------------------------------------------------------- | ----------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`                                          | Canonical origin; defaults to `https://indrax.uk`           |
+| `NEXT_PUBLIC_SITE_UPDATED_AT`                                   | Optional `YYYY-MM-DD` override; otherwise Git revision date |
+| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`           | Optional consent-gated analytics                            |
+| `NEXT_PUBLIC_MEDIA_ORIGIN`                                      | HTTPS origin allowed for cover images                       |
+| `DATABASE_URL`                                                  | Server-only Neon HTTP connection; absent is supported       |
+| `DIRECT_DATABASE_URL`                                           | Plain Postgres connection for migration tooling             |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                         | Server session/preview signing and callback origin          |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_ID` | GitHub single-author authentication                         |
+| `MEDIA_BUCKET` (Wrangler binding)                               | Environment-specific R2 Standard storage; no S3 credentials |
 
 Without a database, static profile pages remain available and public writing
 lists are empty. Without auth configuration, signing in is unavailable and
 private operations remain closed. The admin shell alone never grants access.
+
+R2 setup, free-tier limits and verification are documented in [R2 uploads](docs/r2-uploads.md).
 
 ### Local database and author configuration
 

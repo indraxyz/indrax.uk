@@ -1,47 +1,51 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
+import { afterEach, expect, it, vi } from "vitest"
 import { getCoverStorageConfig } from "./cover-storage.server"
-
-const configured = {
-  R2_ACCOUNT_ID: "account-id",
-  R2_ACCESS_KEY_ID: "access-key",
-  R2_SECRET_ACCESS_KEY: "secret-key",
-  R2_BUCKET: "covers",
-  NEXT_PUBLIC_MEDIA_ORIGIN: "https://media.example.com",
-}
-
-beforeEach(() => {
-  for (const [key, value] of Object.entries(configured)) vi.stubEnv(key, value)
-})
+import { runWithRequest } from "./runtime.server"
 
 afterEach(() => vi.unstubAllEnvs())
 
-describe("getCoverStorageConfig", () => {
-  it("returns the signing configuration only when storage and media origin are available", () => {
-    expect(getCoverStorageConfig()).toEqual({
-      accountId: configured.R2_ACCOUNT_ID,
-      accessKeyId: configured.R2_ACCESS_KEY_ID,
-      secretAccessKey: configured.R2_SECRET_ACCESS_KEY,
-      bucket: configured.R2_BUCKET,
-      publicUrl: configured.NEXT_PUBLIC_MEDIA_ORIGIN,
-    })
-  })
-
-  it.each(Object.keys(configured))("disables cover uploads when %s is missing", (key) => {
-    vi.stubEnv(key, undefined)
-    expect(getCoverStorageConfig()).toBeNull()
-  })
-
-  it.each(Object.keys(configured))("disables cover uploads when %s is blank", (key) => {
-    vi.stubEnv(key, "   ")
-    expect(getCoverStorageConfig()).toBeNull()
-  })
-
-  it.each(["not a url", "http://media.example.com", "//media.example.com", "javascript:alert(1)"])(
-    "disables cover uploads with a media origin the renderer cannot use: %s",
-    (origin) => {
-      vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", origin)
-      expect(getCoverStorageConfig()).toBeNull()
-    }
+function config(bucket: unknown, origin = "https://media.example.com") {
+  vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", origin)
+  return runWithRequest(
+    new Request("https://example.com"),
+    { MEDIA_BUCKET: bucket, NEXT_PUBLIC_MEDIA_ORIGIN: origin },
+    undefined,
+    getCoverStorageConfig
   )
+}
+
+it("uses the environment's binding without S3 credentials", () => {
+  const bucket = { put: vi.fn() }
+  expect(config(bucket)).toEqual({ bucket, publicUrl: "https://media.example.com" })
+})
+
+it.each([undefined, null, {}, "bucket-name"])(
+  "refuses missing or invalid binding: %j",
+  (bucket) => {
+    expect(config(bucket)).toBeNull()
+  }
+)
+
+it.each([
+  "",
+  "not a url",
+  "http://media.example.com",
+  "//media.example.com",
+  "javascript:alert(1)",
+])("refuses an unavailable or unsafe media origin: %s", (origin) => {
+  expect(config({ put: vi.fn() }, origin)).toBeNull()
+})
+
+it("requires the runtime media origin to match the renderer's allowlist", () => {
+  vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "https://media.example.com")
+  const result = runWithRequest(
+    new Request("https://example.com"),
+    {
+      MEDIA_BUCKET: { put: vi.fn() },
+      NEXT_PUBLIC_MEDIA_ORIGIN: "https://other.example.com",
+    },
+    undefined,
+    getCoverStorageConfig
+  )
+  expect(result).toBeNull()
 })

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { LIMITS, postIdSchema, postInputSchema, slugSchema } from "./writing"
+afterEach(() => vi.unstubAllEnvs())
 
 /**
  * The schema every write goes through.
@@ -113,6 +114,30 @@ describe("postInputSchema", () => {
   it("refuses a cover that is not an absolute URL", () => {
     expect(
       postInputSchema.safeParse({ ...base, coverUrl: "/local.png", coverAlt: "x" }).success
+    ).toBe(false)
+  })
+
+  it("accepts generated local cover URLs with alt text", () => {
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "http://localhost:5173/local-media")
+    expect(
+      postInputSchema.safeParse({
+        ...base,
+        coverUrl:
+          "http://localhost:5173/local-media/covers/51dad294-2e29-40c4-9c1f-2df003c48e57.png",
+        coverAlt: "Local cover",
+      }).success
+    ).toBe(true)
+  })
+
+  it("rejects generated local cover URLs in production builds", () => {
+    vi.stubEnv("DEV", false)
+    expect(
+      postInputSchema.safeParse({
+        ...base,
+        coverUrl:
+          "http://localhost:5173/local-media/covers/51dad294-2e29-40c4-9c1f-2df003c48e57.png",
+        coverAlt: "Local cover",
+      }).success
     ).toBe(false)
   })
 

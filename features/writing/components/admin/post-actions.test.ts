@@ -1,13 +1,10 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react"
 import { beforeEach, expect, it, vi } from "vitest"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog"
 
+import { Menu } from "@base-ui/react/menu"
+import { PostStatusDialog } from "./post-status-dialog"
 import type { AdminPost, PostStatus } from "@/features/writing/types"
 
 const mocks = vi.hoisted(() => ({
@@ -21,6 +18,8 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
+  useRef: (initial: unknown) => ({ current: initial }),
+  useEffect: vi.fn(),
   useState: (initial: unknown) => [initial, mocks.setState],
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
@@ -58,8 +57,18 @@ function button(label: string, status: PostStatus = "draft", onDeleted?: () => v
   function findButton(node: ReactNode): ReactElement<{ onClick: () => void }> | undefined {
     for (const child of Children.toArray(node)) {
       if (!isValidElement<{ children: ReactNode; onClick: () => void }>(child)) continue
+      if (child.type === PostStatusDialog) {
+        const dialog = child as unknown as ReactElement<{
+          publishing: boolean
+          onConfirm: () => void
+        }>
+        if (label === (dialog.props.publishing ? "Publish post" : "Unpublish post"))
+          return { props: { onClick: dialog.props.onConfirm } } as ReactElement<{
+            onClick: () => void
+          }>
+      }
       if (
-        (child.type === "button" || child.type === AlertDialogAction) &&
+        (child.type === "button" || child.type === AlertDialogAction || child.type === Menu.Item) &&
         Children.toArray(child.props.children).includes(label)
       )
         return child as ReactElement<{ onClick: () => void }>
@@ -78,8 +87,8 @@ beforeEach(() => {
 })
 
 it.each([
-  ["Publish", "draft", "published"],
-  ["Unpublish", "published", "draft"],
+  ["Publish post", "draft", "published"],
+  ["Unpublish post", "published", "draft"],
 ] as const)("%s updates the API cache without a page refresh", async (label, initial, target) => {
   mocks.setPostStatus.mockResolvedValue({ ok: true, postId: ID })
   button(label, initial)()
@@ -121,7 +130,9 @@ it("opens and cancels the confirmation without mutating or navigating", () => {
     }
   }
   const dialog = find(tree, AlertDialog)
-  expect(find(tree, AlertDialogTrigger)).toBeDefined()
+  button("Delete")()
+  button("Publish")()
+  expect(mocks.setPostStatus).not.toHaveBeenCalled()
   expect(find(tree, AlertDialogCancel)).toBeDefined()
   expect(dialog).toBeDefined()
   dialog!.props.onOpenChange(true)
@@ -135,7 +146,7 @@ it("opens and cancels the confirmation without mutating or navigating", () => {
 
 it("preserves the page and shows a failed status action", async () => {
   mocks.setPostStatus.mockResolvedValue({ ok: false, message: "Body required" })
-  button("Publish")()
+  button("Publish post")()
   await mocks.transition
   expect(mocks.setState).toHaveBeenCalledWith("Body required")
   expect(mocks.replace).not.toHaveBeenCalled()

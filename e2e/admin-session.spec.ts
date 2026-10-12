@@ -79,6 +79,68 @@ test.describe("sessions", () => {
     await context.close()
   })
 
+  test("reuses the session across admin navigation and refreshes it after becoming stale", async ({
+    browser,
+  }) => {
+    test.setTimeout(60_000)
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    const requests: string[] = []
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/admin/session") requests.push(request.url())
+    })
+    await page.goto("/admin")
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(1)
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
+    await page
+      .getByRole("link", { name: /new post/i })
+      .first()
+      .click()
+    await expect(page.locator(".tiptap")).toBeVisible()
+    await page
+      .getByRole("navigation", { name: "Breadcrumb", exact: true })
+      .getByRole("link", { name: "Admin", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(1)
+    // Advance the browser clock without delaying the test or polling the server.
+    await page.clock.install()
+    await page.clock.fastForward(61_000)
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(2)
+    await context.close()
+  })
+
+  test("rejects private reads immediately when a cached author loses their cookie", async ({
+    browser,
+  }) => {
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    await page.goto("/admin")
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    await context.clearCookies()
+    const refused = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+    )
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    expect((await refused).status()).toBe(401)
+    await expect(page).toHaveURL(/\/admin\/login$/)
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0)
+    await context.close()
+  })
+
   test("uses a Lax state cookie for the GitHub OAuth callback", async ({ request }) => {
     test.skip(
       !process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET,

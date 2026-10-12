@@ -34,7 +34,12 @@ export default {
         let response: Response
         const limited = await enforceRateLimit(request, path, env)
         if (limited) response = limited
-        else if (path === "/blog" || path.startsWith("/blog/") || path === "/rss.xml") {
+        else if (path.startsWith("/local-media/")) {
+          if (import.meta.env.DEV) {
+            const { serveLocalMedia } = await import("../lib/local-media.server")
+            response = await serveLocalMedia(request)
+          } else response = new Response(null, { status: 404 })
+        } else if (path === "/blog" || path.startsWith("/blog/") || path === "/rss.xml") {
           const target = new URL(request.url)
           if (path === "/rss.xml") target.pathname = "/writing/rss.xml"
           else if (path === "/blog/search") target.pathname = "/writing"

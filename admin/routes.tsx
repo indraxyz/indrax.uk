@@ -1,20 +1,18 @@
 import { createBrowserRouter, Outlet } from "react-router"
 import type { QueryKey } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { adminSessionOptions } from "@/features/writing/api/session-query"
 import { AdminLoading, AdminError } from "@/admin/components/feedback/request-state"
 import { ProtectedAdmin } from "@/admin/layouts/protected-admin"
 import { getBrowserQueryClient } from "@/components/query-provider"
 import { NavigationProgress } from "@/components/navigation-progress"
 import { parseAdminArchiveOptions } from "@/features/writing/utils/admin-archive-options"
 
-async function loadAdminPage<T>(queryKey: QueryKey, queryFn: () => Promise<T>) {
+async function loadAdminPage<T>(queryKey?: QueryKey, queryFn?: () => Promise<T>) {
   const client = getBrowserQueryClient()
   // Verify initial access before requesting private page data. APIs also enforce author access.
-  const session = await client.ensureQueryData({
-    queryKey: adminKeys.session,
-    queryFn: adminApi.session,
-  })
-  if (session.author) await client.prefetchQuery({ queryKey, queryFn })
+  const session = await client.fetchQuery(adminSessionOptions)
+  if (session.author && queryKey && queryFn) await client.prefetchQuery({ queryKey, queryFn })
   return null
 }
 
@@ -64,7 +62,7 @@ export const router = createBrowserRouter([
             },
             lazy: () => import("./routes/posts/list"),
           },
-          { path: "new", lazy: () => import("./routes/posts/new") },
+          { path: "new", loader: () => loadAdminPage(), lazy: () => import("./routes/posts/new") },
           {
             path: "edit/:id",
             loader: ({ params }) =>

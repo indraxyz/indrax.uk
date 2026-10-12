@@ -34,3 +34,15 @@ export function createPostFormFields(post: AdminPost | null): PostFormFields {
 export function postFormSnapshot(fields: PostFormFields): string {
   return JSON.stringify(fields)
 }
+
+/** Acknowledge persisted publication changes without discarding unrelated edits. */
+export function reconcilePostStatus(
+  current: PostFormFields,
+  saved: PostFormFields,
+  status: PostStatus
+) {
+  return {
+    current: { ...current, status: current.status === saved.status ? status : current.status },
+    saved: { ...saved, status },
+  }
+}

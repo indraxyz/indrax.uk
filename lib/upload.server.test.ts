@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest"
+import { beforeEach, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ author: vi.fn(), storage: vi.fn(), fetch: vi.fn() }))
+const mocks = vi.hoisted(() => ({ author: vi.fn(), storage: vi.fn(), put: vi.fn() }))
 vi.mock("@/lib/auth-guard.server", () => ({ requireAuthor: mocks.author }))
 vi.mock("@/lib/cover-storage.server", () => ({ getCoverStorageConfig: mocks.storage }))
 
@@ -30,16 +30,11 @@ beforeEach(() => {
   vi.resetAllMocks()
   mocks.author.mockResolvedValue({ id: "author" })
   mocks.storage.mockReturnValue({
-    accountId: "account",
-    bucket: "media",
-    accessKeyId: "test-only",
-    secretAccessKey: "test-only",
+    bucket: { put: mocks.put },
     publicUrl: "https://media.example.test",
   })
-  mocks.fetch.mockResolvedValue(new Response(null, { status: 200 }))
-  vi.stubGlobal("fetch", mocks.fetch)
+  mocks.put.mockResolvedValue({ key: "stored" })
 })
-afterEach(() => vi.unstubAllGlobals())
 
 it("stores a verified image under a generated key with its verified type", async () => {
   const result = await upload(PNG)
@@ -47,20 +42,22 @@ it("stores a verified image under a generated key with its verified type", async
   const { publicUrl } = (await result.json()) as { publicUrl: string }
   expect(publicUrl).toMatch(/^https:\/\/media\.example\.test\/covers\/[0-9a-f-]{36}\.png$/)
 
-  expect(mocks.fetch).toHaveBeenCalledOnce()
-  const stored = mocks.fetch.mock.calls[0][0] as Request
-  expect(stored.method).toBe("PUT")
-  expect(new URL(stored.url).pathname).toBe(`/media${new URL(publicUrl).pathname}`)
-  expect(stored.headers.get("content-type")).toBe("image/png")
-  expect(stored.headers.get("cache-control")).toContain("immutable")
-  expect(stored.headers.get("authorization")).toMatch(/^AWS4-HMAC-SHA256 /)
-  expect(new Uint8Array(await stored.arrayBuffer())).toEqual(PNG)
+  expect(mocks.put).toHaveBeenCalledOnce()
+  expect(mocks.put).toHaveBeenCalledWith(new URL(publicUrl).pathname.slice(1), PNG, {
+    onlyIf: { etagDoesNotMatch: "*" },
+    storageClass: "Standard",
+    httpMetadata: {
+      contentType: "image/png",
+      cacheControl: "public, max-age=31536000, immutable",
+      contentDisposition: "inline",
+    },
+  })
 })
 
 it("refuses an unauthenticated caller before reading anything", async () => {
   mocks.author.mockRejectedValue(new Error("Not authorised."))
   expect((await upload(PNG)).status).toBe(401)
-  expect(mocks.fetch).not.toHaveBeenCalled()
+  expect(mocks.put).not.toHaveBeenCalled()
 })
 
 it.each([
@@ -75,7 +72,7 @@ it.each([
   const result = await upload(body, options)
   expect(result.status).toBe(status)
   expect(await result.json()).toHaveProperty("error")
-  expect(mocks.fetch).not.toHaveBeenCalled()
+  expect(mocks.put).not.toHaveBeenCalled()
 })
 
 it("refuses a streamed body past the cap, drains a bounded amount, then cuts it off", async () => {
@@ -99,7 +96,7 @@ it("refuses a streamed body past the cap, drains a bounded amount, then cuts it 
   // cancelled: a 40 MiB body is never read to the end.
   expect(cancelled).toBe(true)
   expect(sent).toBeLessThan(40)
-  expect(mocks.fetch).not.toHaveBeenCalled()
+  expect(mocks.put).not.toHaveBeenCalled()
 })
 
 it("drains a refused body so its status is delivered rather than a dropped connection", async () => {
@@ -117,11 +114,18 @@ it("validates fully even when no storage is configured", async () => {
   mocks.storage.mockReturnValue(null)
   expect((await upload(HTML)).status).toBe(415)
   expect((await upload(PNG)).status).toBe(501)
-  expect(mocks.fetch).not.toHaveBeenCalled()
+  expect(mocks.put).not.toHaveBeenCalled()
 })
 
 it("reports a storage refusal instead of a public URL", async () => {
-  mocks.fetch.mockResolvedValue(new Response(null, { status: 403 }))
+  mocks.put.mockRejectedValue(new Error("Storage unavailable"))
+  const result = await upload(PNG)
+  expect(result.status).toBe(502)
+  expect(await result.json()).not.toHaveProperty("publicUrl")
+})
+
+it("refuses an existing key instead of overwriting it", async () => {
+  mocks.put.mockResolvedValue(null)
   const result = await upload(PNG)
   expect(result.status).toBe(502)
   expect(await result.json()).not.toHaveProperty("publicUrl")

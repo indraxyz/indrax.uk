@@ -274,6 +274,9 @@ function rehypeScrollRegions() {
  */
 const schema: Schema = {
   ...defaultSchema,
+  // StarterKit's underline mark emits this inert element. Keep it so the
+  // published article preserves the formatting offered by the editor.
+  tagNames: [...(defaultSchema.tagNames ?? []), "u"],
   attributes: {
     ...defaultSchema.attributes,
     // Task lists. Tiptap marks them with `data-type="taskList"` and nothing else

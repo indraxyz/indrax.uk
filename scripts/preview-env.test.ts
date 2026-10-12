@@ -61,7 +61,7 @@ it("shell fixtures override local database/auth bindings through the last env-fi
 it("supports shell-only CI without a local file and excludes unrelated process credentials", async () => {
   const result = await prepare({
     DATABASE_URL: "fixture-db",
-    R2_SECRET_ACCESS_KEY: "fixture-r2",
+    NEXT_PUBLIC_MEDIA_ORIGIN: "https://media.example.com",
     AWS_SECRET_ACCESS_KEY: "must-not-copy",
     PATH: "/bin",
     DIRECT_DATABASE_URL: "tooling-only",
@@ -72,7 +72,7 @@ it("supports shell-only CI without a local file and excludes unrelated process c
   const vars = parseEnv(await readFile(result.args[1], "utf8"))
   expect(vars).toEqual({
     DATABASE_URL: "fixture-db",
-    R2_SECRET_ACCESS_KEY: "fixture-r2",
+    NEXT_PUBLIC_MEDIA_ORIGIN: "https://media.example.com",
     BETTER_AUTH_URL: "http://127.0.0.1:3000",
   })
   await result.cleanup()

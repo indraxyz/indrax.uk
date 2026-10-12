@@ -149,6 +149,9 @@ jobs:
       - name: Run the suite
         run: npx playwright test
 
+      - name: Verify isolated local cover uploads
+        run: E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
+
       # Only on failure, and only for a fortnight. A passing run's report is
       # noise; a failing one holds the trace, the screenshot and the accessibility
       # snapshot that says which element was actually on top.
@@ -160,6 +163,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            test-results-uploads/
           retention-days: 14
 
   deploy:
@@ -202,4 +206,12 @@ jobs:
             npm run deploy
           else
             npm run deploy:dev
+          fi
+
+      - name: Verify public and private security boundaries
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            npm run security:smoke -- production
+          else
+            npm run security:smoke -- dev
           fi

@@ -1,7 +1,7 @@
 import { House, ShieldAlert } from "lucide-react"
 import { Navigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
-import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { adminSessionOptions } from "@/features/writing/api/session-query"
 import { AdminError, AdminLoading } from "@/admin/components/feedback/request-state"
 
 import { controlClassNames } from "@/components/ui/variants"
@@ -10,7 +10,7 @@ import { SignInButton } from "@/admin/components/auth/sign-in-button"
 
 export function Component() {
   const [searchParams] = useSearchParams()
-  const session = useQuery({ queryKey: adminKeys.session, queryFn: adminApi.session, staleTime: 0 })
+  const session = useQuery(adminSessionOptions)
   if (session.isPending) return <AdminLoading />
   if (session.isError) return <AdminError retry={() => void session.refetch()} />
   if (session.data.author) return <Navigate to="/admin" replace />

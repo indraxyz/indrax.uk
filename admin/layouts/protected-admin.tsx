@@ -1,21 +1,15 @@
-import { useEffect, useRef } from "react"
-import { Navigate, Outlet, useLocation } from "react-router"
+import { useEffect } from "react"
+import { Navigate, Outlet } from "react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { HTTPError } from "ky"
-import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { adminKeys } from "@/features/writing/api/client"
+import { adminSessionOptions } from "@/features/writing/api/session-query"
 import { AdminSessionContext } from "@/admin/auth/session"
 import { AdminLoading, AdminError } from "@/admin/components/feedback/request-state"
 
 export function ProtectedAdmin() {
-  const location = useLocation()
-  const previousPath = useRef(location.pathname)
   const client = useQueryClient()
-  const session = useQuery({
-    queryKey: adminKeys.session,
-    queryFn: adminApi.session,
-    staleTime: 0,
-    refetchOnMount: "always",
-  })
+  const session = useQuery(adminSessionOptions)
   useEffect(() => {
     const expire = () => {
       client.removeQueries({ queryKey: adminKeys.all })
@@ -39,12 +33,6 @@ export function ProtectedAdmin() {
       window.removeEventListener("admin-session-expired", expire)
     }
   }, [client])
-  useEffect(() => {
-    if (previousPath.current !== location.pathname) {
-      previousPath.current = location.pathname
-      void client.invalidateQueries({ queryKey: adminKeys.session })
-    }
-  }, [location.pathname, client])
   useEffect(() => {
     if (session.data && !session.data.author) {
       client.removeQueries({

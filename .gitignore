@@ -51,6 +51,7 @@ Thumbs.db
 
 # playwright
 /test-results/
+/test-results-uploads/
 /playwright-report/
 /blob-report/
 /playwright/.cache/

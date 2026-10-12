@@ -8,8 +8,11 @@ import {
   Braces,
   Code2,
   Columns2,
+  CornerDownLeft,
+  Eraser,
   Heading2,
   Heading3,
+  Heading4,
   Italic,
   Link2,
   List,
@@ -18,6 +21,7 @@ import {
   Minus,
   PanelLeft,
   PanelTop,
+  Pilcrow,
   Quote,
   Redo2,
   Rows2,
@@ -27,6 +31,7 @@ import {
   TableCellsSplit,
   Table as TableIcon,
   Undo2,
+  Underline,
   X,
 } from "lucide-react"
 import { useEffect, useRef, type ReactNode } from "react"
@@ -62,11 +67,11 @@ function Tool({ label, icon, active, disabled, onClick }: ToolProps) {
       onClick={onClick}
       className={cn(
         controlClassNames,
-        "shrink-0 px-2.5 py-2 disabled:opacity-40",
+        "size-11 shrink-0 justify-center p-0 disabled:opacity-40",
         active && "bg-[var(--color-accent)] text-[var(--color-accent-foreground)]"
       )}
     >
-      {icon}
+      <span aria-hidden="true">{icon}</span>
     </button>
   )
 }
@@ -90,76 +95,112 @@ function Toolbar({ editor }: { editor: Editor }) {
   // Tiptap v3 does not rerender useEditor consumers on transactions by default.
   // Subscribe the controls so selection changes update active/available actions.
   useEditorState({ editor, selector: ({ transactionNumber }) => transactionNumber })
-  const icon = "h-3.5 w-3.5"
+  const icon = "size-4"
 
   return (
     <div className="sticky top-[var(--admin-header-height,0px)] z-40 border-b-2 border-border bg-[var(--color-muted)]">
-      <div role="toolbar" aria-label="Formatting" className="flex flex-wrap gap-1 p-2">
+      <div
+        role="toolbar"
+        aria-label="Formatting"
+        aria-orientation="horizontal"
+        className="flex min-w-0 flex-nowrap gap-1 overflow-x-auto overscroll-x-contain p-2"
+      >
         <Tool
           label="Bold"
           icon={<Bold className={icon} />}
           active={editor.isActive("bold")}
+          disabled={!editor.can().toggleBold()}
           onClick={() => editor.chain().focus().toggleBold().run()}
         />
         <Tool
           label="Italic"
           icon={<Italic className={icon} />}
           active={editor.isActive("italic")}
+          disabled={!editor.can().toggleItalic()}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         />
         <Tool
           label="Strikethrough"
           icon={<Strikethrough className={icon} />}
           active={editor.isActive("strike")}
+          disabled={!editor.can().toggleStrike()}
           onClick={() => editor.chain().focus().toggleStrike().run()}
+        />
+        <Tool
+          label="Underline"
+          icon={<Underline className={icon} />}
+          active={editor.isActive("underline")}
+          disabled={!editor.can().toggleUnderline()}
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
         />
         <Tool
           label="Inline code"
           icon={<Code2 className={icon} />}
           active={editor.isActive("code")}
+          disabled={!editor.can().toggleCode()}
           onClick={() => editor.chain().focus().toggleCode().run()}
         />
 
-        <span className="mx-1 w-px bg-border" aria-hidden />
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
         {/* Level 1 is absent on purpose: the page's h1 is the post title. */}
+        <Tool
+          label="Paragraph"
+          icon={<Pilcrow className={icon} />}
+          active={editor.isActive("paragraph")}
+          disabled={!editor.can().setParagraph()}
+          onClick={() => editor.chain().focus().setParagraph().run()}
+        />
         <Tool
           label="Heading 2"
           icon={<Heading2 className={icon} />}
           active={editor.isActive("heading", { level: 2 })}
+          disabled={!editor.can().toggleHeading({ level: 2 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         />
         <Tool
           label="Heading 3"
           icon={<Heading3 className={icon} />}
           active={editor.isActive("heading", { level: 3 })}
+          disabled={!editor.can().toggleHeading({ level: 3 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         />
+        <Tool
+          label="Heading 4"
+          icon={<Heading4 className={icon} />}
+          active={editor.isActive("heading", { level: 4 })}
+          disabled={!editor.can().toggleHeading({ level: 4 })}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+        />
 
-        <span className="mx-1 w-px bg-border" aria-hidden />
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
         <Tool
           label="Bullet list"
           icon={<List className={icon} />}
           active={editor.isActive("bulletList")}
+          disabled={!editor.can().toggleBulletList()}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
         <Tool
           label="Numbered list"
           icon={<ListOrdered className={icon} />}
           active={editor.isActive("orderedList")}
+          disabled={!editor.can().toggleOrderedList()}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         />
         <Tool
           label="Task list"
           icon={<ListTodo className={icon} />}
           active={editor.isActive("taskList")}
+          disabled={!editor.can().toggleTaskList()}
           onClick={() => editor.chain().focus().toggleTaskList().run()}
         />
         <Tool
           label="Quote"
           icon={<Quote className={icon} />}
           active={editor.isActive("blockquote")}
+          disabled={!editor.can().toggleBlockquote()}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         />
         <Tool
@@ -168,6 +209,7 @@ function Toolbar({ editor }: { editor: Editor }) {
           // controls a hurried author will confuse.
           icon={<Braces className={icon} />}
           active={editor.isActive("codeBlock")}
+          disabled={!editor.can().toggleCodeBlock()}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         />
         <Tool
@@ -178,8 +220,20 @@ function Toolbar({ editor }: { editor: Editor }) {
             editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
           }
         />
+        <Tool
+          label="Horizontal rule"
+          icon={<Minus className={icon} />}
+          disabled={!editor.can().setHorizontalRule()}
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        />
+        <Tool
+          label="Line break"
+          icon={<CornerDownLeft className={icon} />}
+          disabled={!editor.can().setHardBreak()}
+          onClick={() => editor.chain().focus().setHardBreak().run()}
+        />
 
-        <span className="mx-1 w-px bg-border" aria-hidden />
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
         <Tool
           label={editor.isActive("link") ? "Remove link" : "Add link"}
@@ -210,7 +264,14 @@ function Toolbar({ editor }: { editor: Editor }) {
           }}
         />
 
-        <span className="mx-1 w-px bg-border" aria-hidden />
+        <Tool
+          label="Clear formatting"
+          icon={<Eraser className={icon} />}
+          disabled={!editor.can().chain().unsetAllMarks().clearNodes().run()}
+          onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+        />
+
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
         <Tool
           label="Undo"

@@ -21,12 +21,17 @@ export function Component() {
   if (query.isError) return <AdminError retry={() => void query.refetch()} />
   return (
     <PostForm key={id} post={query.data} coverUploadsConfigured={session.coverUploadsConfigured}>
-      {({ form, saveButton, onDeleted }) => (
+      {({ form, saveButton, onDeleted, hasUnsavedChanges, isSaving }) => (
         <AdminShell
           title="Edit post"
           backLink={{ href: "/admin/posts", label: "Posts" }}
           actions={
-            <PostActions post={query.data} onDeleted={onDeleted}>
+            <PostActions
+              post={query.data}
+              onDeleted={onDeleted}
+              hasUnsavedChanges={hasUnsavedChanges}
+              saving={isSaving}
+            >
               {saveButton}
             </PostActions>
           }
