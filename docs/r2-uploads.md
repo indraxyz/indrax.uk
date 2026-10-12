@@ -31,8 +31,9 @@ added to the site application without deleting the media-wide application: that
 original application still protects other media paths. Both policies retain the
 same author-only identity. Signed-out site and cover responses were verified to
 redirect to the same application audience after propagation. Existing browser
-sessions must renew Access once; authenticated image loading requires the owner's
-browser to verify. No Worker proxy, image processing or deployment is involved.
+sessions must renew Access once. The owner renewed Access and confirmed that the
+saved image renders in both the admin edit form and public post. No Worker proxy,
+image processing or deployment is involved.
 To roll back, remove the cover destination from the site application; the media-wide
 application continues protecting the host, with separate login required again.
 
