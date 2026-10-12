@@ -78,6 +78,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   const cover = page.getByRole("group", { name: "Cover image", exact: true })
   await expect(cover.getByRole("button", { name: "Upload a cover" })).toBeEnabled()
   await expect(cover).not.toContainText("unavailable")
+  await expect(cover.getByText("Cover changes take effect when you save the post.")).toBeVisible()
   const writes: string[] = []
   page.on("request", (request) => {
     const path = new URL(request.url()).pathname
@@ -93,7 +94,22 @@ test("enables configured local cover uploads, saves a draft and displays the ima
     .poll(() => previewImage.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBe(1)
   await expect(cover.getByLabel("Cover image URL")).toHaveValue("")
-  await cover.getByRole("button", { name: "Remove cover image" }).click()
+  const removeCover = cover.getByRole("button", { name: "Remove cover image" })
+  const buttonBox = await removeCover.boundingBox()
+  const iconBox = await removeCover.locator("svg").boundingBox()
+  expect(
+    Math.abs(buttonBox!.x + buttonBox!.width / 2 - iconBox!.x - iconBox!.width / 2)
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(buttonBox!.y + buttonBox!.height / 2 - iconBox!.y - iconBox!.height / 2)
+  ).toBeLessThan(1)
+  await removeCover.click()
+  const removeDialog = page.getByRole("alertdialog", { name: "Remove cover image?", exact: true })
+  await expect(removeDialog).toContainText("when you save")
+  await removeDialog.getByRole("button", { name: "Cancel", exact: true }).click()
+  await expect(previewImage).toBeVisible()
+  await removeCover.click()
+  await removeDialog.getByRole("button", { name: "Remove cover", exact: true }).click()
   await expect(previewImage).toHaveCount(0)
   expect(writes).toEqual([])
   await cover
@@ -157,6 +173,10 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   await reader.close()
   // Removing a persisted cover affects only this form until the next save.
   await cover.getByRole("button", { name: "Remove cover image" }).click()
+  await page
+    .getByRole("alertdialog", { name: "Remove cover image?", exact: true })
+    .getByRole("button", { name: "Remove cover", exact: true })
+    .click()
   await expect(cover.locator("img")).toHaveCount(0)
   await expect(cover.getByLabel("Cover image URL")).toHaveValue("")
   expect(writes).toHaveLength(2)

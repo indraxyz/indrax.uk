@@ -48,7 +48,7 @@ R2 objects as browser test fixtures; clean up only fixtures created by the tests
 
 ## Verification completed
 
-- Repository formatting, lint, generated types, TypeScript and 510 unit tests pass.
+- Repository formatting, lint, generated types, TypeScript and 515 unit tests pass.
 - Four local-upload browser tests pass on localhost, covering configured controls,
   file-picker upload, draft persistence, signed-preview API data, actual image
   decoding, refusal paths and fixture cleanup. Public preview hydration is not
@@ -80,3 +80,21 @@ created under the earlier setup authorization is documented in the R2 setup note
   navigation/focus/reconnect checks and unchanged server authorization.
 - Unit and browser checks cover session deduplication, stale/invalidated refresh,
   navigation request counts, cookie loss, sign-out and authorization boundaries.
+
+## Follow-up UI review
+
+The user requested centered cover removal, cover-removal confirmation and a
+save-time notice; shorter admin filter-sheet copy; complete existing Tiptap
+formatting controls in one scrollable row; and a Save-first button group with
+secondary actions. Publication is confirmed from both the menu and the form
+status selector. Copy has action-specific feedback and no displayed preview
+URL. Existing deletion confirmation retains cancellation/error behavior.
+The button group was generated with the requested shadcn CLI and adapted to the
+site's square controls and existing `cn` utility without retaining a duplicate
+dependency.
+
+Follow-up verification passes 14 action/filter browser checks and 18 full
+authoring checks. One production-runtime upload case is skipped because local
+media is development-only; all four dedicated local-upload checks cover that
+configuration separately. Cover checks assert centered removal, confirmation,
+cancellation, the save-time notice and no server writes before Save.

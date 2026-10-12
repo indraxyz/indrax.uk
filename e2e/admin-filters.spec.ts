@@ -127,7 +127,7 @@ test.describe("admin post discovery", () => {
     ).toHaveAttribute("aria-pressed", "false")
     await expect(
       reset.getByText("Most recently updated posts first.", { exact: true })
-    ).toBeVisible()
+    ).toHaveCount(0)
   })
 
   test("closes without applying and restores settings on browser back", async ({ page }) => {
@@ -169,7 +169,7 @@ test.describe("admin post discovery", () => {
     await searched.getByLabel("Sort by", { exact: true }).selectOption("relevance")
     await expect(
       searched.getByText("Best matches for your search first.", { exact: true })
-    ).toBeVisible()
+    ).toHaveCount(0)
     await searched.getByRole("button", { name: "Apply filters" }).click()
     await expect(page).toHaveURL(/sort=relevance/)
   })
@@ -200,6 +200,13 @@ test.describe("admin post discovery", () => {
     await page.goto("/admin/posts?q=nothing&status=draft&tag=private")
     await expect(page.getByText(/no posts match|nothing matches/i)).toBeVisible()
     const dialog = await filters(page)
+    await expect(dialog.getByText("Choose how to manage posts.", { exact: false })).toHaveClass(
+      /sr-only/
+    )
+    await expect(dialog.getByText("Latest published posts first.", { exact: true })).toHaveCount(0)
+    await expect(
+      dialog.getByText("Counts include posts in every status.", { exact: false })
+    ).toHaveCount(0)
     await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible()
     await expect
       .poll(async () => {

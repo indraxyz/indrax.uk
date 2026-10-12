@@ -110,7 +110,7 @@ missing-object response was verified with nosniff and the sandboxed policy.
 Both `r2.dev` URLs were verified disabled. An authenticated browser should verify
 the final login and cover-upload flow after deployment.
 
-Formatting, lint, generated types, TypeScript and all 510 unit tests passed.
+Formatting, lint, generated types, TypeScript and all 515 unit tests passed.
 Production and dev builds, deployment-target guards and Wrangler deployment dry
 runs passed with their respective bucket bindings. No Worker was deployed.
 

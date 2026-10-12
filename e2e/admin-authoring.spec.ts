@@ -61,9 +61,21 @@ test.describe("authoring", () => {
   })
 
   test.afterAll(async () => {
-    await context?.close()
-    // The identity was created for this run and has no business outliving it.
-    if (authorId) await revokeAuthorSession(authorId)
+    try {
+      // Interrupted UI runs must not leave their own post behind.
+      if (postPath) {
+        const databaseUrl = process.env.DATABASE_URL!
+        expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(databaseUrl).hostname)
+        const sql = neon(databaseUrl)
+        const id = postPath.split("/").at(-1)!
+        await sql`DELETE FROM posts WHERE id = ${id} AND title = ${TITLE}`
+      }
+    } finally {
+      await Promise.all([
+        context?.close(),
+        authorId ? revokeAuthorSession(authorId) : Promise.resolve(),
+      ])
+    }
   })
 
   async function expectOverview(page: Page) {
@@ -422,8 +434,10 @@ test.describe("authoring", () => {
     await expect(saved).toBeVisible()
     await expect(page.locator("[data-unsaved-changes]")).toHaveCount(0)
     const saveBox = await saved.boundingBox()
-    const deleteBox = await page.getByRole("button", { name: "Delete", exact: true }).boundingBox()
-    expect(saveBox!.x).toBeGreaterThan(deleteBox!.x + deleteBox!.width)
+    const deleteBox = await page
+      .getByRole("button", { name: "More post actions", exact: true })
+      .boundingBox()
+    expect(saveBox!.x + saveBox!.width).toBeLessThanOrEqual(deleteBox!.x + 1)
     expect(
       Math.abs(saveBox!.y + saveBox!.height / 2 - deleteBox!.y - deleteBox!.height / 2)
     ).toBeLessThanOrEqual(1)
@@ -494,7 +508,8 @@ test.describe("authoring", () => {
   })
 
   test("preserves an existing cover when saving with storage unavailable", async () => {
-    test.skip(Boolean(process.env.R2_ACCOUNT_ID), "run with R2 variables explicitly empty")
+    const settings = await (await context.request.get(`${E2E_BASE_URL}/api/admin/session`)).json()
+    test.skip(settings.coverUploadsConfigured, "needs media storage unavailable")
     const databaseUrl = process.env.DATABASE_URL!
     expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(databaseUrl).hostname)
     // Only the post created by this lifecycle is modified, never a shared seed.
@@ -527,7 +542,8 @@ test.describe("authoring", () => {
     const slug = await page.getByLabel("Slug").inputValue()
     await expect(page.locator(".ProseMirror table tr")).toHaveCount(4)
     await expect(page.locator(".ProseMirror table tr").first().locator("th, td")).toHaveCount(4)
-    if (!process.env.R2_ACCOUNT_ID) {
+    const settings = await (await context.request.get(`${E2E_BASE_URL}/api/admin/session`)).json()
+    if (!settings.coverUploadsConfigured) {
       await expect(page.getByRole("group", { name: "Cover image", exact: true })).toHaveAttribute(
         "disabled",
         ""
@@ -556,14 +572,23 @@ test.describe("authoring", () => {
     const page = await context.newPage()
 
     await page.goto(postPath)
-    await page.getByRole("button", { name: /preview link/i }).click()
-
-    // Read from the field rather than the clipboard: whether the clipboard write
-    // succeeds depends on browser policy, and the field is what an author would
-    // actually copy from when it does not.
-    const field = page.getByLabel("Preview link")
-    await expect(field).toHaveValue(/\/writing\/.+\/preview\?token=/, { timeout: 15_000 })
-    const previewUrl = await field.inputValue()
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async () => {} },
+      })
+    )
+    const previewResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith("/preview") &&
+        response.request().method() === "POST"
+    )
+    await page.getByRole("button", { name: "More post actions", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Copy link", exact: true }).click()
+    const { url } = await (await previewResponse).json()
+    const previewUrl = new URL(url, E2E_BASE_URL).toString()
+    await expect(page.getByRole("menuitem", { name: "Copied", exact: true })).toBeVisible()
+    await expect(page.getByLabel("Preview link", { exact: true })).toHaveCount(0)
 
     // A fresh context: the link has to work for whoever it is sent to, and that
     // person has no session.
@@ -625,11 +650,15 @@ test.describe("authoring", () => {
         extraEditReads.push(request.url())
       }
     })
-    await page.getByRole("button", { name: /^publish$/i }).click()
-    await expect(page.getByRole("button", { name: /^unpublish$/i })).toBeVisible({
-      timeout: 15_000,
-    })
-    await expect(page.getByRole("button", { name: /^unpublish$/i })).toBeEnabled()
+    await page.getByRole("button", { name: "More post actions", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Publish", exact: true }).click()
+    await page
+      .getByRole("alertdialog", { name: "Publish post?", exact: true })
+      .getByRole("button", { name: "Publish post", exact: true })
+      .click()
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+    await page.getByRole("button", { name: "More post actions", exact: true }).click()
+    await expect(page.getByRole("menuitem", { name: "Unpublish", exact: true })).toBeEnabled()
     expect(extraEditReads).toEqual([])
     await page.close()
 
@@ -671,9 +700,9 @@ test.describe("authoring", () => {
       await expect(oldUrl).toBeVisible()
       const saveBox = await page.getByRole("button", { name: "Save", exact: true }).boundingBox()
       const deleteBox = await page
-        .getByRole("button", { name: "Delete", exact: true })
+        .getByRole("button", { name: "More post actions", exact: true })
         .boundingBox()
-      expect(saveBox!.x).toBeGreaterThan(deleteBox!.x + deleteBox!.width)
+      expect(saveBox!.x + saveBox!.width).toBeLessThanOrEqual(deleteBox!.x + 1)
       expect(
         Math.abs(saveBox!.y + saveBox!.height / 2 - deleteBox!.y - deleteBox!.height / 2)
       ).toBeLessThanOrEqual(1)
@@ -744,9 +773,15 @@ test.describe("authoring", () => {
         extraEditReads.push(request.url())
       }
     })
-    await page.getByRole("button", { name: /^unpublish$/i }).click()
-    await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole("button", { name: /^publish$/i })).toBeEnabled()
+    await page.getByRole("button", { name: "More post actions", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Unpublish", exact: true }).click()
+    await page
+      .getByRole("alertdialog", { name: "Unpublish post?", exact: true })
+      .getByRole("button", { name: "Unpublish post", exact: true })
+      .click()
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+    await page.getByRole("button", { name: "More post actions", exact: true }).click()
+    await expect(page.getByRole("menuitem", { name: "Publish", exact: true })).toBeEnabled()
     expect(extraEditReads).toEqual([])
     await page.close()
 
@@ -796,7 +831,9 @@ test.describe("authoring", () => {
     await page.goto(postPath)
     await page.getByLabel("Excerpt", { exact: true }).fill("An unsaved change before deletion.")
     await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
-    const remove = page.getByRole("button", { name: "Delete", exact: true })
+    const more = page.getByRole("button", { name: "More post actions", exact: true })
+    const remove = page.getByRole("menuitem", { name: "Delete", exact: true })
+    await more.click()
     await remove.click()
     const dialog = page.getByRole("alertdialog", { name: "Delete post?", exact: true })
     await expect(dialog).toBeVisible()
@@ -804,7 +841,7 @@ test.describe("authoring", () => {
     await expect(dialog).toContainText(/cannot be undone/i)
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
     await expect(dialog).not.toBeVisible()
-    await expect(remove).toBeFocused()
+    await expect(more).toBeFocused()
     await expect(page.locator("[data-unsaved-changes]")).toBeVisible()
     await expect(page.getByLabel("Excerpt", { exact: true })).toHaveValue(
       "An unsaved change before deletion."
@@ -823,6 +860,7 @@ test.describe("authoring", () => {
         await route.continue()
       }
     })
+    await more.click()
     await remove.click()
     await dialog.getByRole("button", { name: "Delete post", exact: true }).click()
     try {

@@ -154,7 +154,7 @@ export function ArchiveControls({
         >
           <SheetHeader className="shrink-0 border-b-2 border-border pr-14">
             <SheetTitle className="font-black uppercase">Filters and sort</SheetTitle>
-            <SheetDescription>
+            <SheetDescription className={admin ? "sr-only" : undefined}>
               {admin ? "Choose how to manage posts." : "Choose how to explore writing."} Apply when
               you’re ready.
             </SheetDescription>
@@ -166,7 +166,7 @@ export function ArchiveControls({
                 <select
                   className={selectClass}
                   aria-label="Sort by"
-                  aria-describedby={relevanceHintId}
+                  aria-describedby={admin ? undefined : relevanceHintId}
                   value={draft.sort}
                   onChange={(event) =>
                     setDraft({ ...draft, sort: event.target.value as ArchiveOptions["sort"] })
@@ -182,17 +182,15 @@ export function ArchiveControls({
                   <option value="title-asc">Title A-Z</option>
                   <option value="title-desc">Title Z-A</option>
                 </select>
-                <span
-                  id={relevanceHintId}
-                  aria-live="polite"
-                  className="mt-2 block text-xs font-normal text-muted-foreground"
-                >
-                  {admin
-                    ? sortDescriptions[draft.sort]
-                        .replaceAll("articles", "posts")
-                        .replaceAll("Article", "Post")
-                    : sortDescriptions[draft.sort]}
-                </span>
+                {!admin && (
+                  <span
+                    id={relevanceHintId}
+                    aria-live="polite"
+                    className="mt-2 block text-xs font-normal text-muted-foreground"
+                  >
+                    {sortDescriptions[draft.sort]}
+                  </span>
+                )}
               </label>
               {admin && (
                 <label className="block font-bold">
@@ -217,12 +215,11 @@ export function ArchiveControls({
               )}
               <fieldset>
                 <legend className="font-bold">Tags</legend>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Matches any selected tag.{" "}
-                  {admin
-                    ? "Counts include posts in every status."
-                    : "Counts include all published articles."}
-                </p>
+                {!admin && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Matches any selected tag. Counts include all published articles.
+                  </p>
+                )}
                 {tagsError ? (
                   <div className="mt-3">
                     <QueryState error retry={retryTags} label="tags" />
@@ -296,9 +293,7 @@ export function ArchiveControls({
                   </select>
                 </label>
                 {admin && draft.date !== "any" && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Posts without a publication date won’t match this filter.
-                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">Undated posts are excluded.</p>
                 )}
                 {draft.date === "custom" && (
                   <div className="mt-3 space-y-3">
@@ -329,7 +324,7 @@ export function ArchiveControls({
                       />
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Dates include the full day in UTC. You can leave either end open.
+                      UTC dates. Either end is optional.
                     </p>
                   </div>
                 )}

@@ -182,20 +182,21 @@ and allowlist; a navigation redirect or cookie-presence check grants no authorit
 
 Zod validates IDs, slugs, statuses, covers, tags and series input. The server
 computes reading time, derived excerpts and timestamps. Editing or republishing
-preserves the original publication date. Delete requires explicit UI confirmation.
+preserves the original publication date. Publish, unpublish and delete require explicit UI confirmation, including publication changes submitted through the form status field.
 Save/status/delete invalidate affected admin/public query keys and public cache
 revisions. A changed published slug can break existing links and must remain a
 visible authoring concern.
 
 Delete uses the shared alert dialog, matching sign-out interaction and focus
-management. Cancel returns focus to Delete; pending deletion disables confirmation
+management. Cancel returns focus to the action-menu trigger; pending deletion disables confirmation
 and dismissal, and a failed request keeps the dialog open with feedback for retry.
 Successful deletion acknowledges the form before navigation so unsaved edits do
 not trigger a second confirmation; cancellation and failure retain those edits.
 The cover URL and icon-only upload button share one row with matching heights.
 The button retains an accessible name and file-picker behavior. Selecting a file
 shows a browser-owned preview below the cover legend at the container's full
-width and the image's natural aspect ratio. The top-right remove button clears
+width and the image's natural aspect ratio. The centered top-right remove button
+asks for confirmation before clearing
 the form's cover URL, alt text and pending file; it does not mutate the post or
 delete the stored object. The file uploads only when Save submits the form,
 before the post mutation. Cover controls are disabled during saving. A failed
@@ -208,6 +209,22 @@ Mutation request bodies are streamed with a 512 KiB ceiling before JSON parsing,
 including requests without Content-Length. The document limit and structural
 checks apply independently; client checks never replace server checks. Search,
 page numbers and limits are bounded before reaching SQL or persistent cache keys.
+
+Save is the primary control in a Base UI/shadcn button group. Copy link,
+publish/unpublish and delete are in an accessible overflow menu. Publication and
+copy require saved fields, preventing actions on stale post content; deletion
+remains available for dirty forms. Active actions and saves disable competing
+controls. Copy feedback stays on the copy item; clipboard refusal is reported
+without exposing a preview-URL field. New and edit forms share the same status
+confirmation component. Cover changes have an explicit save-time notice.
+
+The primary Tiptap toolbar is a single horizontally scrollable row with 44px
+centered controls. Paragraph, underline, headings 2–4, lists, links, quote, code,
+tables, horizontal rule, line break, clear formatting, undo and redo use the
+existing schema and command availability. The public sanitizer retains inert
+underline markup, so formatting remains consistent after publishing. The admin
+filter sheet omits redundant visible introductory, sort and tag explanations;
+input states, errors and useful date/limit notices remain.
 
 The editor is lazy-loaded only in admin authoring routes. The Better Auth browser
 client is loaded when a sign-in/sign-out action needs it. Server secrets and

@@ -40,7 +40,7 @@ E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
 
 It requires the loopback Postgres/Neon proxy and existing migrated schema. The
 suite mints a real temporary author/session with the existing Better Auth helper,
-checks full-width mobile cover previews and local-only removal, verifies that
+checks full-width mobile cover previews, centered remove controls, confirmation cancellation and local-only removal, verifies that
 selecting a PNG does not write to the server, then uploads and saves only on Save.
 It checks persisted-cover removal, upload/save failure retries, verifies the signed
 preview's cover data and checks the stored image decodes in a browser. HTTP assertions cover anonymous and cross-origin
@@ -50,6 +50,10 @@ fixture secrets and an isolated local R2 bucket/dependency cache; it does not
 change `.env.local` or use live R2. The production suite excludes this spec, and
 CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
 to another loopback database when needed; remote hosts are refused.
+
+Run this suite with the ordinary `npm run dev` watcher stopped: both build admin
+assets into `public/admin`, and simultaneous watchers can replace the test's
+media-origin configuration. Restart development afterward to restore local assets.
 
 Inspect the current inventory without changing application data:
 
@@ -268,3 +272,12 @@ or suppress errors as a substitute for establishing which stream failed.
 sends an OAuth callback without state. Better Auth's missing-base-URL warning is
 not expected: both the Worker and the session-minting fixture configure their
 auth origins, with the fixture using the shared Playwright base URL.
+
+Admin action regression tests (`e2e/admin-post-actions.spec.ts`) use mocked private
+APIs and never write real posts. They verify publication confirmations for both
+menu actions and form saves, cancellation/error retries, stale-action disabling,
+copy loading/clipboard refusal, hidden preview URLs and mobile toolbar scrolling.
+The real authoring lifecycle separately exercises saved previews, publication,
+unpublication and confirmed deletion. Unit checks verify new toolbar markup and
+that the public render pipeline preserves underline, heading 4, line breaks and
+horizontal rules.

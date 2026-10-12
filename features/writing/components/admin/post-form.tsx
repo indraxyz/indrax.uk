@@ -13,6 +13,17 @@ import {
   type ReactNode,
 } from "react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { PostStatusDialog } from "./post-status-dialog"
 import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
 import { WRITING_CONFIG } from "@/features/writing/config"
@@ -28,6 +39,7 @@ import {
 import {
   createPostFormFields,
   postFormSnapshot,
+  reconcilePostStatus,
   type PostFormFields,
 } from "@/features/writing/utils/post-form-state"
 import { slugify } from "@/features/writing/utils/slug"
@@ -48,6 +60,8 @@ interface PostFormProps {
     form: ReactNode
     saveButton: ReactNode
     onDeleted: () => void
+    hasUnsavedChanges: boolean
+    isSaving: boolean
   }) => ReactNode
 }
 
@@ -108,6 +122,8 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   const [persistedId, setPersistedId] = useState(post?.id)
   const saving = useRef(false)
   const syncedStatus = useRef(post?.status)
+  const [coverRemovalOpen, setCoverRemovalOpen] = useState(false)
+  const [statusConfirmationOpen, setStatusConfirmationOpen] = useState(false)
   const [result, setResult] = useState<ActionResult | null>(null)
   // Restore normalized input selection in the same commit, before another
   // keystroke. Animation-frame callbacks can run after subsequent typing.
@@ -147,14 +163,22 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   }
   const persistedStatus = post?.status
   useEffect(() => {
-    if (!dirty && !pending && persistedStatus && persistedStatus !== syncedStatus.current) {
+    if (!pending && persistedStatus && persistedStatus !== syncedStatus.current) {
       syncedStatus.current = persistedStatus
-      currentFields.current = { ...currentFields.current, status: persistedStatus }
-      savedFieldsRef.current = { ...savedFieldsRef.current, status: persistedStatus }
+      // A menu status request can finish while the author edits another field.
+      // Acknowledge its persisted status without losing those edits or an
+      // independently selected status, so Save cannot silently reverse it.
+      const reconciled = reconcilePostStatus(
+        currentFields.current,
+        savedFieldsRef.current,
+        persistedStatus
+      )
+      currentFields.current = reconciled.current
+      savedFieldsRef.current = reconciled.saved
       setFields(currentFields.current)
       setSavedFields(savedFieldsRef.current)
     }
-  }, [persistedStatus, dirty, pending])
+  }, [persistedStatus, pending])
 
   const {
     title,
@@ -256,6 +280,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
         })
         setResult(outcome)
         if (!outcome.ok) return
+        setStatusConfirmationOpen(false)
         savedFieldsRef.current = submitted
         setSavedFields(submitted)
         if (outcome.postId) {
@@ -286,12 +311,13 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   const saveButton = (
     <button
       type="submit"
+      data-slot="button"
       form={formId}
       disabled={pending || (!dirty && Boolean(persistedId))}
       aria-describedby={saveStatusId}
       className={cn(
         controlClassNames,
-        "relative min-h-11 whitespace-nowrap px-3 py-2 disabled:opacity-60"
+        "variant-primary relative min-h-11 justify-center whitespace-nowrap bg-[var(--variant-bg)] px-3 py-2 text-[var(--variant-fg)] hover:bg-[var(--variant-hover)] disabled:opacity-60"
       )}
     >
       {pending ? (
@@ -315,7 +341,14 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault()
-        submit()
+        const nextStatus = currentFields.current.status
+        const previousStatus = savedFieldsRef.current.status
+        if (
+          nextStatus !== previousStatus &&
+          (nextStatus === "published" || previousStatus === "published")
+        ) {
+          setStatusConfirmationOpen(true)
+        } else submit()
       }}
     >
       <span id={saveStatusId} role="status" aria-live="polite" className="sr-only">
@@ -327,7 +360,38 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
               ? "All changes saved"
               : "No unsaved changes"}
       </span>
-      {result?.ok === false && result.message && (
+      <PostStatusDialog
+        open={statusConfirmationOpen}
+        onOpenChange={setStatusConfirmationOpen}
+        publishing={status === "published"}
+        title={title.trim() || "Untitled post"}
+        pending={pending}
+        error={result?.ok === false ? result.message : null}
+        onConfirm={submit}
+      />
+      <AlertDialog open={coverRemovalOpen} onOpenChange={setCoverRemovalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove cover image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The cover will be removed from the post when you save. The stored image will be kept.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                selectCover(null)
+                updateFields({ coverUrl: "", coverAlt: "" })
+                setCoverRemovalOpen(false)
+              }}
+            >
+              Remove cover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {result?.ok === false && result.message && !statusConfirmationOpen && (
         <p
           role="alert"
           className="flex items-center gap-2 border-2 border-destructive bg-[var(--component-variant-destructive-soft)] px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-destructive"
@@ -560,13 +624,10 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
                   type="button"
                   aria-label="Remove cover image"
                   title="Remove cover image"
-                  onClick={() => {
-                    selectCover(null)
-                    updateFields({ coverUrl: "", coverAlt: "" })
-                  }}
+                  onClick={() => setCoverRemovalOpen(true)}
                   className={cn(
                     controlClassNames,
-                    "absolute right-2 top-2 min-h-11 min-w-11 bg-card p-2"
+                    "absolute right-2 top-2 h-11 w-11 shrink-0 justify-center bg-card p-0"
                   )}
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -575,7 +636,12 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
             )}
             {selectedCover && (
               <p role="status" className="break-words text-xs font-medium text-muted-foreground">
-                {selectedCover.name} — uploads when you save.
+                Selected: {selectedCover.name}
+              </p>
+            )}
+            {coverUploadsConfigured && (
+              <p className="text-xs font-medium text-muted-foreground">
+                Cover changes take effect when you save the post.
               </p>
             )}
             {!coverUploadsConfigured && (
@@ -619,6 +685,8 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   return children({
     form,
     saveButton,
+    hasUnsavedChanges: dirty,
+    isSaving: pending,
     onDeleted: () => {
       savedFieldsRef.current = currentFields.current
       setSavedFields(currentFields.current)

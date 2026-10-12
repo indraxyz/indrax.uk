@@ -1,3 +1,4 @@
+import { ButtonGroup } from "@/components/ui/button-group"
 import { AdminShell } from "@/admin/components/layout/admin-shell"
 import { PostForm } from "@/features/writing/components/admin/post-form"
 import { useAdminSession } from "@/admin/auth/session"
@@ -9,7 +10,7 @@ export function Component() {
         <AdminShell
           title="New post"
           backLink={{ href: "/admin/posts", label: "Posts" }}
-          actions={saveButton}
+          actions={<ButtonGroup aria-label="Post actions">{saveButton}</ButtonGroup>}
         >
           {form}
         </AdminShell>
