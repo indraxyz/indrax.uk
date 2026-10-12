@@ -78,6 +78,12 @@ npx playwright install chromium
 real remote resources. Integration tests are excluded from ordinary `check` and
 require `TEST_DATABASE_URL` explicitly; there is no fallback to a stored database URL.
 
+For author configuration checks, authenticate API requests explicitly with the
+minted fixture cookie and assert the returned author before reading settings.
+Playwright's HTTP request client does not share Chromium's secure-cookie exception
+for loopback URLs; an anonymous response omits those settings. Accessibility scans
+of animated sheets wait for the opening transition to finish before testing contrast.
+
 ## Disposable database setup
 
 Never use production or a shared staging database. The session/integration helpers

@@ -55,7 +55,12 @@ for (const theme of ["light", "dark"] as const) {
         )
         await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
         await page.getByRole("button", { name: "Filters and sort" }).click()
-        await expect(page.getByRole("dialog", { name: "Filters and sort" })).toBeVisible()
+        const sheet = page.getByRole("dialog", { name: "Filters and sort" })
+        await expect(sheet).toBeVisible()
+        // Opacity during the opening transition is not the final contrast.
+        await sheet.evaluate(async (element) => {
+          await Promise.all(element.getAnimations().map((animation) => animation.finished))
+        })
         const results = await scan(page)
         expect(
           results.violations

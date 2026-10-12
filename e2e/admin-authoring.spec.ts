@@ -8,6 +8,7 @@ import {
   SEEDED_SERIES_TITLE,
 } from "./support/constants"
 import { mintAuthorSession, revokeAuthorSession, SESSION_COOKIE_SECURE } from "./support/session"
+import type { AuthorSession } from "@/features/writing/api/client"
 
 /**
  * The authoring loop, driven as the author.
@@ -38,11 +39,13 @@ test.describe("authoring", () => {
 
   let context: BrowserContext
   let authorId = ""
+  let authorCookie = ""
   let postPath = ""
 
   test.beforeAll(async ({ browser }) => {
     const { cookieValue, userId } = await mintAuthorSession()
     authorId = userId
+    authorCookie = cookieValue
 
     context = await browser.newContext()
     await context.addCookies([
@@ -59,6 +62,20 @@ test.describe("authoring", () => {
       },
     ])
   })
+
+  async function authorSettings(): Promise<AuthorSession> {
+    // APIRequestContext does not share Chromium's secure-cookie exception for
+    // HTTP loopback. Send this local fixture explicitly and reject anonymous
+    // responses before using deployment settings to select a test case.
+    const response = await context.request.get(`${E2E_BASE_URL}/api/admin/session`, {
+      headers: { Cookie: `${SESSION_COOKIE_SECURE}=${authorCookie}` },
+    })
+    expect(response.status()).toBe(200)
+    const settings = await response.json()
+    expect(settings.author?.id).toBe(authorId)
+    expect(typeof settings.coverUploadsConfigured).toBe("boolean")
+    return settings
+  }
 
   test.afterAll(async () => {
     try {
@@ -290,8 +307,7 @@ test.describe("authoring", () => {
   })
 
   test("disables cover controls when media storage is unavailable", async () => {
-    const session = await context.request.get(`${E2E_BASE_URL}/api/admin/session`)
-    const settings = await session.json()
+    const settings = await authorSettings()
     test.skip(settings.coverUploadsConfigured, "needs unavailable media storage")
     const page = await context.newPage()
     await page.goto("/admin/new")
@@ -334,8 +350,7 @@ test.describe("authoring", () => {
   })
 
   test("enables cover controls when media storage is configured", async () => {
-    const session = await context.request.get(`${E2E_BASE_URL}/api/admin/session`)
-    const settings = await session.json()
+    const settings = await authorSettings()
     test.skip(!settings.coverUploadsConfigured, "needs the local R2 binding and a media origin")
     const page = await context.newPage()
     await page.goto("/admin/new")
@@ -508,7 +523,7 @@ test.describe("authoring", () => {
   })
 
   test("preserves an existing cover when saving with storage unavailable", async () => {
-    const settings = await (await context.request.get(`${E2E_BASE_URL}/api/admin/session`)).json()
+    const settings = await authorSettings()
     test.skip(settings.coverUploadsConfigured, "needs media storage unavailable")
     const databaseUrl = process.env.DATABASE_URL!
     expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(databaseUrl).hostname)
@@ -542,7 +557,7 @@ test.describe("authoring", () => {
     const slug = await page.getByLabel("Slug").inputValue()
     await expect(page.locator(".ProseMirror table tr")).toHaveCount(4)
     await expect(page.locator(".ProseMirror table tr").first().locator("th, td")).toHaveCount(4)
-    const settings = await (await context.request.get(`${E2E_BASE_URL}/api/admin/session`)).json()
+    const settings = await authorSettings()
     if (!settings.coverUploadsConfigured) {
       await expect(page.getByRole("group", { name: "Cover image", exact: true })).toHaveAttribute(
         "disabled",
