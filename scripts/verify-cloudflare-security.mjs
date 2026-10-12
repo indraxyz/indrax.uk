@@ -25,6 +25,7 @@ export async function verifyCloudflareSecurity(target, fetcher = fetch) {
       ...options,
     })
   if (target === "dev") {
+    let applicationAudience
     for (const url of [
       "https://dev.indrax.uk/",
       "https://dev.indrax.uk/robots.txt",
@@ -36,6 +37,10 @@ export async function verifyCloudflareSecurity(target, fetcher = fetch) {
       const response = await read(url, { method: "HEAD" })
       if (!isAccessRedirect(response))
         throw new Error(`Access is not denying ${url}: ${response.status}`)
+      const audience = new URL(response.headers.get("location")).searchParams.get("kid")
+      if (!audience || (applicationAudience && audience !== applicationAudience))
+        throw new Error(`Dev site and cover media must share one Access application: ${url}`)
+      applicationAudience = audience
     }
   } else {
     const page = await read("https://indrax.uk/", { method: "HEAD" })

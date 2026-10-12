@@ -24,3 +24,26 @@ it("fails when a dev API or static/media URL bypasses Access", async () => {
   fetcher.mockResolvedValueOnce(new Response(null, { status: 200 }))
   await expect(verifyCloudflareSecurity("dev", fetcher)).rejects.toThrow("Access is not denying")
 })
+
+it.each(["site-app", "media-app", null])(
+  "checks the cover media shares the site's Access audience: %s",
+  async (mediaAudience) => {
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      const host = new URL(url).hostname
+      const location = new URL(
+        `https://cool-star-7099.cloudflareaccess.com/cdn-cgi/access/login/${host}`
+      )
+      const audience = host === "dev-media.indrax.uk" ? mediaAudience : "site-app"
+      if (audience) location.searchParams.set("kid", audience)
+      return new Response(null, { status: 302, headers: { location: location.href } })
+    })
+    if (mediaAudience === "site-app") {
+      await expect(verifyCloudflareSecurity("dev", fetcher)).resolves.toBeUndefined()
+      expect(fetcher).toHaveBeenCalledTimes(6)
+    } else
+      await expect(verifyCloudflareSecurity("dev", fetcher)).rejects.toThrow(
+        "must share one Access application"
+      )
+  }
+)
