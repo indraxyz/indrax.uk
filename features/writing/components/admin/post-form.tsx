@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { PostStatusDialog } from "./post-status-dialog"
 import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
@@ -607,77 +608,89 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
             <FieldError id="excerpt-error" messages={result?.errors?.excerpt} />
           </div>
 
-          <fieldset
+          <FieldSet
             disabled={!coverUploadsConfigured || pending}
             aria-describedby={!coverUploadsConfigured ? "cover-storage-help" : undefined}
-            className="space-y-1.5 disabled:[&_input]:opacity-60 disabled:[&_button]:opacity-60"
+            className="min-w-0 border-2 border-border p-3 disabled:[&_input]:opacity-60 disabled:[&_button]:opacity-60"
           >
-            <legend className={labelClasses}>Cover image</legend>
-            {coverPreview && (
-              <div className="relative w-full border-2 border-border bg-card">
-                <img
-                  src={coverPreview}
-                  alt={coverAlt || "Cover preview"}
-                  className="block h-auto w-full"
+            <FieldLegend variant="label" className={labelClasses}>
+              Cover image
+            </FieldLegend>
+            <FieldGroup className="min-w-0 gap-4">
+              <Field className="gap-1.5">
+                {coverPreview && (
+                  <div className="relative w-full border-2 border-border bg-card">
+                    <img
+                      src={coverPreview}
+                      alt={coverAlt || "Cover preview"}
+                      className="block h-auto w-full"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove cover image"
+                      title="Remove cover image"
+                      onClick={() => setCoverRemovalOpen(true)}
+                      className={cn(
+                        controlClassNames,
+                        "absolute right-2 top-2 h-11 w-11 shrink-0 justify-center bg-card p-0"
+                      )}
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                )}
+                {selectedCover && (
+                  <p
+                    role="status"
+                    className="break-words text-xs font-medium text-muted-foreground"
+                  >
+                    Selected: {selectedCover.name}
+                  </p>
+                )}
+                {coverUploadsConfigured && (
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Cover changes take effect when you save the post.
+                  </p>
+                )}
+                {!coverUploadsConfigured && (
+                  <p id="cover-storage-help" className="text-xs font-medium text-muted-foreground">
+                    Cover images are unavailable until media storage is configured. Existing cover
+                    details are kept when you save.
+                  </p>
+                )}
+              </Field>
+              <Field className="gap-1.5">
+                <FieldLabel htmlFor="coverUrl" className={labelClasses}>
+                  Cover image URL
+                </FieldLabel>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                  <input
+                    id="coverUrl"
+                    {...describedBy("coverUrl", result?.errors?.coverUrl)}
+                    value={coverUrl}
+                    onChange={(event) => setCoverUrl(event.target.value)}
+                    placeholder="https://..."
+                    className={cn(fieldClasses, "min-h-11 min-w-0 font-mono text-xs")}
+                  />
+                  <ImageUpload onSelected={(file) => selectCover(file)} />
+                </div>
+                <FieldError id="coverUrl-error" messages={result?.errors?.coverUrl} />
+              </Field>
+              <Field className="gap-1.5">
+                <FieldLabel htmlFor="coverAlt" className={labelClasses}>
+                  Cover alt text
+                </FieldLabel>
+                <input
+                  id="coverAlt"
+                  {...describedBy("coverAlt", result?.errors?.coverAlt)}
+                  value={coverAlt}
+                  onChange={(event) => setCoverAlt(event.target.value)}
+                  className={fieldClasses}
                 />
-                <button
-                  type="button"
-                  aria-label="Remove cover image"
-                  title="Remove cover image"
-                  onClick={() => setCoverRemovalOpen(true)}
-                  className={cn(
-                    controlClassNames,
-                    "absolute right-2 top-2 h-11 w-11 shrink-0 justify-center bg-card p-0"
-                  )}
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                </button>
-              </div>
-            )}
-            {selectedCover && (
-              <p role="status" className="break-words text-xs font-medium text-muted-foreground">
-                Selected: {selectedCover.name}
-              </p>
-            )}
-            {coverUploadsConfigured && (
-              <p className="text-xs font-medium text-muted-foreground">
-                Cover changes take effect when you save the post.
-              </p>
-            )}
-            {!coverUploadsConfigured && (
-              <p id="cover-storage-help" className="text-xs font-medium text-muted-foreground">
-                Cover images are unavailable until media storage is configured. Existing cover
-                details are kept when you save.
-              </p>
-            )}
-            <label htmlFor="coverUrl" className={labelClasses}>
-              Cover image URL
-            </label>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-              <input
-                id="coverUrl"
-                {...describedBy("coverUrl", result?.errors?.coverUrl)}
-                value={coverUrl}
-                onChange={(event) => setCoverUrl(event.target.value)}
-                placeholder="https://..."
-                className={cn(fieldClasses, "min-h-11 min-w-0 font-mono text-xs")}
-              />
-              <ImageUpload onSelected={(file) => selectCover(file)} />
-            </div>
-            <FieldError id="coverUrl-error" messages={result?.errors?.coverUrl} />
-
-            <label htmlFor="coverAlt" className={cn(labelClasses, "block pt-2")}>
-              Cover alt text
-            </label>
-            <input
-              id="coverAlt"
-              {...describedBy("coverAlt", result?.errors?.coverAlt)}
-              value={coverAlt}
-              onChange={(event) => setCoverAlt(event.target.value)}
-              className={fieldClasses}
-            />
-            <FieldError id="coverAlt-error" messages={result?.errors?.coverAlt} />
-          </fieldset>
+                <FieldError id="coverAlt-error" messages={result?.errors?.coverAlt} />
+              </Field>
+            </FieldGroup>
+          </FieldSet>
         </div>
       </div>
     </form>

@@ -1,6 +1,13 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
+const excerpt =
+  "An archive excerpt with the same stored ellipsis as writing cards. ".repeat(3) + "..."
+const mediaOrigin = process.env.NEXT_PUBLIC_MEDIA_ORIGIN?.replace(/\/$/, "")
+const coverUrl = mediaOrigin
+  ? `${mediaOrigin}/covers/550e8400-e29b-41d4-a716-446655440000.png`
+  : null
+
 /** These authenticated browser fixtures never create sessions or write real posts. */
 async function adminArchive(page: Page) {
   await page.context().addCookies([
@@ -42,6 +49,9 @@ async function adminArchive(page: Page) {
                   id: `admin-fixture-${number}`,
                   slug: `admin-fixture-${number}`,
                   title: `Admin archive fixture ${number}`,
+                  excerpt,
+                  coverUrl,
+                  coverAlt: "Archive cover",
                   status: params.get("status") === "published" ? "published" : "draft",
                   publishedAt: null,
                   updatedAt: "2026-10-10T00:00:00Z",
@@ -73,6 +83,53 @@ async function filters(page: Page) {
 
 test.describe("admin post discovery", () => {
   test.beforeEach(async ({ page }) => adminArchive(page))
+
+  for (const width of [320, 1280]) {
+    test(`shows responsive card excerpts and configured left covers at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      if (coverUrl)
+        await page.route(coverUrl, (route) =>
+          route.fulfill({
+            contentType: "image/png",
+            body: Buffer.from(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5XsAAAAASUVORK5CYII=",
+              "base64"
+            ),
+          })
+        )
+      await page.goto("/admin/posts")
+      const title = page.getByRole("link", { name: "Admin archive fixture 1", exact: true })
+      const card = page.getByRole("listitem").filter({ has: title })
+      const summary = card.getByText(excerpt, { exact: true })
+      await expect(summary).toBeVisible()
+      expect(await summary.evaluate((element) => getComputedStyle(element).webkitLineClamp)).toBe(
+        "2"
+      )
+      if (coverUrl) {
+        const image = card.getByRole("img", { name: "Archive cover", exact: true })
+        await expect(image).toBeVisible()
+        await expect
+          .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+          .toBe(1)
+        const imageBox = await image.boundingBox()
+        const titleBox = await title.boundingBox()
+        const cardBox = await card.boundingBox()
+        expect(Math.abs(imageBox!.height - (cardBox!.height - 4))).toBeLessThan(1)
+        expect(imageBox!.x - cardBox!.x).toBeCloseTo(2, 0)
+        expect(imageBox!.y - cardBox!.y).toBeCloseTo(2, 0)
+        expect(imageBox!.x + imageBox!.width).toBeLessThan(titleBox!.x)
+      } else await expect(card.locator("img")).toHaveCount(0)
+      await expect(
+        card.getByRole("link", { name: "Edit Admin archive fixture 1", exact: true })
+      ).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+      await card.screenshot({ path: `test-results/admin-post-card-${width}.png` })
+    })
+  }
 
   test("searches private posts and applies status, tags, date, duration, and sort together", async ({
     page,

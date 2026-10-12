@@ -74,6 +74,12 @@ pages or arbitrary filtered combinations.
 
 ## Admin posts discovery parity
 
+Admin post cards show a trusted cover thumbnail on the left, when present, and
+the same stored excerpt as public writing cards, including generated ellipses.
+Excerpts are clamped to two visible lines; narrow cards wrap their actions below
+the content. Summary queries include cover URL/alt and excerpt without selecting
+article bodies or adding database round trips.
+
 `/admin/posts` uses the same search, filter-sheet, sort and URL-state contract as
 `/writing`, with an additional `status` option: `any`, `draft`, `published` or
 `archived`. Its default sort is `updated` to retain the existing recent-activity
@@ -217,10 +223,13 @@ remains available for dirty forms. Active actions and saves disable competing
 controls. Copy feedback stays on the copy item; clipboard refusal is reported
 without exposing a preview-URL field. New and edit forms share the same status
 confirmation component. Cover changes have an explicit save-time notice.
+The cover preview, image URL/upload picker and alt text are grouped in one
+bordered fieldset using the shared shadcn field components on both new and edit
+forms. The group retains native disabled semantics and individual error labels.
 
 The primary Tiptap toolbar is a single horizontally scrollable row with 44px
-centered controls. Paragraph, underline, headings 2–4, lists, links, quote, code,
-tables, horizontal rule, line break, clear formatting, undo and redo use the
+centered controls. Undo and Redo lead the row on the left. Paragraph, underline, headings 2–4, lists, links, quote, code,
+tables, horizontal rule, line break, and clear formatting use the
 existing schema and command availability. The public sanitizer retains inert
 underline markup, so formatting remains consistent after publishing. The admin
 filter sheet omits redundant visible introductory, sort and tag explanations;

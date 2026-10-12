@@ -179,14 +179,59 @@ test("keeps the main toolbar in one scrollable row on mobile and Save first in t
   await page.setViewportSize({ width: 390, height: 844 })
   await editorFixture(page)
   const toolbar = page.getByRole("toolbar", { name: "Formatting", exact: true })
+  await expect(toolbar.getByRole("button").nth(0)).toHaveAttribute("aria-label", "Undo")
+  await expect(toolbar.getByRole("button").nth(1)).toHaveAttribute("aria-label", "Redo")
+  await expect(toolbar.getByRole("button", { name: "Undo", exact: true })).toBeInViewport()
+  await expect(toolbar.getByRole("button", { name: "Redo", exact: true })).toBeInViewport()
   expect(await toolbar.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true)
   const tops = await toolbar
     .getByRole("button")
     .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().top))
   expect(new Set(tops).size).toBe(1)
-  await toolbar.getByRole("button", { name: "Redo", exact: true }).scrollIntoViewIfNeeded()
+  await toolbar
+    .getByRole("button", { name: "Clear formatting", exact: true })
+    .scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   const actions = page.getByRole("group", { name: "Post actions", exact: true })
   await expect(actions.getByRole("button").first()).toHaveText("Saved")
   await actions.screenshot({ path: "test-results/post-actions-mobile.png" })
 })
+
+for (const width of [320, 1280]) {
+  test(`groups the cover preview, URL and alt text on new/edit forms at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    page.on("dialog", (dialog) => void dialog.accept())
+    const { writes } = await editorFixture(page)
+    const imageUrl = "https://media.indrax.uk/covers/550e8400-e29b-41d4-a716-446655440000.png"
+    await page.route(imageUrl, (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5XsAAAAASUVORK5CYII=",
+          "base64"
+        ),
+      })
+    )
+    for (const path of [`/admin/edit/${id}`, "/admin/new"]) {
+      await page.goto(path)
+      await expect(page).toHaveURL(new RegExp(`${path}$`))
+      const cover = page.getByRole("group", { name: "Cover image", exact: true })
+      await expect(cover).toHaveAttribute("data-slot", "field-set")
+      const fields = cover.locator('[data-slot="field-group"]')
+      await fields.getByLabel("Cover image URL", { exact: true }).fill(imageUrl)
+      await fields.getByLabel("Cover alt text", { exact: true }).fill("Cover field group preview")
+      const preview = fields.getByRole("img", { name: "Cover field group preview", exact: true })
+      await expect(preview).toBeVisible()
+      await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1)
+      await expect(fields.locator('[data-slot="field"]')).toHaveCount(3)
+      await expect(cover).toContainText("Cover changes take effect when you save the post.")
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+      expect(writes).toHaveLength(0)
+    }
+    await page.screenshot({ path: `test-results/cover-field-group-${width}.png`, fullPage: true })
+  })
+}

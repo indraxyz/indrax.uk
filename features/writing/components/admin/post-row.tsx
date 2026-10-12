@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { Badge } from "@/components/ui/badge"
 import type { VisualVariant } from "@/components/ui/variants"
 import { WRITING_CONFIG } from "@/features/writing/config"
+import { PostCover } from "@/features/writing/components/post-cover"
 import type { AdminPostSummary, PostStatus } from "@/features/writing/types"
 import { formatDate } from "@/lib/utils"
 
@@ -18,53 +19,64 @@ const DATE_FORMAT: Intl.DateTimeFormatOptions = { year: "numeric", month: "short
 
 export function PostRow({ post }: { post: AdminPostSummary }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-4 border-2 border-border bg-card px-4 py-3">
-      <div className="min-w-0 space-y-1.5">
-        <div className="space-y-2">
-          <Badge variant={STATUS_TONE[post.status]}>{post.status}</Badge>
-          <div>
-            <Link
-              to={`/admin/edit/${post.id}`}
-              className="text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {post.title}
-            </Link>
+    <li className="flex items-stretch border-2 border-border bg-card">
+      <PostCover
+        post={post}
+        className="relative w-20 shrink-0 self-stretch overflow-hidden border-b-0 border-r-2 border-border sm:w-32 [&_img]:absolute [&_img]:inset-0 [&_img]:h-full [&_img]:w-full [&_img]:aspect-auto"
+      />
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">
+          <div className="space-y-2">
+            <Badge variant={STATUS_TONE[post.status]}>{post.status}</Badge>
+            <div>
+              <Link
+                to={`/admin/edit/${post.id}`}
+                className="break-words text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {post.title}
+              </Link>
+            </div>
           </div>
+
+          {post.excerpt && (
+            <p className="line-clamp-2 break-words text-sm font-medium leading-relaxed text-foreground">
+              {post.excerpt}
+            </p>
+          )}
+
+          <p className="break-words text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+            {post.publishedAt
+              ? `Published ${formatDate(post.publishedAt, DATE_FORMAT)}`
+              : "Never published"}
+            {" · "}
+            Edited {formatDate(post.updatedAt, DATE_FORMAT)}
+            {post.tags.length > 0 && ` · ${post.tags.map((tag) => tag.name).join(", ")}`}
+          </p>
         </div>
-
-        <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-          {post.publishedAt
-            ? `Published ${formatDate(post.publishedAt, DATE_FORMAT)}`
-            : "Never published"}
-          {" · "}
-          Edited {formatDate(post.updatedAt, DATE_FORMAT)}
-          {post.tags.length > 0 && ` · ${post.tags.map((tag) => tag.name).join(", ")}`}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Link
-          to={`/admin/edit/${post.id}`}
-          className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label={`Edit ${post.title}`}
-        >
-          <PencilLine className="h-4 w-4" aria-hidden />
-        </Link>
-
-        {/* Only published posts have a public page to look at; linking a draft
-            would be a link to a 404. */}
-        {post.status === "published" && (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link
-            to={`${WRITING_CONFIG.basePath}/${post.slug}`}
-            reloadDocument
-            target="_blank"
-            rel="noopener noreferrer"
+            to={`/admin/edit/${post.id}`}
             className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label={`View ${post.title} on the site`}
+            aria-label={`Edit ${post.title}`}
           >
-            <ExternalLink className="h-4 w-4" aria-hidden />
+            <PencilLine className="h-4 w-4" aria-hidden />
           </Link>
-        )}
+
+          {/* Only published posts have a public page to look at; linking a draft
+            would be a link to a 404. */}
+          {post.status === "published" && (
+            <Link
+              to={`${WRITING_CONFIG.basePath}/${post.slug}`}
+              reloadDocument
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label={`View ${post.title} on the site`}
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </Link>
+          )}
+        </div>
       </div>
     </li>
   )

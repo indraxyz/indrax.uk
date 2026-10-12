@@ -58,7 +58,18 @@ it("rejects malformed edit identifiers without a SQL request", async () => {
 
 it("reads admin summaries and tags in one request without article bodies", async () => {
   const query = database([
-    [ID, "draft", "Draft", "draft", null, date, tags.map((tag) => [Object.values(tag)])],
+    [
+      ID,
+      "draft",
+      "Draft",
+      "Excerpt...",
+      "/cover.png",
+      "Cover",
+      "draft",
+      null,
+      date,
+      tags.map((tag) => [Object.values(tag)]),
+    ],
   ])
   const result = await listAllPosts()
   expect(query).toHaveBeenCalledTimes(1)
@@ -71,6 +82,9 @@ it("reads admin summaries and tags in one request without article bodies", async
       id: ID,
       slug: "draft",
       title: "Draft",
+      excerpt: "Excerpt...",
+      coverUrl: "/cover.png",
+      coverAlt: "Cover",
       status: "draft",
       publishedAt: null,
       updatedAt: date,
@@ -199,7 +213,18 @@ function archiveDatabase(results: unknown[][][]) {
   mocks.getDb.mockReturnValue(drizzle({ client: { query, transaction } as never, schema }))
   return { query, transaction }
 }
-const adminCard = [ID, "draft", "Draft", "draft", null, date, tags]
+const adminCard = [
+  ID,
+  "draft",
+  "Draft",
+  "Excerpt...",
+  "/cover.png",
+  "Cover",
+  "draft",
+  null,
+  date,
+  tags,
+]
 
 it("batches private archive count and summaries, includes drafts and excludes bodies", async () => {
   const db = archiveDatabase([[[11]], [adminCard]])
@@ -207,7 +232,17 @@ it("batches private archive count and summaries, includes drafts and excludes bo
     total: 11,
     page: 2,
     pageCount: 2,
-    posts: [expect.objectContaining({ id: ID, status: "draft", tags, publishedAt: null })],
+    posts: [
+      expect.objectContaining({
+        id: ID,
+        status: "draft",
+        excerpt: "Excerpt...",
+        coverUrl: "/cover.png",
+        coverAlt: "Cover",
+        tags,
+        publishedAt: null,
+      }),
+    ],
   })
   expect(mocks.requireAuthor).toHaveBeenCalledOnce()
   expect(db.transaction).toHaveBeenCalledOnce()
