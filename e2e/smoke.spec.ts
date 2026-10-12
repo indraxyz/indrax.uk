@@ -261,12 +261,13 @@ test.describe("the public pages", () => {
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Deployment", exact: true }) })
     await expect(data.getByText(/Cloudflare KV \/ D1 \/ R2/)).toBeVisible()
-    await expect(data.getByText(/R2 stores article media/)).toBeVisible()
-    await expect(deployment).not.toContainText("R2")
+    await expect(data.getByText(/R2 buckets store article media/)).toBeVisible()
+    await expect(deployment).toContainText("KV/D1/R2 bindings")
     const auth = page.getByRole("region", { name: "Author access", exact: true })
     await expect(auth).toContainText("Better Auth handles GitHub OAuth sign-in, sign-out")
     await expect(auth).toContainText("database-backed sessions through the Drizzle adapter")
     await expect(auth).toContainText("numeric GitHub account allowlist")
+    await auth.getByRole("button", { name: "Why Author access", exact: true }).click()
     await expect(auth).toContainText("database sessions can be revoked")
     const local = page.getByRole("region", { name: "Local development", exact: true })
     await expect(local).toContainText("npm run dev")
@@ -288,7 +289,7 @@ test.describe("the public pages", () => {
       "Deployment",
       "Measurement & monitoring",
     ])
-    await expect(cards.getByText("Why:", { exact: true })).toHaveCount(10)
+    await expect(cards.getByRole("button", { name: /^Why / })).toHaveCount(10)
     const resources = page.getByRole("region", { name: "Sources", exact: true })
     for (const [name, href] of [
       ["Source on GitHub", "https://github.com/indraxyz/indrax.uk"],

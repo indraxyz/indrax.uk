@@ -106,6 +106,21 @@ function Toolbar({ editor }: { editor: Editor }) {
         className="flex min-w-0 flex-nowrap gap-1 overflow-x-auto overscroll-x-contain p-2"
       >
         <Tool
+          label="Undo"
+          icon={<Undo2 className={icon} />}
+          disabled={!editor.can().undo()}
+          onClick={() => editor.chain().focus().undo().run()}
+        />
+        <Tool
+          label="Redo"
+          icon={<Redo2 className={icon} />}
+          disabled={!editor.can().redo()}
+          onClick={() => editor.chain().focus().redo().run()}
+        />
+
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
+
+        <Tool
           label="Bold"
           icon={<Bold className={icon} />}
           active={editor.isActive("bold")}
@@ -269,21 +284,6 @@ function Toolbar({ editor }: { editor: Editor }) {
           icon={<Eraser className={icon} />}
           disabled={!editor.can().chain().unsetAllMarks().clearNodes().run()}
           onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
-        />
-
-        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
-
-        <Tool
-          label="Undo"
-          icon={<Undo2 className={icon} />}
-          disabled={!editor.can().undo()}
-          onClick={() => editor.chain().focus().undo().run()}
-        />
-        <Tool
-          label="Redo"
-          icon={<Redo2 className={icon} />}
-          disabled={!editor.can().redo()}
-          onClick={() => editor.chain().focus().redo().run()}
         />
       </div>
       {editor.isActive("table") && (

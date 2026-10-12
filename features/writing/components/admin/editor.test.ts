@@ -50,6 +50,8 @@ describe("PostEditor toolbar", () => {
     expect(html).not.toContain('aria-label="Heading 1"')
 
     const buttons = html.match(/<button\b[^>]*>/g) ?? []
+    expect(buttons[0]).toContain('aria-label="Undo"')
+    expect(buttons[1]).toContain('aria-label="Redo"')
     expect(buttons.length).toBeGreaterThan(0)
     for (const button of buttons) {
       expect(button).toContain('type="button"')

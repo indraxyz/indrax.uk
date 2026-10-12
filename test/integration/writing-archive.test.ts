@@ -50,6 +50,8 @@ beforeAll(async () => {
             ? "alpha Archivefixture"
             : `Middle Archivefixture ${index}`,
       excerpt: index === 2 ? "Uniqueexcerpt" : null,
+      coverUrl: index === 2 ? "https://media.indrax.uk/covers/archive-fixture.png" : null,
+      coverAlt: index === 2 ? "Archive fixture cover" : null,
       status:
         index === 5
           ? ("draft" as const)
@@ -173,6 +175,11 @@ describe("writing archive against PostgreSQL", () => {
     })
     expect(result.total).toBe(8)
     expect(result.posts.map((post) => post.id)).toEqual(ids)
+    expect(result.posts.find((post) => post.id === ids[2])).toMatchObject({
+      excerpt: "Uniqueexcerpt",
+      coverUrl: "https://media.indrax.uk/covers/archive-fixture.png",
+      coverAlt: "Archive fixture cover",
+    })
     expect(calls).toBe(1)
     const counts = await getAdminTagsInUse()
     expect(

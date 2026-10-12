@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   Boxes,
+  ChevronDown,
   Cloud,
   Database,
   FlaskConical,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react"
 import { pageMeta } from "@/app/routes/meta"
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { SectionHeader } from "@/components/ui/section-header"
 import { controlClassNames } from "@/components/ui/variants"
 import { PublicShell } from "@/components/layout/public-shell"
@@ -41,7 +43,7 @@ const groups = [
     detail:
       "TanStack Query manages loading, errors, a one-minute freshness window, and cache invalidation after edits. Ky sends same-origin API requests. A shared top progress bar follows route transitions and visible queries that have no data yet; an initial loading spinner and retry controls cover first visits and failed requests.",
     reason:
-      "Cached results make return visits quicker. Search, sorting, and applied tag, publication date, and read-duration filters share one archive URL. A right-hand filter sheet keeps changes together, and pagination links preserve them, while progress feedback makes waiting visible. Automatic query retries, focus refetching, and speculative link prefetching are disabled to limit repeated requests.",
+      "Cached results make return visits quicker. Search, sorting, and applied tag, publication date, and read-duration filters share one archive URL. A right-hand filter sheet keeps changes together, and pagination links preserve them, while progress feedback makes waiting visible. Automatic query retries and speculative link prefetching are disabled to limit repeated requests. Most queries do not refetch on focus; the author session is shared across admin routes for one minute and revalidates on focus or reconnect. Every private API request still checks author access.",
   },
   {
     icon: PencilLine,
@@ -57,16 +59,16 @@ const groups = [
     title: "Data",
     tools: "PostgreSQL · Drizzle ORM · Neon HTTP · Cloudflare KV / D1 / R2",
     detail:
-      "PostgreSQL stores articles, tags, series, and sessions. Drizzle and the Neon HTTP driver batch list counts and page results in one database round trip. KV caches public data and rendered articles; D1 tracks revisions for invalidation. Search uses PostgreSQL full-text indexing, and optional R2 stores article media. Private APIs and draft previews are uncached.",
+      "PostgreSQL stores articles, tags, series, and sessions. Drizzle and the Neon HTTP driver batch list counts and page results in one database round trip. KV caches public data and rendered articles; D1 tracks revisions for invalidation. Search uses PostgreSQL full-text indexing. Separate production and develop R2 buckets store article media through a Worker binding; local development uses an isolated local bucket. Cover uploads happen only on Save and share a purpose-based policy: a 5 MiB cap, allowed image formats, matching file signatures, and server-generated keys. Private APIs and draft previews are uncached.",
     reason:
       "Relational storage fits posts, tags, and sessions. Typed queries and migrations keep the schema explicit, while HTTP access suits the Worker runtime.",
   },
   {
     icon: LockKeyhole,
     title: "Author access",
-    tools: "Better Auth · GitHub OAuth",
+    tools: "Better Auth · GitHub OAuth · Cloudflare Access",
     detail:
-      "Better Auth handles GitHub OAuth sign-in, sign-out, and database-backed sessions through the Drizzle adapter. A numeric GitHub account allowlist protects the author dashboard, drafts, and media uploads. Sessions expire after seven days without a refresh, with a thirty-day absolute limit enforced by the author guard.",
+      "Better Auth handles GitHub OAuth sign-in, sign-out, and database-backed sessions through the Drizzle adapter. A numeric GitHub account allowlist protects the author dashboard, drafts, and media uploads. Sessions expire after seven days without a refresh, with a thirty-day absolute limit enforced by the author guard. Cloudflare Access protects the develop site and media hostname; production remains public. Edge rate limits run before database work, and security headers restrict scripts and image sources.",
     reason:
       "Better Auth integrates authentication with the React Router and PostgreSQL stack. GitHub sign-in reuses an existing identity without storing passwords, while database sessions can be revoked and the account allowlist keeps publishing limited to the author.",
   },
@@ -75,7 +77,7 @@ const groups = [
     title: "Local development",
     tools: "Node.js · npm · Docker Compose · PostgreSQL · Neon HTTP proxy",
     detail:
-      "npm run dev serves the public site and watches a separate admin build. Local Worker secrets, public build settings, and database tooling share .env.local. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
+      "npm run dev serves the public site and watches a separate admin build. Local cover uploads use the same Worker validation and R2 binding, with media served at /local-media. Local Worker secrets, public build settings, and database tooling share .env.local. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
     reason:
       "A local database and HTTP proxy let development and browser tests exercise the same driver as the deployed application.",
   },
@@ -93,7 +95,7 @@ const groups = [
     title: "CI/CD",
     tools: "GitHub Actions · Vite · Wrangler",
     detail:
-      "Pull requests and pushes to main or develop run formatting, linting, type checks, unit tests, production and develop builds, and browser tests against a seeded database. When deployment is enabled, passing checks deploy develop to the preview Worker and main to production using separate GitHub environments. Superseded quality checks are canceled; deployments finish in sequence for each branch.",
+      "Pull requests and pushes to main or develop run formatting, linting, type checks, unit tests, production and develop builds, database integration tests, and browser tests against a seeded database. A separate browser suite verifies local uploads against isolated R2 storage. When deployment is enabled, passing checks deploy develop to the preview Worker and main to production using separate GitHub environments. Superseded quality checks are canceled; deployments finish in sequence for each branch.",
     reason:
       "Keeping checks and deployment in one versioned workflow makes releases repeatable and requires both check and browser-test jobs to pass before deployment.",
   },
@@ -102,7 +104,7 @@ const groups = [
     title: "Deployment",
     tools: "Cloudflare Workers · React Router",
     detail:
-      "Vite builds the public SSR Worker and static admin assets. Before Wrangler uploads the generated configuration, a check verifies its Worker name, domains, site URL, and KV/D1 bindings against the intended environment. Develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV and D1 resources.",
+      "Vite builds the public SSR Worker and static admin assets. Before Wrangler uploads the generated configuration, a check verifies its Worker name, domains, site and media URLs, and KV/D1/R2 bindings against the intended environment. Develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV, D1, and R2 resources. workers.dev and preview URLs are disabled so custom-domain protections cannot be bypassed.",
     reason:
       "React Router supports server rendering for SEO and a static browser application for admin, with shared APIs on Workers.",
   },
@@ -168,8 +170,9 @@ export default function TechStackPage() {
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             One React Router application serves SEO pages, while a static client application serves
             the author dashboard. Vite packages both for Cloudflare Workers; server-side queries
-            access PostgreSQL through the Neon HTTP driver, and optional R2 storage holds article
-            media.
+            access PostgreSQL through the Neon HTTP driver, and R2 storage holds article media
+            through a Worker binding. Local media uses an isolated bucket served by the development
+            Worker.
           </p>
           <dl className="mt-5 grid gap-5 md:grid-cols-3">
             <div>
@@ -220,10 +223,23 @@ export default function TechStackPage() {
                 {tools}
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{detail}</p>
-              <p className="mt-4 border-t-2 border-border pt-4 text-sm leading-relaxed text-muted-foreground">
-                <span className="font-bold text-foreground">Why: </span>
-                {reason}
-              </p>
+              <Collapsible className="mt-4 border-t-2 border-border pt-2">
+                <CollapsibleTrigger
+                  aria-label={`Why ${groupTitle}`}
+                  className="group flex min-h-11 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  Why
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[panel-open]:rotate-180 motion-reduce:transition-none"
+                    aria-hidden
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <p className="pb-2 pt-1 text-sm leading-relaxed text-muted-foreground">
+                    {reason}
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
             </section>
           ))}
         </div>

@@ -168,6 +168,9 @@ export interface AdminPostSummary {
   id: string
   slug: string
   title: string
+  excerpt: string | null
+  coverUrl: string | null
+  coverAlt: string | null
   status: PostStatus
   publishedAt: string | null
   updatedAt: string
@@ -183,10 +186,7 @@ export interface AdminArchiveResults {
 
 /** A post as the edit form sees it. */
 export interface AdminPost extends AdminPostSummary {
-  excerpt: string | null
   content: PostDocument | null
-  coverUrl: string | null
-  coverAlt: string | null
   // The title rather than the id, because the title is what the form's text box
   // holds and what `resolveSeries` matches on.
   seriesTitle: string | null

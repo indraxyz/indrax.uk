@@ -16,9 +16,7 @@ interface PostCoverProps {
 /**
  * A post's cover image, or nothing.
  *
- * Nothing is the common case today: covers cannot be uploaded until the authoring
- * phase lands, and `isAllowedMediaUrl` returns false while no media origin is
- * configured.
+ * Missing covers and URLs outside the configured media origin render nothing.
  *
  * Native images use explicit dimensions to reserve layout space and browser-native
  * loading priorities without a server image optimizer.

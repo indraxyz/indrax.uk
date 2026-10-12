@@ -282,8 +282,22 @@ auth origins, with the fixture using the shared Playwright base URL.
 Admin action regression tests (`e2e/admin-post-actions.spec.ts`) use mocked private
 APIs and never write real posts. They verify publication confirmations for both
 menu actions and form saves, cancellation/error retries, stale-action disabling,
-copy loading/clipboard refusal, hidden preview URLs and mobile toolbar scrolling.
+copy loading/clipboard refusal, hidden preview URLs, mobile toolbar scrolling with
+Undo/Redo first, and grouped cover preview/URL/alt fields on new/edit forms at
+320px and 1280px without server writes before Save.
 The real authoring lifecycle separately exercises saved previews, publication,
 unpublication and confirmed deletion. Unit checks verify new toolbar markup and
 that the public render pipeline preserves underline, heading 4, line breaks and
 horizontal rules.
+
+Stack disclosure regressions (`e2e/stack-disclosures.spec.ts`) verify independent
+Why toggles, Enter/Space activation and focus, 320px/1280px layouts without
+horizontal overflow, reduced-motion transitions and expanded accessibility.
+The Stack smoke check keeps its implementation-content assertions and opens the
+related disclosure before checking its reason text.
+
+Admin card checks in `e2e/admin-filters.spec.ts` exercise excerpts and configured
+full-height left covers at 768px/1280px and full-width top covers at 320px,
+with two-line truncation and no horizontal
+overflow. Unit checks retain media-origin validation and absent-cover behavior;
+query tests verify cover/excerpt summaries without loading article bodies.
