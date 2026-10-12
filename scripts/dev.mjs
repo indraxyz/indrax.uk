@@ -10,7 +10,14 @@ const vite = fileURLToPath(
   )
 )
 
-await initializeLocalCache("wrangler.jsonc", process.env.CLOUDFLARE_ENV)
+const cacheConfig = process.env.CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH ?? "wrangler.jsonc"
+let hasCacheBinding = true
+if (process.env.CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH) {
+  const { unstable_readConfig } = await import("wrangler")
+  const config = unstable_readConfig({ config: cacheConfig, env: process.env.CLOUDFLARE_ENV })
+  hasCacheBinding = config.d1_databases.some(({ binding }) => binding === "NEXT_TAG_CACHE_D1")
+}
+if (hasCacheBinding) await initializeLocalCache(cacheConfig, process.env.CLOUDFLARE_ENV)
 
 // Build the independent admin into Vite's public directory for the Worker asset
 // binding, then watch it alongside the public Framework Mode dev server.

@@ -8,6 +8,19 @@ get Cloudflare's login page, not the app, its API or its robots.txt.
 Production stays public. Its controls are in the Worker: authentication, CSP and
 rate limits.
 
+## Current setup
+
+Access was configured and verified on 2026-10-12 using the existing Teams Free
+organisation. `dev.indrax.uk` and `dev-media.indrax.uk` have author-only Allow
+policies, a 24-hour session and the existing Cloudflare identity provider. No
+Bypass or Service Auth policy was added. Signed-out pages, APIs and media now
+receive Access login redirects. Run `npm run security:smoke -- dev` to check them.
+
+Dev media has its own hostname cookie. Sign in at `dev-media.indrax.uk` once if
+images cannot load after signing in to the site. See [R2 uploads](r2-uploads.md).
+The setup below is reference guidance for rebuilding or changing the application;
+the current applications already exist.
+
 ## Why the Worker has no other address
 
 Access protects a hostname. A `*.workers.dev` or preview URL for the same Worker

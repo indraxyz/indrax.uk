@@ -278,16 +278,9 @@ test.describe("authoring", () => {
   })
 
   test("disables cover controls when media storage is unavailable", async () => {
-    test.skip(
-      Boolean(
-        process.env.R2_ACCOUNT_ID &&
-        process.env.R2_ACCESS_KEY_ID &&
-        process.env.R2_SECRET_ACCESS_KEY &&
-        process.env.R2_BUCKET &&
-        process.env.NEXT_PUBLIC_MEDIA_ORIGIN
-      ),
-      "run with R2 variables explicitly empty"
-    )
+    const session = await context.request.get(`${E2E_BASE_URL}/api/admin/session`)
+    const settings = await session.json()
+    test.skip(settings.coverUploadsConfigured, "needs unavailable media storage")
     const page = await context.newPage()
     await page.goto("/admin/new")
     const cover = page.getByRole("group", { name: "Cover image", exact: true })
@@ -329,14 +322,9 @@ test.describe("authoring", () => {
   })
 
   test("enables cover controls when media storage is configured", async () => {
-    test.skip(
-      !process.env.R2_ACCOUNT_ID ||
-        !process.env.R2_ACCESS_KEY_ID ||
-        !process.env.R2_SECRET_ACCESS_KEY ||
-        !process.env.R2_BUCKET ||
-        !process.env.NEXT_PUBLIC_MEDIA_ORIGIN,
-      "run with dummy R2 settings and a valid HTTPS media origin"
-    )
+    const session = await context.request.get(`${E2E_BASE_URL}/api/admin/session`)
+    const settings = await session.json()
+    test.skip(!settings.coverUploadsConfigured, "needs the local R2 binding and a media origin")
     const page = await context.newPage()
     await page.goto("/admin/new")
     const cover = page.getByRole("group", { name: "Cover image", exact: true })

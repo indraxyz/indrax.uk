@@ -6,8 +6,14 @@ vi.mock("wrangler", () => ({ unstable_readConfig: readConfig }))
 
 const target = {
   name: "worker",
+  workers_dev: false,
+  preview_urls: false,
+  r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-prod" }],
   routes: [{ pattern: "example.test", custom_domain: true }],
-  vars: { NEXT_PUBLIC_SITE_URL: "https://example.test" },
+  vars: {
+    NEXT_PUBLIC_SITE_URL: "https://example.test",
+    NEXT_PUBLIC_MEDIA_ORIGIN: "https://media.example.test",
+  },
   kv_namespaces: [{ binding: "PUBLIC_CACHE", id: "kv-prod" }],
   d1_databases: [{ binding: "REVISIONS", database_id: "d1-prod", database_name: "revisions" }],
 }
@@ -23,6 +29,13 @@ it("accepts resolved source and generated config with the same deployment bounda
 
 it.each([
   { name: "worker-dev" },
+  { workers_dev: true },
+  { workers_dev: undefined },
+  { preview_urls: true },
+  { preview_urls: undefined },
+  { r2_buckets: [] },
+  { r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-dev" }] },
+  { vars: { ...target.vars, NEXT_PUBLIC_MEDIA_ORIGIN: "https://dev-media.example.test" } },
   { routes: [{ pattern: "dev.example.test", custom_domain: true }] },
   { vars: { NEXT_PUBLIC_SITE_URL: "https://dev.example.test" } },
   { kv_namespaces: [{ binding: "PUBLIC_CACHE", id: "kv-dev" }] },

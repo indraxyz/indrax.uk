@@ -51,7 +51,11 @@ export default defineConfig({
     {
       name: "reads",
       use: browser,
-      testIgnore: [/admin-authoring\.spec\.ts/, /admin-session\.spec\.ts/],
+      testIgnore: [
+        /admin-authoring\.spec\.ts/,
+        /admin-session\.spec\.ts/,
+        /local-uploads\.spec\.ts/,
+      ],
     },
     {
       name: "writes",

@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "npm@11.6.0",
   "scripts": {
+    "security:smoke": "node scripts/verify-cloudflare-security.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "react-router build && vite build --config vite.admin.config.ts && node scripts/assemble-build.mjs",
     "start": "node scripts/preview.mjs",
@@ -29,6 +30,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,mts,js,jsx,mjs,json,jsonc,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,mts,js,jsx,mjs,json,jsonc,css,md}\"",
     "test:e2e": "playwright test",
+    "test:e2e:uploads": "playwright test --config playwright.uploads.config.ts",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
@@ -48,7 +50,6 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/static-renderer": "^3.31.3",
-    "aws4fetch": "^1.0.20",
     "better-auth": "^1.7.6",
     "cf-workers-og": "^3.0.1",
     "class-variance-authority": "^0.7.1",

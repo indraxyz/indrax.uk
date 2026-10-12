@@ -9,9 +9,15 @@ import { publicEnvDefinitions } from "./config/public-env.ts"
 
 export default defineConfig(({ mode }) => {
   return {
+    cacheDir: process.env.INDRAX_VITE_CACHE_DIR,
     plugins: [
       adminDevAssets(),
-      cloudflare({ viteEnvironment: { name: "ssr" } }),
+      cloudflare({
+        viteEnvironment: { name: "ssr" },
+        persistState: process.env.INDRAX_VITE_PERSIST_DIR
+          ? { path: process.env.INDRAX_VITE_PERSIST_DIR }
+          : undefined,
+      }),
       tailwindcss(),
       reactRouter(),
       {

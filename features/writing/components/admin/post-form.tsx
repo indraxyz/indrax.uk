@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Save } from "lucide-react"
+import { AlertTriangle, Loader2, Save, X } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useBeforeUnload, useBlocker, useNavigate } from "react-router"
 import {
@@ -17,7 +17,7 @@ import { controlClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
-import { apiErrorMessage } from "@/lib/api-client"
+import { api, apiErrorMessage } from "@/lib/api-client"
 import type { ActionResult } from "@/features/writing/types"
 import {
   POST_STATUSES,
@@ -31,7 +31,7 @@ import {
   type PostFormFields,
 } from "@/features/writing/utils/post-form-state"
 import { slugify } from "@/features/writing/utils/slug"
-import { cn } from "@/lib/utils"
+import { cn, isAllowedMediaUrl } from "@/lib/utils"
 
 // The editor is browser-only and split from dashboard/list routes.
 const PostEditor = lazy(() => import("./editor").then((mod) => ({ default: mod.PostEditor })))
@@ -87,6 +87,15 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   const initial = createPostFormFields(post)
   const [fields, setFields] = useState(initial)
   const [savedFields, setSavedFields] = useState(initial)
+  const [selectedCover, setSelectedCover] = useState<File | null>(null)
+  const selectedCoverRef = useRef<File | null>(null)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  useEffect(() => {
+    if (!selectedCover) return
+    const url = URL.createObjectURL(selectedCover)
+    setLocalPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [selectedCover])
   const currentFields = useRef(fields)
   const slugSelection = useRef<{
     input: HTMLInputElement
@@ -112,8 +121,9 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
     )
       selection.input.setSelectionRange(selection.start, selection.end)
   })
-  const dirty = postFormSnapshot(fields) !== postFormSnapshot(savedFields)
+  const dirty = Boolean(selectedCover) || postFormSnapshot(fields) !== postFormSnapshot(savedFields)
   const isDirty = () =>
+    Boolean(selectedCoverRef.current) ||
     postFormSnapshot(currentFields.current) !== postFormSnapshot(savedFieldsRef.current)
   const blocker = useBlocker(isDirty)
   useBeforeUnload((event) => {
@@ -164,7 +174,17 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
   const setExcerpt = (excerpt: string) => updateFields({ excerpt })
   const setStatus = (status: PostStatus) => updateFields({ status })
   const setTags = (tags: string) => updateFields({ tags })
-  const setCoverUrl = (coverUrl: string) => updateFields({ coverUrl })
+  const selectCover = (file: File | null) => {
+    selectedCoverRef.current = file
+    setSelectedCover(file)
+    setLocalPreview(null)
+    if (result?.ok === false) setResult(null)
+  }
+  const setCoverUrl = (coverUrl: string) => {
+    selectCover(null)
+    updateFields({ coverUrl })
+  }
+  const coverPreview = selectedCover ? localPreview : isAllowedMediaUrl(coverUrl) ? coverUrl : null
   const setCoverAlt = (coverAlt: string) => updateFields({ coverAlt })
   const setBody = (body: PostDocument) => updateFields({ body })
   const setSeriesTitle = (seriesTitle: string) => updateFields({ seriesTitle })
@@ -186,10 +206,37 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
       ...currentFields.current,
       slug: slugify(currentFields.current.slug),
     }
+    const file = selectedCoverRef.current
     updateFields(submitted)
     setResult(null)
     startTransition(async () => {
       try {
+        if (file) {
+          const response = await api.post("/api/upload", {
+            searchParams: { purpose: "cover" },
+            headers: { "content-type": file.type },
+            body: file,
+            throwHttpErrors: (status) => status === 401 || status === 403,
+            timeout: 120_000,
+          })
+          if (!response.ok) {
+            const error = await response
+              .json<{ error?: string }>()
+              .catch(() => ({ error: undefined }))
+            setResult({
+              ok: false,
+              message: error.error ?? "That upload was refused. Please try saving again.",
+            })
+            return
+          }
+          const { publicUrl } = await response.json<{ publicUrl: string }>()
+          submitted.coverUrl = publicUrl
+          // Keep the successful upload for a retry if saving the post fails.
+          if (selectedCoverRef.current === file) {
+            selectCover(null)
+            updateFields({ coverUrl: publicUrl })
+          }
+        }
         const outcome = await save.mutateAsync({
           id: savedId.current,
           title: submitted.title.trim(),
@@ -497,11 +544,40 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
           </div>
 
           <fieldset
-            disabled={!coverUploadsConfigured}
+            disabled={!coverUploadsConfigured || pending}
             aria-describedby={!coverUploadsConfigured ? "cover-storage-help" : undefined}
             className="space-y-1.5 disabled:[&_input]:opacity-60 disabled:[&_button]:opacity-60"
           >
             <legend className={labelClasses}>Cover image</legend>
+            {coverPreview && (
+              <div className="relative w-full border-2 border-border bg-card">
+                <img
+                  src={coverPreview}
+                  alt={coverAlt || "Cover preview"}
+                  className="block h-auto w-full"
+                />
+                <button
+                  type="button"
+                  aria-label="Remove cover image"
+                  title="Remove cover image"
+                  onClick={() => {
+                    selectCover(null)
+                    updateFields({ coverUrl: "", coverAlt: "" })
+                  }}
+                  className={cn(
+                    controlClassNames,
+                    "absolute right-2 top-2 min-h-11 min-w-11 bg-card p-2"
+                  )}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
+            )}
+            {selectedCover && (
+              <p role="status" className="break-words text-xs font-medium text-muted-foreground">
+                {selectedCover.name} — uploads when you save.
+              </p>
+            )}
             {!coverUploadsConfigured && (
               <p id="cover-storage-help" className="text-xs font-medium text-muted-foreground">
                 Cover images are unavailable until media storage is configured. Existing cover
@@ -520,7 +596,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
                 placeholder="https://..."
                 className={cn(fieldClasses, "min-h-11 min-w-0 font-mono text-xs")}
               />
-              <ImageUpload onUploaded={setCoverUrl} />
+              <ImageUpload onSelected={(file) => selectCover(file)} />
             </div>
             <FieldError id="coverUrl-error" messages={result?.errors?.coverUrl} />
 

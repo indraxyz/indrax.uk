@@ -1,6 +1,91 @@
-import { expect, it } from "vitest"
+import { expect, it, vi } from "vitest"
 import { readJson } from "./request-body.server"
 const headers = { origin: "https://test.example", "content-type": "application/json" }
+
+it("times out a stalled body even if the sender's cancellation stalls", async () => {
+  const { readBoundedBody } = await import("./request-body.server")
+  vi.useFakeTimers()
+  const cancel = vi.fn(() => new Promise<void>(() => {}))
+  const request = new Request("https://example.test", {
+    method: "POST",
+    body: new ReadableStream<Uint8Array>({ cancel }),
+    duplex: "half",
+  } as RequestInit)
+  try {
+    const result = expect(readBoundedBody(request, 1024, 100)).rejects.toMatchObject({
+      status: 408,
+    })
+    await vi.advanceTimersByTimeAsync(100)
+    await result
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(request.body!.locked).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it("bounds total body time even while chunks keep arriving", async () => {
+  const { readBoundedBody } = await import("./request-body.server")
+  vi.useFakeTimers()
+  let controller: ReadableStreamDefaultController<Uint8Array>
+  const cancel = vi.fn()
+  const request = new Request("https://example.test", {
+    method: "POST",
+    body: new ReadableStream<Uint8Array>({
+      start(value) {
+        controller = value
+      },
+      cancel,
+    }),
+    duplex: "half",
+  } as RequestInit)
+  try {
+    const result = expect(readBoundedBody(request, 1024, 100)).rejects.toMatchObject({
+      status: 408,
+    })
+    controller!.enqueue(new Uint8Array([1]))
+    await vi.advanceTimersByTimeAsync(60)
+    controller!.enqueue(new Uint8Array([2]))
+    await vi.advanceTimersByTimeAsync(40)
+    await result
+    expect(cancel).toHaveBeenCalledOnce()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it("returns from draining a stalled rejected body within its deadline", async () => {
+  const { discardBody } = await import("./request-body.server")
+  vi.useFakeTimers()
+  const cancel = vi.fn(() => new Promise<void>(() => {}))
+  const request = new Request("https://example.test", {
+    method: "POST",
+    body: new ReadableStream<Uint8Array>({ cancel }),
+    duplex: "half",
+  } as RequestInit)
+  try {
+    const result = discardBody(request, 1024, 100)
+    await vi.advanceTimersByTimeAsync(100)
+    await result
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(request.body!.locked).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it("clears the deadline after a complete body", async () => {
+  const { readBoundedBody } = await import("./request-body.server")
+  vi.useFakeTimers()
+  try {
+    await readBoundedBody(new Request("https://example.test", { method: "POST", body: "ok" }), 10)
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
+})
 it("rejects oversized streamed JSON without relying on Content-Length", async () => {
   const request = new Request("https://test.example/api", {
     method: "POST",

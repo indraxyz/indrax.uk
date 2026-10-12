@@ -7,6 +7,8 @@ export function deploymentTarget(config) {
     entries.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
   return {
     name: config.name,
+    workersDev: config.workers_dev,
+    previewUrls: config.preview_urls,
     routes: sort(
       (config.routes ?? []).map((route) =>
         typeof route === "string"
@@ -15,6 +17,10 @@ export function deploymentTarget(config) {
       )
     ),
     siteUrl: config.vars?.NEXT_PUBLIC_SITE_URL,
+    mediaOrigin: config.vars?.NEXT_PUBLIC_MEDIA_ORIGIN,
+    r2: sort(
+      (config.r2_buckets ?? []).map(({ binding, bucket_name }) => ({ binding, bucket_name }))
+    ),
     kv: sort((config.kv_namespaces ?? []).map(({ binding, id }) => ({ binding, id }))),
     d1: sort(
       (config.d1_databases ?? []).map(({ binding, database_id, database_name }) => ({

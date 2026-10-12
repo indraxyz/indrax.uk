@@ -74,3 +74,17 @@ it.each([
   const result = applySecurityHeaders(new Response(""), path, { strictScripts: true, noindex })
   expect(result.headers.get("X-Robots-Tag")).toBe(expected)
 })
+
+it("allows browser-owned image previews only for admin responses", () => {
+  for (const path of ["/admin", "/admin/new", "/writing"]) {
+    const response = applySecurityHeaders(new Response(""), path, {
+      strictScripts: true,
+      noindex: false,
+    })
+    const images = directive(response.headers.get("Content-Security-Policy")!, "img-src")!
+    expect(images.includes("blob:")).toBe(path.startsWith("/admin"))
+    expect(directive(response.headers.get("Content-Security-Policy")!, "script-src")).not.toContain(
+      "blob:"
+    )
+  }
+})

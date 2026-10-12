@@ -1,4 +1,3 @@
-import { AwsClient } from "aws4fetch"
 import {
   assertSameOrigin,
   discardBody,
@@ -66,7 +65,7 @@ async function handleUpload(request: Request): Promise<Response> {
     const type = policy.types.find((allowed) => allowed === declared)
     if (!type) throw new RequestError(415, `Images only: ${describeTypes(policy)}.`)
 
-    const body = await readBoundedBody(request, policy.maxBytes)
+    const body = await readBoundedBody(request, policy.maxBytes, 90_000)
     if (body.byteLength === 0) throw new RequestError(400, "The file is empty.")
     if (detectImageType(body.subarray(0, SIGNATURE_BYTES)) !== type)
       throw new RequestError(415, "That file is not the image it claims to be.")
@@ -90,7 +89,7 @@ async function handleUpload(request: Request): Promise<Response> {
       {
         // Must match NEXT_PUBLIC_MEDIA_ORIGIN or `isAllowedMediaUrl` will refuse to
         // render it - the same check twice on purpose (threat T-6).
-        publicUrl: new URL(`/${key}`, settings.publicUrl).toString(),
+        publicUrl: new URL(key, `${settings.publicUrl.replace(/\/$/, "")}/`).toString(),
       },
       { status: 201 }
     )
@@ -102,12 +101,11 @@ async function handleUpload(request: Request): Promise<Response> {
 }
 
 /**
- * Writes one verified object to R2 over its S3 API.
+ * Writes an allowed image to the environment's R2 binding.
  *
- * `aws4fetch` rather than the AWS SDK: it is a SigV4 signer and nothing else,
- * a few kilobytes against the SDK's megabytes on a size-limited runtime. The
- * stored `Content-Type` is the verified one, and keys are unique per upload, so
- * the object can be cached as immutable.
+ * No signing or extra hashing in Worker code. Standard storage qualifies for
+ * R2's free allowance. Unique keys can be cached as immutable; a conditional
+ * write refuses a collision rather than replacing an existing object.
  */
 async function putObject(
   settings: StorageSettings,
@@ -115,23 +113,18 @@ async function putObject(
   body: Uint8Array<ArrayBuffer>,
   contentType: string
 ): Promise<boolean> {
-  const client = new AwsClient({
-    accessKeyId: settings.accessKeyId,
-    secretAccessKey: settings.secretAccessKey,
-    service: "s3",
-    region: "auto",
-  })
-  const response = await client.fetch(
-    `https://${settings.accountId}.r2.cloudflarestorage.com/${settings.bucket}/${key}`,
-    {
-      method: "PUT",
-      body,
-      headers: {
-        "content-type": contentType,
-        "cache-control": "public, max-age=31536000, immutable",
-        "content-disposition": "inline",
+  try {
+    const result = await settings.bucket.put(key, body, {
+      onlyIf: { etagDoesNotMatch: "*" },
+      storageClass: "Standard",
+      httpMetadata: {
+        contentType,
+        cacheControl: "public, max-age=31536000, immutable",
+        contentDisposition: "inline",
       },
-    }
-  )
-  return response.ok
+    })
+    return result !== null
+  } catch {
+    return false
+  }
 }

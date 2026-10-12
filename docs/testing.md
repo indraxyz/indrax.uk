@@ -32,6 +32,25 @@ analytics, PDF/social images, writing search/filter/sort and series content, nav
 previews, authoring and session isolation. Database/auth/media prerequisites can
 cause skips; a passing subset does not verify skipped flows.
 
+Local cover uploads have a separate development-runtime suite:
+
+```bash
+E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
+```
+
+It requires the loopback Postgres/Neon proxy and existing migrated schema. The
+suite mints a real temporary author/session with the existing Better Auth helper,
+checks full-width mobile cover previews and local-only removal, verifies that
+selecting a PNG does not write to the server, then uploads and saves only on Save.
+It checks persisted-cover removal, upload/save failure retries, verifies the signed
+preview's cover data and checks the stored image decodes in a browser. HTTP assertions cover anonymous and cross-origin
+refusal, malformed bytes and oversized bodies. Tests delete only their own
+drafts, covers and identity. The server uses a private temporary Wrangler config,
+fixture secrets and an isolated local R2 bucket/dependency cache; it does not
+change `.env.local` or use live R2. The production suite excludes this spec, and
+CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
+to another loopback database when needed; remote hosts are refused.
+
 Inspect the current inventory without changing application data:
 
 ```bash

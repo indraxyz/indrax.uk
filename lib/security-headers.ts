@@ -4,6 +4,8 @@ import { THEME_INIT_SCRIPT_HASH } from "./theme"
 interface CspOptions {
   /** Per-response nonce for React Router's inline hydration scripts. */
   nonce?: string
+  /** Browser-owned image previews in the admin editor only. */
+  allowImagePreviews?: boolean
   /**
    * Production builds only. Vite's dev server injects inline and eval'd modules
    * for hot reload, so development keeps scripts open; the browser suite runs
@@ -22,7 +24,11 @@ interface CspOptions {
  * `<script>` or `onerror=` has nothing to match, so a sanitizer bypass stops at
  * the browser instead of reaching the author's session.
  */
-export function contentSecurityPolicy({ nonce, strictScripts }: CspOptions): string {
+export function contentSecurityPolicy({
+  nonce,
+  strictScripts,
+  allowImagePreviews = false,
+}: CspOptions): string {
   const scriptSources = strictScripts
     ? [
         "'self'",
@@ -43,7 +49,7 @@ export function contentSecurityPolicy({ nonce, strictScripts }: CspOptions): str
     "base-uri 'none'",
     "object-src 'none'",
     "form-action 'self'",
-    "img-src 'self' data: https:",
+    `img-src 'self' data: https:${allowImagePreviews ? " blob:" : ""}`,
     "font-src 'self'",
     `connect-src 'self' ${POSTHOG_HOST}${POSTHOG_ASSET_HOST ? ` ${POSTHOG_ASSET_HOST}` : ""}`,
     "style-src 'self' 'unsafe-inline'",
@@ -80,7 +86,13 @@ export function applySecurityHeaders(
   result.headers.set("X-Frame-Options", "DENY")
   // SSR documents arrive with a nonce-bearing policy from `entry.server`; keep it.
   if (!result.headers.has("Content-Security-Policy"))
-    result.headers.set("Content-Security-Policy", contentSecurityPolicy({ strictScripts }))
+    result.headers.set(
+      "Content-Security-Policy",
+      contentSecurityPolicy({
+        strictScripts,
+        allowImagePreviews: path === "/admin" || path.startsWith("/admin/"),
+      })
+    )
   if (noindex || path === "/admin" || path.startsWith("/admin/"))
     result.headers.set("X-Robots-Tag", "noindex, nofollow")
   return result

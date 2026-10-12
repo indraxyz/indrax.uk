@@ -72,7 +72,7 @@ export const adminApi = {
       .get("/api/admin/posts/archive", { searchParams: adminArchiveSearchParams(options), signal })
       .json<AdminArchiveResults>(),
   tags: () => api.get("/api/admin/tags").json<TagWithCount[]>(),
-  session: () => api.get("/api/admin/session").json<AdminSession>(),
+  session: (signal?: AbortSignal) => api.get("/api/admin/session", { signal }).json<AdminSession>(),
   overview: () => api.get("/api/admin/overview").json<AdminOverview>(),
   post: (id: string) => api.get(`/api/admin/posts/${encodeURIComponent(id)}`).json<AdminPost>(),
   savePost: (input: unknown) =>

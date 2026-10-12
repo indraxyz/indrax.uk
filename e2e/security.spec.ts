@@ -99,6 +99,12 @@ test.describe("the content security policy", () => {
 })
 
 test.describe("what a scanner can learn", () => {
+  test("production does not serve simulated local covers", async ({ request }) => {
+    const response = await request.get(
+      "/local-media/covers/51dad294-2e29-40c4-9c1f-2df003c48e57.png"
+    )
+    expect(response.status()).toBe(404)
+  })
   test("the anonymous admin session reveals only whether sign-in exists", async ({ request }) => {
     const response = await request.get("/api/admin/session")
     expect(response.status()).toBe(200)

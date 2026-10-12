@@ -193,8 +193,16 @@ and dismissal, and a failed request keeps the dialog open with feedback for retr
 Successful deletion acknowledges the form before navigation so unsaved edits do
 not trigger a second confirmation; cancellation and failure retain those edits.
 The cover URL and icon-only upload button share one row with matching heights.
-The button retains an accessible name and file-picker behavior; upload errors
-appear below the row.
+The button retains an accessible name and file-picker behavior. Selecting a file
+shows a browser-owned preview below the cover legend at the container's full
+width and the image's natural aspect ratio. The top-right remove button clears
+the form's cover URL, alt text and pending file; it does not mutate the post or
+delete the stored object. The file uploads only when Save submits the form,
+before the post mutation. Cover controls are disabled during saving. A failed
+upload retains the selection for retry; a failed post save retains the uploaded
+URL so retrying does not upload the same file again. Object URLs are revoked
+when replaced, removed or unmounted. Existing URL previews use the shared media
+allowlist; browser blob images are permitted by the admin response CSP only.
 
 Mutation request bodies are streamed with a 512 KiB ceiling before JSON parsing,
 including requests without Content-Length. The document limit and structural
@@ -252,6 +260,11 @@ has no object-size rule of its own, so this route is the size control. SVG is
 never accepted. Auth rate limits use shared DB storage, and edge rate limits per
 client IP cover every `/api/*` route a stranger can reach.
 
+Uploads write through the environment's native `MEDIA_BUCKET` binding using
+Standard storage and a conditional create. Reads have a 90-second deadline;
+refused-body drains stop after 2 seconds. See [R2 setup](r2-uploads.md) for
+environment isolation, media headers, free allowances and deployment checks.
+
 Runtime secrets and safe public configuration are documented in
 [README](../README.md) and environment templates. Use existing Wrangler bindings,
 Drizzle migration commands and isolated preview databases. Schema changes should
@@ -270,3 +283,17 @@ search/series, navigation feedback and accessibility against the built Worker.
 Run `npm run build` and inspect both public/admin output for accidental server
 imports, stale assets and bundle growth. Profile deployed cold and warm CPU time
 separately from wall time before claiming free-tier compliance.
+
+### Admin session request reuse
+
+Route loaders, the protected layout and login page use one TanStack Query
+`queryOptions` definition and browser cache. Session responses stay fresh for
+60 seconds, so normal navigation does not invalidate or refetch them. Route
+loaders use `fetchQuery` to revalidate stale access before prefetching private
+page data, including the new-post route. Stale sessions also refresh on window
+focus and reconnection; there is no background polling. This follows TanStack's
+[stale-time guidance](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults).
+The session query passes its abort signal to the transport. Sign-out and
+authorization failures still clear admin queries and mutations, and every
+server API independently verifies author access. Session data remains in memory
+only; HTTP responses continue to use `no-store`.

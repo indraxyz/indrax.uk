@@ -16,12 +16,14 @@
   ],
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://indrax.uk",
+    "NEXT_PUBLIC_MEDIA_ORIGIN": "https://media.indrax.uk",
   },
   // Reachable only on the custom domains above. A *.workers.dev or preview URL
   // would bypass anything configured on the domain - Cloudflare Access on dev,
   // WAF rules on production - so neither exists. See docs/cloudflare-access.md.
   "workers_dev": false,
   "preview_urls": false,
+  "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-media" }],
   "main": "workers/app.ts",
   "compatibility_date": "2026-09-01",
   // The request context and Neon driver need Node built-ins. `nodejs_compat`
@@ -84,7 +86,9 @@
       "preview_urls": false,
       "vars": {
         "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk",
+        "NEXT_PUBLIC_MEDIA_ORIGIN": "https://dev-media.indrax.uk",
       },
+      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
       "assets": {
         "directory": "build/client",
         "binding": "ASSETS",

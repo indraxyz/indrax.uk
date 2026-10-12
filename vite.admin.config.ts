@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
     resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
     define: {
       ...publicEnvDefinitions(mode),
+      // The local admin is built and watched, rather than served by Vite.
+      // Its development mode must still accept configured loopback media URLs.
+      "import.meta.env.DEV": mode === "development",
       "process.env.NODE_ENV": JSON.stringify(mode === "production" ? "production" : "development"),
     },
     build: {

@@ -1,23 +1,24 @@
-import { serverEnv } from "@/lib/runtime.server"
+import { getRequest, getRuntimeEnv, serverEnv } from "@/lib/runtime.server"
 import { isAllowedMediaUrl } from "@/lib/utils/media"
+import { usesLocalMedia } from "./local-media.server"
+import { isLoopbackUrl, localMediaOrigin } from "./uploads/local-media"
 
-/** Shared by the upload endpoint and authoring UI; credentials stay on the server. */
+/** The Worker binding grants access to one bucket; no S3 credentials are needed. */
 export function getCoverStorageConfig() {
-  const accountId = serverEnv("R2_ACCOUNT_ID")
-  const accessKeyId = serverEnv("R2_ACCESS_KEY_ID")
-  const secretAccessKey = serverEnv("R2_SECRET_ACCESS_KEY")
-  const bucket = serverEnv("R2_BUCKET")
+  const bucket = getRuntimeEnv().MEDIA_BUCKET as R2Bucket | undefined
+  if (!bucket || typeof bucket.put !== "function") return null
   const publicUrl = serverEnv("NEXT_PUBLIC_MEDIA_ORIGIN") ?? process.env.NEXT_PUBLIC_MEDIA_ORIGIN
+  if (serverEnv("NODE_ENV") === "development" && isLoopbackUrl(getRequest().url)) {
+    if (!usesLocalMedia()) return null
+    const local = localMediaOrigin(publicUrl)
+    const rendered = localMediaOrigin(process.env.NEXT_PUBLIC_MEDIA_ORIGIN)
+    if (!local || local.origin !== rendered?.origin) return null
+    return { bucket, publicUrl: local.href.replace(/\/$/, "") }
+  }
 
-  if (
-    !accountId?.trim() ||
-    !accessKeyId?.trim() ||
-    !secretAccessKey?.trim() ||
-    !bucket?.trim() ||
-    !isAllowedMediaUrl(publicUrl)
-  ) {
+  if (!isAllowedMediaUrl(publicUrl)) {
     return null
   }
 
-  return { accountId, accessKeyId, secretAccessKey, bucket, publicUrl }
+  return { bucket, publicUrl }
 }

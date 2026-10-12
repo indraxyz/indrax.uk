@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { allowsLocalMediaUrl, isLocalMediaUrl } from "../uploads/local-media"
 
 import { POST_STATUSES } from "@/features/writing/types"
 import { SLUG_PATTERN } from "@/features/writing/utils/slug"
@@ -98,7 +99,13 @@ export const postInputSchema = z
       .refine((value) => JSON.stringify(value).length <= LIMITS.content, {
         message: `An article cannot exceed ${LIMITS.content} characters.`,
       }),
-    coverUrl: z.url("A cover must be an absolute URL.").optional(),
+    coverUrl: z
+      .url("A cover must be an absolute URL.")
+      .refine(
+        (value) => !isLocalMediaUrl(value) || allowsLocalMediaUrl(value),
+        "Local covers require the configured development media origin."
+      )
+      .optional(),
     coverAlt: z.string().trim().max(LIMITS.coverAlt).optional(),
     status: postStatusSchema.default("draft"),
     tags: z.array(tagNameSchema).max(10).default([]),
