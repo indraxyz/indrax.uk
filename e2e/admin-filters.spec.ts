@@ -175,6 +175,37 @@ test.describe("admin post discovery", () => {
     ).toBeVisible()
   })
 
+  test("uses pointer cursors for admin actions and preserves disabled states", async ({ page }) => {
+    await page.goto("/admin/posts")
+    await expect(
+      page.getByRole("link", { name: "Admin archive fixture 1", exact: true })
+    ).toHaveCSS("cursor", "pointer")
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    const dialog = await filters(page)
+    await expect(dialog.getByLabel("Status", { exact: true })).toHaveCSS("cursor", "pointer")
+    const tag = dialog.getByRole("button", { name: "Private notes (2)", exact: true })
+    await expect(tag).toHaveCSS("cursor", "pointer")
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await expect(dialog.getByRole("button", { name: "Clear filters" })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await page.screenshot({ path: test.info().outputPath("admin-filters.png") })
+    await page.keyboard.press("Escape")
+    const selectedTags = Array.from({ length: 10 }, (_, index) => `tag=selected-${index}`).join("&")
+    await page.goto(`/admin/posts?${selectedTags}`)
+    const limited = await filters(page)
+    const disabledTag = limited.getByRole("button", { name: "Private notes (2)", exact: true })
+    await expect(disabledTag).toBeDisabled()
+    await expect(disabledTag).toHaveCSS("cursor", "not-allowed")
+  })
+
   test("clears all controls to the admin defaults while preserving search", async ({ page }) => {
     await page.goto(
       "/admin/posts?q=renderer&status=archived&sort=oldest&tag=private&date=30d&duration=long&page=2"

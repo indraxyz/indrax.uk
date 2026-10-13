@@ -39,16 +39,6 @@ const subscribeToHydration = () => () => {}
 const hydratedSnapshot = () => true
 const serverSnapshot = () => false
 
-const sortDescriptions: Record<ArchiveOptions["sort"], string> = {
-  newest: "Latest published articles first.",
-  oldest: "Earliest published articles first.",
-  views: "Articles with the most views first.",
-  updated: "Most recently updated articles first.",
-  relevance: "Best matches for your search first.",
-  "title-asc": "Article titles in alphabetical order, A to Z.",
-  "title-desc": "Article titles in reverse alphabetical order, Z to A.",
-}
-
 interface ArchiveControlsProps {
   options: ArchiveOptions | AdminArchiveOptions
   admin?: boolean
@@ -71,7 +61,6 @@ export function ArchiveControls({
   const [draft, setDraft] = useState(options)
   const [error, setError] = useState("")
   const filterStatusId = useId()
-  const relevanceHintId = useId()
   const active = admin
     ? hasAdminArchiveFilters(options as AdminArchiveOptions)
     : hasArchiveFilters(options)
@@ -154,7 +143,7 @@ export function ArchiveControls({
         >
           <SheetHeader className="shrink-0 border-b-2 border-border pr-14">
             <SheetTitle className="font-black uppercase">Filters and sort</SheetTitle>
-            <SheetDescription className={admin ? "sr-only" : undefined}>
+            <SheetDescription className="sr-only">
               {admin ? "Choose how to manage posts." : "Choose how to explore writing."} Apply when
               you’re ready.
             </SheetDescription>
@@ -166,7 +155,6 @@ export function ArchiveControls({
                 <select
                   className={selectClass}
                   aria-label="Sort by"
-                  aria-describedby={admin ? undefined : relevanceHintId}
                   value={draft.sort}
                   onChange={(event) =>
                     setDraft({ ...draft, sort: event.target.value as ArchiveOptions["sort"] })
@@ -182,15 +170,6 @@ export function ArchiveControls({
                   <option value="title-asc">Title A-Z</option>
                   <option value="title-desc">Title Z-A</option>
                 </select>
-                {!admin && (
-                  <span
-                    id={relevanceHintId}
-                    aria-live="polite"
-                    className="mt-2 block text-xs font-normal text-muted-foreground"
-                  >
-                    {sortDescriptions[draft.sort]}
-                  </span>
-                )}
               </label>
               {admin && (
                 <label className="block font-bold">
@@ -215,11 +194,6 @@ export function ArchiveControls({
               )}
               <fieldset>
                 <legend className="font-bold">Tags</legend>
-                {!admin && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Matches any selected tag. Counts include all published articles.
-                  </p>
-                )}
                 {tagsError ? (
                   <div className="mt-3">
                     <QueryState error retry={retryTags} label="tags" />

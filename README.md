@@ -38,7 +38,7 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 
 Legacy `/blog/*`, `/blog/tag/*`, and `/rss.xml` links redirect to the corresponding
 writing URLs. Search, tags, sort, publication dates and read durations share the
-`/writing` archive; the right-hand filter sheet applies changes together.
+`/writing` archive; the right-hand filter sheet applies changes together with the same concise copy as admin.
 The standalone `/writing/search` and `/writing/tags/:tag` routes are removed;
 use query-based archive URLs. `/blog/search` and `/blog/tag/:tag` redirect directly
 to the unified archive. The admin Posts page shares these controls, adds status filtering,

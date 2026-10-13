@@ -232,8 +232,8 @@ The primary Tiptap toolbar is a single horizontally scrollable row with 44px
 centered controls. Undo and Redo lead the row on the left. Paragraph, underline, headings 2–4, lists, links, quote, code,
 tables, horizontal rule, line break, and clear formatting use the
 existing schema and command availability. The public sanitizer retains inert
-underline markup, so formatting remains consistent after publishing. The admin
-filter sheet omits redundant visible introductory, sort and tag explanations;
+underline markup, so formatting remains consistent after publishing. The public and admin
+filter sheets omit redundant visible introductory, sort and tag explanations;
 input states, errors and useful date/limit notices remain.
 
 The editor is lazy-loaded only in admin authoring routes. The Better Auth browser

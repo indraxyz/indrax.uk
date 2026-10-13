@@ -4,7 +4,13 @@
   font-family: "JetBrains Mono";
   src: url("/fonts/JetBrainsMono-Regular.ttf") format("truetype");
   font-display: swap;
-  font-weight: 100 700;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Bold.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 700;
 }
 @font-face {
   font-family: "JetBrains Mono";
@@ -303,6 +309,33 @@
       28px 28px,
       auto;
     background-attachment: fixed;
+  }
+
+  /* Shared by public SSR and the independent admin application. */
+  :where(
+    a[href],
+    button,
+    select,
+    summary,
+    [role="button"],
+    [role="link"],
+    [role="menuitem"],
+    [role="tab"],
+    input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"])
+  ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+
+  input[type="file"]:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+
+  :where(button, select, input, [role="button"], [role="link"], [role="menuitem"], [role="tab"]):is(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled]
+  ) {
+    cursor: not-allowed;
   }
 
   /* Someone who has asked their system to stop moving things means it here too. */

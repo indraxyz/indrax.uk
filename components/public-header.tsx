@@ -2,7 +2,6 @@ import { Link } from "react-router"
 
 import { PublicNavigation, type PublicPage } from "@/components/public-navigation"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
-import { ThemeToggle } from "@/components/theme-toggle"
 
 export function PublicHeader({ activePage }: { activePage?: PublicPage | null }) {
   return (
@@ -18,7 +17,6 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
           </Link>
           <div className="flex flex-wrap items-center gap-3 print:hidden">
             <PublicNavigation activePage={activePage} />
-            <ThemeToggle />
           </div>
         </div>
       </div>
