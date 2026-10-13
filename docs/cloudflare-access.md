@@ -1,76 +1,61 @@
-# Cloudflare Access for dev.indrax.uk
+# Public dev access and GitHub admin authentication
 
-`dev.indrax.uk` is a full copy of the site, admin included. It does not need to be
-public, so Cloudflare Access sits in front of the whole hostname: every request
-must carry an Access session for the author before it reaches the Worker. Scanners
-get Cloudflare's login page, not the app, its API or its robots.txt.
+Cloudflare Access was removed from the development site and media hostnames on
+2026-10-13. Public pages and published cover images can be reached without an
+Access session, just as on production. No Worker-specific Access policy is needed.
 
-Production stays public. Its controls are in the Worker: authentication, CSP and
-rate limits.
+## Application authentication
 
-## Current setup
+The repo's Better Auth integration handles GitHub OAuth and database-backed
+sessions. Signed-out `/admin` visitors redirect to `/admin/login`; protected
+client routes revalidate the author session before loading private data.
+Every private API and mutation independently verifies the session and immutable
+numeric GitHub author ID on the server. The public admin JavaScript and login
+page do not grant author access.
 
-Access was configured and verified on 2026-10-12 using the existing Teams Free
-organisation. `dev.indrax.uk` and `dev-media.indrax.uk` have author-only Allow
-policies, a 24-hour session and the existing Cloudflare identity provider. No
-Bypass or Service Auth policy was added. Signed-out pages, APIs and media now
-receive Access login redirects. Run `npm run security:smoke -- dev` to check them.
+`/api/admin/session` is intentionally reachable without authentication and returns
+only `author: null` and `authConfigured` to signed-out callers, with `no-store`.
+Private archive, tag and overview reads return 401, as do unsigned uploads and
+post mutations. OAuth callbacks remain reachable so GitHub can complete sign-in.
 
-Dev media has its own hostname cookie. Sign in at `dev-media.indrax.uk` once if
-images cannot load after signing in to the site. See [R2 uploads](r2-uploads.md).
-The setup below is reference guidance for rebuilding or changing the application;
-the current applications already exist.
+Keep `DATABASE_URL`, `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`,
+`GITHUB_CLIENT_SECRET` and `ALLOWED_GITHUB_ID` configured per Worker. Dev's OAuth
+App callback is `https://dev.indrax.uk/api/auth/callback/github`; production uses
+`https://indrax.uk/api/auth/callback/github`. `BETTER_AUTH_URL` must match the
+respective site origin. Missing configuration keeps author operations closed.
 
-## Why the Worker has no other address
+## Domains and indexing
 
-Access protects a hostname. A `*.workers.dev` or preview URL for the same Worker
-would serve the app without passing through Access. `wrangler.jsonc` therefore sets
-`"workers_dev": false` and `"preview_urls": false` for both environments, so the
-custom domain is the only way in. Keep them off. A deploy re-applies them, which
-also removes any `workers.dev` route enabled earlier in the dashboard.
+Both Workers retain `workers_dev: false` and `preview_urls: false`. Custom domains
+keep canonical origins and domain-level protections consistent. This configuration
+does not recreate Access applications or require an Access cookie.
 
-## One-time setup (dashboard)
+Dev remains non-indexable through `X-Robots-Tag: noindex, nofollow` and a
+`robots.txt` disallow-all response. These are indexing controls, not login gates.
+Do not publish confidential documents on public dev pages or in the cover bucket.
+Draft content stays behind the application's author checks.
 
-This needs a Zero Trust organisation on the account. The free plan covers it.
-The wrangler OAuth login has no Access scope, so do this in the dashboard, or use
-an API token with **Access: Apps and Policies → Edit**.
-
-1. **Zero Trust → Settings → Authentication → Login methods:** keep
-   **One-time PIN**, or add **GitHub** to reuse the account that already signs in
-   to the admin.
-2. **Zero Trust → Access → Applications → Add an application → Self-hosted**:
-   - Application name: `indrax dev`
-   - Domain: `dev.indrax.uk`, path empty, so the whole host is covered
-   - Session duration: `24 hours`
-   - Identity providers: the login method from step 1. Enable **Instant Auth**
-     when there is only one.
-3. **Add a policy**:
-   - Name: `Author only`
-   - Action: **Allow**
-   - Include → **Emails**: the author's email address
-   - No Bypass or Service Auth rules. Nothing automated calls dev: CI deploys
-     through the Cloudflare API, not the hostname.
-4. Save.
-
-## Verify
+## Verification
 
 ```bash
-# Signed out: Access answers, not the Worker.
-curl -sI https://dev.indrax.uk/ | grep -i -E '^HTTP|^location'
-# HTTP/2 302
-# location: https://<team>.cloudflareaccess.com/cdn-cgi/access/login/dev.indrax.uk?...
-
-curl -sI https://dev.indrax.uk/api/admin/session | grep -i '^HTTP'
-# HTTP/2 302, never 200
+npm run security:smoke -- dev
+npm run security:smoke -- production
 ```
 
-In a browser, sign in through Access and confirm that the site, the admin GitHub
-sign-in and a cover upload still work. GitHub's OAuth callback returns to
-`dev.indrax.uk` in the same browser, which already holds the Access cookie, so the
-admin flow is unchanged.
+Both targets verify reachable public and login pages with strict script policies,
+app login redirects, anonymous session privacy/configuration, denied private API
+reads, refused unsigned uploads and public missing-cover responses with safety
+headers. Dev additionally verifies its noindex header and disallow-all robots.txt.
+Requests carry no session and follow no redirects. The refused upload has an empty
+body and creates no R2 object; no content or sessions are created.
 
-## What Access does not replace
+Browser tests cover signed-out and forged-session admin boundaries, authoring
+sessions, OAuth failure handling and public pages. A real GitHub sign-in/out
+round trip remains a manual check with the environment's OAuth App.
 
-The admin still requires the allow-listed GitHub account, CSRF and origin checks
-still apply, and the rate limits still run. Access is an outer layer for dev, not
-a substitute for the Worker's own checks.
+## Deployment implication
+
+GitHub Actions runs the smoke command after deployment. The previous dev check
+expected Access redirects and shared site/media Access audiences; those expectations
+must not be retained after removing Access. This change updates that gate without
+weakening the app's session, author, origin, upload or edge rate-limit checks.

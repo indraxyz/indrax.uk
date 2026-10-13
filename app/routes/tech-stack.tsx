@@ -66,9 +66,9 @@ const groups = [
   {
     icon: LockKeyhole,
     title: "Author access",
-    tools: "Better Auth · GitHub OAuth · Cloudflare Access",
+    tools: "Better Auth · GitHub OAuth",
     detail:
-      "Better Auth handles GitHub OAuth sign-in, sign-out, and database-backed sessions through the Drizzle adapter. A numeric GitHub account allowlist protects the author dashboard, drafts, and media uploads. Sessions expire after seven days without a refresh, with a thirty-day absolute limit enforced by the author guard. Cloudflare Access protects the develop site and media hostname; production remains public. Edge rate limits run before database work, and security headers restrict scripts and image sources.",
+      "Better Auth handles GitHub OAuth sign-in, sign-out, and database-backed sessions through the Drizzle adapter. A numeric GitHub account allowlist protects the author dashboard, drafts, and media uploads. Sessions expire after seven days without a refresh, with a thirty-day absolute limit enforced by the author guard. Public pages and cover media are reachable in both environments. Admin routes and private APIs enforce the GitHub session and author allowlist; the develop site remains non-indexable. Edge rate limits run before database work, and security headers restrict scripts and image sources.",
     reason:
       "Better Auth integrates authentication with the React Router and PostgreSQL stack. GitHub sign-in reuses an existing identity without storing passwords, while database sessions can be revoked and the account allowlist keeps publishing limited to the author.",
   },
