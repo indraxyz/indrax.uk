@@ -1,6 +1,5 @@
 import { expect, it } from "vitest"
 import { applySecurityHeaders, contentSecurityPolicy, createCspNonce } from "./security-headers"
-import { POSTHOG_ASSET_HOST, POSTHOG_HOST } from "./analytics-host"
 import { THEME_INIT_SCRIPT_HASH } from "./theme"
 
 const directive = (policy: string, name: string) =>
@@ -19,13 +18,13 @@ it("production scripts need this origin, the theme hash or the response nonce", 
       "'wasm-unsafe-eval'",
       `'${THEME_INIT_SCRIPT_HASH}'`,
       "'nonce-abc123'",
-      POSTHOG_ASSET_HOST ?? POSTHOG_HOST,
     ])
   )
   expect(scripts).not.toContain("'unsafe-inline'")
   expect(scripts).not.toContain("'unsafe-eval'")
   expect(scripts).not.toContain("*")
   expect(directive(policy, "default-src")).toEqual(["'self'"])
+  expect(directive(policy, "connect-src")).toEqual(["'self'"])
   expect(directive(policy, "frame-ancestors")).toEqual(["'none'"])
   expect(directive(policy, "object-src")).toEqual(["'none'"])
 })

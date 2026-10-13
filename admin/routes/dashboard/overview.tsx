@@ -16,7 +16,7 @@ export function Component() {
   if (overview.isError) return <AdminError retry={() => void overview.refetch()} />
   const { total, published, drafts, archived, latestDraft } = overview.data
   const coverUploadsConfigured = session.coverUploadsConfigured
-  const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY)
+  const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true"
 
   const services = [
     {
@@ -40,10 +40,10 @@ export function Component() {
     },
     {
       name: "Analytics",
-      state: analyticsConfigured ? "Configured" : "Off",
-      description: analyticsConfigured
+      state: analyticsEnabled ? "Enabled" : "Off",
+      description: analyticsEnabled
         ? "Visitor measurements start only after consent."
-        : "Add a PostHog project key to enable consent-based measurements.",
+        : "Analytics is currently disabled.",
     },
   ]
 

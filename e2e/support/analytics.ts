@@ -1,8 +1,13 @@
 import { gunzipSync, inflateSync } from "node:zlib"
+import { readFile } from "node:fs/promises"
+import { basename } from "node:path"
+import { DatabaseSync } from "node:sqlite"
 
 import type { Page, Request } from "@playwright/test"
 
-import { E2E_POSTHOG_HOST } from "./constants"
+import { ANALYTICS_GATEWAY_PATH, ANALYTICS_GATEWAY_TOKEN } from "../../lib/analytics-gateway"
+import { handleAnalyticsGateway } from "../../lib/analytics-gateway.server"
+import { runWithRequest } from "../../lib/runtime.server"
 
 /**
  * PostHog does not send plain JSON. Depending on payload size and transport the
@@ -56,6 +61,10 @@ export interface RecordOptions {
    * decision made, which is what a first-time visitor has.
    */
   consent?: "granted" | "denied" | null
+  /** Load the installed recorder against a synthetic remote configuration. */
+  replay?: boolean
+  /** Validate real SDK requests through the server handler and atomic SQLite quota. */
+  validateGateway?: boolean
 }
 
 /**
@@ -65,6 +74,13 @@ export interface RecordOptions {
  */
 export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
   const sent: string[] = []
+  const forwarded: string[] = []
+  let pendingGateway = Promise.resolve()
+  const database = options.validateGateway ? new DatabaseSync(":memory:") : undefined
+  if (database) {
+    database.exec(await readFile("config/analytics-quota.sql", "utf8"))
+    page.once("close", () => database.close())
+  }
   const consent = options.consent === undefined ? "granted" : options.consent
 
   // Nothing initialises until this is set, so it has to be in place before the
@@ -90,23 +106,105 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
     Object.defineProperty(navigator, "userAgentData", { get: () => undefined })
   })
 
-  await page.route(`${E2E_POSTHOG_HOST}/**`, async (route) => {
+  await page.route(`**${ANALYTICS_GATEWAY_PATH}/**`, async (route) => {
     sent.push(readableBody(route.request()))
 
-    // The host does not resolve, so every request has to be answered here or the
-    // library sits in a retry loop for the rest of the test.
-    const script = new URL(route.request().url()).pathname.endsWith(".js")
+    const path = new URL(route.request().url()).pathname
+    const script = path.endsWith(".js")
+    const config = {
+      hasFeatureFlags: true,
+      // The SDK waits for an explicit server opt-in before automatic click capture.
+      autocapture_opt_out: false,
+      sessionRecording: options.replay
+        ? { endpoint: "/s/", sampleRate: "1", minimumDurationMilliseconds: 0 }
+        : false,
+    }
+    let body = script ? "/* No additional analytics scripts in browser tests. */" : '{"status":1}'
+    if (path.endsWith("/config.js")) {
+      body = `window._POSTHOG_REMOTE_CONFIG = window._POSTHOG_REMOTE_CONFIG || {}; window._POSTHOG_REMOTE_CONFIG[${JSON.stringify(ANALYTICS_GATEWAY_TOKEN)}] = ${JSON.stringify({ config })};`
+    } else if (path.endsWith("/config")) body = JSON.stringify(config)
+    else if (
+      options.replay &&
+      path.includes("/static/") &&
+      /^(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin)\.js$/.test(
+        basename(path)
+      )
+    ) {
+      body = await readFile(`node_modules/posthog-js/dist/${basename(path)}`, "utf8")
+    }
+    if (database) {
+      const result = pendingGateway.then(async () => {
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = async (input, init) => {
+          const upstreamUrl = new URL(input instanceof Request ? input.url : String(input))
+          if (init?.body) forwarded.push(String(init.body))
+          if (upstreamUrl.pathname.endsWith("/config")) {
+            return Response.json({
+              hasFeatureFlags: true,
+              autocapture_opt_out: false,
+              sessionRecording: options.replay
+                ? {
+                    endpoint: "/s/",
+                    sampleRate: "1",
+                    minimumDurationMilliseconds: 0,
+                  }
+                : false,
+            })
+          }
+          if (upstreamUrl.pathname.includes("/static/"))
+            return new Response(body, { headers: { "Content-Type": "application/javascript" } })
+          return Response.json({ status: 1 })
+        }
+        try {
+          const browserRequest = route.request()
+          const requestBody = browserRequest.postDataBuffer()
+          const request = new Request(browserRequest.url(), {
+            method: browserRequest.method(),
+            headers: { ...browserRequest.headers(), "CF-Connecting-IP": "198.51.100.1" },
+            ...(requestBody ? { body: Uint8Array.from(requestBody) } : {}),
+          })
+          const env = {
+            POSTHOG_PROJECT_TOKEN: "phc_e2e_server_private",
+            POSTHOG_HOST: "https://us.i.posthog.com",
+            RATE_LIMIT_API: { limit: async () => ({ success: true }) },
+            NEXT_TAG_CACHE_D1: {
+              prepare: (sql: string) => ({
+                bind: (...args: (number | string)[]) => ({
+                  first: async () => database.prepare(sql).get(...args) ?? null,
+                }),
+              }),
+            },
+          }
+          return await runWithRequest(request, env, undefined, () =>
+            handleAnalyticsGateway(request)
+          )
+        } finally {
+          globalThis.fetch = originalFetch
+        }
+      })
+      pendingGateway = result.then(
+        () => undefined,
+        () => undefined
+      )
+      const response = await result
+      await route.fulfill({
+        status: response.status,
+        headers: Object.fromEntries(response.headers),
+        body: await response.text(),
+      })
+      return
+    }
     await route.fulfill({
       status: 200,
       contentType: script ? "application/javascript" : "application/json",
-      // PostHog also loads remote configuration as a script. JSON there throws
-      // a browser syntax error; configuration is intentionally empty in tests.
-      body: script ? "/* No remote analytics configuration in browser tests. */" : '{"status":1}',
+      // The script and JSON transports expose the same synthetic project settings.
+      body,
     })
   })
 
   return {
     sent,
+    forwarded,
     captured: (event: string) => sent.some((body) => body.includes(event)),
     /** Everything sent, flattened - for asserting on what a payload must NOT hold. */
     everything: () => sent.join("\n"),

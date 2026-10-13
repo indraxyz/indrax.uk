@@ -57,6 +57,47 @@ test.describe("analytics", () => {
     expect(analytics.sent.join("\n")).toContain("email")
   })
 
+  test("retains automatic click capture through the same-origin gateway", async ({ page }) => {
+    const analytics = await recordAnalytics(page, { validateGateway: true })
+    await page.goto("/")
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect.poll(() => analytics.captured("$autocapture"), { timeout: 20_000 }).toBe(true)
+    expect(analytics.everything()).toContain("/api/analytics/")
+    expect(analytics.everything()).not.toContain("https://us.i.posthog.com")
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$autocapture")
+    expect(analytics.forwarded.join("\n")).toContain("phc_e2e_server_private")
+    expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+  })
+
+  test("retains session replay using the installed recorder behind the gateway", async ({
+    page,
+  }) => {
+    const analytics = await recordAnalytics(page, { replay: true, validateGateway: true })
+    await page.goto("/")
+    test.setTimeout(60_000)
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+    await page.waitForFunction(() => {
+      const extensions = (
+        window as Window & {
+          __PosthogExtensions__?: { rrweb?: { record?: unknown } }
+        }
+      ).__PosthogExtensions__
+      return typeof extensions?.rrweb?.record === "function"
+    })
+    await page.mouse.move(100, 100)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect.poll(() => analytics.captured("$snapshot"), { timeout: 30_000 }).toBe(true)
+    expect(analytics.everything()).toContain("/api/analytics/s/")
+    expect(analytics.everything()).toContain("phc_indrax_gateway")
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$snapshot")
+    expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+  })
+
   test("sends nothing when the visitor has asked not to be tracked", async ({ page }) => {
     test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
@@ -83,7 +124,7 @@ test.describe("analytics", () => {
     test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
     // Every analytics request errors; the page still has to work.
-    await page.route("**/posthog.e2e.invalid/**", (route) => route.abort())
+    await page.route("**/api/analytics/**", (route) => route.abort())
     await page.goto("/")
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")

@@ -35,6 +35,8 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 - Existing Cloudflare KV/D1 resources cache public data and article revisions;
   private admin and preview responses always use `Cache-Control: no-store`.
 - Optional R2 cover uploads, verified server-side, and consent-gated PostHog analytics.
+  The [analytics gateway](docs/posthog-gateway.md) keeps the ingestion token server-side
+  and caps event/replay forwarding through shared D1 counters.
 - Shared accessible components, theme controls, print-friendly resume, lazy
   browser PDF download, contents navigation and code-copy controls.
 
@@ -151,7 +153,8 @@ OAuth secrets with it.
 | --------------------------------------------------------------- | ----------------------------------------------------------- |
 | `NEXT_PUBLIC_SITE_URL`                                          | Canonical origin; defaults to `https://indrax.uk`           |
 | `NEXT_PUBLIC_SITE_UPDATED_AT`                                   | Optional `YYYY-MM-DD` override; otherwise Git revision date |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`           | Optional consent-gated analytics                            |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`                                 | Build-time flag for consent-gated analytics                 |
+| `POSTHOG_PROJECT_TOKEN`, `POSTHOG_HOST`                         | Runtime-only ingestion credential and regional upstream     |
 | `NEXT_PUBLIC_MEDIA_ORIGIN`                                      | HTTPS origin allowed for cover images                       |
 | `DATABASE_URL`                                                  | Server-only Neon HTTP connection; absent is supported       |
 | `DIRECT_DATABASE_URL`                                           | Plain Postgres connection for migration tooling             |
@@ -265,7 +268,9 @@ Repository checks cannot prove runtime secrets, database isolation, environment
 protection rules or disabled dashboard Git Builds; verify those in the target
 account before a production release.
 
-Logs/traces redact URL query strings to protect OAuth codes and preview tokens.
+Invocation logs redact URL query strings to protect OAuth codes and preview tokens.
+Automatic HTTP traces are disabled because PostHog configuration URLs contain the
+server ingestion token in their path; see [analytics gateway](docs/posthog-gateway.md).
 Inspect CPU time separately from wall time in Observability. No local test or
 framework migration guarantees that every request fits Workers Free's CPU budget.
 
