@@ -26,6 +26,8 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
   Vite admin bundle and React Router browser routing.
 - TanStack Query and Ky for writing cards, archive results, and admin data.
 - Neon Postgres over HTTP and Drizzle ORM; batched post/tag writes.
+  See [Neon environment setup](docs/neon-environments.md) for branch separation,
+  runtime permissions, migration connections, and recovery preparation.
 - Better Auth with GitHub OAuth, immutable numeric-ID allowlist, database sessions,
   idle/absolute expiry and private API guards.
 - Tiptap authoring; published articles rendered through the existing sanitized
