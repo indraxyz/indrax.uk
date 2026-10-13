@@ -18,27 +18,12 @@ The local loopback media override is ignored by production builds, so it cannot
 replace the deployed media origin. Production validators/renderers reject local
 cover URLs.
 
-Production covers are public. Dev uses Cloudflare Access with the existing identity
-provider, an author-only Allow policy and a 24-hour session. The `indrax dev`
-application protects both `dev.indrax.uk` and `dev-media.indrax.uk/covers/*`, with
-`eager_redirect_cookie_setting: true`. A fresh Access login establishes cookies
-on both hosts before embedded cover requests. App GitHub authentication is still
-required for uploads. These buckets are for covers, not private documents.
+Production and dev covers are public. Cloudflare Access was removed on
+2026-10-13; embedded cover reads no longer need an Access login or a separate
+media-host cookie. Uploads still require the application's GitHub author session
+and exact site Origin before the Worker writes through its R2 binding.
 
-On 2026-10-13, a saved cover redirected to a separate media Access application,
-so its bytes could not load inside the admin or public post. The cover path was
-added to the site application without deleting the media-wide application: that
-original application still protects other media paths. Both policies retain the
-same author-only identity. Signed-out site and cover responses were verified to
-redirect to the same application audience after propagation. Existing browser
-sessions must renew Access once. The owner renewed Access and confirmed that the
-saved image renders in both the admin edit form and public post. No Worker proxy,
-image processing or deployment is involved.
-To roll back, remove the cover destination from the site application; the media-wide
-application continues protecting the host, with separate login required again.
-
-See [Access multi-domain cookies](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/)
-and [path precedence](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/).
+See [public dev access and admin authentication](cloudflare-access.md).
 
 ## Lightweight enforcement
 
@@ -110,22 +95,21 @@ and [Zero Trust plans](https://www.cloudflare.com/plans/zero-trust-services/).
 
 ## Release and verification
 
-The buckets, domains, Access policies and media headers are live. Worker bindings
+The buckets, domains and media headers are live. Worker bindings
 and upload code take effect when this source is deployed. Production receives
 them through the planned develop-to-main release. No production release was
 performed as part of setup.
 
 The deployment guard checks bucket/environment isolation and disabled alternate
 Worker URLs. CI now runs `npm run security:smoke -- dev` or `production` after
-deployment. The smoke checks are signed-out reads and an empty refused production
-upload; they never create an object and do not exercise author login.
+deployment. The smoke checks are signed-out reads and an empty refused upload in each
+environment; they never create an object and do not exercise author login.
 
-Live signed-out dev site/API/static/media checks passed. The smoke check also
-requires one shared Access audience for dev site and covers to detect separate
-media-login regressions. Production media's
-missing-object response was verified with nosniff and the sandboxed policy.
-Both `r2.dev` URLs were verified disabled. An authenticated browser should verify
-the final login and cover-upload flow after deployment.
+The current smoke contract requires public site/login/media reads, app-level
+admin redirects, private API denial and media safety headers in both environments.
+It does not require Cloudflare Access redirects or a shared Access audience.
+Both `r2.dev` URLs remain disabled. An authenticated browser should verify
+the GitHub login and cover-upload flow after deployment.
 
 Formatting, lint, generated types, TypeScript and all 518 unit tests passed.
 Production and dev builds, deployment-target guards and Wrangler deployment dry

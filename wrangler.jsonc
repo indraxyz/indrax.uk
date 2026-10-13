@@ -19,8 +19,9 @@
     "NEXT_PUBLIC_MEDIA_ORIGIN": "https://media.indrax.uk",
   },
   // Reachable only on the custom domains above. A *.workers.dev or preview URL
-  // would bypass anything configured on the domain - Cloudflare Access on dev,
-  // WAF rules on production - so neither exists. See docs/cloudflare-access.md.
+  // would bypass domain-level rules and add another origin to maintain. Public
+  // pages use these domains; admin access is enforced in the app through GitHub
+  // OAuth and author checks. See docs/cloudflare-access.md.
   "workers_dev": false,
   "preview_urls": false,
   "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-media" }],

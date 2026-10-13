@@ -251,8 +251,10 @@ variables for Preview and Production. Its token needs the
 existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
 separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
 Configure public analytics/media variables in each GitHub environment as needed.
-The dev hostname is meant to sit behind Cloudflare Access; see
-[Cloudflare Access for dev.indrax.uk](docs/cloudflare-access.md).
+Both site and media hostnames are public. Admin routes and private APIs use the
+application's GitHub OAuth session and numeric author allowlist; Cloudflare Access
+is not required. Dev remains non-indexable. See
+[public dev access and admin authentication](docs/cloudflare-access.md).
 
 Remote database and D1 migrations remain a reviewed release step before code
 that needs them is deployed; CI migration/seeding targets only its throwaway
