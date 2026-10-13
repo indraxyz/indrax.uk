@@ -93,6 +93,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
+      className="[&_svg]:size-5"
       aria-label={`${themeLabels[theme]}. Activate ${nextTheme} mode.`}
       title={`${themeLabels[theme]} -> ${nextTheme}`}
       onClick={() => {
@@ -102,7 +103,7 @@ export function ThemeToggle() {
         window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
       }}
     >
-      <Icon className="h-5 w-5" aria-hidden="true" />
+      <Icon className="size-5" aria-hidden="true" />
     </Button>
   )
 }

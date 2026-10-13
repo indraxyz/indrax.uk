@@ -155,39 +155,45 @@ test.describe("unified writing filters", () => {
     ).not.toHaveAttribute("disabled", "")
   })
 
-  test("explains each sort and restores its caption after Apply and back", async ({ page }) => {
-    await page.goto("/writing?q=renderer")
-    let dialog = await openFilters(page)
-    await expect(
-      dialog.getByText("Latest published articles first.", { exact: true })
-    ).toBeVisible()
-    for (const [sort, description] of [
-      ["oldest", "Earliest published articles first."],
-      ["views", "Articles with the most views first."],
-      ["updated", "Most recently updated articles first."],
-      ["relevance", "Best matches for your search first."],
-      ["title-asc", "Article titles in alphabetical order, A to Z."],
-      ["title-desc", "Article titles in reverse alphabetical order, Z to A."],
-    ]) {
-      await dialog.getByLabel("Sort by", { exact: true }).selectOption(sort)
-      await expect(dialog.getByText(description, { exact: true })).toBeVisible()
-    }
-    await dialog.getByLabel("Sort by", { exact: true }).selectOption("oldest")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
-    await expect(page).toHaveURL(/sort=oldest/)
-    dialog = await openFilters(page)
-    await expect(dialog.getByLabel("Sort by", { exact: true })).toHaveValue("oldest")
+  test("keeps public filter copy concise with usable pointer controls", async ({ page }) => {
+    await page.goto("/writing")
+    const trigger = page.getByRole("button", { name: "Filters and sort" })
+    await expect(trigger).toHaveCSS("cursor", "pointer")
+    const dialog = await openFilters(page)
+    await expect(dialog.getByText("Choose how to explore writing.", { exact: false })).toHaveClass(
+      /sr-only/
+    )
+    await expect(dialog.getByText("Matches any selected tag.", { exact: false })).toHaveCount(0)
+    const select = dialog.getByLabel("Sort by", { exact: true })
+    await expect(select).not.toHaveAttribute("aria-describedby")
+    await expect(select).toHaveCSS("cursor", "pointer")
+    await expect(dialog.getByRole("button", { name: "React (5)", exact: true })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await expect(dialog.getByRole("button", { name: "Apply filters" })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await page.screenshot({ path: test.info().outputPath("public-filters.png") })
+    await select.selectOption("oldest")
     await expect(
       dialog.getByText("Earliest published articles first.", { exact: true })
-    ).toBeVisible()
-    await page.keyboard.press("Escape")
-    await page.goBack()
-    await expect(page).toHaveURL(/\/writing\?q=renderer$/)
-    dialog = await openFilters(page)
-    await expect(dialog.getByLabel("Sort by", { exact: true })).toHaveValue("newest")
-    await expect(
-      dialog.getByText("Latest published articles first.", { exact: true })
-    ).toBeVisible()
+    ).toHaveCount(0)
+    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await expect(page).toHaveURL(/sort=oldest/)
+    await expect(page.getByRole("link", { name: "Archive fixture 1", exact: true })).toHaveCSS(
+      "cursor",
+      "pointer"
+    )
+    await expect(page.getByRole("searchbox", { name: "Search articles", exact: true })).toHaveCSS(
+      "cursor",
+      "text"
+    )
   })
 
   test("clears an applied query while preserving filters and keeps input focus", async ({

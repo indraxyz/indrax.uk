@@ -256,7 +256,7 @@ test.describe("analytics", () => {
           await page.goto(path)
 
           if (path === "/") {
-            await expect(page.locator("footer")).toContainText(/Updated /)
+            await expect(page.locator("footer")).toContainText(/© \d{4} by Indra/)
             await expect(
               page.locator('footer button[aria-label="Cookie preferences"] svg')
             ).toBeVisible()

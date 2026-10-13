@@ -1,21 +1,24 @@
+import { Copyright } from "lucide-react"
+
 import { ConsentControl } from "@/components/consent-banner"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
-import { RESUME_CONFIG, UPDATED_DATE_FORMAT } from "@/features/resume/config"
-import { formatDate } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function PublicFooter() {
   return (
     <footer className={SITE_CONTAINER_CLASS}>
-      <div className="mt-12 flex items-center justify-center gap-3 border-t-2 border-border py-10 text-center print:mt-4 print:py-3">
-        {RESUME_CONFIG.updatedAt && (
-          <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
-            Updated{" "}
-            <time dateTime={RESUME_CONFIG.updatedAt}>
-              {formatDate(RESUME_CONFIG.updatedAt, UPDATED_DATE_FORMAT)}
-            </time>
-          </p>
-        )}
-        <ConsentControl separator />
+      <div className="mt-12 flex items-center justify-between gap-3 border-t-2 border-border py-10 print:mt-4 print:py-3">
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Copyright className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            <span className="sr-only">© </span>
+            {new Date().getFullYear()} by <strong className="font-bold">Indra</strong>
+          </span>
+        </p>
+        <div className="flex shrink-0 items-center gap-2 print:hidden">
+          <ConsentControl />
+          <ThemeToggle />
+        </div>
       </div>
     </footer>
   )
