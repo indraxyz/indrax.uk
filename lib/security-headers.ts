@@ -1,4 +1,3 @@
-import { POSTHOG_ASSET_HOST, POSTHOG_HOST } from "./analytics-host"
 import { THEME_INIT_SCRIPT_HASH } from "./theme"
 
 interface CspOptions {
@@ -17,8 +16,7 @@ interface CspOptions {
 /**
  * The Content-Security-Policy for every Worker response (threat T-12).
  *
- * Scripts run only from this origin, from PostHog's script host (remote config
- * and lazily loaded extensions), as the hashed theme initializer, or carrying
+ * Scripts run only from this origin, as the hashed theme initializer, or carrying
  * this response's nonce. No `unsafe-inline`, no `unsafe-eval` (wasm compilation
  * alone is allowed, for the PDF renderer): an injected
  * `<script>` or `onerror=` has nothing to match, so a sanitizer bypass stops at
@@ -37,9 +35,6 @@ export function contentSecurityPolicy({
         "'wasm-unsafe-eval'",
         `'${THEME_INIT_SCRIPT_HASH}'`,
         ...(nonce ? [`'nonce-${nonce}'`] : []),
-        // PostHog loads remote config and extensions as scripts from its asset
-        // host - the regional one for PostHog Cloud, the API host otherwise.
-        POSTHOG_ASSET_HOST ?? POSTHOG_HOST,
       ]
     : ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
   return [
@@ -51,7 +46,7 @@ export function contentSecurityPolicy({
     "form-action 'self'",
     `img-src 'self' data: https:${allowImagePreviews ? " blob:" : ""}`,
     "font-src 'self'",
-    `connect-src 'self' ${POSTHOG_HOST}${POSTHOG_ASSET_HOST ? ` ${POSTHOG_ASSET_HOST}` : ""}`,
+    "connect-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "frame-src 'none'",
     "media-src 'self'",

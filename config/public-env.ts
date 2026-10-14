@@ -10,10 +10,11 @@ export function publicEnvDefinitions(mode: string) {
     mediaOverride === LOCAL_MEDIA_PREFIX.slice(0, -1) || Boolean(localMediaOrigin(mediaOverride))
   const values = {
     NEXT_PUBLIC_SITE_URL:
-      process.env.CLOUDFLARE_ENV === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk",
-    NEXT_PUBLIC_POSTHOG_HOST: "",
-    NEXT_PUBLIC_POSTHOG_KEY: "",
-    ...env,
+      env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.CLOUDFLARE_ENV === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"),
+    NEXT_PUBLIC_ANALYTICS_ENABLED: env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true" ? "true" : "false",
+    // An explicit allowlist prevents old NEXT_PUBLIC_POSTHOG_KEY values in local
+    // files or CI from embedding an ingestion credential in browser bundles.
     NEXT_PUBLIC_MEDIA_ORIGIN:
       (mode !== "production" || !localOverride ? mediaOverride : undefined) ||
       (process.env.CLOUDFLARE_ENV === "dev"

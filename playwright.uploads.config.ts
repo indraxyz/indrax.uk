@@ -25,7 +25,7 @@ export default defineConfig({
       GITHUB_CLIENT_ID: "local-test",
       GITHUB_CLIENT_SECRET: "local-test",
       NEXT_PUBLIC_MEDIA_ORIGIN: `${E2E_BASE_URL}/local-media`,
-      NEXT_PUBLIC_POSTHOG_KEY: "",
+      NEXT_PUBLIC_ANALYTICS_ENABLED: "false",
     },
   },
 })

@@ -191,8 +191,11 @@ Directories are ignored and later runs can replace evidence. Copy reports/result
 elsewhere before rerunning when evidence must be retained. Screenshots are failure
 artifacts, not visual-diff baselines.
 
-Analytics helpers grant/deny consent before navigation and intercept the dummy
-PostHog host; they decode outbound events without contacting a dashboard. Hydration
+Analytics helpers grant/deny consent before navigation and intercept the same-origin
+analytics gateway; they decode outbound events without contacting a dashboard.
+Replay tests load the installed SDK recorder with synthetic remote configuration.
+Server gateway tests use a real SQLite database to verify atomic quota reservations,
+including concurrent callers, and mock only the upstream network boundary. Hydration
 helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests
 verify file signatures/content properties and lazy loading; social image tests
 verify PNG dimensions/signature, not pixel baselines.

@@ -182,8 +182,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
-      NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
+      NEXT_PUBLIC_ANALYTICS_ENABLED: ${{ vars.NEXT_PUBLIC_ANALYTICS_ENABLED }}
       NEXT_PUBLIC_MEDIA_ORIGIN: ${{ vars.NEXT_PUBLIC_MEDIA_ORIGIN }}
     steps:
       - uses: actions/checkout@v7
@@ -199,6 +198,14 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN in the GitHub environment' >&2; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID in the GitHub environment' >&2; exit 1; }
+
+      - name: Prepare the matching analytics quota table
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env '' --remote --file config/analytics-quota.sql
+          else
+            npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env dev --remote --file config/analytics-quota.sql
+          fi
 
       - name: Deploy the matching Worker
         run: |

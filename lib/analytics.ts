@@ -1,13 +1,13 @@
 import posthog from "posthog-js"
 
-import { POSTHOG_HOST } from "@/lib/analytics-host"
+import { ANALYTICS_GATEWAY_PATH, ANALYTICS_GATEWAY_TOKEN } from "@/lib/analytics-gateway"
 import { readConsent } from "@/lib/consent"
 
-// Analytics is opt-in twice over. With no key configured - a fork, a preview
+// Analytics is opt-in twice over. Without the public enable flag - a fork, a preview
 // build, a local run - nothing initialises and every capture below is a no-op.
-// And with a key configured, nothing initialises until the visitor has said yes:
+// And when enabled, nothing initialises until the visitor has said yes:
 // see `lib/consent.ts` and `startAnalytics` below.
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
+const ANALYTICS_ENABLED = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true"
 
 // The events this site records. A union rather than a bare string, so a typo in a
 // call site is a build error instead of a silently orphaned event in PostHog.
@@ -54,14 +54,14 @@ let started = false
 let initialized = false
 
 /**
- * Start the tracker, if there is a key and the visitor has agreed.
+ * Start the tracker, if enabled and the visitor has agreed.
  *
  * The consent check is here rather than at the call site so that there is one
  * place it can be got wrong, and that place is the one that owns the cookie.
  * Nothing is written and nothing is sent before this returns.
  */
 export function startAnalytics() {
-  if (!POSTHOG_KEY || started) return
+  if (!ANALYTICS_ENABLED || started) return
   if (readConsent() !== "granted") return
 
   started = true
@@ -76,8 +76,25 @@ export function startAnalytics() {
 
     // Session replay needs remote configuration to learn whether this project
     // records sessions.
-    posthog.init(POSTHOG_KEY, {
-      api_host: POSTHOG_HOST,
+    // This is a public placeholder, never the project's ingestion credential.
+    // The Worker validates and budgets every request before adding its secret.
+    posthog.init(ANALYTICS_GATEWAY_TOKEN, {
+      api_host: `${window.location.origin}${ANALYTICS_GATEWAY_PATH}`,
+      ui_host: window.location.origin,
+      api_transport: "fetch",
+      disable_compression: true,
+      // Keep rrweb event data inspectable so the gateway can redact signed URLs.
+      // Request compression and nested recorder compression are separate settings.
+      session_recording: { compress_events: false },
+      rewriteRequestPath: (url) => {
+        url.protocol = window.location.protocol
+        url.host = window.location.host
+        url.username = ""
+        url.password = ""
+        if (!url.pathname.startsWith(`${ANALYTICS_GATEWAY_PATH}/`))
+          url.pathname = `${ANALYTICS_GATEWAY_PATH}${url.pathname}`
+        return url
+      },
       // Enables history-change pageviews and pageleave capture. Keep this date
       // pinned: the guide's 2026-05-30 defaults tag localhost as an internal/test
       // host, hiding local visits when that dashboard filter is enabled.

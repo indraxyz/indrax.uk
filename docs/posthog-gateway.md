@@ -1,0 +1,137 @@
+# Protected PostHog forwarding
+
+The browser initializes the existing PostHog SDK with the public placeholder
+`phc_indrax_gateway`. All event, replay, flags, remote configuration and recorder
+asset requests go to `/api/analytics/*` on the site's own origin. The Worker validates
+requests and reserves a shared quota before adding `POSTHOG_PROJECT_TOKEN` from
+its runtime secrets. The real project token is never embedded in either browser
+bundle or returned by the gateway. Personal PostHog API keys are not used.
+
+Pageviews, page exits, contact/PDF events, automatic click capture and session replay
+remain supported. Recording still depends on the PostHog project's replay settings,
+sampling and triggers. Consent is required before the SDK starts. Withdrawing it
+stops capture and clears SDK identifiers. The gateway cannot verify a visitor's
+localStorage consent; an anonymous caller can imitate the public request protocol.
+
+## Configuration and limits
+
+| Setting                              | Location                                  | Purpose                                                     |
+| ------------------------------------ | ----------------------------------------- | ----------------------------------------------------------- |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED=true` | GitHub Environment variable at build time | Enable the browser tracker; contains no credential          |
+| `POSTHOG_PROJECT_TOKEN`              | Cloudflare Worker runtime secret          | Real project ingestion token (`phc_`), never a personal key |
+| `POSTHOG_HOST`                       | Wrangler runtime variable                 | Fixed US or EU ingestion host                               |
+| `POSTHOG_MONTHLY_*_LIMIT`            | Optional Worker runtime variable          | Lower a category's hard ceiling, including zero to stop it  |
+
+Set build variables separately in GitHub `Preview` and `Production`. Set runtime
+secrets separately on `indrax-dev` and `indrax`. Runtime host defaults to US Cloud;
+select `https://eu.i.posthog.com` for an EU project in both relevant Wrangler environments.
+Old `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are no longer read by
+the build or workflow. An explicit build allowlist also excludes accidentally
+public-prefixed secrets from browser definitions.
+
+The existing rate limiter permits at most 120 analytics requests per client IP
+per minute at each Cloudflare location. This is an eventually consistent brake;
+the D1 reservation is the hard, shared forwarding cap. Each environment uses its
+own existing `NEXT_TAG_CACHE_D1` database, so development cannot spend production's
+gateway allowance. If both environments use one PostHog project, its billing usage
+includes both environments.
+
+| Category | Monthly unit ceiling          | Monthly byte ceiling       |
+| -------- | ----------------------------- | -------------------------- |
+| `EVENTS` | 20,000 allowlisted events     | 32 MiB forwarded payloads  |
+| `REPLAY` | 1,000 snapshot events         | 64 MiB forwarded payloads  |
+| `FLAGS`  | 1,000 evaluations             | 4 MiB request payloads     |
+| `CONFIG` | 1,000 configuration fetches   | 128 MiB reserved responses |
+| `ASSETS` | 5,000 recorder-script fetches | 512 MiB reserved responses |
+
+Replay units are snapshot envelopes, not a promise of 1,000 complete recordings.
+A recording needs multiple envelopes; quota exhaustion can leave partial recordings.
+GET requests reserve their maximum response size before forwarding: 128 KiB for
+configuration and 512 KiB for assets. This conservatively limits uncached asset fetches
+to 1,024 per month under the byte ceiling. Browser asset responses cache privately
+for one hour. If these defaults do not fit real traffic, review code ceilings and
+PostHog limits together instead of disabling the guard.
+
+Quota windows use calendar months in UTC. The atomic D1 conditional UPSERT counts
+batch events individually and refuses a reservation crossing either unit or byte
+limits. There are no refunds or automatic upstream retries: a timeout cannot spend
+an uncounted retry. Keep current-month rows intact; resetting/deleting them removes
+the spending guard. Old month rows are small and retained.
+
+Unknown routes/methods/events, cross-origin browser requests, missing client IPs,
+invalid visitor/replay shapes and oversized/compression-bomb bodies are refused.
+Client credential fields are replaced only at the ingestion positions; nested
+data never selects another project. Client IP properties are overwritten with the
+trusted Cloudflare client IP to preserve the existing visitor geolocation behavior.
+URLs in events and raw replay data have bearer query values redacted. Request gzip
+is bounded after decompression; nested replay compression is disabled so URLs stay
+inspectable. SDK consent and do-not-track behavior remain in place.
+
+Missing secrets, unsupported upstream hosts, missing D1 tables/bindings or quota
+errors fail closed. Quota/edge refusals return 429; upstream failures return a generic 502. Responses never expose upstream error text, cookies, secret headers or redirects.
+The browser CSP allows scripts and connections only from its own origin, so the
+SDK cannot bypass the gateway by switching to an external ingestion/asset host.
+
+Automatic Worker traces are disabled in the reviewed configuration because PostHog's
+configuration-fetch URL contains the server token in its path. Cloudflare fetch spans
+record that URL; query-string redaction does not redact path segments. Redacted
+invocation logs and issues remain enabled. Re-enable tracing only after adding a
+verified way to suppress/redact those credential-bearing spans.
+See [Cloudflare's recorded HTTP span attributes](https://developers.cloudflare.com/workers/observability/traces/spans-and-attributes/).
+
+## Initialization and verified cutover
+
+Preparation on 2026-10-14: the existing project token from the commented local
+environment entry was staged as `POSTHOG_PROJECT_TOKEN` on both Workers. Secret
+bindings were verified in dev version `07e84d66-d9e4-4c65-8fb1-2fdd0d6d382e` and
+production version `8de290fb-ad5b-4dba-b72c-e3f37a08fc8a`. Both active deployment
+histories remained unchanged. GitHub `Preview` and `Production` now have verified
+`NEXT_PUBLIC_ANALYTICS_ENABLED=true` variables. No code was shipped and no token
+was rotated. The owner has explicitly chosen to retain the current token; previously
+exposed copies can still bypass this gateway's limits until that choice changes.
+
+Local dev/preview scripts initialize `config/analytics-quota.sql` alongside the
+existing cache table. The deploy workflow initializes the matching remote table
+before deployment; its Cloudflare token needs D1 write permission. This operation
+creates an absent table and preserves all existing counters.
+
+Before enabling analytics, review the PR, verify the target project/region and
+stage `POSTHOG_PROJECT_TOKEN` as a Worker secret. To stage without changing traffic:
+
+```bash
+npx wrangler versions secret put POSTHOG_PROJECT_TOKEN --config wrangler.jsonc --env dev
+npx wrangler versions secret put POSTHOG_PROJECT_TOKEN --config wrangler.jsonc --env ''
+```
+
+The commands read the token from protected interactive input; never put it in
+command arguments or commit it. A local ignored `.env.local` can hold the runtime
+token for development. Keep analytics disabled in environments without a token.
+Setting only a runtime secret does not enable browser capture: the build flag must
+also be true in that environment's next approved build.
+
+Deploy and verify both environments' gateway clients. Inspect browser requests for
+the placeholder, confirm consent/withdrawal,
+confirm real events and a replay appear in the intended PostHog project, and verify
+the actual project token is absent from browser JS and response bodies. Browser
+tests use synthetic config and the installed recorder; they do not prove a real
+project is configured to record.
+
+No token rotation is part of this release, as requested by the owner. If rotation
+is authorized later, first verify both environments' gateway clients, then rotate
+the previously public token in PostHog and securely update each Worker secret.
+PostHog immediately revokes the old token, so coordinate the cutover with other
+integrations. A secret-only deployment must use the approved gateway code, not a
+pending older application version. Confirm code/version and other staged secrets
+before activation.
+
+Keep a $0 or chosen per-product PostHog billing limit as the final account-level
+guard. Gateway quotas bound this application's forwarding, not traffic sent using
+another integration or a still-valid previously exposed token. Anonymous bots can
+still exhaust the gateway's bounded allowance; there is no guarantee that a public
+visitor request represents a human.
+
+Sources: [SDK configuration and request rewriting](https://posthog.com/docs/libraries/js/config#customize-reverse-proxy-request-paths),
+[session replay controls](https://posthog.com/docs/session-replay/how-to-control-which-sessions-you-record),
+[project token rotation](https://posthog.com/docs/settings/projects),
+[billing limits](https://posthog.com/pricing),
+[Cloudflare rate-limiter consistency](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).

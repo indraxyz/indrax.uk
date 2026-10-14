@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test"
 
-import { E2E_BASE_URL, E2E_PORT, E2E_POSTHOG_HOST, E2E_POSTHOG_KEY } from "./e2e/support/constants"
+import { E2E_BASE_URL, E2E_PORT } from "./e2e/support/constants"
 
 /**
  * The browser both projects run in.
@@ -75,8 +75,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     env: {
-      NEXT_PUBLIC_POSTHOG_KEY: E2E_POSTHOG_KEY,
-      NEXT_PUBLIC_POSTHOG_HOST: E2E_POSTHOG_HOST,
+      NEXT_PUBLIC_ANALYTICS_ENABLED: "true",
       // Passed through when it is set, and absent otherwise - the site builds and
       // serves either way. `writing-content.spec.ts` skips itself when it is missing,
       // so the suite is green on a clone with no database.

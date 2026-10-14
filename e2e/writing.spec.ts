@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test"
 
 import { isIndexableSite } from "../config/site"
-import { E2E_POSTHOG_HOST } from "./support/constants"
 
 /**
  * The public writing surface, asserted without a database.
@@ -184,10 +183,7 @@ test.describe("the writing public surface", () => {
     expect(csp).toContain("default-src 'self'")
     expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval' 'sha256-[^']+' 'nonce-[^']+'/)
     expect(csp).not.toContain("'unsafe-inline' 'unsafe-eval'")
-    expect(csp).toContain("connect-src 'self' ")
-    // Derived from the same constant the tracker uses. A policy naming a
-    // different host blocks every event, which looks like an outage rather than
-    // a typo - so the two are asserted to agree.
-    expect(csp).toContain(E2E_POSTHOG_HOST)
+    expect(csp).toContain("connect-src 'self';")
+    expect(csp).not.toContain("posthog.com")
   })
 })

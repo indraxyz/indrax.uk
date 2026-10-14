@@ -17,6 +17,7 @@
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://indrax.uk",
     "NEXT_PUBLIC_MEDIA_ORIGIN": "https://media.indrax.uk",
+    "POSTHOG_HOST": "https://us.i.posthog.com",
   },
   // Reachable only on the custom domains above. A *.workers.dev or preview URL
   // would bypass domain-level rules and add another origin to maintain. Public
@@ -73,8 +74,11 @@
       "persist": true,
     },
     "traces": {
-      "enabled": true,
-      "persist": true,
+      // PostHog config URLs contain the server token in the path. Automatic fetch
+      // spans record that path; query redaction cannot protect it. Keep logs and
+      // invocation monitoring, but do not collect credential-bearing HTTP spans.
+      "enabled": false,
+      "persist": false,
     },
     "issues": {
       "enabled": true,
@@ -88,6 +92,7 @@
       "vars": {
         "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk",
         "NEXT_PUBLIC_MEDIA_ORIGIN": "https://dev-media.indrax.uk",
+        "POSTHOG_HOST": "https://us.i.posthog.com",
       },
       "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
       "assets": {
