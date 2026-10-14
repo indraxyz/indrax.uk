@@ -222,3 +222,12 @@ jobs:
           else
             npm run security:smoke -- dev
           fi
+
+      - name: Verify deployed analytics configuration
+        if: env.ANALYTICS_ENABLED == 'true'
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            node scripts/verify-analytics.mjs production
+          else
+            node scripts/verify-analytics.mjs dev
+          fi

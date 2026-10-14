@@ -115,6 +115,19 @@ errors fail closed. Quota/edge refusals return 429; upstream failures return a g
 The browser CSP allows scripts and connections only from its own origin, so the
 SDK cannot bypass the gateway by switching to an external ingestion/asset host.
 
+Upstream fetches use `redirect: "manual"` and reject every non-success status,
+including redirects. The installed Cloudflare runtime rejects `redirect: "error"`
+before dispatch, even though Node accepts it; mocked Node/browser tests do not
+detect that runtime difference.
+
+When `ANALYTICS_ENABLED=true`, CI checks the deployed gateway's JSON and JavaScript
+configuration endpoints after deployment. Run `node scripts/verify-analytics.mjs dev`
+or `node scripts/verify-analytics.mjs production` to repeat the check. These checks
+use the real upstream and reserve two configuration requests, but create no events.
+They detect runtime, credential, configuration and quota failures; they do not prove
+event ingestion or dashboard visibility, which still need a consented browser visit
+and inspection of the matching PostHog project.
+
 Automatic Worker traces are disabled in the reviewed configuration because PostHog's
 configuration-fetch URL contains the server token in its path. Cloudflare fetch spans
 record that URL; query-string redaction does not redact path segments. Redacted

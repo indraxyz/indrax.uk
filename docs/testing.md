@@ -200,6 +200,14 @@ helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests
 verify file signatures/content properties and lazy loading; social image tests
 verify PNG dimensions/signature, not pixel baselines.
 
+`e2e/analytics-runtime.spec.ts` additionally runs the real gateway in Wrangler's
+local test harness with isolated D1 and fixture credentials. Its upstream stub
+constructs requests inside Workerd before responding, so runtime-incompatible fetch
+options cannot pass through a Node mock. It checks configuration transports, SDK
+event/flag forwarding, recorder assets and refusal of upstream redirects without
+contacting PostHog or any remote database. Run it with the existing analytics browser
+suite using `npx playwright test e2e/analytics-runtime.spec.ts e2e/analytics.spec.ts --project=reads`.
+
 ## CI and release boundaries
 
 The check job runs install, formatting/lint/types/unit tests, build without a DB and

@@ -71,6 +71,24 @@ afterEach(() => {
 })
 
 describe("protected PostHog gateway", () => {
+  it.each([301, 302, 303, 307, 308])(
+    "refuses upstream redirects (%s) without forwarding credentials",
+    async (status) => {
+      upstream.mockResolvedValue(
+        new Response(null, {
+          status,
+          headers: { Location: "https://untrusted.example/collect" },
+        })
+      )
+      const response = await handle(request("/e/"))
+      expect(response.status).toBe(502)
+      expect(response.headers.has("location")).toBe(false)
+      expect(await response.json()).toEqual({ ok: false })
+      expect(upstream).toHaveBeenCalledTimes(1)
+      expect(upstream.mock.calls[0][1].redirect).toBe("manual")
+    }
+  )
+
   it("forwards allowlisted events with only the server token and redacts bearer URLs", async () => {
     const response = await handle(
       request("/i/v0/e/?token=attacker&api_key=attacker&v=1", [event(), event("contact_clicked")])
@@ -84,6 +102,7 @@ describe("protected PostHog gateway", () => {
     expect(body[0].properties.$ip).toBe("203.0.113.1")
     expect(body[0].properties.$current_url).toContain("preview=redacted&token=redacted")
     expect(init.headers).toEqual({ "Content-Type": "application/json" })
+    expect(init.redirect).toBe("manual")
     expect(await response.text()).not.toContain(TOKEN)
     expect(
       sqlite.prepare("SELECT units FROM analytics_quota WHERE category='events'").get()
