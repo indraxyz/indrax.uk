@@ -36,6 +36,34 @@ own existing `NEXT_TAG_CACHE_D1` database, so development cannot spend productio
 gateway allowance. If both environments use one PostHog project, its billing usage
 includes both environments.
 
+### Comparison with PostHog's free allowance
+
+The [published PostHog pricing](https://posthog.com/pricing), checked on 2026-10-14,
+includes 1,000,000 analytics events, 5,000 session recordings and 1,000,000 feature
+flag requests per month. Gateway limits are deliberately stricter abuse limits;
+they are not a live synchronization with the organization's billing account.
+
+| Product        | PostHog monthly free allowance | Maximum across Preview and Production per UTC month |
+| -------------- | ------------------------------ | --------------------------------------------------- |
+| Analytics      | 1,000,000 events               | 40,000 approved events                              |
+| Session replay | 5,000 recordings               | 2,000 snapshot event envelopes, not recordings      |
+| Feature flags  | 1,000,000 requests             | 2,000 forwarded evaluation requests                 |
+
+Do not give both environments the entire free allowance when they share an
+organization's billing budget. A snapshot envelope belongs to one session, but a
+recording can require many envelopes; these replay counters cannot express an
+exact recording allowance. Byte limits may stop forwarding earlier. Configuration
+and recorder-asset limits protect Worker/upstream traffic and have no equivalent
+free-tier billing unit in this comparison.
+
+Gateway windows are UTC calendar months; PostHog billing periods and usage from
+other projects/integrations are not read by this application. The existing token
+also remains usable for direct ingestion, as requested by the owner. Therefore
+these lower gateway limits do not guarantee an organization-wide free bill. Keep
+PostHog's per-product billing limits at $0 if paid overages must be prevented.
+Recheck the published allowances before changing code ceilings; they are not
+automatically updated when PostHog changes its pricing.
+
 | Category | Monthly unit ceiling          | Monthly byte ceiling       |
 | -------- | ----------------------------- | -------------------------- |
 | `EVENTS` | 20,000 allowlisted events     | 32 MiB forwarded payloads  |
