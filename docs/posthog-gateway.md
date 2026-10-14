@@ -154,7 +154,12 @@ configuration endpoints and the three performance/dead-click assets after deploy
 Asset versions come from the installed, lockfile-resolved `posthog-js` package.
 Run `node scripts/verify-analytics.mjs dev`
 or `node scripts/verify-analytics.mjs production` to repeat the check. These checks
-use the real upstream and reserve two configuration and three asset requests, but create no events.
+use the real upstream and normally reserve two configuration and three asset requests,
+but create no events. Each endpoint permits up to three attempts for timeouts or known
+transient connection failures, with one- and two-second backoff and a 15-second timeout
+per attempt. Retries that reach the gateway consume quota too (at most six configuration
+and nine asset requests). HTTP, MIME and configuration failures are not retried;
+persistent transport failures report the endpoint and fail CI.
 They detect runtime, credential, configuration and quota failures; they do not prove
 event ingestion or dashboard visibility, which still need a consented browser visit
 and inspection of the matching PostHog project.
