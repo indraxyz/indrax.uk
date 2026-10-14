@@ -25,7 +25,7 @@ const REGIONS: Record<string, string | undefined> = {
   "https://eu.i.posthog.com": "https://eu-assets.i.posthog.com",
 }
 const ASSETS =
-  /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin)\.js$/
+  /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin|web-vitals|web-vitals-with-attribution|dead-clicks-autocapture)\.js$/
 type Category = "events" | "replay" | "flags" | "config" | "assets"
 const LIMITS: Record<Category, { units: number; bytes: number }> = {
   // Each of two environments receives 25% of the published free allowance.

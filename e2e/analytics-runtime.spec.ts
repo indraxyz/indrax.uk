@@ -120,13 +120,22 @@ test.describe("analytics in Workerd", () => {
     })
   })
 
-  test("serves recorder assets through the runtime gateway", async () => {
-    const response = await server!.fetch(`${origin}/api/analytics/static/recorder.js`, {
-      headers: { Referer: `${origin}/`, "CF-Connecting-IP": "198.51.100.1" },
+  for (const asset of [
+    "recorder",
+    "web-vitals",
+    "web-vitals-with-attribution",
+    "dead-clicks-autocapture",
+  ]) {
+    test(`serves ${asset} assets through the runtime gateway`, async () => {
+      for (const path of [`/static/1.434.18/${asset}.js`, `/static/${asset}.js?v=1.434.18`]) {
+        const response = await server!.fetch(`${origin}/api/analytics${path}`, {
+          headers: { Referer: `${origin}/`, "CF-Connecting-IP": "198.51.100.1" },
+        })
+        expect(response.status).toBe(200)
+        expect(response.headers.get("content-type")).toContain("text/javascript")
+      }
     })
-    expect(response.status).toBe(200)
-    expect(response.headers.get("content-type")).toContain("text/javascript")
-  })
+  }
 
   for (const status of [301, 302, 303, 307, 308]) {
     test(`refuses upstream HTTP ${status} without following it`, async () => {

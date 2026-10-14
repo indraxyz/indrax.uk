@@ -1,7 +1,7 @@
 # Protected PostHog forwarding
 
 The browser initializes the existing PostHog SDK with the public placeholder
-`phc_indrax_gateway`. All event, replay, flags, remote configuration and recorder
+`phc_indrax_gateway`. All event, replay, flags, remote configuration and SDK
 asset requests go to `/api/analytics/*` on the site's own origin. The Worker validates
 requests and reserves a shared quota before adding `POSTHOG_PROJECT_TOKEN` from
 its runtime secrets. The real project token is never embedded in either browser
@@ -12,6 +12,14 @@ remain supported. Recording still depends on the PostHog project's replay settin
 sampling and triggers. Consent is required before the SDK starts. Withdrawing it
 stops capture and clears SDK identifiers. The gateway cannot verify a visitor's
 localStorage consent; an anonymous caller can imitate the public request protocol.
+
+The script allowlist includes the recorder family, `web-vitals`,
+`web-vitals-with-attribution` and `dead-clicks-autocapture`, with both versioned
+and fallback paths. Remote project settings still control performance and dead-click
+capture. These scripts share the existing asset quota, fixed regional host, bounded
+response size and JavaScript MIME checks. Surveys are explicitly disabled with the
+SDK's `disable_surveys` option: this site does not support survey response events
+or endpoints. Arbitrary SDK scripts remain refused.
 
 ## Configuration and limits
 
@@ -121,9 +129,11 @@ before dispatch, even though Node accepts it; mocked Node/browser tests do not
 detect that runtime difference.
 
 When `ANALYTICS_ENABLED=true`, CI checks the deployed gateway's JSON and JavaScript
-configuration endpoints after deployment. Run `node scripts/verify-analytics.mjs dev`
+configuration endpoints and the three performance/dead-click assets after deployment.
+Asset versions come from the installed, lockfile-resolved `posthog-js` package.
+Run `node scripts/verify-analytics.mjs dev`
 or `node scripts/verify-analytics.mjs production` to repeat the check. These checks
-use the real upstream and reserve two configuration requests, but create no events.
+use the real upstream and reserve two configuration and three asset requests, but create no events.
 They detect runtime, credential, configuration and quota failures; they do not prove
 event ingestion or dashboard visibility, which still need a consented browser visit
 and inspection of the matching PostHog project.

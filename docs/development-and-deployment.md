@@ -78,6 +78,8 @@ Deploy jobs serialize per branch and let active upload/activation finish. The
 post-deployment `security:smoke` command checks public and private boundaries.
 When `ANALYTICS_ENABLED=true`, `scripts/verify-analytics.mjs` also checks the live
 analytics gateway's JSON and JavaScript configuration transports against PostHog.
+It also checks the installed SDK's performance/dead-click scripts with JavaScript
+responses, so a missing asset allowlist entry fails the deployment verification.
 It creates no synthetic events; verify consented browser event delivery in the
 matching PostHog project separately. See [analytics setup](posthog-gateway.md).
 A failed smoke step can follow an already active Worker deployment: inspect the

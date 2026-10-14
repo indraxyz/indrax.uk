@@ -1,4 +1,7 @@
 import { pathToFileURL } from "node:url"
+import { createRequire } from "node:module"
+
+const sdkVersion = createRequire(import.meta.url)("posthog-js/package.json").version
 
 // Exercise the deployed Worker and real upstream without creating synthetic events.
 export async function verifyAnalytics(target, fetcher = fetch) {
@@ -30,7 +33,23 @@ export async function verifyAnalytics(target, fetcher = fetch) {
         throw new Error(`${target} analytics configuration must be an object.`)
     }
   }
-  console.log(`Verified ${target} analytics configuration through the deployed gateway.`)
+  for (const asset of ["web-vitals", "web-vitals-with-attribution", "dead-clicks-autocapture"]) {
+    const response = await fetcher(`${origin}/api/analytics/static/${sdkVersion}/${asset}.js`, {
+      headers: { Referer: `${origin}/` },
+      redirect: "manual",
+      credentials: "omit",
+      signal: AbortSignal.timeout(15_000),
+    })
+    await response.body?.cancel()
+    if (
+      response.status !== 200 ||
+      !response.headers.get("content-type")?.startsWith("text/javascript")
+    )
+      throw new Error(`${target} analytics ${asset}.js failed: HTTP ${response.status}.`)
+  }
+  console.log(
+    `Verified ${target} analytics configuration and SDK assets through the deployed gateway.`
+  )
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
