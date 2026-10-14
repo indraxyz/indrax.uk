@@ -247,9 +247,7 @@ test.describe("the public pages", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
     await expect(page.getByRole("heading", { level: 2, name: "Deployment" })).toBeVisible()
     await expect(page.getByText(/Cloudflare Workers · React Router/)).toBeVisible()
-    await expect(
-      page.getByText("PostHog · Workers logs & traces · structured server logs")
-    ).toBeVisible()
+    await expect(page.getByText("PostHog · Workers logs · structured server logs")).toBeVisible()
     await expect(
       page.getByRole("main").getByRole("link", { name: "See my experience" })
     ).toHaveCount(0)
