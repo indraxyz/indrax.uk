@@ -8,6 +8,7 @@ import type { Page, Request } from "@playwright/test"
 import { ANALYTICS_GATEWAY_PATH, ANALYTICS_GATEWAY_TOKEN } from "../../lib/analytics-gateway"
 import { handleAnalyticsGateway } from "../../lib/analytics-gateway.server"
 import { runWithRequest } from "../../lib/runtime.server"
+import { sqliteQuotaBinding } from "../../lib/analytics-gateway.test-support"
 
 /**
  * PostHog does not send plain JSON. Depending on payload size and transport the
@@ -167,13 +168,7 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
             POSTHOG_PROJECT_TOKEN: "phc_e2e_server_private",
             POSTHOG_HOST: "https://us.i.posthog.com",
             RATE_LIMIT_API: { limit: async () => ({ success: true }) },
-            NEXT_TAG_CACHE_D1: {
-              prepare: (sql: string) => ({
-                bind: (...args: (number | string)[]) => ({
-                  first: async () => database.prepare(sql).get(...args) ?? null,
-                }),
-              }),
-            },
+            NEXT_TAG_CACHE_D1: sqliteQuotaBinding(database),
           }
           return await runWithRequest(request, env, undefined, () =>
             handleAnalyticsGateway(request)

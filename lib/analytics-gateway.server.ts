@@ -28,11 +28,42 @@ const ASSETS =
   /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin)\.js$/
 type Category = "events" | "replay" | "flags" | "config" | "assets"
 const LIMITS: Record<Category, { units: number; bytes: number }> = {
-  events: { units: 20_000, bytes: 32 * MAX_BODY },
-  replay: { units: 1_000, bytes: 64 * MAX_BODY },
-  flags: { units: 1_000, bytes: 4 * MAX_BODY },
-  config: { units: 1_000, bytes: 128 * MAX_BODY },
-  assets: { units: 5_000, bytes: 512 * MAX_BODY },
+  // Each of two environments receives 25% of the published free allowance.
+  events: { units: 250_000, bytes: 512 * MAX_BODY },
+  replay: { units: 100_000, bytes: 512 * MAX_BODY },
+  flags: { units: 250_000, bytes: 256 * MAX_BODY },
+  config: { units: 10_000, bytes: 1_280 * MAX_BODY },
+  assets: { units: 10_000, bytes: 5_120 * MAX_BODY },
+}
+const MAX_RECORDINGS = 1_250
+
+// Admit the entire set of new sessions or none. D1 batch makes admission and
+// verification one transaction, including requests arriving at different edges.
+const REPLAY_ADMISSION_SQL = `
+WITH requested AS (SELECT DISTINCT value AS session_id FROM json_each(?2)),
+new_sessions AS (
+  SELECT session_id FROM requested WHERE NOT EXISTS (
+    SELECT 1 FROM analytics_replay_sessions WHERE month = ?1
+      AND session_id = requested.session_id
+  )
+)
+INSERT INTO analytics_replay_sessions (month, session_id)
+SELECT ?1, session_id FROM new_sessions
+WHERE (SELECT COUNT(*) FROM analytics_replay_sessions WHERE month = ?1)
+  + (SELECT COUNT(*) FROM new_sessions) <= ?3`
+const REPLAY_MISSING_SQL = `
+SELECT COUNT(*) AS missing FROM json_each(?2) AS requested
+WHERE NOT EXISTS (
+  SELECT 1 FROM analytics_replay_sessions WHERE month = ?1
+    AND session_id = requested.value
+)`
+
+function monthlyLimit(name: string, ceiling: number): number {
+  const configured = serverEnv(name)
+  const limit = configured === undefined ? ceiling : Number(configured)
+  if (!Number.isSafeInteger(limit) || limit < 0 || limit > ceiling)
+    throw new RequestError(503, "Invalid analytics limit.")
+  return limit
 }
 
 // One SQL statement is atomic across Workers, unlike KV or per-location counters.
@@ -186,6 +217,7 @@ function eventsFor(payload: unknown, replay: boolean): Record<string, unknown>[]
       replay &&
       (!Array.isArray(event.properties.$snapshot_data) ||
         typeof event.properties.$session_id !== "string" ||
+        !event.properties.$session_id ||
         event.properties.$session_id.length > 256)
     )
       throw new RequestError(400, "Invalid replay data.")
@@ -231,6 +263,7 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
     if (!ip || !(await limiter.limit({ key: `analytics:${ip}` })).success) return refuse(429)
     let body: string | undefined
     let units = 1
+    let sessions: string[] = []
     if (!get) {
       let payload: unknown
       try {
@@ -269,6 +302,7 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
           if (object(event) && object(event.properties)) {
             event.properties.token = token
             event.properties.$ip = ip
+            if (category === "replay") sessions.push(String(event.properties.$session_id))
             // Only the enclosing SDK wrapper may contain batch/project credentials.
             delete event.token
             delete event.api_key
@@ -305,13 +339,23 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
         ? MAX_RESPONSE
         : 128 * 1024
     const limitName = `POSTHOG_MONTHLY_${category.toUpperCase()}_LIMIT`
-    const configured = serverEnv(limitName)
-    const limit = configured === undefined ? budget.units : Number(configured)
     // Operator limits may reduce the hard ceiling, never disable or raise it by typo.
-    if (!Number.isSafeInteger(limit) || limit < 0 || limit > budget.units) return refuse(503)
+    const limit = monthlyLimit(limitName, budget.units)
+    const month = new Date().toISOString().slice(0, 7)
+    if (category === "replay") {
+      const recordingLimit = monthlyLimit("POSTHOG_MONTHLY_RECORDINGS_LIMIT", MAX_RECORDINGS)
+      if (recordingLimit === 0) return refuse(429)
+      sessions = [...new Set(sessions)]
+      const ids = JSON.stringify(sessions)
+      const result = await db.batch<{ missing: number }>([
+        db.prepare(REPLAY_ADMISSION_SQL).bind(month, ids, recordingLimit),
+        db.prepare(REPLAY_MISSING_SQL).bind(month, ids),
+      ])
+      if (result[1]?.results[0]?.missing !== 0) return refuse(429)
+    }
     const reserved = await db
       .prepare(ANALYTICS_QUOTA_RESERVATION_SQL)
-      .bind(new Date().toISOString().slice(0, 7), category, units, bytes, limit, budget.bytes)
+      .bind(month, category, units, bytes, limit, budget.bytes)
       .first()
     if (!reserved) return refuse(429)
     const upstreamPath =

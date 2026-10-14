@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ANALYTICS_GATEWAY_TOKEN } from "./analytics-gateway"
 import { ANALYTICS_QUOTA_RESERVATION_SQL, handleAnalyticsGateway } from "./analytics-gateway.server"
 import { runWithRequest, type RuntimeEnv } from "./runtime.server"
+import { sqliteQuotaBinding } from "./analytics-gateway.test-support"
 
 const TOKEN = "phc_private_project_token"
 const origin = "https://indrax.uk"
@@ -18,25 +19,18 @@ const event = (name = "$pageview") => ({
     $current_url: `${origin}/writing/example?preview=secret-preview&token=secret-token`,
   },
 })
+const snapshot = (session = "session") => ({
+  event: "$snapshot",
+  properties: {
+    distinct_id: "visitor",
+    $session_id: session,
+    $snapshot_data: [{ type: 2, data: { node: { type: 2, childNodes: [] } } }],
+  },
+})
 let sqlite: DatabaseSync
 let env: RuntimeEnv
 let upstream: ReturnType<typeof vi.fn>
 
-function d1(database: DatabaseSync) {
-  return {
-    prepare(sql: string) {
-      return {
-        bind(...args: (string | number)[]) {
-          return {
-            async first() {
-              return database.prepare(sql).get(...args) ?? null
-            },
-          }
-        },
-      }
-    },
-  }
-}
 function request(path: string, data: unknown = event(), extra: RequestInit = {}) {
   return new Request(`${origin}/api/analytics${path}`, {
     method: "POST",
@@ -64,7 +58,7 @@ beforeEach(() => {
   env = {
     POSTHOG_PROJECT_TOKEN: TOKEN,
     POSTHOG_HOST: "https://us.i.posthog.com",
-    NEXT_TAG_CACHE_D1: d1(sqlite),
+    NEXT_TAG_CACHE_D1: sqliteQuotaBinding(sqlite),
     RATE_LIMIT_API: { limit: vi.fn().mockResolvedValue({ success: true }) },
   }
   upstream = vi.fn().mockImplementation(async () => Response.json({ status: 1 }))
@@ -359,6 +353,114 @@ describe("protected PostHog gateway", () => {
     ).toEqual({ units: 10 })
   })
 
+  it.each(["events", "flags"])(
+    "caps %s at its quarter-share of the free allowance",
+    async (category) => {
+      sqlite
+        .prepare("INSERT INTO analytics_quota VALUES (?, ?, 249999, 0)")
+        .run(new Date().toISOString().slice(0, 7), category)
+      const req = () =>
+        category === "events" ? request("/e/") : request("/flags/", { distinct_id: "visitor" })
+      expect((await handle(req())).status).toBe(200)
+      expect((await handle(req())).status).toBe(429)
+      expect(upstream).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it("counts distinct recordings and lets admitted sessions continue at the limit", async () => {
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "1"
+    expect((await handle(request("/s/", [snapshot(), snapshot()]))).status).toBe(200)
+    expect((await handle(request("/s/", snapshot()))).status).toBe(200)
+    expect((await handle(request("/s/", snapshot("another-session")))).status).toBe(429)
+    expect(sqlite.prepare("SELECT COUNT(*) AS total FROM analytics_replay_sessions").get()).toEqual(
+      { total: 1 }
+    )
+    expect(
+      sqlite.prepare("SELECT units FROM analytics_quota WHERE category='replay'").get()
+    ).toEqual({ units: 3 })
+    expect((await handle(request("/s/", snapshot("")))).status).toBe(400)
+  })
+
+  it("admits all new sessions in a batch or none, including mixtures with existing sessions", async () => {
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "2"
+    expect((await handle(request("/s/", snapshot("one")))).status).toBe(200)
+    expect(
+      (await handle(request("/s/", [snapshot("one"), snapshot("two"), snapshot("three")]))).status
+    ).toBe(429)
+    expect(
+      sqlite.prepare("SELECT session_id FROM analytics_replay_sessions ORDER BY session_id").all()
+    ).toEqual([{ session_id: "one" }])
+    expect((await handle(request("/s/", [snapshot("two"), snapshot("two")]))).status).toBe(200)
+    expect((await handle(request("/s/", [snapshot("one"), snapshot("two")]))).status).toBe(200)
+  })
+
+  it("does not over-admit recordings under concurrent requests", async () => {
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "10"
+    const results = await Promise.all(
+      Array.from({ length: 40 }, (_, index) => handle(request("/s/", snapshot(`session-${index}`))))
+    )
+    expect(results.filter((response) => response.status === 200)).toHaveLength(10)
+    expect(results.filter((response) => response.status === 429)).toHaveLength(30)
+    expect(sqlite.prepare("SELECT COUNT(*) AS total FROM analytics_replay_sessions").get()).toEqual(
+      { total: 10 }
+    )
+    expect(upstream).toHaveBeenCalledTimes(10)
+  })
+
+  it("limits each environment to 1250 admitted recordings while preserving continuation", async () => {
+    const month = new Date().toISOString().slice(0, 7)
+    sqlite
+      .prepare(
+        `WITH RECURSIVE slots(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM slots WHERE n < 1249)
+      INSERT INTO analytics_replay_sessions SELECT ?, 'seed-' || n FROM slots`
+      )
+      .run(month)
+    expect((await handle(request("/s/", snapshot("last-recording")))).status).toBe(200)
+    expect((await handle(request("/s/", snapshot("overflow")))).status).toBe(429)
+    expect((await handle(request("/s/", snapshot("last-recording")))).status).toBe(200)
+    expect(sqlite.prepare("SELECT COUNT(*) AS total FROM analytics_replay_sessions").get()).toEqual(
+      { total: 1250 }
+    )
+  })
+
+  it("renews recording admission at UTC month rollover", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-31T23:59:59Z"))
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "1"
+    expect((await handle(request("/s/", snapshot("one")))).status).toBe(200)
+    expect((await handle(request("/s/", snapshot("two")))).status).toBe(429)
+    vi.setSystemTime(new Date("2026-11-01T00:00:00Z"))
+    expect((await handle(request("/s/", snapshot("two")))).status).toBe(200)
+    expect(
+      sqlite
+        .prepare(
+          "SELECT month, COUNT(*) AS total FROM analytics_replay_sessions GROUP BY month ORDER BY month"
+        )
+        .all()
+    ).toEqual([
+      { month: "2026-10", total: 1 },
+      { month: "2026-11", total: 1 },
+    ])
+  })
+
+  it("preserves recording reservations after upstream failures and enforces lower-only limits", async () => {
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "1"
+    upstream.mockResolvedValue(new Response(null, { status: 500 }))
+    expect((await handle(request("/s/", snapshot()))).status).toBe(502)
+    expect((await handle(request("/s/", snapshot("another")))).status).toBe(429)
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "0"
+    expect((await handle(request("/s/", snapshot()))).status).toBe(429)
+    env.POSTHOG_MONTHLY_RECORDINGS_LIMIT = "1251"
+    expect((await handle(request("/s/", snapshot()))).status).toBe(503)
+    expect(upstream).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails closed when recording storage is absent", async () => {
+    sqlite.exec("DROP TABLE analytics_replay_sessions")
+    expect((await handle(request("/s/", snapshot()))).status).toBe(502)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
   it("resets quotas only at UTC month rollover", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-10-31T23:59:59Z"))
@@ -375,17 +477,17 @@ describe("protected PostHog gateway", () => {
     )
   })
 
-  it("reserves the config response ceiling without prematurely exhausting its 1000-request budget", async () => {
+  it("reserves the config response ceiling without prematurely exhausting its 10000-request budget", async () => {
     const month = new Date().toISOString().slice(0, 7)
     sqlite
-      .prepare("INSERT INTO analytics_quota VALUES (?, 'config', 999, ?)")
-      .run(month, 999 * 128 * 1024)
+      .prepare("INSERT INTO analytics_quota VALUES (?, 'config', 9999, ?)")
+      .run(month, 9999 * 128 * 1024)
     upstream.mockImplementation(async () => Response.json({ sessionRecording: { enabled: true } }))
     expect((await handle(get(`/array/${ANALYTICS_GATEWAY_TOKEN}/config`))).status).toBe(200)
     expect((await handle(get(`/array/${ANALYTICS_GATEWAY_TOKEN}/config`))).status).toBe(429)
     expect(
       sqlite.prepare("SELECT units, bytes FROM analytics_quota WHERE category='config'").get()
-    ).toEqual({ units: 1000, bytes: 1000 * 128 * 1024 })
+    ).toEqual({ units: 10000, bytes: 10000 * 128 * 1024 })
   })
 
   it("preserves normal nested replay DOM data within the bounded traversal budget", async () => {
