@@ -15,8 +15,8 @@ and [release preparation](public-site-release.md) for the surrounding applicatio
 
 Both `indrax` and `indrax-dev` use binding aliases `CACHE_KV` and `APP_D1`, with
 separate existing resource IDs for each Worker. Physical resource names and stored
-data are unchanged. `APP_D1` also holds analytics quota counters. These aliases
-are accessed through Worker bindings and the request context, not through Next.js
+data are unchanged. `APP_D1` also holds analytics quota counters and the replay
+session registry. These aliases are accessed through Worker bindings and the request context, not through Next.js
 or a database connection string in `.env.local`. The source configuration is
 [wrangler.jsonc](../wrangler.jsonc); [workers/app.ts](../workers/app.ts) establishes
 the request context for public routes and API handlers.
@@ -198,7 +198,11 @@ npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --comm
 For production, use `--env ""` with the production database/account explicitly
 verified. This command changes remote schema; it is an operator action, not part
 of local startup or CI fixtures. KV needs its namespace binding but no schema or
-seed. Neither resource replaces PostgreSQL migrations, credentials or isolation.
+seed. The deploy workflow separately initializes `analytics_quota` and
+`analytics_replay_sessions` from `config/analytics-quota.sql` in the matching
+remote database before deployment, preserving counters. Local initialization
+prepares all three tables locally. Neither resource replaces PostgreSQL
+migrations, credentials or isolation.
 
 ## Troubleshooting
 

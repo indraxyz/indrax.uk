@@ -61,50 +61,29 @@ cache invalidation, so an already-running local Worker may need its local public
 cache invalidated or the cache TTL to expire. Do not seed demo content on staging
 or production.
 
-## Release readiness checked on 2026-10-13
+## Release readiness and historical evidence
 
-GitHub's `main...develop` comparison reports 66 commits ahead and zero behind.
-The latest develop revision is `c84b9d1` (PR #64). Its
-[CI run](https://github.com/indraxyz/indrax.uk/actions/runs/38324588330)
-passed check, seeded browser/integration checks, deployment to Preview, and the
-post-deployment security smoke step. This establishes that CI deployed this
-revision; a hands-on staging review of the release journeys is still required.
-There is no open release PR with `develop` as its head and `main` as its base.
-The other open main-targeted PRs are dependency updates, not the release.
+The 2026-10-09 review above records implementation history, not the current release
+head or deployed version. Release PR [#66](https://github.com/indraxyz/indrax.uk/pull/66)
+tracks promotion from `develop` into `main`; use its current head, checks, Preview
+deployment and reviewer approval for release readiness. Previously recorded commit
+counts and CI results must not be treated as evidence for a later revision.
 
-The local comparison spans 341 files, including the public SSR/admin CSR split,
-writing discovery, uploads, security and deployment configuration. Review the
-whole release rather than only the latest UI changes. There are no changed
-Drizzle migration files in this comparison, but production's applied schema and
-D1 cache initialization still need verification.
+The owner has verified real staging GitHub sign-in/out and authenticated
+save/publish/unpublish/upload, supplied the production OAuth App/callback, and
+validated the Production CI token. Six auth/database secrets were inspected on a
+staged production version; staging secrets does not activate that version. Recheck
+the release candidate and target account before production promotion rather than
+inferring live readiness from these preparation checks.
 
-Remaining preparations:
-
-- Review and merge the UI polish branch into develop, then require its CI and
-  Preview deployment to pass before reviewing that new staging revision.
-- Exercise public filters, footer/theme/consent, admin discovery/editor,
-  GitHub sign-in/out, publishing/unpublishing, cover uploads, resume PDF,
-  sitemap/RSS and redirects on staging.
-- Verify Production GitHub environment credentials, build variables and
-  protection rules; verify Worker runtime secrets, OAuth callback origin,
-  database and media setup, isolated KV/D1 resources and disabled Git Builds.
-  The API token available for this inspection cannot read repository Actions
-  variables (HTTP 403); the successful Preview deploy demonstrates the deploy
-  gate was enabled for that run, not Production environment readiness.
-- Open the release PR with head `develop` and base `main`, summarize all merged
-  work, and require current check/e2e jobs plus review of the complete diff.
-- Record the current production Worker version and a compatible rollback plan
-  before merging. After main's successful deploy, verify production journeys
-  and observe errors and CPU usage. Worker rollback does not undo resource data.
-
-The current UI polish needs no schema or environment changes. Optimizations
-listed later in this document are optional follow-ups, not release requirements.
+The evergreen [development and deployment workflow](development-and-deployment.md)
+defines current CI, environment mapping and main protection gates. Optional
+optimizations later in this document are follow-ups, not release requirements.
 
 ## Production release sequence
 
-1. Base the release on current remote develop, including the merged UI, upload
-   and security follow-ups through PR #64. Submit
-   these follow-up changes to develop and require check/e2e jobs to pass.
+1. Base the release on current remote develop and all merged follow-ups. Require
+   check/e2e jobs and Preview deployment to pass for that revision.
 2. Exercise dev.indrax.uk after its develop push deployment: archive paging,
    combined public/admin search/filters/sort and status paging, article SSR, draft isolation, OAuth, author save/publish, resume
    PDF, media uploads when configured, RSS, sitemap, and legacy redirects.
@@ -113,7 +92,7 @@ listed later in this document are optional follow-ups, not release requirements.
    the repository/organization gate `CLOUDFLARE_DEPLOY_ENABLED=true`. Preview and
    Production environment variables cannot enable a job-level gate on their own.
    Verify the production Worker's database,
-   auth/OAuth origin and credentials, author ID, and optional R2 secrets. Keep
+   auth/OAuth origin and credentials, author ID, and optional R2 binding. Keep
    dev/prod KV and D1 resources isolated. Ensure D1's revalidations table exists.
    See [D1/KV initialization and inspection](d1-kv-cache.md#deployed-develop-and-production)
    for environment-specific operator commands and cache recovery considerations.
@@ -121,12 +100,15 @@ listed later in this document are optional follow-ups, not release requirements.
    the production migration connection. The unified public/admin discovery change uses existing columns
    and indexes and introduces no schema migration. Do not run local fixture seeding
    as a release step.
-5. Open a develop-to-main release PR and review the full diff, because main is
-   behind multiple develop features. Require the seeded browser and integration
-   suites plus the normal check/build gates.
+5. Open a develop-to-main release PR and review the full diff, which may contain
+   multiple develop features. Require one reviewer approval, current
+   up-to-date check/e2e checks and a successful Preview deployment. Resolve review
+   conversations and renew approval after new commits.
 6. Merge the approved release PR. GitHub Actions deploys main using the generated
    `build/server/wrangler.json`, targeting indrax and its production domains.
-   Before upload, `scripts/assert-deploy-target.mjs` resolves source configuration
+   CI first prepares `analytics_quota` and `analytics_replay_sessions` in the
+   matching `APP_D1`, preserving existing counters. Before upload,
+   `scripts/assert-deploy-target.mjs` resolves source configuration
    through Wrangler and verifies generated Worker name, routes, site URL and
    KV/D1 bindings. CI validates both production and develop builds; the seeded
    browser suite keeps its production-config/local-fixture coverage. Quality jobs

@@ -225,6 +225,9 @@ database for the Worker and seed. See [release preparation and optimization prop
 
 ## Delivery
 
+See [development and deployment workflow](docs/development-and-deployment.md) for
+feature PRs, staging promotion, required release review and production verification.
+
 GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
 runs only on enabled pushes to `develop`/`main`, using separate GitHub environments
 and Cloudflare resources. Superseded quality jobs are canceled; deploy jobs
@@ -267,12 +270,21 @@ application's GitHub OAuth session and numeric author allowlist; Cloudflare Acce
 is not required. Dev remains non-indexable. See
 [public dev access and admin authentication](docs/cloudflare-access.md).
 
-Remote database and D1 migrations remain a reviewed release step before code
-that needs them is deployed; CI migration/seeding targets only its throwaway
-local database. This discovery/cleanup change requires no schema migration.
+The deploy job prepares `analytics_quota` and `analytics_replay_sessions` in the
+matching `APP_D1` before deploying, preserving existing counters. New environments
+also need the cache `revalidations` table initialized. PostgreSQL migrations remain
+a reviewed release step; CI migration/seeding targets only its throwaway local
+database.
 Repository checks cannot prove runtime secrets, database isolation, environment
 protection rules or disabled dashboard Git Builds; verify those in the target
 account before a production release.
+
+Promote current `develop` through a release PR into `main`. Main requires one
+reviewer approval, dismisses stale approvals after new commits, requires resolved
+review conversations, up-to-date GitHub Actions `check`/`e2e` checks and a successful
+`Preview` environment deployment. Protections apply to administrators and block
+force pushes and deletion. The owner reviews the release before merging; merging
+triggers the Production pipeline. These controls are GitHub repository settings.
 
 Invocation logs redact URL query strings to protect OAuth codes and preview tokens.
 Automatic HTTP traces are disabled because PostHog configuration URLs contain the
