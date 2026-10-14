@@ -64,6 +64,10 @@ export interface RecordOptions {
   consent?: "granted" | "denied" | null
   /** Load the installed recorder against a synthetic remote configuration. */
   replay?: boolean
+  /** Enable remote web-vitals/dead-click settings and load their installed scripts. */
+  performance?: boolean
+  /** Advertise remote heatmap capture and the current ingestion endpoint. */
+  heatmaps?: boolean
   /** Validate real SDK requests through the server handler and atomic SQLite quota. */
   validateGateway?: boolean
 }
@@ -116,6 +120,21 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
       hasFeatureFlags: true,
       // The SDK waits for an explicit server opt-in before automatic click capture.
       autocapture_opt_out: false,
+      ...(options.heatmaps !== undefined
+        ? {
+            analytics: { endpoint: "/i/v0/e/" },
+            heatmaps: options.heatmaps
+              ? {
+                  captureMode: "url_allowlist",
+                  urlAllowlist: [],
+                  urlAllowlistEnforced: false,
+                }
+              : false,
+          }
+        : {}),
+      ...(options.performance
+        ? { capturePerformance: { web_vitals: true }, captureDeadClicks: true, surveys: true }
+        : {}),
       sessionRecording: options.replay
         ? { endpoint: "/s/", sampleRate: "1", minimumDurationMilliseconds: 0 }
         : false,
@@ -125,9 +144,9 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
       body = `window._POSTHOG_REMOTE_CONFIG = window._POSTHOG_REMOTE_CONFIG || {}; window._POSTHOG_REMOTE_CONFIG[${JSON.stringify(ANALYTICS_GATEWAY_TOKEN)}] = ${JSON.stringify({ config })};`
     } else if (path.endsWith("/config")) body = JSON.stringify(config)
     else if (
-      options.replay &&
+      (options.replay || options.performance || options.heatmaps) &&
       path.includes("/static/") &&
-      /^(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin)\.js$/.test(
+      /^(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin|web-vitals|web-vitals-with-attribution|dead-clicks-autocapture)\.js$/.test(
         basename(path)
       )
     ) {
@@ -140,17 +159,7 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
           const upstreamUrl = new URL(input instanceof Request ? input.url : String(input))
           if (init?.body) forwarded.push(String(init.body))
           if (upstreamUrl.pathname.endsWith("/config")) {
-            return Response.json({
-              hasFeatureFlags: true,
-              autocapture_opt_out: false,
-              sessionRecording: options.replay
-                ? {
-                    endpoint: "/s/",
-                    sampleRate: "1",
-                    minimumDurationMilliseconds: 0,
-                  }
-                : false,
-            })
+            return Response.json(config)
           }
           if (upstreamUrl.pathname.includes("/static/"))
             return new Response(body, { headers: { "Content-Type": "application/javascript" } })

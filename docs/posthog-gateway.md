@@ -1,7 +1,7 @@
 # Protected PostHog forwarding
 
 The browser initializes the existing PostHog SDK with the public placeholder
-`phc_indrax_gateway`. All event, replay, flags, remote configuration and recorder
+`phc_indrax_gateway`. All event, replay, flags, remote configuration and SDK
 asset requests go to `/api/analytics/*` on the site's own origin. The Worker validates
 requests and reserves a shared quota before adding `POSTHOG_PROJECT_TOKEN` from
 its runtime secrets. The real project token is never embedded in either browser
@@ -12,6 +12,35 @@ remain supported. Recording still depends on the PostHog project's replay settin
 sampling and triggers. Consent is required before the SDK starts. Withdrawing it
 stops capture and clears SDK identifiers. The gateway cannot verify a visitor's
 localStorage consent; an anonymous caller can imitate the public request protocol.
+
+The script allowlist includes the recorder family, `web-vitals`,
+`web-vitals-with-attribution` and `dead-clicks-autocapture`, with both versioned
+and fallback paths. Remote project settings still control performance and dead-click
+capture. These scripts share the existing asset quota, fixed regional host, bounded
+response size and JavaScript MIME checks. Surveys are explicitly disabled with the
+SDK's `disable_surveys` option: this site does not support survey response events
+or endpoints. Arbitrary SDK scripts remain refused.
+
+Heatmap capture follows the SDK's native remote settings; the application does not
+force capture on or off. The gateway accepts `$$heatmap` envelopes, including mixed
+batches with ordinary events, at `/e/` and the remote ingestion endpoint `/i/v0/e/`.
+The installed SDK groups coordinate arrays by absolute HTTP(S) page URL. Each point
+has finite `x`/`y` coordinates (including negative/fractional values), boolean
+`target_fixed`, and type `click`, `mousemove`, `rageclick` or `deadclick`. Additional
+point fields and malformed payloads are refused before quota reservation.
+
+URL keys are redacted in the browser before transmission and again by the Worker,
+including preview/OAuth query values and URL credentials. Colliding redacted keys
+combine their point arrays with linear appends. Validated heatmap URL keys may be up to 8,192 characters; ordinary
+property keys retain their 256-character limit. Heatmaps use the existing 1 MiB
+request limit and bounded sanitization traversal. Each heatmap envelope reserves
+one event unit, and its full serialized payload counts against the events byte
+budget. No extra quota table or unmetered forwarding path is introduced.
+The SDK's scroll-depth properties continue through existing pageview/pageleave
+events. Native dead-swipe events from the touch dead-click detector are also
+accepted under the same event budget. Consent withdrawal stops new capture and
+clears identifiers as before; the SDK may still send previously captured events
+that were already queued while consent was granted.
 
 ## Configuration and limits
 
@@ -114,6 +143,21 @@ Missing secrets, unsupported upstream hosts, missing D1 tables/bindings or quota
 errors fail closed. Quota/edge refusals return 429; upstream failures return a generic 502. Responses never expose upstream error text, cookies, secret headers or redirects.
 The browser CSP allows scripts and connections only from its own origin, so the
 SDK cannot bypass the gateway by switching to an external ingestion/asset host.
+
+Upstream fetches use `redirect: "manual"` and reject every non-success status,
+including redirects. The installed Cloudflare runtime rejects `redirect: "error"`
+before dispatch, even though Node accepts it; mocked Node/browser tests do not
+detect that runtime difference.
+
+When `ANALYTICS_ENABLED=true`, CI checks the deployed gateway's JSON and JavaScript
+configuration endpoints and the three performance/dead-click assets after deployment.
+Asset versions come from the installed, lockfile-resolved `posthog-js` package.
+Run `node scripts/verify-analytics.mjs dev`
+or `node scripts/verify-analytics.mjs production` to repeat the check. These checks
+use the real upstream and reserve two configuration and three asset requests, but create no events.
+They detect runtime, credential, configuration and quota failures; they do not prove
+event ingestion or dashboard visibility, which still need a consented browser visit
+and inspection of the matching PostHog project.
 
 Automatic Worker traces are disabled in the reviewed configuration because PostHog's
 configuration-fetch URL contains the server token in its path. Cloudflare fetch spans

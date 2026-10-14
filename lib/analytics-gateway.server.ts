@@ -15,7 +15,9 @@ const EVENTS = new Set([
   "$autocapture",
   "$rageclick",
   "$dead_click",
+  "$dead_swipe",
   "$web_vitals",
+  "$$heatmap",
   "$feature_flag_called",
   "resume_pdf_downloaded",
   "contact_clicked",
@@ -25,7 +27,7 @@ const REGIONS: Record<string, string | undefined> = {
   "https://eu.i.posthog.com": "https://eu-assets.i.posthog.com",
 }
 const ASSETS =
-  /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin)\.js$/
+  /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin|web-vitals|web-vitals-with-attribution|dead-clicks-autocapture)\.js$/
 type Category = "events" | "replay" | "flags" | "config" | "assets"
 const LIMITS: Record<Category, { units: number; bytes: number }> = {
   // Each of two environments receives 25% of the published free allowance.
@@ -36,6 +38,8 @@ const LIMITS: Record<Category, { units: number; bytes: number }> = {
   assets: { units: 10_000, bytes: 5_120 * MAX_BODY },
 }
 const MAX_RECORDINGS = 1_250
+const MAX_HEATMAP_URL = 8192
+const HEATMAP_TYPES = new Set(["click", "mousemove", "rageclick", "deadclick"])
 
 // Admit the entire set of new sessions or none. D1 batch makes admission and
 // verification one transaction, including requests arriving at different edges.
@@ -95,10 +99,15 @@ function object(value: unknown): value is Record<string, unknown> {
 
 /** URLs anywhere in events/replay may carry signed draft links or OAuth codes. */
 function redact(value: string): string {
-  if (value.includes("?")) {
+  if (value.includes("?") || /^https?:\/\/[^/]*@/i.test(value)) {
     try {
       const url = new URL(value)
       let touched = false
+      if (url.username || url.password) {
+        url.username = ""
+        url.password = ""
+        touched = true
+      }
       for (const key of [...url.searchParams.keys()]) {
         if (/^(?:token|preview|code|access_token|refresh_token|id_token)$/i.test(key)) {
           url.searchParams.set(key, "redacted")
@@ -115,21 +124,50 @@ function redact(value: string): string {
     "$1redacted"
   )
 }
-function sanitize(value: unknown, token: string, depth = 0, budget = { nodes: 0 }): unknown {
+function sanitize(
+  value: unknown,
+  token: string,
+  depth = 0,
+  budget = { nodes: 0 },
+  context?: "events" | "heatmap-properties" | "heatmap-urls"
+): unknown {
   if (++budget.nodes > 100_000) throw new RequestError(413, "Invalid analytics data.")
   if (depth > 128) throw new RequestError(400, "Invalid analytics data.")
   if (typeof value === "string") return redact(value.split(token).join(ANALYTICS_GATEWAY_TOKEN))
-  if (Array.isArray(value)) return value.map((item) => sanitize(item, token, depth + 1, budget))
+  if (Array.isArray(value))
+    return value.map((item) =>
+      sanitize(item, token, depth + 1, budget, context === "events" ? "events" : undefined)
+    )
   if (object(value)) {
     const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>
     for (const [key, item] of Object.entries(value)) {
-      if (key.length > 256 || key === "__proto__" || key === "constructor" || key === "prototype")
+      if (
+        key.length > (context === "heatmap-urls" ? MAX_HEATMAP_URL : 256) ||
+        key === "__proto__" ||
+        key === "constructor" ||
+        key === "prototype"
+      )
         throw new RequestError(400, "Invalid analytics data.")
       // The browser cannot choose an ingestion project, even in a nested SDK property.
-      result[key.split(token).join(ANALYTICS_GATEWAY_TOKEN)] =
+      const safeKey = (context === "heatmap-urls" ? redact(key) : key)
+        .split(token)
+        .join(ANALYTICS_GATEWAY_TOKEN)
+      const nextContext =
+        context === "heatmap-properties" && key === "$heatmap_data"
+          ? "heatmap-urls"
+          : context === "events" && key === "properties" && value.event === "$$heatmap"
+            ? "heatmap-properties"
+            : undefined
+      const safeValue =
         key === "token" || key === "api_key"
           ? ANALYTICS_GATEWAY_TOKEN
-          : sanitize(item, token, depth + 1, budget)
+          : sanitize(item, token, depth + 1, budget, nextContext)
+      const existing = result[safeKey]
+      if (context === "heatmap-urls" && Array.isArray(existing) && Array.isArray(safeValue)) {
+        for (const point of safeValue) existing.push(point)
+      } else {
+        result[safeKey] = safeValue
+      }
     }
     return result
   }
@@ -193,6 +231,41 @@ function sameSiteGet(request: Request): boolean {
   }
 }
 
+/** The installed SDK emits coordinate-only arrays grouped by absolute page URL. */
+function validateHeatmapData(data: unknown): void {
+  if (!object(data) || Object.keys(data).length === 0)
+    throw new RequestError(400, "Invalid heatmap data.")
+  for (const [page, points] of Object.entries(data)) {
+    let url: URL
+    try {
+      url = new URL(page)
+    } catch {
+      throw new RequestError(400, "Invalid heatmap URL.")
+    }
+    if (
+      page.length > MAX_HEATMAP_URL ||
+      !["http:", "https:"].includes(url.protocol) ||
+      !Array.isArray(points) ||
+      points.length === 0
+    )
+      throw new RequestError(400, "Invalid heatmap data.")
+    for (const point of points) {
+      if (
+        !object(point) ||
+        Object.keys(point).length !== 4 ||
+        typeof point.x !== "number" ||
+        !Number.isFinite(point.x) ||
+        typeof point.y !== "number" ||
+        !Number.isFinite(point.y) ||
+        typeof point.target_fixed !== "boolean" ||
+        typeof point.type !== "string" ||
+        !HEATMAP_TYPES.has(point.type)
+      )
+        throw new RequestError(400, "Invalid heatmap point.")
+    }
+  }
+}
+
 function eventsFor(payload: unknown, replay: boolean): Record<string, unknown>[] {
   const batch = Array.isArray(payload) ? payload : [payload]
   if (batch.length === 0 || batch.length > 50)
@@ -221,6 +294,7 @@ function eventsFor(payload: unknown, replay: boolean): Record<string, unknown>[]
         event.properties.$session_id.length > 256)
     )
       throw new RequestError(400, "Invalid replay data.")
+    if (!replay && event.event === "$$heatmap") validateHeatmapData(event.properties.$heatmap_data)
     if (replay) {
       for (const snapshot of event.properties.$snapshot_data as unknown[]) {
         // Nested SDK gzip hides URL-bearing DOM attributes from sanitization.
@@ -293,7 +367,13 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
       } else {
         units = eventsFor(data, category === "replay").length
       }
-      const safe = sanitize(data, token)
+      const safe = sanitize(
+        data,
+        token,
+        0,
+        { nodes: 0 },
+        category === "events" ? "events" : undefined
+      )
       if (category === "flags" && object(safe)) {
         safe.token = token
         delete safe.api_key
@@ -369,7 +449,9 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
     const response = await fetch(upstream, {
       method: request.method,
       body,
-      redirect: "error",
+      // Workers only supports follow/manual. Refuse 3xx through response.ok below
+      // so redirects never forward the project credential to another destination.
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
       headers: body ? { "Content-Type": "application/json" } : {},
     })

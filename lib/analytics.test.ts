@@ -47,9 +47,11 @@ it("initializes only with a placeholder and routes SDK assets and events through
     expect.objectContaining({
       api_host: `https://indrax.uk${ANALYTICS_GATEWAY_PATH}`,
       respect_dnt: true,
+      disable_surveys: true,
     })
   )
   const options = tracker.init.mock.calls[0][1]
+  expect(options).not.toHaveProperty("capture_heatmaps")
   for (const path of [
     "/static/recorder.js",
     `/array/${ANALYTICS_GATEWAY_TOKEN}/config.js`,
@@ -85,4 +87,44 @@ it("redacts preview credentials before sending SDK pageviews", async () => {
   expect(JSON.stringify(event)).not.toContain("bearer")
   expect(JSON.stringify(event)).not.toContain("private")
   expect(event.properties.$current_url).toContain("redacted")
+})
+
+it("redacts heatmap URL keys before capture and merges colliding coordinate groups", async () => {
+  ;(await import("./analytics")).startAnalytics()
+  const beforeSend = tracker.init.mock.calls[0][1].before_send
+  const click = { x: -0.5, y: 12.75, target_fixed: false, type: "click" }
+  const move = { x: 8, y: 22, target_fixed: true, type: "mousemove" }
+  const original = [click]
+  const result = beforeSend({
+    event: "$$heatmap",
+    properties: {
+      $heatmap_data: {
+        "https://indrax.uk/preview?token=first-secret&code=oauth-first": original,
+        "https://indrax.uk/preview?token=second-secret&code=oauth-second": [move],
+      },
+    },
+  })
+  expect(result.properties.$heatmap_data).toEqual({
+    "https://indrax.uk/preview?token=redacted&code=redacted": [click, move],
+  })
+  expect(JSON.stringify(result)).not.toMatch(/first-secret|second-secret|oauth-first|oauth-second/)
+  expect(original).toEqual([click])
+})
+
+it("redacts case-insensitive OAuth parameters and URL credentials in heatmap keys", async () => {
+  ;(await import("./analytics")).startAnalytics()
+  const beforeSend = tracker.init.mock.calls[0][1].before_send
+  const point = { x: 1, y: 2, target_fixed: false, type: "click" }
+  const result = beforeSend({
+    event: "$$heatmap",
+    properties: {
+      $heatmap_data: {
+        "https://user:password@indrax.uk/?Access_Token=private&refresh_token=refresh&id_token=id&campaign=summer":
+          [point],
+      },
+    },
+  })
+  expect(Object.keys(result.properties.$heatmap_data)).toEqual([
+    "https://indrax.uk/?Access_Token=redacted&refresh_token=redacted&id_token=redacted&campaign=summer",
+  ])
 })
