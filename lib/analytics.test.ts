@@ -19,7 +19,7 @@ beforeEach(() => {
   vi.resetModules()
   vi.clearAllMocks()
   consent.value = "granted"
-  vi.stubEnv("NEXT_PUBLIC_ANALYTICS_ENABLED", "true")
+  vi.stubEnv("ANALYTICS_ENABLED", "true")
   vi.stubGlobal("window", { location: new URL("https://indrax.uk/writing") })
 })
 afterEach(() => {
@@ -32,7 +32,7 @@ it("does not initialize before consent or when disabled", async () => {
   const analytics = await import("./analytics")
   analytics.startAnalytics()
   expect(tracker.init).not.toHaveBeenCalled()
-  vi.stubEnv("NEXT_PUBLIC_ANALYTICS_ENABLED", "false")
+  vi.stubEnv("ANALYTICS_ENABLED", "false")
   vi.resetModules()
   consent.value = "granted"
   ;(await import("./analytics")).startAnalytics()

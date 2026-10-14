@@ -245,7 +245,7 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
   const host = serverEnv("POSTHOG_HOST")?.trim() ?? "https://us.i.posthog.com"
   const assets = REGIONS[host]
   const env = getRuntimeEnv()
-  const db = env.NEXT_TAG_CACHE_D1 as D1Database | undefined
+  const db = env.APP_D1 as D1Database | undefined
   const limiter = env.RATE_LIMIT_API as RateLimit | undefined
   if (
     !token ||

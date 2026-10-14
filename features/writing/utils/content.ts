@@ -296,7 +296,7 @@ const schema: Schema = {
     // Third-party https hosts are still allowed, which is a deliberate, narrow
     // exposure: an embedded image tells its host the reader's IP and user agent.
     // That is the same trade GitHub and every markdown host makes, and the author
-    // is the only person who can write one. `NEXT_PUBLIC_MEDIA_ORIGIN` governs
+    // is the only person who can write one. `MEDIA_ORIGIN` governs
     // cover images, which are structured data rather than authored prose - see
     // `lib/utils/media.ts`.
     src: ["https"],

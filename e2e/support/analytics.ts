@@ -168,7 +168,7 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
             POSTHOG_PROJECT_TOKEN: "phc_e2e_server_private",
             POSTHOG_HOST: "https://us.i.posthog.com",
             RATE_LIMIT_API: { limit: async () => ({ success: true }) },
-            NEXT_TAG_CACHE_D1: sqliteQuotaBinding(database),
+            APP_D1: sqliteQuotaBinding(database),
           }
           return await runWithRequest(request, env, undefined, () =>
             handleAnalyticsGateway(request)

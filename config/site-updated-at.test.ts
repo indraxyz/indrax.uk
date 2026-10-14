@@ -30,5 +30,5 @@ test("requires explicit metadata in a source archive without Git", () => {
   git.mockImplementation(() => {
     throw new Error("Git unavailable")
   })
-  expect(() => resolveSiteUpdatedAt("")).toThrow("Set NEXT_PUBLIC_SITE_UPDATED_AT")
+  expect(() => resolveSiteUpdatedAt("")).toThrow("Set SITE_UPDATED_AT")
 })

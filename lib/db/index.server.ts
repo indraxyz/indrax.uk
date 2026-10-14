@@ -56,7 +56,7 @@ let client: Database | undefined
  * database as "no posts", which is the same path as an empty writing archive that has not been
  * written yet.
  *
- * Never expose this through a `NEXT_PUBLIC_` variable. The connection string is
+ * Never add this to the browser-variable allowlist. The connection string is
  * server-only and must not reach a client bundle (threat T-10).
  */
 export function getDb(): Database | null {

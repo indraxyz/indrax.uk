@@ -1,7 +1,7 @@
 // The deployed origin, used to resolve the absolute URLs metadata and the sitemap
 // need. Overridable so a preview deployment advertises itself, not production.
 export const PRODUCTION_SITE_URL = "https://indrax.uk"
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? PRODUCTION_SITE_URL
+export const SITE_URL = process.env.SITE_URL ?? PRODUCTION_SITE_URL
 
 /**
  * Whether search engines may index this deployment.

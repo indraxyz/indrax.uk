@@ -118,7 +118,7 @@ describe("postInputSchema", () => {
   })
 
   it("accepts generated local cover URLs with alt text", () => {
-    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "http://localhost:5173/local-media")
+    vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5173/local-media")
     expect(
       postInputSchema.safeParse({
         ...base,

@@ -32,10 +32,11 @@ to wall time separately from JavaScript CPU work.
 | Development | `55163065696741c397d875991d3eb8d6` | `indrax-dev-next-tags` | `090d17c4-739d-4e61-ae9a-2678fe379a9b` |
 | Production  | `3b3a56d04aed4aca8492ab4d46002923` | `indrax-next-tags`     | `768e0a3c-8014-4b32-9a7f-39f2b7ee2a58` |
 
-Keep bindings `NEXT_INC_CACHE_KV` and `NEXT_TAG_CACHE_D1` so the existing environment
-configuration continues to work. They are now application bindings rather than
-adapter bindings. Do not recreate or share these resources across environments.
-Neon remains the content/auth database; D1 contains only invalidation revisions.
+Both Workers use application binding aliases `CACHE_KV` and `APP_D1`. Each
+alias points to the existing resource IDs listed above; physical resource names
+are unchanged. Do not recreate or share these resources across environments.
+Neon remains the content/auth database; D1 contains invalidation revisions and
+analytics quota counters.
 
 `lib/cache.server.ts` uses the existing `revalidations(tag, revalidatedAt)` table.
 D1 monotonic tag revisions become part of hashed KV keys under `react-router:v1`,

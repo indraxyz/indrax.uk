@@ -17,10 +17,10 @@ function context<T>(
   mode = "development",
   origin = "http://127.0.0.1:5173/local-media"
 ) {
-  vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", origin)
+  vi.stubEnv("MEDIA_ORIGIN", origin)
   return runWithRequest(
     request,
-    { MEDIA_BUCKET: bucket, NODE_ENV: mode, NEXT_PUBLIC_MEDIA_ORIGIN: origin },
+    { MEDIA_BUCKET: bucket, NODE_ENV: mode, MEDIA_ORIGIN: origin },
     undefined,
     run
   )

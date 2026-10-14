@@ -4,23 +4,27 @@ import { localMediaOrigin, LOCAL_MEDIA_PREFIX } from "../lib/uploads/local-media
 
 /** Only explicitly public values may be embedded in either browser bundle. */
 export function publicEnvDefinitions(mode: string) {
-  const env = loadEnv(mode, process.cwd(), "NEXT_PUBLIC_")
-  const mediaOverride = env.NEXT_PUBLIC_MEDIA_ORIGIN?.trim()
+  const env = loadEnv(mode, process.cwd(), [
+    "SITE_URL",
+    "SITE_UPDATED_AT",
+    "MEDIA_ORIGIN",
+    "ANALYTICS_ENABLED",
+  ])
+  const mediaOverride = env.MEDIA_ORIGIN?.trim()
   const localOverride =
     mediaOverride === LOCAL_MEDIA_PREFIX.slice(0, -1) || Boolean(localMediaOrigin(mediaOverride))
   const values = {
-    NEXT_PUBLIC_SITE_URL:
-      env.NEXT_PUBLIC_SITE_URL ||
+    SITE_URL:
+      env.SITE_URL ||
       (process.env.CLOUDFLARE_ENV === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"),
-    NEXT_PUBLIC_ANALYTICS_ENABLED: env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true" ? "true" : "false",
-    // An explicit allowlist prevents old NEXT_PUBLIC_POSTHOG_KEY values in local
-    // files or CI from embedding an ingestion credential in browser bundles.
-    NEXT_PUBLIC_MEDIA_ORIGIN:
+    ANALYTICS_ENABLED: env.ANALYTICS_ENABLED === "true" ? "true" : "false",
+    // Only these four settings reach the browser; runtime credentials stay private.
+    MEDIA_ORIGIN:
       (mode !== "production" || !localOverride ? mediaOverride : undefined) ||
       (process.env.CLOUDFLARE_ENV === "dev"
         ? "https://dev-media.indrax.uk"
         : "https://media.indrax.uk"),
-    NEXT_PUBLIC_SITE_UPDATED_AT: resolveSiteUpdatedAt(),
+    SITE_UPDATED_AT: resolveSiteUpdatedAt(env.SITE_UPDATED_AT),
   }
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)])

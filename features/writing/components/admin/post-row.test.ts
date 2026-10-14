@@ -26,7 +26,7 @@ const render = (changes: Partial<AdminPostSummary> = {}) =>
     createElement(MemoryRouter, null, createElement(PostRow, { post: { ...post, ...changes } }))
   )
 
-beforeEach(() => vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "https://media.indrax.uk"))
+beforeEach(() => vi.stubEnv("MEDIA_ORIGIN", "https://media.indrax.uk"))
 afterEach(() => vi.unstubAllEnvs())
 
 describe("PostRow", () => {

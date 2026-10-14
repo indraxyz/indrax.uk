@@ -104,7 +104,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page)
 
     // `respect_dnt: true` is the guard being exercised. The sibling guard - no
-    // key configured at all - cannot be covered here, because `NEXT_PUBLIC_*`
+    // analytics disabled at build time - cannot be covered here, because public
     // values are inlined at build time and this suite runs one build.
     await page.addInitScript(() => {
       Object.defineProperty(window.navigator, "doNotTrack", { get: () => "1" })

@@ -21,7 +21,7 @@ export async function initializeLocalCache(config, environment) {
     wranglerPath,
     "d1",
     "execute",
-    "NEXT_TAG_CACHE_D1",
+    "APP_D1",
     "--local",
     "--config",
     config,

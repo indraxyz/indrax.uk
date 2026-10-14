@@ -9,7 +9,7 @@
 import { allowsLocalMediaUrl, localMediaOrigin } from "../uploads/local-media"
 
 function mediaOrigin(): URL | null {
-  const value = process.env.NEXT_PUBLIC_MEDIA_ORIGIN
+  const value = process.env.MEDIA_ORIGIN
   if (!value) return null
 
   try {
@@ -30,7 +30,7 @@ export function isAllowedMediaUrl(value: string | null | undefined): value is st
   if (!value) return false
   // This narrow same-origin path only serves simulated R2 covers in development.
   // Production never generates these URLs and its local-media route returns 404.
-  if (localMediaOrigin(process.env.NEXT_PUBLIC_MEDIA_ORIGIN)) return allowsLocalMediaUrl(value)
+  if (localMediaOrigin(process.env.MEDIA_ORIGIN)) return allowsLocalMediaUrl(value)
 
   const origin = mediaOrigin()
   if (!origin) return false

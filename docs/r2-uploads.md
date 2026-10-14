@@ -41,7 +41,7 @@ application-side S3 signing or full-file hashing. The existing edge rate limiter
 runs before database authorization. Local development uses local R2 simulations;
 no binding has `remote: true`.
 
-With `npm run dev`, set `NEXT_PUBLIC_MEDIA_ORIGIN=http://localhost:5173/local-media`
+With `npm run dev`, set `MEDIA_ORIGIN=http://localhost:5173/local-media`
 in `.env.local`, matching the exact host and port opened in the browser. Empty,
 relative, or mismatched settings keep local uploads disabled. Loopback requests
 use absolute URLs under the configured `/local-media/covers/` base. The development-only route

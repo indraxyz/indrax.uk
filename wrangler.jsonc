@@ -15,8 +15,8 @@
     { "pattern": "www.indrax.uk", "custom_domain": true },
   ],
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://indrax.uk",
-    "NEXT_PUBLIC_MEDIA_ORIGIN": "https://media.indrax.uk",
+    "SITE_URL": "https://indrax.uk",
+    "MEDIA_ORIGIN": "https://media.indrax.uk",
     "POSTHOG_HOST": "https://us.i.posthog.com",
   },
   // Reachable only on the custom domains above. A *.workers.dev or preview URL
@@ -41,7 +41,7 @@
   // See docs/worker-cpu-optimization.md. No remote resources are created by build.
   "kv_namespaces": [
     {
-      "binding": "NEXT_INC_CACHE_KV",
+      "binding": "CACHE_KV",
       "id": "3b3a56d04aed4aca8492ab4d46002923",
     },
   ],
@@ -58,7 +58,7 @@
   ],
   "d1_databases": [
     {
-      "binding": "NEXT_TAG_CACHE_D1",
+      "binding": "APP_D1",
       "database_name": "indrax-next-tags",
       "database_id": "768e0a3c-8014-4b32-9a7f-39f2b7ee2a58",
     },
@@ -90,8 +90,8 @@
       "workers_dev": false,
       "preview_urls": false,
       "vars": {
-        "NEXT_PUBLIC_SITE_URL": "https://dev.indrax.uk",
-        "NEXT_PUBLIC_MEDIA_ORIGIN": "https://dev-media.indrax.uk",
+        "SITE_URL": "https://dev.indrax.uk",
+        "MEDIA_ORIGIN": "https://dev-media.indrax.uk",
         "POSTHOG_HOST": "https://us.i.posthog.com",
       },
       "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
@@ -102,7 +102,7 @@
       },
       "kv_namespaces": [
         {
-          "binding": "NEXT_INC_CACHE_KV",
+          "binding": "CACHE_KV",
           "id": "55163065696741c397d875991d3eb8d6",
         },
       ],
@@ -120,7 +120,7 @@
       ],
       "d1_databases": [
         {
-          "binding": "NEXT_TAG_CACHE_D1",
+          "binding": "APP_D1",
           "database_name": "indrax-dev-next-tags",
           "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
         },

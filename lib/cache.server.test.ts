@@ -25,7 +25,7 @@ function storage() {
       )
     }),
   }
-  const env = { NEXT_INC_CACHE_KV: kv, NEXT_TAG_CACHE_D1: db }
+  const env = { CACHE_KV: kv, APP_D1: db }
   return { values, revisions, kv, db, env }
 }
 function request<T>(env: Record<string, unknown>, run: () => T) {

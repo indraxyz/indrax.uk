@@ -26,8 +26,8 @@ function requestCache(): RequestCache | undefined {
 function bindings() {
   const env = getRuntimeEnv()
   return {
-    kv: env.NEXT_INC_CACHE_KV as KVNamespace | undefined,
-    db: env.NEXT_TAG_CACHE_D1 as D1Database | undefined,
+    kv: env.CACHE_KV as KVNamespace | undefined,
+    db: env.APP_D1 as D1Database | undefined,
   }
 }
 const LIFETIME_SECONDS = 3600
