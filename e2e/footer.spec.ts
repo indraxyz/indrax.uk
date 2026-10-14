@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process"
 import { expect, test } from "@playwright/test"
 
 const updatedAt =
-  process.env.NEXT_PUBLIC_SITE_UPDATED_AT?.trim() ||
+  process.env.SITE_UPDATED_AT?.trim() ||
   execFileSync("git", ["log", "-1", "--format=%cs"], { encoding: "utf8" }).trim()
 
 test("keeps revision dates in profile metadata and sitemap", async ({ page, request }) => {

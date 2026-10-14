@@ -87,7 +87,7 @@ async function handleUpload(request: Request): Promise<Response> {
 
     return Response.json(
       {
-        // Must match NEXT_PUBLIC_MEDIA_ORIGIN or `isAllowedMediaUrl` will refuse to
+        // Must match MEDIA_ORIGIN or `isAllowedMediaUrl` will refuse to
         // render it - the same check twice on purpose (threat T-6).
         publicUrl: new URL(key, `${settings.publicUrl.replace(/\/$/, "")}/`).toString(),
       },

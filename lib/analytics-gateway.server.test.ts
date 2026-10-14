@@ -58,7 +58,7 @@ beforeEach(() => {
   env = {
     POSTHOG_PROJECT_TOKEN: TOKEN,
     POSTHOG_HOST: "https://us.i.posthog.com",
-    NEXT_TAG_CACHE_D1: sqliteQuotaBinding(sqlite),
+    APP_D1: sqliteQuotaBinding(sqlite),
     RATE_LIMIT_API: { limit: vi.fn().mockResolvedValue({ success: true }) },
   }
   upstream = vi.fn().mockImplementation(async () => Response.json({ status: 1 }))
@@ -303,7 +303,7 @@ describe("protected PostHog gateway", () => {
   })
 
   it("fails closed for absent infrastructure, missing identity, cross-origin and storage failures", async () => {
-    for (const key of ["POSTHOG_PROJECT_TOKEN", "NEXT_TAG_CACHE_D1", "RATE_LIMIT_API"]) {
+    for (const key of ["POSTHOG_PROJECT_TOKEN", "APP_D1", "RATE_LIMIT_API"]) {
       const original = env[key]
       delete env[key]
       expect((await handle(request("/e/"))).status).toBe(503)
@@ -320,7 +320,7 @@ describe("protected PostHog gateway", () => {
       (await handle(new Request(`${origin}/api/analytics/array/${ANALYTICS_GATEWAY_TOKEN}/config`)))
         .status
     ).toBe(403)
-    env.NEXT_TAG_CACHE_D1 = {
+    env.APP_D1 = {
       prepare() {
         throw new Error("Storage is unavailable")
       },

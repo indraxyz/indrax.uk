@@ -15,7 +15,7 @@ let hasCacheBinding = true
 if (process.env.CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH) {
   const { unstable_readConfig } = await import("wrangler")
   const config = unstable_readConfig({ config: cacheConfig, env: process.env.CLOUDFLARE_ENV })
-  hasCacheBinding = config.d1_databases.some(({ binding }) => binding === "NEXT_TAG_CACHE_D1")
+  hasCacheBinding = config.d1_databases.some(({ binding }) => binding === "APP_D1")
 }
 if (hasCacheBinding) await initializeLocalCache(cacheConfig, process.env.CLOUDFLARE_ENV)
 

@@ -11,7 +11,7 @@ import { UPLOAD_POLICIES } from "./uploads/policy"
 export function usesLocalMedia(): boolean {
   if (serverEnv("NODE_ENV") !== "development") return false
   const request = getRequest()
-  const origin = localMediaOrigin(serverEnv("NEXT_PUBLIC_MEDIA_ORIGIN"))
+  const origin = localMediaOrigin(serverEnv("MEDIA_ORIGIN"))
   return Boolean(
     origin && isLoopbackUrl(request.url) && origin.origin === new URL(request.url).origin
   )

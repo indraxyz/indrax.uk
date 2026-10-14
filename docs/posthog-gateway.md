@@ -15,24 +15,23 @@ localStorage consent; an anonymous caller can imitate the public request protoco
 
 ## Configuration and limits
 
-| Setting                              | Location                                  | Purpose                                                     |
-| ------------------------------------ | ----------------------------------------- | ----------------------------------------------------------- |
-| `NEXT_PUBLIC_ANALYTICS_ENABLED=true` | GitHub Environment variable at build time | Enable the browser tracker; contains no credential          |
-| `POSTHOG_PROJECT_TOKEN`              | Cloudflare Worker runtime secret          | Real project ingestion token (`phc_`), never a personal key |
-| `POSTHOG_HOST`                       | Wrangler runtime variable                 | Fixed US or EU ingestion host                               |
-| `POSTHOG_MONTHLY_*_LIMIT`            | Optional Worker runtime variable          | Lower a category's hard ceiling, including zero to stop it  |
+| Setting                   | Location                                  | Purpose                                                     |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| `ANALYTICS_ENABLED=true`  | GitHub Environment variable at build time | Enable the browser tracker; contains no credential          |
+| `POSTHOG_PROJECT_TOKEN`   | Cloudflare Worker runtime secret          | Real project ingestion token (`phc_`), never a personal key |
+| `POSTHOG_HOST`            | Wrangler runtime variable                 | Fixed US or EU ingestion host                               |
+| `POSTHOG_MONTHLY_*_LIMIT` | Optional Worker runtime variable          | Lower a category's hard ceiling, including zero to stop it  |
 
 Set build variables separately in GitHub `Preview` and `Production`. Set runtime
 secrets separately on `indrax-dev` and `indrax`. Runtime host defaults to US Cloud;
 select `https://eu.i.posthog.com` for an EU project in both relevant Wrangler environments.
-Old `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are no longer read by
-the build or workflow. An explicit build allowlist also excludes accidentally
-public-prefixed secrets from browser definitions.
+The browser build does not read PostHog credentials or upstream hosts. Its explicit
+allowlist excludes runtime secrets and `POSTHOG_HOST` from browser definitions.
 
 The existing rate limiter permits at most 120 analytics requests per client IP
 per minute at each Cloudflare location. This is an eventually consistent brake;
 the D1 reservation is the hard, shared forwarding cap. Each environment uses its
-own existing `NEXT_TAG_CACHE_D1` database, so development cannot spend production's
+own existing `APP_D1` database, so development cannot spend production's
 gateway allowance. If both environments use one PostHog project, its billing usage
 includes both environments.
 
@@ -130,7 +129,7 @@ environment entry was staged as `POSTHOG_PROJECT_TOKEN` on both Workers. Secret
 bindings were verified in dev version `07e84d66-d9e4-4c65-8fb1-2fdd0d6d382e` and
 production version `8de290fb-ad5b-4dba-b72c-e3f37a08fc8a`. Both active deployment
 histories remained unchanged. GitHub `Preview` and `Production` now have verified
-`NEXT_PUBLIC_ANALYTICS_ENABLED=true` variables. No code was shipped and no token
+`ANALYTICS_ENABLED=true` variables. No code was shipped and no token
 was rotated. The owner has explicitly chosen to retain the current token; previously
 exposed copies can still bypass this gateway's limits until that choice changes.
 

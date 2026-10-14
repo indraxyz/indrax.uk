@@ -139,7 +139,7 @@ precedence for test fixtures; temporary override files have restricted permissio
 and are removed on exit. Build assembly removes the plugin-generated local secret
 copy from the final build.
 
-`NEXT_PUBLIC_*` values are embedded at build time and must contain only public
+The four settings in the explicit browser-variable allowlist are embedded at build time and must contain only public
 configuration. Rebuild after changing these values. Backend values are read from
 Worker bindings; restart the dev server after changing local configuration.
 Deployed environments use their Cloudflare bindings/secrets and build settings,
@@ -164,7 +164,7 @@ the corresponding callback in the GitHub OAuth App for that environment.
 `localhost` and `127.0.0.1` are different origins, as are HTTP/HTTPS and different
 ports. Keep the browser URL, auth origin and OAuth callback consistent.
 
-`NEXT_PUBLIC_SITE_URL` controls canonical metadata and absolute public URLs;
+`SITE_URL` controls canonical metadata and absolute public URLs;
 `BETTER_AUTH_URL` controls the server authentication origin. They usually match in
 deployed environments. Local authentication can use localhost while canonical
 metadata still uses the public site origin.

@@ -75,7 +75,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     env: {
-      NEXT_PUBLIC_ANALYTICS_ENABLED: "true",
+      ANALYTICS_ENABLED: "true",
       // Passed through when it is set, and absent otherwise - the site builds and
       // serves either way. `writing-content.spec.ts` skips itself when it is missing,
       // so the suite is green on a clone with no database.

@@ -16,8 +16,8 @@ export function deploymentTarget(config) {
           : { pattern: route.pattern, custom_domain: Boolean(route.custom_domain) }
       )
     ),
-    siteUrl: config.vars?.NEXT_PUBLIC_SITE_URL,
-    mediaOrigin: config.vars?.NEXT_PUBLIC_MEDIA_ORIGIN,
+    siteUrl: config.vars?.SITE_URL,
+    mediaOrigin: config.vars?.MEDIA_ORIGIN,
     r2: sort(
       (config.r2_buckets ?? []).map(({ binding, bucket_name }) => ({ binding, bucket_name }))
     ),

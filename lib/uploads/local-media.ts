@@ -43,7 +43,7 @@ export function isLocalMediaUrl(value: string): boolean {
 /** Vite removes local cover acceptance from deployed public/admin builds. */
 export function allowsLocalMediaUrl(value: string): boolean {
   if (import.meta.env?.DEV !== true || !isLocalMediaUrl(value)) return false
-  const origin = localMediaOrigin(process.env.NEXT_PUBLIC_MEDIA_ORIGIN)
+  const origin = localMediaOrigin(process.env.MEDIA_ORIGIN)
   return Boolean(origin && new URL(value).origin === origin.origin)
 }
 

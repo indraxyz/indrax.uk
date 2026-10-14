@@ -11,11 +11,11 @@ const target = {
   r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-prod" }],
   routes: [{ pattern: "example.test", custom_domain: true }],
   vars: {
-    NEXT_PUBLIC_SITE_URL: "https://example.test",
-    NEXT_PUBLIC_MEDIA_ORIGIN: "https://media.example.test",
+    SITE_URL: "https://example.test",
+    MEDIA_ORIGIN: "https://media.example.test",
   },
-  kv_namespaces: [{ binding: "PUBLIC_CACHE", id: "kv-prod" }],
-  d1_databases: [{ binding: "REVISIONS", database_id: "d1-prod", database_name: "revisions" }],
+  kv_namespaces: [{ binding: "CACHE_KV", id: "kv-prod" }],
+  d1_databases: [{ binding: "APP_D1", database_id: "d1-prod", database_name: "revisions" }],
 }
 
 it("accepts resolved source and generated config with the same deployment boundaries", () => {
@@ -35,11 +35,17 @@ it.each([
   { preview_urls: undefined },
   { r2_buckets: [] },
   { r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-dev" }] },
-  { vars: { ...target.vars, NEXT_PUBLIC_MEDIA_ORIGIN: "https://dev-media.example.test" } },
+  { vars: { ...target.vars, MEDIA_ORIGIN: "https://dev-media.example.test" } },
   { routes: [{ pattern: "dev.example.test", custom_domain: true }] },
-  { vars: { NEXT_PUBLIC_SITE_URL: "https://dev.example.test" } },
-  { kv_namespaces: [{ binding: "PUBLIC_CACHE", id: "kv-dev" }] },
-  { d1_databases: [{ binding: "REVISIONS", database_id: "d1-dev", database_name: "revisions" }] },
+  { vars: { SITE_URL: "https://dev.example.test" } },
+  { kv_namespaces: [{ binding: "CACHE_KV", id: "kv-dev" }] },
+  { d1_databases: [{ binding: "APP_D1", database_id: "d1-dev", database_name: "revisions" }] },
+  { kv_namespaces: [{ binding: "STALE_CACHE", id: "kv-prod" }] },
+  {
+    d1_databases: [
+      { binding: "STALE_DATABASE", database_id: "d1-prod", database_name: "revisions" },
+    ],
+  },
   { kv_namespaces: [] },
 ])("rejects mixed environment boundaries before upload: %j", (replacement) => {
   expect(() => assertDeploymentTarget({ ...target, ...replacement }, target)).toThrow(

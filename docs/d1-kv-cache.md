@@ -7,13 +7,15 @@ and [release preparation](public-site-release.md) for the surrounding applicatio
 
 ## Responsibilities and implementation
 
-| Storage                 | Contents in this application                                | Owner                                          |
-| ----------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
-| PostgreSQL              | Posts, tags, series, author identities and sessions         | Drizzle and the Neon HTTP driver               |
-| KV: `NEXT_INC_CACHE_KV` | Cached public query results and rendered published articles | [cache implementation](../lib/cache.server.ts) |
-| D1: `NEXT_TAG_CACHE_D1` | Cache-tag revision values in `revalidations`                | The same cache implementation                  |
+| Storage        | Contents in this application                                | Owner                                          |
+| -------------- | ----------------------------------------------------------- | ---------------------------------------------- |
+| PostgreSQL     | Posts, tags, series, author identities and sessions         | Drizzle and the Neon HTTP driver               |
+| KV: `CACHE_KV` | Cached public query results and rendered published articles | [cache implementation](../lib/cache.server.ts) |
+| D1: `APP_D1`   | Cache-tag revision values in `revalidations`                | The same cache implementation                  |
 
-The binding names retain their existing names from earlier infrastructure. They
+Both `indrax` and `indrax-dev` use binding aliases `CACHE_KV` and `APP_D1`, with
+separate existing resource IDs for each Worker. Physical resource names and stored
+data are unchanged. `APP_D1` also holds analytics quota counters. These aliases
 are accessed through Worker bindings and the request context, not through Next.js
 or a database connection string in `.env.local`. The source configuration is
 [wrangler.jsonc](../wrangler.jsonc); [workers/app.ts](../workers/app.ts) establishes
@@ -129,9 +131,9 @@ generated preview config already contains its selected environment; do not add
 These commands are read-only and explicitly target the default local identities:
 
 ```bash
-npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
-npx wrangler kv key list --binding NEXT_INC_CACHE_KV --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --prefix react-router:v1:
-npx wrangler kv key get '<key-from-list>' --binding NEXT_INC_CACHE_KV --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --text
+npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
+npx wrangler kv key list --binding CACHE_KV --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --prefix react-router:v1:
+npx wrangler kv key get '<key-from-list>' --binding CACHE_KV --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --text
 ```
 
 For a dev-environment local server, replace `--env ""` with `--env dev` in these
@@ -143,8 +145,8 @@ cacheable visits is expected.
 Use the generated config and preview persistence root together:
 
 ```bash
-npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config build/server/wrangler.json --env "" --local --persist-to build/server/.wrangler/state --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
-npx wrangler kv key list --binding NEXT_INC_CACHE_KV --config build/server/wrangler.json --env "" --local --persist-to build/server/.wrangler/state --prefix react-router:v1:
+npx wrangler d1 execute APP_D1 --config build/server/wrangler.json --env "" --local --persist-to build/server/.wrangler/state --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
+npx wrangler kv key list --binding CACHE_KV --config build/server/wrangler.json --env "" --local --persist-to build/server/.wrangler/state --prefix react-router:v1:
 ```
 
 ## Deployed develop and production
@@ -171,12 +173,12 @@ read-only commands with an authenticated account that can access the resources:
 
 ```bash
 # Develop
-npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env dev --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
-npx wrangler kv key list --binding NEXT_INC_CACHE_KV --config wrangler.jsonc --env dev --remote --prefix react-router:v1:
+npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
+npx wrangler kv key list --binding CACHE_KV --config wrangler.jsonc --env dev --remote --prefix react-router:v1:
 
 # Production
-npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env "" --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
-npx wrangler kv key list --binding NEXT_INC_CACHE_KV --config wrangler.jsonc --env "" --remote --prefix react-router:v1:
+npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env "" --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
+npx wrangler kv key list --binding CACHE_KV --config wrangler.jsonc --env "" --remote --prefix react-router:v1:
 ```
 
 `--local` and `--remote` explicitly select different stores. The same binding name
@@ -190,7 +192,7 @@ script does not prepare remote D1. Apply the SQL above as a reviewed release ste
 using the intended environment and `--remote`; for example, for develop:
 
 ```bash
-npx wrangler d1 execute NEXT_TAG_CACHE_D1 --config wrangler.jsonc --env dev --remote --command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER NOT NULL);"
+npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER NOT NULL);"
 ```
 
 For production, use `--env ""` with the production database/account explicitly

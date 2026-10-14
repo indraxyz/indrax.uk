@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process"
 
 /** Resolve revision metadata at build time; Git is never needed in the Worker/browser. */
-export function resolveSiteUpdatedAt(override = process.env.NEXT_PUBLIC_SITE_UPDATED_AT): string {
+export function resolveSiteUpdatedAt(override = process.env.SITE_UPDATED_AT): string {
   let date = override?.trim()
   if (!date) {
     try {
@@ -11,7 +11,7 @@ export function resolveSiteUpdatedAt(override = process.env.NEXT_PUBLIC_SITE_UPD
       }).trim()
     } catch {
       throw new Error(
-        "Cannot read the revision date. Set NEXT_PUBLIC_SITE_UPDATED_AT (YYYY-MM-DD) when building without Git."
+        "Cannot read the revision date. Set SITE_UPDATED_AT (YYYY-MM-DD) when building without Git."
       )
     }
   }
@@ -22,7 +22,7 @@ export function resolveSiteUpdatedAt(override = process.env.NEXT_PUBLIC_SITE_UPD
     !Number.isFinite(parsed.getTime()) ||
     parsed.toISOString().slice(0, 10) !== date
   ) {
-    throw new Error("NEXT_PUBLIC_SITE_UPDATED_AT must be a valid calendar date (YYYY-MM-DD).")
+    throw new Error("SITE_UPDATED_AT must be a valid calendar date (YYYY-MM-DD).")
   }
   return date
 }

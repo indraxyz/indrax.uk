@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 const excerpt =
   "An archive excerpt with the same stored ellipsis as writing cards. ".repeat(3) + "..."
-const mediaOrigin = process.env.NEXT_PUBLIC_MEDIA_ORIGIN?.replace(/\/$/, "")
+const mediaOrigin = process.env.MEDIA_ORIGIN?.replace(/\/$/, "")
 const coverUrl = mediaOrigin
   ? `${mediaOrigin}/covers/550e8400-e29b-41d4-a716-446655440000.png`
   : null

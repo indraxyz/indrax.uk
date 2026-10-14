@@ -16,7 +16,7 @@ export function Component() {
   if (overview.isError) return <AdminError retry={() => void overview.refetch()} />
   const { total, published, drafts, archived, latestDraft } = overview.data
   const coverUploadsConfigured = session.coverUploadsConfigured
-  const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true"
+  const analyticsEnabled = process.env.ANALYTICS_ENABLED === "true"
 
   const services = [
     {

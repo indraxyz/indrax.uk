@@ -7,7 +7,7 @@ import { readConsent } from "@/lib/consent"
 // build, a local run - nothing initialises and every capture below is a no-op.
 // And when enabled, nothing initialises until the visitor has said yes:
 // see `lib/consent.ts` and `startAnalytics` below.
-const ANALYTICS_ENABLED = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true"
+const ANALYTICS_ENABLED = process.env.ANALYTICS_ENABLED === "true"
 
 // The events this site records. A union rather than a bare string, so a typo in a
 // call site is a build error instead of a silently orphaned event in PostHog.

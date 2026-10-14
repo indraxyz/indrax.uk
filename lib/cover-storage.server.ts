@@ -7,11 +7,11 @@ import { isLoopbackUrl, localMediaOrigin } from "./uploads/local-media"
 export function getCoverStorageConfig() {
   const bucket = getRuntimeEnv().MEDIA_BUCKET as R2Bucket | undefined
   if (!bucket || typeof bucket.put !== "function") return null
-  const publicUrl = serverEnv("NEXT_PUBLIC_MEDIA_ORIGIN") ?? process.env.NEXT_PUBLIC_MEDIA_ORIGIN
+  const publicUrl = serverEnv("MEDIA_ORIGIN") ?? process.env.MEDIA_ORIGIN
   if (serverEnv("NODE_ENV") === "development" && isLoopbackUrl(getRequest().url)) {
     if (!usesLocalMedia()) return null
     const local = localMediaOrigin(publicUrl)
-    const rendered = localMediaOrigin(process.env.NEXT_PUBLIC_MEDIA_ORIGIN)
+    const rendered = localMediaOrigin(process.env.MEDIA_ORIGIN)
     if (!local || local.origin !== rendered?.origin) return null
     return { bucket, publicUrl: local.href.replace(/\/$/, "") }
   }

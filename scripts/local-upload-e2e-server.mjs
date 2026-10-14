@@ -19,7 +19,7 @@ const values = Object.fromEntries(
     "ALLOWED_GITHUB_ID",
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
-    "NEXT_PUBLIC_MEDIA_ORIGIN",
+    "MEDIA_ORIGIN",
   ].map((name) => [name, process.env[name]])
 )
 let child
@@ -41,7 +41,7 @@ try {
       r2_buckets: [
         { binding: "MEDIA_BUCKET", bucket_name: `indrax-upload-browser-${crypto.randomUUID()}` },
       ],
-      vars: { NEXT_PUBLIC_SITE_URL: process.env.BETTER_AUTH_URL },
+      vars: { SITE_URL: process.env.BETTER_AUTH_URL },
     }),
     { mode: 0o600 }
   )

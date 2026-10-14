@@ -5,10 +5,10 @@ import { runWithRequest } from "./runtime.server"
 afterEach(() => vi.unstubAllEnvs())
 
 function config(bucket: unknown, origin = "https://media.example.com") {
-  vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", origin)
+  vi.stubEnv("MEDIA_ORIGIN", origin)
   return runWithRequest(
     new Request("https://example.com"),
-    { MEDIA_BUCKET: bucket, NEXT_PUBLIC_MEDIA_ORIGIN: origin },
+    { MEDIA_BUCKET: bucket, MEDIA_ORIGIN: origin },
     undefined,
     getCoverStorageConfig
   )
@@ -37,12 +37,12 @@ it.each([
 })
 
 it("requires the runtime media origin to match the renderer's allowlist", () => {
-  vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "https://media.example.com")
+  vi.stubEnv("MEDIA_ORIGIN", "https://media.example.com")
   const result = runWithRequest(
     new Request("https://example.com"),
     {
       MEDIA_BUCKET: { put: vi.fn() },
-      NEXT_PUBLIC_MEDIA_ORIGIN: "https://other.example.com",
+      MEDIA_ORIGIN: "https://other.example.com",
     },
     undefined,
     getCoverStorageConfig
