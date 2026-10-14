@@ -36,27 +36,71 @@ own existing `NEXT_TAG_CACHE_D1` database, so development cannot spend productio
 gateway allowance. If both environments use one PostHog project, its billing usage
 includes both environments.
 
-| Category | Monthly unit ceiling          | Monthly byte ceiling       |
-| -------- | ----------------------------- | -------------------------- |
-| `EVENTS` | 20,000 allowlisted events     | 32 MiB forwarded payloads  |
-| `REPLAY` | 1,000 snapshot events         | 64 MiB forwarded payloads  |
-| `FLAGS`  | 1,000 evaluations             | 4 MiB request payloads     |
-| `CONFIG` | 1,000 configuration fetches   | 128 MiB reserved responses |
-| `ASSETS` | 5,000 recorder-script fetches | 512 MiB reserved responses |
+### Comparison with PostHog's free allowance
 
-Replay units are snapshot envelopes, not a promise of 1,000 complete recordings.
-A recording needs multiple envelopes; quota exhaustion can leave partial recordings.
-GET requests reserve their maximum response size before forwarding: 128 KiB for
-configuration and 512 KiB for assets. This conservatively limits uncached asset fetches
-to 1,024 per month under the byte ceiling. Browser asset responses cache privately
-for one hour. If these defaults do not fit real traffic, review code ceilings and
-PostHog limits together instead of disabling the guard.
+The [published PostHog pricing](https://posthog.com/pricing), checked on 2026-10-14,
+includes 1,000,000 analytics events, 5,000 session recordings and 1,000,000 feature
+flag requests per month. Preview and Production each receive an equal share of a
+combined gateway budget of 50% of those published allowances. These are application
+ceilings, not a live synchronization with the organization's billing account.
 
-Quota windows use calendar months in UTC. The atomic D1 conditional UPSERT counts
-batch events individually and refuses a reservation crossing either unit or byte
-limits. There are no refunds or automatic upstream retries: a timeout cannot spend
-an uncounted retry. Keep current-month rows intact; resetting/deleting them removes
-the spending guard. Old month rows are small and retained.
+| Product        | PostHog monthly free allowance | Per environment per UTC month  | Combined Preview and Production ceiling |
+| -------------- | ------------------------------ | ------------------------------ | --------------------------------------- |
+| Analytics      | 1,000,000 events               | 250,000 approved events        | 500,000 approved events                 |
+| Session replay | 5,000 recordings               | 1,250 distinct replay sessions | 2,500 distinct replay sessions          |
+| Feature flags  | 1,000,000 requests             | 250,000 evaluations            | 500,000 evaluations                     |
+
+The replay session registry counts distinct session IDs within each environment
+and UTC month. The first admitted snapshot request for a session reserves a recording
+slot; continuing that same session in the same month does not reserve another slot.
+Each session is counted separately in the next month. This is a conservative gateway
+proxy for recordings, not a reconciliation with PostHog's billed recording count.
+The registry starts at deployment and does not backfill earlier recordings.
+Snapshot envelopes have a separate transport guard: many envelopes may belong to
+one session, so envelopes and recordings are not interchangeable units.
+
+Byte limits and transport guards may stop forwarding before the product ceilings.
+Configuration and recorder-asset limits protect Worker/upstream traffic and have
+no equivalent free-tier billing unit in this comparison. Do not give both
+environments the entire shared budget when they use the same PostHog organization.
+
+Gateway windows are UTC calendar months; PostHog billing periods and usage from
+other projects/integrations are not read by this application. The existing token
+also remains usable for direct ingestion, as requested by the owner. Therefore
+these gateway limits do not guarantee an organization-wide free bill. Keep
+PostHog's per-product billing limits at $0 if paid overages must be prevented.
+Recheck the published allowances before changing code ceilings; they are not
+automatically updated when PostHog changes its pricing.
+
+The following hard ceilings apply separately to each environment. Optional
+`POSTHOG_MONTHLY_*_LIMIT` runtime variables can lower these ceilings, including to
+zero, but cannot raise them.
+
+| Category     | Monthly unit ceiling           | Monthly byte ceiling         |
+| ------------ | ------------------------------ | ---------------------------- |
+| `EVENTS`     | 250,000 allowlisted events     | 512 MiB forwarded payloads   |
+| `RECORDINGS` | 1,250 distinct replay sessions | Covered by the replay guard  |
+| `REPLAY`     | 100,000 snapshot envelopes     | 512 MiB forwarded payloads   |
+| `FLAGS`      | 250,000 evaluations            | 256 MiB request payloads     |
+| `CONFIG`     | 10,000 configuration fetches   | 1,280 MiB reserved responses |
+| `ASSETS`     | 10,000 recorder-script fetches | 5,120 MiB reserved responses |
+
+Use `POSTHOG_MONTHLY_RECORDINGS_LIMIT` to lower the distinct-session ceiling and
+`POSTHOG_MONTHLY_REPLAY_LIMIT` to lower the snapshot-envelope guard. A recording
+needs multiple envelopes; either replay guard can leave partial recordings. GET
+requests reserve their maximum response size before forwarding: 128 KiB for
+configuration and 512 KiB for assets. The byte ceilings allow all 10,000 fetches
+in each category at those reservation sizes. Browser asset responses cache privately
+for one hour.
+
+Quota windows use calendar months in UTC. Atomic D1 reservations count batch events
+individually and refuse requests crossing unit or byte limits. Replay reservations
+also register new session IDs and enforce the recording ceiling; continuation of
+registered sessions remains subject to envelope and byte limits. Reservations
+happen before forwarding. There are no refunds or automatic upstream retries: a
+timeout cannot spend an uncounted retry. Keep current-month counter and session
+registry rows intact; resetting/deleting them removes the spending guard. Old month
+rows are retained.
 
 Unknown routes/methods/events, cross-origin browser requests, missing client IPs,
 invalid visitor/replay shapes and oversized/compression-bomb bodies are refused.
