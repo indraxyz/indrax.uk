@@ -75,3 +75,43 @@ test("stack disclosures honor reduced motion and remain accessible when expanded
     results.violations.filter(({ impact }) => impact === "serious" || impact === "critical")
   ).toEqual([])
 })
+
+test("stack explains the current development and protected release workflow", async ({ page }) => {
+  await page.goto("/tech-stack")
+
+  const local = page.getByRole("region", { name: "Local development", exact: true })
+  await expect(local).toContainText("React Router / Vite")
+  await expect(local).toContainText("independent admin build watcher")
+  await expect(local).toContainText("share .env.local")
+
+  const data = page.getByRole("region", { name: "Data", exact: true })
+  await expect(data).toContainText("CACHE_KV")
+  await expect(data).toContainText("APP_D1")
+
+  const ci = page.getByRole("region", { name: "CI/CD", exact: true })
+  await expect(ci).toContainText("two required GitHub Actions jobs")
+  await expect(ci).toContainText("seeded local database")
+  await expect(ci).toContainText("uploads against isolated R2 storage")
+  await expect(ci).toContainText("develop deploy indrax-dev through the Preview environment")
+  await expect(ci).toContainText("main deploys indrax through Production")
+  await ci.getByRole("button", { name: "Why CI/CD", exact: true }).click()
+  const releasePolicy = ci.locator('[data-slot="collapsible-content"]')
+  await expect(releasePolicy).toBeVisible()
+  await expect(releasePolicy).toContainText("one eligible reviewer’s approval")
+  await expect(releasePolicy).toContainText("up-to-date check and e2e results")
+  await expect(releasePolicy).toContainText("a successful Preview deployment")
+  await expect(releasePolicy).toContainText("resolved review conversations")
+  await expect(releasePolicy).toContainText("New commits dismiss stale approvals")
+
+  const deployment = page.getByRole("region", { name: "Deployment", exact: true })
+  await expect(deployment).toContainText("only explicitly allowed public settings")
+  await expect(deployment).toContainText("matching D1 analytics quota tables")
+  await expect(deployment).toContainText("security smoke check")
+
+  const monitoring = page.getByRole("region", { name: "Measurement & monitoring", exact: true })
+  await expect(monitoring).toContainText("same-origin Worker gateway")
+  await expect(monitoring).toContainText("shared monthly quotas in D1")
+  await expect(monitoring).toContainText("Automatic fetch traces are disabled")
+  await expect(monitoring).not.toContainText("Workers logs & traces")
+  await expect(page.locator('[data-slot="stack-cards"]')).not.toContainText("NEXT_")
+})

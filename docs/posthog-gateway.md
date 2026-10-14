@@ -122,9 +122,10 @@ invocation logs and issues remain enabled. Re-enable tracing only after adding a
 verified way to suppress/redact those credential-bearing spans.
 See [Cloudflare's recorded HTTP span attributes](https://developers.cloudflare.com/workers/observability/traces/spans-and-attributes/).
 
-## Initialization and verified cutover
+## Initialization and historical preparation
 
-Preparation on 2026-10-14: the existing project token from the commented local
+Historical preparation on 2026-10-14 (these staged versions are not a current
+active-version inventory): the existing project token from the commented local
 environment entry was staged as `POSTHOG_PROJECT_TOKEN` on both Workers. Secret
 bindings were verified in dev version `07e84d66-d9e4-4c65-8fb1-2fdd0d6d382e` and
 production version `8de290fb-ad5b-4dba-b72c-e3f37a08fc8a`. Both active deployment
@@ -134,9 +135,11 @@ was rotated. The owner has explicitly chosen to retain the current token; previo
 exposed copies can still bypass this gateway's limits until that choice changes.
 
 Local dev/preview scripts initialize `config/analytics-quota.sql` alongside the
-existing cache table. The deploy workflow initializes the matching remote table
-before deployment; its Cloudflare token needs D1 write permission. This operation
-creates an absent table and preserves all existing counters.
+existing cache table. The deploy workflow initializes the matching remote `analytics_quota` and
+`analytics_replay_sessions` tables before deployment; its Cloudflare token needs D1 write permission. This operation
+creates absent tables and preserves all existing counters. See the
+[development and deployment workflow](development-and-deployment.md) for current
+CI and release gates.
 
 Before enabling analytics, review the PR, verify the target project/region and
 stage `POSTHOG_PROJECT_TOKEN` as a Worker secret. To stage without changing traffic:

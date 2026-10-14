@@ -204,11 +204,15 @@ verify PNG dimensions/signature, not pixel baselines.
 
 The check job runs install, formatting/lint/types/unit tests, build without a DB and
 audit. The E2E job creates a local Compose database, migrates/seeds, runs SQL
-integration tests and then Chromium tests. Audit currently reports findings without
+integration tests and then Chromium tests, followed by the separate isolated local upload suite. Audit currently reports findings without
 blocking CI. Failure browser artifacts are retained for 14 days. Exact workflow
 settings are authoritative in `.github/workflows/ci.yml`.
 
-Deployment needs both jobs and enabled branch/environment controls. A green check
+Deployment needs both jobs and enabled branch/environment controls. Main also
+requires an eligible reviewer approval, resolved conversations, up-to-date checks
+and a successful Preview environment deployment; new commits dismiss stale
+approvals. See the [development and deployment workflow](development-and-deployment.md)
+for environment setup and release sequence. A green check
 does not authorize shipping a review-only migration. Local package/build success
 also does not prove remote CPU compliance or live OAuth/R2 behavior.
 

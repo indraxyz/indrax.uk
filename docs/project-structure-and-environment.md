@@ -198,3 +198,12 @@ disables author access. A page loading successfully therefore does not prove tha
 the database or login is configured. Follow [local setup](../README.md#local-database-and-author-configuration)
 for database creation, migrations and seed data, and use the isolated database
 described in [testing](testing.md) for tests that write records.
+
+## How do development and production releases connect?
+
+Feature PRs target `develop`; enabled pushes deploy its matching GitHub `Preview`
+environment to `indrax-dev`. An owner-approved `develop` → `main` PR promotes the
+release; enabled main pushes use `Production` and `indrax`. GitHub Actions owns
+deployment, and Cloudflare Git Builds stays disconnected. See the
+[development and deployment workflow](development-and-deployment.md) for CI,
+review/protection requirements, environment variables and release verification.

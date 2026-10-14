@@ -59,7 +59,7 @@ const groups = [
     title: "Data",
     tools: "PostgreSQL · Drizzle ORM · Neon HTTP · Cloudflare KV / D1 / R2",
     detail:
-      "PostgreSQL stores articles, tags, series, and sessions. Drizzle and the Neon HTTP driver batch list counts and page results in one database round trip. KV caches public data and rendered articles; D1 tracks revisions for invalidation. Search uses PostgreSQL full-text indexing. Separate production and develop R2 buckets store article media through a Worker binding; local development uses an isolated local bucket. Cover uploads happen only on Save and share a purpose-based policy: a 5 MiB cap, allowed image formats, matching file signatures, and server-generated keys. Private APIs and draft previews are uncached.",
+      "PostgreSQL stores articles, tags, series, and sessions. Drizzle and the Neon HTTP driver batch list counts and page results in one database round trip. The CACHE_KV binding caches public data and rendered articles; APP_D1 tracks revisions for invalidation and analytics quotas. Search uses PostgreSQL full-text indexing. Separate production and develop R2 buckets store article media through a Worker binding; local development uses an isolated local bucket. Cover uploads happen only on Save and share a purpose-based policy: a 5 MiB cap, allowed image formats, matching file signatures, and server-generated keys. Private APIs and draft previews are uncached.",
     reason:
       "Relational storage fits posts, tags, and sessions. Typed queries and migrations keep the schema explicit, while HTTP access suits the Worker runtime.",
   },
@@ -77,7 +77,7 @@ const groups = [
     title: "Local development",
     tools: "Node.js · npm · Docker Compose · PostgreSQL · Neon HTTP proxy",
     detail:
-      "npm run dev serves the public site and watches a separate admin build. Local cover uploads use the same Worker validation and R2 binding, with media served at /local-media. Local Worker secrets, public build settings, and database tooling share .env.local. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
+      "npm run dev starts the React Router / Vite public server and an independent admin build watcher. Local cover uploads use the same Worker validation and R2 binding, with media served at /local-media. Local Worker secrets, public build settings, and database tooling share .env.local. Docker Compose provides PostgreSQL and a Neon-compatible HTTP proxy. Drizzle applies migrations and seeds articles, with 25 optional local samples for checking pagination.",
     reason:
       "A local database and HTTP proxy let development and browser tests exercise the same driver as the deployed application.",
   },
@@ -95,25 +95,25 @@ const groups = [
     title: "CI/CD",
     tools: "GitHub Actions · Vite · Wrangler",
     detail:
-      "Pull requests and pushes to main or develop run formatting, linting, type checks, unit tests, production and develop builds, database integration tests, and browser tests against a seeded database. A separate browser suite verifies local uploads against isolated R2 storage. When deployment is enabled, passing checks deploy develop to the preview Worker and main to production using separate GitHub environments. Superseded quality checks are canceled; deployments finish in sequence for each branch.",
+      "Pull requests and pushes to main or develop run two required GitHub Actions jobs: check covers formatting, linting, type checks, unit tests, and both environment builds with target validation; e2e covers database integration and browser tests against a seeded local database, plus uploads against isolated R2 storage. Passing pushes to develop deploy indrax-dev through the Preview environment; main deploys indrax through Production. Deployments require the repository deployment switch and the selected environment’s policies. Superseded quality checks are canceled; deployments finish in sequence for each branch.",
     reason:
-      "Keeping checks and deployment in one versioned workflow makes releases repeatable and requires both check and browser-test jobs to pass before deployment.",
+      "Releases move from develop to main through a pull request. Main requires one eligible reviewer’s approval, up-to-date check and e2e results, a successful Preview deployment, and resolved review conversations. New commits dismiss stale approvals. These protections also apply to administrators and block force pushes and branch deletion.",
   },
   {
     icon: Cloud,
     title: "Deployment",
     tools: "Cloudflare Workers · React Router",
     detail:
-      "Vite builds the public SSR Worker and static admin assets. Before Wrangler uploads the generated configuration, a check verifies its Worker name, domains, site and media URLs, and KV/D1/R2 bindings against the intended environment. Develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV, D1, and R2 resources. workers.dev and preview URLs are disabled so custom-domain protections cannot be bypassed.",
+      "Vite builds the public SSR Worker and static admin assets. Wrangler configuration defines runtime variables and bindings; only explicitly allowed public settings reach browser bundles. Before deployment, CI prepares the matching D1 analytics quota tables and verifies the generated Worker name, domains, site and media URLs, and KV/D1/R2 bindings. Develop targets indrax-dev at dev.indrax.uk, while main targets indrax at indrax.uk and www.indrax.uk, with separate KV, D1, and R2 resources. After deployment, a security smoke check verifies public access and private boundaries. workers.dev and preview URLs are disabled so custom-domain protections cannot be bypassed.",
     reason:
       "React Router supports server rendering for SEO and a static browser application for admin, with shared APIs on Workers.",
   },
   {
     icon: Radar,
     title: "Measurement & monitoring",
-    tools: "PostHog · Workers logs & traces · structured server logs",
+    tools: "PostHog · Workers logs · structured server logs",
     detail:
-      "PostHog records analytics after consent. Structured errors and Cloudflare Workers logs and traces support diagnosis; request query strings are redacted to protect OAuth codes and preview tokens. Worker CPU time and request duration measure different costs.",
+      "PostHog starts after consent and sends analytics through a same-origin Worker gateway. The gateway keeps the project credential on the server, validates requests, redacts sensitive URLs, and reserves shared monthly quotas in D1 before forwarding. Production and Preview have separate quota budgets. Withdrawing consent stops capture and clears stored identifiers. Structured errors and Cloudflare Workers logs support diagnosis; request query strings are redacted to protect OAuth codes and preview tokens. Automatic fetch traces are disabled to avoid recording credential-bearing upstream paths. Worker CPU time and request duration measure different costs.",
     reason:
       "Consent-based analytics helps understand readership, while structured errors make server failures easier to investigate.",
   },
@@ -194,8 +194,9 @@ export default function TechStackPage() {
             <div>
               <dt className="text-xs font-black uppercase tracking-wide">Delivery</dt>
               <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                GitHub Actions runs checks and browser tests. When deployment is enabled, successful
-                pushes to develop publish the preview Worker; main publishes production.
+                GitHub Actions checks each change. Develop deploys to Preview; a reviewed release
+                pull request promotes it to main, which deploys to Production when deployment is
+                enabled.
               </dd>
             </div>
           </dl>
