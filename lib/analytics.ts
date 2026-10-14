@@ -26,7 +26,7 @@ type AnalyticsEvent = "resume_pdf_downloaded" | "contact_clicked"
  * Stripped rather than the whole URL dropped, so the page a preview was viewed on
  * is still countable.
  */
-const REDACTED_PARAMS = ["token", "preview"]
+const REDACTED_PARAMS = /^(?:token|preview|code|access_token|refresh_token|id_token)$/i
 
 function redactUrl(value: unknown): unknown {
   if (typeof value !== "string") return value
@@ -35,17 +35,38 @@ function redactUrl(value: unknown): unknown {
     const url = new URL(value)
     let touched = false
 
-    for (const param of REDACTED_PARAMS) {
-      if (url.searchParams.has(param)) {
+    for (const param of [...url.searchParams.keys()]) {
+      if (REDACTED_PARAMS.test(param)) {
         url.searchParams.set(param, "redacted")
         touched = true
       }
     }
 
+    if (url.username || url.password) {
+      url.username = ""
+      url.password = ""
+      touched = true
+    }
     return touched ? url.toString() : value
   } catch {
     return value
   }
+}
+
+/** Heatmaps group coordinate arrays by full-page URL, including signed query values. */
+function redactHeatmapUrls(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value
+  const result: Record<string, unknown> = Object.create(null)
+  for (const [url, points] of Object.entries(value)) {
+    const key = String(redactUrl(url))
+    const existing = result[key]
+    if (Array.isArray(existing) && Array.isArray(points)) {
+      for (const point of points) existing.push(point)
+    } else {
+      result[key] = Array.isArray(points) ? points.slice() : points
+    }
+  }
+  return result
 }
 
 export type ContactChannel = "email" | "linkedin" | "github"
@@ -86,9 +107,7 @@ export function startAnalytics() {
       // Surveys are outside this site's event/route allowlist. Do not load their
       // SDK or offer a UI whose response requests the gateway would refuse.
       disable_surveys: true,
-      // Remote project settings can enable heatmaps, whose $$heatmap events are
-      // outside the gateway allowlist. Keep capture off before those batches form.
-      capture_heatmaps: false,
+      // Leave heatmap capture unset so the SDK follows the project's remote settings.
       // Keep rrweb event data inspectable so the gateway can redact signed URLs.
       // Request compression and nested recorder compression are separate settings.
       session_recording: { compress_events: false },
@@ -131,7 +150,8 @@ export function startAnalytics() {
           // and the set grows with the library. Checking the value is a property
           // that stays true; checking the key is a list that goes stale.
           for (const [key, value] of Object.entries(event.properties)) {
-            event.properties[key] = redactUrl(value)
+            event.properties[key] =
+              key === "$heatmap_data" ? redactHeatmapUrls(value) : redactUrl(value)
           }
         } catch {
           // Redaction is a safety net, not a feature. If it cannot run, dropping

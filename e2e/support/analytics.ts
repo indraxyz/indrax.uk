@@ -120,14 +120,16 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
       hasFeatureFlags: true,
       // The SDK waits for an explicit server opt-in before automatic click capture.
       autocapture_opt_out: false,
-      ...(options.heatmaps
+      ...(options.heatmaps !== undefined
         ? {
             analytics: { endpoint: "/i/v0/e/" },
-            heatmaps: {
-              captureMode: "url_allowlist",
-              urlAllowlist: [],
-              urlAllowlistEnforced: false,
-            },
+            heatmaps: options.heatmaps
+              ? {
+                  captureMode: "url_allowlist",
+                  urlAllowlist: [],
+                  urlAllowlistEnforced: false,
+                }
+              : false,
           }
         : {}),
       ...(options.performance
@@ -142,7 +144,7 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
       body = `window._POSTHOG_REMOTE_CONFIG = window._POSTHOG_REMOTE_CONFIG || {}; window._POSTHOG_REMOTE_CONFIG[${JSON.stringify(ANALYTICS_GATEWAY_TOKEN)}] = ${JSON.stringify({ config })};`
     } else if (path.endsWith("/config")) body = JSON.stringify(config)
     else if (
-      (options.replay || options.performance) &&
+      (options.replay || options.performance || options.heatmaps) &&
       path.includes("/static/") &&
       /^(?:lazy-recorder|recorder|recorder-v2|posthog-recorder|rrweb-console-plugin|web-vitals|web-vitals-with-attribution|dead-clicks-autocapture)\.js$/.test(
         basename(path)

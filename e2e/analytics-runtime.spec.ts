@@ -120,6 +120,39 @@ test.describe("analytics in Workerd", () => {
     })
   })
 
+  test("forwards a mixed pageview/heatmap batch in Workerd with server credentials", async () => {
+    const response = await server!.fetch(`${origin}/api/analytics/i/v0/e/`, {
+      method: "POST",
+      headers: {
+        Origin: origin,
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": "198.51.100.1",
+      },
+      body: JSON.stringify({
+        api_key: PLACEHOLDER,
+        batch: [
+          { event: "$pageview", properties: { distinct_id: "runtime-visitor" } },
+          {
+            event: "$$heatmap",
+            properties: {
+              distinct_id: "runtime-visitor",
+              $heatmap_data: {
+                [`${origin}/preview?token=runtime-bearer`]: [
+                  { x: -0.5, y: 12.25, type: "mousemove", target_fixed: false },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+    })
+    expect(response.status).toBe(200)
+    const { APP_D1 } = await server!.getWorker<{ APP_D1: D1Database }>().getEnv()
+    expect(
+      await APP_D1.prepare("SELECT units FROM analytics_quota WHERE category='events'").first()
+    ).toEqual({ units: 3 })
+  })
+
   for (const asset of [
     "recorder",
     "web-vitals",

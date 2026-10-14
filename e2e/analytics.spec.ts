@@ -22,7 +22,7 @@ test.use({
 const DOWNLOAD_TIMEOUT_MS = 90_000
 
 test.describe("analytics", () => {
-  test("keeps heatmaps disabled despite remote opt-in while forwarding normal events", async ({
+  test("forwards native heatmaps and normal events with remote capture enabled", async ({
     page,
   }) => {
     const analytics = await recordAnalytics(page, { heatmaps: true, validateGateway: true })
@@ -31,7 +31,7 @@ test.describe("analytics", () => {
       if (response.url().includes("/api/analytics/") && response.status() >= 400)
         rejected.push(`${response.status()} ${new URL(response.url()).pathname}`)
     })
-    await page.goto("/")
+    await page.goto("/?preview=heatmap-preview-secret&code=heatmap-oauth-secret")
     await whenHydrated(page)
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
@@ -40,12 +40,140 @@ test.describe("analytics", () => {
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$autocapture")
-    // Heatmaps flush every five seconds in the installed SDK. Give the remote
-    // setting and this click a complete flush window to catch accidental capture.
-    await page.waitForTimeout(6000)
+    await page.mouse.move(100, 150)
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$$heatmap")
     expect(analytics.everything()).toContain("/api/analytics/i/v0/e/")
     expect(rejected).toEqual([])
+    expect(analytics.everything()).not.toMatch(/heatmap-preview-secret|heatmap-oauth-secret/)
+    const envelopes = analytics.forwarded.flatMap((body) => {
+      const data = JSON.parse(body)
+      return data.batch ?? [data]
+    })
+    const maps = envelopes
+      .filter((event) => event.event === "$$heatmap")
+      .map((event) => event.properties.$heatmap_data)
+    expect(maps.length).toBeGreaterThan(0)
+    expect(maps.flatMap((map) => Object.keys(map))).toContain(
+      `${page.url().split("?")[0]}?preview=redacted&code=redacted`
+    )
+    expect(maps.flatMap((map) => Object.values(map)).flat()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "click",
+          x: expect.any(Number),
+          y: expect.any(Number),
+          target_fixed: expect.any(Boolean),
+        }),
+      ])
+    )
+    await page.keyboard.press("Escape")
+    await page.getByRole("button", { name: "Cookie preferences" }).click()
+    await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
+    const beforeWithdrawal = analytics.sent.filter((body) => body.includes("$$heatmap")).length
+    await page.mouse.move(150, 180)
+    // Observe a full five-second heatmap flush window after withdrawing consent.
+    await page.waitForTimeout(6000)
+    expect(analytics.sent.filter((body) => body.includes("$$heatmap"))).toHaveLength(
+      beforeWithdrawal
+    )
+  })
+
+  test("forwards heatmaps, session replay and web vitals together through the native ingestion routes", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000)
+    const analytics = await recordAnalytics(page, {
+      heatmaps: true,
+      replay: true,
+      performance: true,
+      validateGateway: true,
+    })
+    const rejected: number[] = []
+    page.on("response", (response) => {
+      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+        rejected.push(response.status())
+    })
+    await page.goto("/")
+    await whenHydrated(page)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.mouse.move(100, 150)
+    for (const event of ["$pageview", "$autocapture", "$$heatmap", "$snapshot", "$web_vitals"])
+      await expect.poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 }).toContain(event)
+    expect(analytics.everything()).toContain("/api/analytics/i/v0/e/")
+    expect(analytics.everything()).toContain("/api/analytics/s/")
+    expect(rejected).toEqual([])
+  })
+
+  test("respects remote heatmap opt-out while continuing pageviews and clicks", async ({
+    page,
+  }) => {
+    const analytics = await recordAnalytics(page, { heatmaps: false, validateGateway: true })
+    await page.goto("/")
+    await whenHydrated(page)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$autocapture")
+    await page.waitForTimeout(6000)
     expect(analytics.captured("$$heatmap")).toBe(false)
+    expect(analytics.forwarded.join("\n")).toContain("$pageview")
+  })
+
+  test("forwards touch dead-swipe events emitted by the installed detector", async ({ page }) => {
+    const analytics = await recordAnalytics(page, { performance: true, validateGateway: true })
+    const rejected: number[] = []
+    page.on("response", (response) => {
+      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+        rejected.push(response.status())
+    })
+    await page.goto("/")
+    await whenHydrated(page)
+    await page.waitForFunction(
+      () =>
+        typeof (
+          window as Window & { __PosthogExtensions__?: { initDeadClicksAutocapture?: unknown } }
+        ).__PosthogExtensions__?.initDeadClicksAutocapture === "function"
+    )
+    await page.waitForLoadState("networkidle")
+    // Feed the installed SDK's native touch handlers a swipe on a static heading.
+    // Synthetic touch events keep the viewport fixed so this is a dead gesture.
+    await page.getByRole("heading", { level: 1 }).evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const start = new Touch({
+        identifier: 1,
+        target: element,
+        clientX: box.left + 10,
+        clientY: box.top + 10,
+      })
+      const end = new Touch({
+        identifier: 1,
+        target: element,
+        clientX: box.left + 140,
+        clientY: box.top + 10,
+      })
+      element.dispatchEvent(
+        new TouchEvent("touchstart", {
+          bubbles: true,
+          touches: [start],
+          targetTouches: [start],
+          changedTouches: [start],
+        })
+      )
+      element.dispatchEvent(
+        new TouchEvent("touchend", {
+          bubbles: true,
+          touches: [],
+          targetTouches: [],
+          changedTouches: [end],
+        })
+      )
+    })
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$dead_swipe")
+    expect(rejected).toEqual([])
   })
 
   test("loads remote-enabled web vitals and dead-click scripts through the gateway", async ({
