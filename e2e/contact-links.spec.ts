@@ -3,6 +3,36 @@ import { expect, test } from "@playwright/test"
 const EMAIL = "indracahyae@gmail.com"
 
 test.describe("contact actions", () => {
+  test("personal information uses a sheet on mobile and desktop and restores focus", async ({
+    page,
+  }) => {
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 700 })
+      await page.goto("/resume")
+      const trigger = page.getByRole("button", { name: "Open personal information" })
+      await trigger.click()
+      const sheet = page.getByRole("dialog", { name: "Personal Information", exact: true })
+      await expect(sheet).toHaveAttribute("data-slot", "sheet-content")
+      await expect(sheet).toHaveAttribute("data-side", "right")
+      await expect(sheet.getByRole("link", { name: EMAIL })).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+      await page.keyboard.press("Escape")
+      await expect(sheet).toBeHidden()
+      await expect(trigger).toBeFocused()
+      await trigger.click()
+      await sheet
+        .getByRole("button", {
+          name: width < 640 ? "Close personal information" : "Close",
+          exact: true,
+        })
+        .click()
+      await expect(sheet).toBeHidden()
+      await expect(trigger).toBeFocused()
+    }
+  })
+
   test("offers an email action in personal information", async ({ page }) => {
     for (const path of ["/", "/resume"]) {
       await page.goto(path)

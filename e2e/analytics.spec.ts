@@ -57,13 +57,54 @@ test.describe("analytics", () => {
     expect(analytics.sent.join("\n")).toContain("email")
   })
 
+  test("retains automatic click capture through the same-origin gateway", async ({ page }) => {
+    const analytics = await recordAnalytics(page, { validateGateway: true })
+    await page.goto("/")
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect.poll(() => analytics.captured("$autocapture"), { timeout: 20_000 }).toBe(true)
+    expect(analytics.everything()).toContain("/api/analytics/")
+    expect(analytics.everything()).not.toContain("https://us.i.posthog.com")
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$autocapture")
+    expect(analytics.forwarded.join("\n")).toContain("phc_e2e_server_private")
+    expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+  })
+
+  test("retains session replay using the installed recorder behind the gateway", async ({
+    page,
+  }) => {
+    const analytics = await recordAnalytics(page, { replay: true, validateGateway: true })
+    await page.goto("/")
+    test.setTimeout(60_000)
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+    await page.waitForFunction(() => {
+      const extensions = (
+        window as Window & {
+          __PosthogExtensions__?: { rrweb?: { record?: unknown } }
+        }
+      ).__PosthogExtensions__
+      return typeof extensions?.rrweb?.record === "function"
+    })
+    await page.mouse.move(100, 100)
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect.poll(() => analytics.captured("$snapshot"), { timeout: 30_000 }).toBe(true)
+    expect(analytics.everything()).toContain("/api/analytics/s/")
+    expect(analytics.everything()).toContain("phc_indrax_gateway")
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$snapshot")
+    expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+  })
+
   test("sends nothing when the visitor has asked not to be tracked", async ({ page }) => {
     test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
     const analytics = await recordAnalytics(page)
 
     // `respect_dnt: true` is the guard being exercised. The sibling guard - no
-    // key configured at all - cannot be covered here, because `NEXT_PUBLIC_*`
+    // analytics disabled at build time - cannot be covered here, because public
     // values are inlined at build time and this suite runs one build.
     await page.addInitScript(() => {
       Object.defineProperty(window.navigator, "doNotTrack", { get: () => "1" })
@@ -83,7 +124,7 @@ test.describe("analytics", () => {
     test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
     // Every analytics request errors; the page still has to work.
-    await page.route("**/posthog.e2e.invalid/**", (route) => route.abort())
+    await page.route("**/api/analytics/**", (route) => route.abort())
     await page.goto("/")
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
@@ -107,10 +148,12 @@ test.describe("analytics", () => {
     // unpublished work. That is the outcome the token's signing and expiry exist to
     // prevent (threat T-4).
     const token = "a-token-that-must-not-be-transmitted"
-    await page.goto(`/blog/${SEEDED_POST_SLUG}/preview?token=${token}`)
+    await page.goto(`/writing/${SEEDED_POST_SLUG}/preview?token=${token}`)
 
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
 
+    // Remote config/flags can arrive after the pageview and bypass before_send.
+    await expect.poll(() => analytics.everything(), { timeout: 20_000 }).toContain("/flags/")
     const payloads = analytics.everything()
     expect(payloads).not.toContain(token)
     // Redacted rather than dropped, so the page is still countable.
@@ -151,6 +194,58 @@ test.describe("analytics", () => {
       await page.getByRole("button", { name: "Accept" }).click()
 
       await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+      await expect
+        .poll(() => analytics.sent.some((request) => request.includes("/config.js")), {
+          timeout: 20_000,
+        })
+        .toBe(true)
+    })
+
+    test("resumes pageviews after consent is withdrawn and granted again", async ({ page }) => {
+      const analytics = await recordAnalytics(page, { consent: null })
+
+      await page.goto("/")
+      await page.getByRole("button", { name: "Accept" }).click()
+      await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+
+      await page.getByRole("button", { name: "Cookie preferences" }).click()
+      await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
+      expect(
+        (await page.context().cookies()).filter((cookie) => cookie.name.startsWith("ph_"))
+      ).toEqual([])
+      const sentBeforeRegrant = analytics.sent.length
+
+      await page.getByRole("button", { name: "Accept" }).click()
+      await page
+        .getByRole("link", { name: /writing/i })
+        .first()
+        .click()
+      await expect
+        .poll(() => analytics.sent.slice(sentBeforeRegrant).join("\n"), { timeout: 20_000 })
+        .toContain("$pageview")
+    })
+
+    test("resumes capture when consent is granted after a reload", async ({ page }) => {
+      const analytics = await recordAnalytics(page, { consent: null })
+
+      await page.goto("/")
+      await page.getByRole("button", { name: "Accept" }).click()
+      await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+
+      await page.getByRole("button", { name: "Cookie preferences" }).click()
+      await page.reload()
+      await expect(page.getByRole("region", { name: /analytics consent/i })).toBeVisible()
+
+      const sentBeforeRegrant = analytics.sent.length
+      await page.getByRole("button", { name: "Accept" }).click()
+      await page
+        .getByRole("link", { name: /writing/i })
+        .first()
+        .click()
+
+      await expect
+        .poll(() => analytics.sent.slice(sentBeforeRegrant).join("\n"), { timeout: 20_000 })
+        .toContain("$pageview")
     })
 
     test("remembers the answer, so it is asked once", async ({ page }) => {
@@ -197,12 +292,12 @@ test.describe("analytics", () => {
     test("can be withdrawn from the footer, on any page", async ({ page }) => {
       await recordAnalytics(page, { consent: "granted" })
 
-      for (const path of ["/", "/blog"]) {
+      for (const path of ["/", "/writing"]) {
         await test.step(path, async () => {
           await page.goto(path)
 
           if (path === "/") {
-            await expect(page.locator("footer")).toContainText(/Updated /)
+            await expect(page.locator("footer")).toContainText(/© \d{4} by Indra/)
             await expect(
               page.locator('footer button[aria-label="Cookie preferences"] svg')
             ).toBeVisible()

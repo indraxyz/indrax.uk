@@ -1,0 +1,24 @@
+{
+  "name": "Media response security headers",
+  "kind": "zone",
+  "phase": "http_response_headers_transform",
+  "rules": [
+    {
+      "description": "Security headers on R2 cover media hosts",
+      "expression": "http.host in {\"media.indrax.uk\" \"dev-media.indrax.uk\"}",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "x-content-type-options": { "operation": "set", "value": "nosniff" },
+          "content-security-policy": {
+            "operation": "set",
+            "value": "default-src 'none'; sandbox; frame-ancestors 'none'"
+          },
+          "referrer-policy": { "operation": "set", "value": "no-referrer" },
+          "x-frame-options": { "operation": "set", "value": "DENY" }
+        }
+      },
+      "enabled": true
+    }
+  ]
+}

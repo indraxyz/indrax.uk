@@ -1,5 +1,3 @@
-"use client"
-
 import { Cookie } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -123,13 +121,7 @@ export function ConsentBanner() {
  * listens for the same event - and brings the banner back so a different answer
  * can be given.
  */
-export function ConsentControl({
-  className,
-  separator = false,
-}: {
-  className?: string
-  separator?: boolean
-}) {
+export function ConsentControl({ className }: { className?: string }) {
   const [decided, setDecided] = useState(false)
 
   useEffect(() => {
@@ -146,24 +138,17 @@ export function ConsentControl({
   if (!decided) return null
 
   return (
-    <>
-      {separator && (
-        <span aria-hidden="true" className="text-sm text-muted-foreground print:hidden">
-          ·
-        </span>
+    <button
+      type="button"
+      onClick={clearConsent}
+      aria-label="Cookie preferences"
+      title="Cookie preferences"
+      className={cn(
+        "inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
+        className
       )}
-      <button
-        type="button"
-        onClick={clearConsent}
-        aria-label="Cookie preferences"
-        title="Cookie preferences"
-        className={cn(
-          "inline-flex min-h-10 min-w-10 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
-          className
-        )}
-      >
-        <Cookie className="h-5 w-5" aria-hidden="true" />
-      </button>
-    </>
+    >
+      <Cookie className="size-5" aria-hidden="true" />
+    </button>
   )
 }

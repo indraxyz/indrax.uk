@@ -1,4 +1,26 @@
-@import "tailwindcss";
+/* Both Vite roots use shared feature/UI components outside the admin directory. */
+@import "tailwindcss" source("../");
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Bold.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-ExtraBold.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 800 900;
+}
+:root {
+  --font-jetbrains-mono: "JetBrains Mono";
+}
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -50,6 +72,7 @@
     --primitive-neutral-900: #152111;
     --primitive-danger-700: #b42318;
     --primitive-danger-50: #fff1ef;
+    --primitive-warning-600: #ea580c;
 
     --semantic-surface-page: var(--primitive-neutral-0);
     --semantic-surface-card: rgba(255, 255, 255, 0.92);
@@ -68,6 +91,9 @@
     --semantic-action-tertiary-text: var(--primitive-brand-950);
     --semantic-status-danger: var(--primitive-danger-700);
     --semantic-status-danger-text: var(--primitive-neutral-0);
+    --semantic-status-warning: var(--primitive-warning-600);
+    --component-status-unsaved: var(--semantic-status-warning);
+    --component-navigation-progress: var(--primitive-brand-500);
 
     --component-variant-primary-bg: var(--semantic-action-primary);
     --component-variant-primary-fg: var(--semantic-action-primary-text);
@@ -263,6 +289,7 @@
   }
 
   body {
+    position: relative;
     background-color: var(--color-background);
     color: var(--color-foreground);
     background-image:
@@ -282,6 +309,33 @@
       28px 28px,
       auto;
     background-attachment: fixed;
+  }
+
+  /* Shared by public SSR and the independent admin application. */
+  :where(
+    a[href],
+    button,
+    select,
+    summary,
+    [role="button"],
+    [role="link"],
+    [role="menuitem"],
+    [role="tab"],
+    input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"])
+  ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+
+  input[type="file"]:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+
+  :where(button, select, input, [role="button"], [role="link"], [role="menuitem"], [role="tab"]):is(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled]
+  ) {
+    cursor: not-allowed;
   }
 
   /* Someone who has asked their system to stop moving things means it here too. */
@@ -654,6 +708,12 @@
  * none of it can reach a reader. */
 .ProseMirror:focus {
   outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress * {
+    transition: none !important;
+  }
 }
 
 /* Block rhythm inside the canvas. Typography's own spacing applies to `.prose`

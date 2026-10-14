@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type BrowserContext } from "@playwright/test"
 
 import { E2E_BASE_URL } from "./support/constants"
@@ -60,11 +61,214 @@ test.describe("sessions", () => {
     // is broken rather than because the guard works.
     const { context } = await contextWith(browser)
     const page = await context.newPage()
+    const editorChunks: string[] = []
+    page.on("request", (request) => {
+      if (/\/admin\/assets\/editor-[^/]+\.js$/.test(new URL(request.url()).pathname)) {
+        editorChunks.push(request.url())
+      }
+    })
 
     await page.goto("/admin")
     await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole("link", { name: /new/i }).first()).toBeVisible()
+    expect(editorChunks).toEqual([])
+    await page.getByRole("link", { name: /new/i }).first().click()
+    await expect(page.locator(".tiptap")).toBeVisible()
+    expect(editorChunks).toHaveLength(1)
 
+    await context.close()
+  })
+
+  test("reuses the session across admin navigation and refreshes it after becoming stale", async ({
+    browser,
+  }) => {
+    test.setTimeout(60_000)
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    const requests: string[] = []
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/admin/session") requests.push(request.url())
+    })
+    await page.goto("/admin")
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(1)
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
+    await page
+      .getByRole("link", { name: /new post/i })
+      .first()
+      .click()
+    await expect(page.locator(".tiptap")).toBeVisible()
+    await page
+      .getByRole("navigation", { name: "Breadcrumb", exact: true })
+      .getByRole("link", { name: "Admin", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(1)
+    // Advance the browser clock without delaying the test or polling the server.
+    await page.clock.install()
+    await page.clock.fastForward(61_000)
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
+    expect(requests).toHaveLength(2)
+    await context.close()
+  })
+
+  test("rejects private reads immediately when a cached author loses their cookie", async ({
+    browser,
+  }) => {
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    await page.goto("/admin")
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible()
+    await context.clearCookies()
+    const refused = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+    )
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link", { name: "Posts", exact: true })
+      .click()
+    expect((await refused).status()).toBe(401)
+    await expect(page).toHaveURL(/\/admin\/login$/)
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0)
+    await context.close()
+  })
+
+  test("uses a Lax state cookie for the GitHub OAuth callback", async ({ request }) => {
+    test.skip(
+      !process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET,
+      "needs GitHub OAuth configuration - see README"
+    )
+
+    const response = await request.post(`${E2E_BASE_URL}/api/auth/sign-in/social`, {
+      headers: { origin: E2E_BASE_URL },
+      data: { provider: "github", callbackURL: "/admin" },
+    })
+
+    expect(response.ok()).toBe(true)
+
+    const stateCookie = (await response.headersArray()).find(
+      ({ name, value }) =>
+        name.toLowerCase() === "set-cookie" && /(?:__Secure-)?better-auth\.state=/i.test(value)
+    )
+
+    expect(stateCookie?.value).toMatch(/;\s*SameSite=Lax(?:;|$)/i)
+    expect(stateCookie?.value).toMatch(/;\s*HttpOnly(?:;|$)/i)
+  })
+
+  test("mobile menu matches desktop navigation and keeps preferences and sign-out accessible", async ({
+    browser,
+  }) => {
+    test.setTimeout(60_000)
+    const { context } = await contextWith(browser)
+    const page = await context.newPage()
+    const posts = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+    )
+    await page.goto("/admin/posts")
+    expect((await posts).status()).toBe(200)
+    await expect(page.getByRole("heading", { name: "Posts", exact: true })).toBeVisible()
+    await expect(page.getByRole("main").getByRole("link", { name: /View Writing/i })).toHaveCount(0)
+    const desktopLinks = await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("link")
+      .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
+    expect(desktopLinks).toEqual(["/admin", "/admin/posts", "/resume", "/writing"])
+
+    for (const width of [320, 767]) {
+      await page.setViewportSize({ width, height: 700 })
+      await expect(page.getByRole("navigation", { name: "Admin", exact: true })).toBeHidden()
+      const trigger = page.getByRole("button", { name: "Open admin menu" })
+      await trigger.click()
+      const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+      await expect(drawer).toBeVisible()
+      const menu = drawer.getByRole("navigation", { name: "Admin", exact: true })
+      expect(
+        await menu
+          .getByRole("link")
+          .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
+      ).toEqual(desktopLinks)
+      await expect(menu.locator('[aria-current="page"]')).toHaveText("Posts")
+      await expect(drawer.getByRole("button", { name: /Switch theme/ })).toBeVisible()
+      await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeVisible()
+      const menuBox = await menu.boundingBox()
+      const footerBox = await drawer.locator('[data-slot="drawer-footer"]').boundingBox()
+      expect(footerBox!.y).toBeGreaterThan(menuBox!.y + menuBox!.height)
+      expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(700)
+      const accessibility = await new AxeBuilder({ page })
+        .include('[data-slot="drawer-content"]')
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+      expect(accessibility.violations).toEqual([])
+      await test.info().attach(`Admin menu at ${width}px`, {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+      await page.keyboard.press("Escape")
+      await expect(drawer).toBeHidden()
+      await expect(trigger).toBeFocused()
+    }
+
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await page
+      .getByRole("dialog", { name: "Admin menu", exact: true })
+      .getByRole("link", { name: "Writing", exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/writing$/)
+    await expect(page.getByRole("dialog", { name: "Admin menu", exact: true })).toBeHidden()
+    await page.goto("/admin/posts")
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+    const theme = drawer.getByRole("button", { name: /Switch theme/ })
+    const previousTheme = await theme.getAttribute("aria-label")
+    await theme.click()
+    await expect(theme).not.toHaveAttribute("aria-label", previousTheme!)
+    await expect(drawer).toBeVisible()
+    await drawer.getByRole("button", { name: "Sign out", exact: true }).click()
+    const confirmation = page.getByRole("alertdialog")
+    await expect(confirmation.getByRole("heading", { name: "Sign out?" })).toBeVisible()
+    await confirmation.getByRole("button", { name: "Cancel" }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(drawer).toBeVisible()
+    await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeFocused()
+
+    await drawer.getByRole("link", { name: "Admin home", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin$/)
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await expect(drawer.getByRole("link", { name: "Admin home", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
+    )
+    await drawer.getByRole("button", { name: "Close admin menu" }).click()
+    await expect(drawer).toBeHidden()
+
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await page.setViewportSize({ width: 1024, height: 900 })
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole("button", { name: "Open admin menu" })).toBeHidden()
+    await expect(page.getByRole("navigation", { name: "Admin", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: /Switch theme/ })).not.toHaveAttribute(
+      "aria-label",
+      previousTheme!
+    )
+    await page.setViewportSize({ width: 375, height: 700 })
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    await drawer.getByRole("button", { name: "Sign out", exact: true }).click()
+    await confirmation.getByRole("button", { name: "Sign out", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin\/login/)
+    await expect(drawer).toBeHidden()
     await context.close()
   })
 
@@ -147,6 +351,24 @@ test.describe("sessions", () => {
     await context.close()
   })
 
+  test("rejects cross-origin writing mutations even with a valid author session", async ({
+    browser,
+  }) => {
+    const { context } = await contextWith(browser)
+    // APIRequestContext does not automatically replay Secure cookies to HTTP
+    // loopback. Carry the signed cookie explicitly to exercise CSRF after auth.
+    const cookie = (await context.cookies()).map(({ name, value }) => `${name}=${value}`).join("; ")
+    const session = await context.request.get("/api/admin/session", { headers: { cookie } })
+    expect((await session.json()).author).toBeTruthy()
+    const response = await context.request.post("/api/admin/posts", {
+      headers: { origin: "https://attacker.example", cookie },
+      data: { title: "Cross-origin injection", status: "published", tags: [] },
+    })
+    expect(response.status()).toBe(403)
+    expect(await response.text()).not.toContain("requireAuthor")
+    await context.close()
+  })
+
   test("enforces upload limits server-side, for a signed-in caller", async ({ browser }) => {
     const { context } = await contextWith(browser)
 
@@ -154,22 +376,33 @@ test.describe("sessions", () => {
     // about the *validation* rather than about authentication. The client-side
     // checks in the upload component are a courtesy; these are the control
     // (threat T-5, PRD US-3.6).
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d])
+    const html = Buffer.from("<!doctype html><script>alert(document.cookie)</script>")
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')
+    const oversized = Buffer.concat([png, Buffer.alloc(6 * 1024 * 1024)])
     const refusals = [
-      { label: "a script pretending to be an image", contentType: "text/html", size: 1024 },
-      { label: "an SVG, which can carry script", contentType: "image/svg+xml", size: 1024 },
-      { label: "a file over the size cap", contentType: "image/png", size: 50 * 1024 * 1024 },
-      { label: "a negative size", contentType: "image/png", size: -1 },
-      { label: "no file name", contentType: "image/png", size: 1024, fileName: "" },
+      { label: "a script pretending to be an image", type: "image/png", data: html, status: 415 },
+      { label: "an SVG, which can carry script", type: "image/svg+xml", data: svg, status: 415 },
+      { label: "a PNG labelled as JPEG", type: "image/jpeg", data: png, status: 415 },
+      { label: "a file over the size cap", type: "image/png", data: oversized, status: 413 },
+      { label: "an empty file", type: "image/png", data: Buffer.alloc(0), status: 400 },
+      { label: "an unknown purpose", type: "image/png", data: png, status: 400, purpose: "x" },
     ]
 
-    for (const { label, contentType, size, fileName } of refusals) {
-      const response = await context.request.post("/api/upload", {
-        data: { contentType, size, fileName: fileName ?? "payload" },
+    // Carried explicitly: APIRequestContext does not replay Secure cookies to
+    // HTTP loopback, and sends no Origin. Without both, every case would stop at
+    // the session or origin check and prove nothing about validation.
+    const cookie = (await context.cookies()).map(({ name, value }) => `${name}=${value}`).join("; ")
+    const origin = new URL(E2E_BASE_URL).origin
+    for (const { label, type, data, status, purpose = "cover" } of refusals) {
+      const response = await context.request.post(`/api/upload?purpose=${purpose}`, {
+        data,
+        headers: { "content-type": type, cookie, origin },
       })
 
-      expect(response.ok(), `${label} was accepted`).toBe(false)
-      // Above all: no signed URL was handed back.
-      expect(await response.text()).not.toContain("r2.cloudflarestorage.com")
+      expect(response.status(), label).toBe(status)
+      // Above all: nothing was stored, so no public URL came back.
+      expect(await response.text()).not.toContain("publicUrl")
     }
 
     await context.close()

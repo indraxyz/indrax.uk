@@ -11,19 +11,29 @@
  * The set is chosen to exercise the read path rather than to read well: one
  * published post using every node type the renderer handles, one published post
  * that shares a tag with it, one draft that must never appear anywhere public.
+ * Pass --pagination to add 25 published local-only pagination demo posts.
  */
 import { eq, inArray, sql } from "drizzle-orm"
 
-import type { PostDocument } from "@/features/blog/types"
-import { deriveExcerpt, plainText } from "@/features/blog/utils/content"
-import { computeReadingTime } from "@/features/blog/utils/reading-time"
-import { slugify } from "@/features/blog/utils/slug"
-import { getDb, schema } from "@/lib/db"
-import { postInputSchema, type PostInput } from "@/lib/validators/blog"
+import type { PostDocument } from "@/features/writing/types"
+import { deriveExcerpt, plainText } from "@/features/writing/utils/content"
+import { computeReadingTime } from "@/features/writing/utils/reading-time"
+import { slugify } from "@/features/writing/utils/slug"
+import { getDb, schema } from "@/lib/db/index.server"
+import { postInputSchema, type PostInput } from "@/lib/validators/writing"
 
 import { loadLocalEnv } from "./dev-env"
 
 loadLocalEnv()
+
+const includePagination = process.argv.includes("--pagination")
+if (
+  includePagination &&
+  (!process.env.DATABASE_URL ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(new URL(process.env.DATABASE_URL).hostname))
+) {
+  throw new Error("Pagination demo posts require an explicit loopback DATABASE_URL.")
+}
 
 /*
  * Terse constructors for ProseMirror nodes.
@@ -31,7 +41,7 @@ loadLocalEnv()
  * Authoring these documents as literals is unreadable at any length, and pulling
  * in a markdown-to-ProseMirror converter would add a dependency to make a
  * dev-only script shorter. These also serve as a compact statement of the node
- * shapes `BLOG_EXTENSIONS` produces.
+ * shapes `WRITING_EXTENSIONS` produces.
  */
 type Inline = PostDocument
 
@@ -97,15 +107,14 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
     slug: "rendering-an-article-without-shipping-a-renderer",
     status: "published",
     publishedAt: "2026-08-14T09:00:00.000Z",
-    tags: ["Next.js", "Performance", "TypeScript"],
-    seriesTitle: "Building this blog",
-    seriesDescription:
-      "How the blog you are reading was built, in the order the decisions were actually made.",
+    tags: ["React Router", "Performance", "TypeScript"],
+    seriesTitle: "Building this site",
+    seriesDescription: "How this site was built, in the order the decisions were actually made.",
     seriesOrder: 1,
     content: doc(
       p(
         text(
-          "Syntax highlighting is the easiest place on a blog to accidentally ship a hundred kilobytes of JavaScript to a reader who only wanted to read a paragraph. The usual setup runs a highlighter in the browser: the page arrives with plain code in it, the bundle loads, and the code repaints. It works, and it costs every reader the download."
+          "Syntax highlighting is an easy place to accidentally ship a hundred kilobytes of JavaScript to a reader who only wanted to read a paragraph. The usual setup runs a highlighter in the browser: the page arrives with plain code in it, the bundle loads, and the code repaints. It works, and it costs every reader the download."
         )
       ),
       h(2, "Move it to the server"),
@@ -116,7 +125,7 @@ const SEED: (Omit<PostInput, "content"> & { content: PostDocument; publishedAt?:
       ),
       code(
         "ts",
-        `const html = renderToHTMLString({ content: document, extensions: BLOG_EXTENSIONS })
+        `const html = renderToHTMLString({ content: document, extensions: WRITING_EXTENSIONS })
 
 const file = await unified()
   .use(rehypeParse, { fragment: true })
@@ -177,7 +186,7 @@ const file = await unified()
     status: "published",
     publishedAt: "2026-08-28T09:00:00.000Z",
     tags: ["Architecture", "Postgres", "TypeScript"],
-    seriesTitle: "Building this blog",
+    seriesTitle: "Building this site",
     seriesOrder: 2,
     content: doc(
       p(
@@ -212,7 +221,7 @@ const file = await unified()
         )
       ),
       quote(
-        "A blog that cannot reach Postgres renders as a blog with nothing in it. That is a far better failure than an unhandled exception taking down the only page the site has."
+        "When the site cannot reach Postgres, the writing archive shows an empty state. That is a far better failure than an unhandled exception taking down the only page the site has."
       ),
       p(
         text(
@@ -239,7 +248,7 @@ const file = await unified()
     tags: ["Security"],
     // Part three, and unpublished. Deliberate: it is what proves a reader is told
     // "part 1 of 2" rather than "part 1 of 3" with one of them answering 404.
-    seriesTitle: "Building this blog",
+    seriesTitle: "Building this site",
     seriesOrder: 3,
     content: doc(
       p(
@@ -255,6 +264,28 @@ const file = await unified()
     ),
   },
 ]
+
+if (includePagination) {
+  for (let index = 1; index <= 25; index++) {
+    const number = String(index).padStart(2, "0")
+    SEED.push({
+      title: `Pagination demo ${number}: local writing sample`,
+      slug: `pagination-demo-${number}`,
+      status: "published",
+      publishedAt: new Date(Date.UTC(2026, 8, index, 9)).toISOString(),
+      tags: ["Pagination Demo"],
+      content: doc(
+        h(2, `Local pagination sample ${number}`),
+        p(
+          text(
+            `Pagination demo entry ${number} is local sample content for checking the writing archive, tag filters, and search results. Search for "pagination demo" to see all 25 samples across three pages.`
+          )
+        ),
+        p(text("Use Older and Newer in the archive, or More and Previous in search."))
+      ),
+    })
+  }
+}
 
 async function main() {
   const db = getDb()

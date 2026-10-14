@@ -1,366 +1,302 @@
-# Indra Cahya Edytya - Resume/CV Website
+# Indra Cahya Edytya — portfolio and writing
 
-A modern personal site with a home page, resume, and blog, built with Next.js 16, TypeScript, Tailwind CSS v4, and shadcn/ui components.
+Personal home page, resume, writing archive, and single-author admin built with
+React Router **8.4.0**, React, TypeScript, and Tailwind CSS v4 on Cloudflare Workers.
+The public site uses Framework Mode; the admin is an independent CSR application.
 
-## 🚀 Features
+## Rendering and data
 
-- **Modern UI/UX**: Clean, professional design with shadcn/ui components
-- **Fully Typed**: Complete TypeScript implementation
-- **Responsive**: Mobile-first design that works on all devices
-- **Print-Friendly**: Prints the complete resume, sidebar included, for PDF export
-- **Focused routes**: `/` introduces the author, process, and recent writing; `/resume` contains the full CV; `/blog` lists articles; `/tech-stack` explains this site's implementation
-- **Downloadable CV**: react-pdf draws the resume in the browser on request, lazily loaded
-- **Designed Social Card**: 1200x630 Open Graph banner generated from the resume data
-- **Structured Data**: `ProfilePage` / `Person` JSON-LD linking the GitHub and LinkedIn profiles
-- **Measured, with permission**: optional PostHog analytics for pageviews, CV downloads and contact clicks, behind a consent gate that starts nothing until the visitor says yes
-- **Blog**: articles from Postgres, syntax-highlighted on the server, with tag pages, an RSS feed, per-article Open Graph cards and `Article` JSON-LD
-- **Search**: Postgres full-text search over titles, summaries and article bodies, weighted so a title match wins — a plain GET form, so it needs no JavaScript
-- **Series**: an ordered run of posts with its own page and article-to-article navigation, counting only the parts a reader can open
-- **Authoring**: a single-author admin behind GitHub OAuth, with a Tiptap editor that never reaches a reader's browser
-- **Draft previews**: a signed, hour-long link that makes one unpublished post readable, and nothing else
-- **Reading aids**: an in-page contents list, related articles by tag, and copy buttons on code blocks - none of which cost a reader any JavaScript to read
-- **Performance**: Built with Next.js 16 and optimized for speed
-- **Accessible**: Landmarked page, keyboard-reachable scroll regions, labelled controls
+| Area                                 | Rendering                                             | Data                                                          |
+| ------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
+| Home, resume, tech stack             | SSR for SEO and initial content                       | Static feature data; recent writing cards load in the browser |
+| Writing archive and series           | Public page shell; cards/results use CSR              | Writing API with TanStack Query                               |
+| Published writing detail             | SSR with metadata, Article JSON-LD and sanitized HTML | Public-only database reads and revision cache                 |
+| Admin dashboard, list, editor, login | Independent static CSR bundle; no React SSR           | Authenticated backend APIs                                    |
+| Shared draft preview                 | CSR page with signed preview API                      | Uncached sanitized article DTO after signature verification   |
+| RSS, sitemap, robots, social images  | Resource endpoints                                    | Public-only reads and server image rendering                  |
 
-## 🛠️ Tech Stack
+TanStack Query owns client loading/error/cache state and mutation invalidation.
+Ky is the same-origin HTTP transport; requests use native Fetch underneath.
+Browser validation provides feedback; API/data-layer validation and authorization
+remain mandatory. Moving an editor into the browser does not make a save CPU-free.
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
-- **UI Components**: shadcn/ui
-- **Icons**: Lucide React
-- **Database**: Neon Postgres via Drizzle ORM (optional — the site builds and serves without one)
-- **Content**: Tiptap documents rendered server-side through rehype, with Shiki highlighting
-- **Auth**: Better Auth, GitHub OAuth, database-backed sessions
-- **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
-- **Package Manager**: npm
-- **Home interaction**: An SVG sequence diagram uses CSS to animate workflow arrows and respects reduced-motion preferences
+## Stack and features
 
-## 📁 Project Structure
+- React Router Framework Mode with Vite and the Cloudflare Vite plugin; separate
+  Vite admin bundle and React Router browser routing.
+- TanStack Query and Ky for writing cards, archive results, and admin data.
+- Neon Postgres over HTTP and Drizzle ORM; batched post/tag writes.
+  See [Neon environment setup](docs/neon-environments.md) for branch separation,
+  runtime permissions, migration connections, and recovery preparation.
+- Better Auth with GitHub OAuth, immutable numeric-ID allowlist, database sessions,
+  idle/absolute expiry and private API guards.
+- Tiptap authoring; published articles rendered through the existing sanitized
+  content pipeline with lazy Shiki highlighting.
+- Existing Cloudflare KV/D1 resources cache public data and article revisions;
+  private admin and preview responses always use `Cache-Control: no-store`.
+- Optional R2 cover uploads, verified server-side, and consent-gated PostHog analytics.
+  The [analytics gateway](docs/posthog-gateway.md) keeps the ingestion token server-side
+  and caps event/replay forwarding through shared D1 counters.
+- Shared accessible components, theme controls, print-friendly resume, lazy
+  browser PDF download, contents navigation and code-copy controls.
 
-```
-├── app/                       # Next.js app directory
-│   ├── layout.tsx            # Root layout and metadata
-│   ├── page.tsx              # Server route entry, emits the JSON-LD block
-│   ├── resume/               # Full CV page
-│   ├── opengraph-image.tsx   # Next convention; serves the social card
-│   ├── blog/                 # List, article, tag, search, series, preview and cards
-│   ├── admin/                # Authoring, behind the auth guard
-│   ├── api/auth/             # Better Auth endpoints
-│   ├── api/upload/           # Presigned cover uploads
-│   ├── api/views/            # View counter, served as a tracking pixel
-│   ├── rss.xml/              # RSS 2.0 feed
-│   ├── not-found.tsx         # Site-wide 404
-│   ├── robots.ts             # Generated /robots.txt
-│   ├── sitemap.ts            # Generated /sitemap.xml
-│   └── globals.css           # Global styles
-├── components/               # Shared UI primitives
-│   ├── consent-banner.tsx    # Asks before anything is measured; withdrawal control
-│   ├── posthog-analytics.tsx # Starts the tracker once consent allows; renders nothing
-│   ├── theme-toggle.tsx     # Light / dark / system switcher
-│   └── ui/                  # shadcn/ui components
-├── instrumentation.ts        # onRequestError - logs what never reaches a try
-├── e2e/                      # Playwright end-to-end specs
-├── drizzle/                  # Generated database migrations
-├── features/
-│   ├── blog/                 # Blog slice - components, queries, content, editor
-│   ├── home/                 # Home page composition and recent writing
-│   └── resume/
-│       ├── components/      # Resume feature components
-│       ├── data/            # Resume data
-│       ├── pdf/             # PDF document and theme
-│       ├── utils/           # Resume-specific helpers
-│       ├── config.ts        # Resume config
-│       ├── social-card.tsx  # Link-preview banner composition
-│       └── types.ts         # Resume types
-├── docs/                     # Feature specs and implementation plans
-├── .github/                  # Dependabot and the CI gate
-└── lib/                      # Utility functions
-    ├── analytics.ts         # PostHog init and event capture
-    ├── analytics-host.ts    # Shared by the tracker and the CSP, so they cannot drift
-    ├── consent.ts           # The stored decision; nothing is tracked without it
-    ├── observability.ts     # One JSON line per server error, keyed on Next's digest
-    ├── auth.ts              # Better Auth instance, allow-list
-    ├── auth-guard.ts        # requireAuthor() - the authorization boundary
-    ├── db/                  # Drizzle schema, client and seed
-    ├── og/                  # Font loading for server-drawn cards
-    ├── validators/          # Zod schemas
-    └── utils/
+Legacy `/blog/*`, `/blog/tag/*`, and `/rss.xml` links redirect to the corresponding
+writing URLs. Search, tags, sort, publication dates and read durations share the
+`/writing` archive; the right-hand filter sheet applies changes together with the same concise copy as admin.
+The standalone `/writing/search` and `/writing/tags/:tag` routes are removed;
+use query-based archive URLs. `/blog/search` and `/blog/tag/:tag` redirect directly
+to the unified archive. The admin Posts page shares these controls, adds status filtering,
+and defaults to Recently updated; all private filtering and pagination run on
+the authenticated backend. Profile/article social cards and structured data remain server-generated.
+
+## Structure
+
+```text
+app/                                 React Router root, entry points, route configuration
+app/routes/                          Public route modules, SEO loaders and colocated tests
+admin/                               Independent CSR entry and admin route composition
+admin/routes/{auth,dashboard,posts}/  Route modules grouped by admin area
+admin/layouts/                       Protected route layout and session lifecycle
+admin/auth/                          Shared session context and hook
+admin/components/{auth,layout,feedback}/ Common admin UI grouped by responsibility
+workers/app.ts                       Worker dispatcher: assets, APIs, resources, public SSR
+features/writing/api/                Client transport contracts and backend API handler
+features/writing/data/*.server.ts    Public reads, guarded admin reads and atomic mutations
+features/writing/components/         Writing cards, discovery controls and article UI
+features/writing/components/admin/   Editor and post-management domain UI
+features/{home,resume}/               Profile data, compositions, PDF and social cards
+components/layout/public-shell.tsx   Shared public layout
+components/ui/                       Shared UI primitives and variants
+config/site.ts                       Global SITE_URL, SITE_HOST, absoluteUrl and SOCIAL_LINKS
+lib/runtime.server.ts                AsyncLocalStorage request/environment context
+lib/cache.server.ts                  Public KV cache with D1 revision invalidation
+lib/auth-guard.server.ts             Per-request author verification
+lib/resources.server.ts              Uploads, feed, metadata and image resource dispatch
+lib/db/index.server.ts               Server-only database client
+lib/db/                              Drizzle schema, fixtures and local environment
+config/                              Build metadata, dev middleware and environment configuration
+scripts/                             Build assembly, preview runner and colocated tooling tests
+scripts/preview-env.test.ts          Preview environment verification beside its implementation
+test/integration/                    Real SQL/transaction/request-budget coverage
+e2e/                                 Playwright browser and HTTP coverage
 ```
 
-## 🏃 Getting Started
+See [architecture](ARCHITECTURE.md), [migration decisions](docs/react-router-migration.md),
+[testing](docs/testing.md), and [Worker CPU/cache guidance](docs/worker-cpu-optimization.md).
+For folder ownership, the role of Workers, Cloudflare tooling, `.env.local`,
+database URLs and OAuth origins, read the
+[project structure and environment guide](docs/project-structure-and-environment.md).
+For D1/KV responsibilities, local file locations, inspection commands and deployed
+Worker setup, read the [D1 and KV cache guide](docs/d1-kv-cache.md).
 
-### Prerequisites
+## Local development
 
-- Node.js 18+
-- npm
-
-### Installation
-
-1. Clone the repository
+Use Node **22.22 or newer**; CI uses Node 24. npm is the package manager.
 
 ```bash
-git clone <repository-url>
-cd indrax-nextjs-shadcn-vercel
-```
-
-2. Install dependencies
-
-```bash
-npm install
-```
-
-3. Run the development server
-
-```bash
+npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### Environment
-
-Every variable is optional; copy `.env.example` to `.env.local` to set them.
-
-| Variable                       | Default                      | Purpose                                                                                                       |
-| :----------------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_POSTHOG_KEY`      | unset                        | PostHog project key. Unset means analytics never initialises.                                                 |
-| `NEXT_PUBLIC_POSTHOG_HOST`     | `https://us.i.posthog.com`   | Ingestion host. Also named in `connect-src`, so the two cannot drift.                                         |
-| `NEXT_PUBLIC_SITE_URL`         | `https://indrax.uk`          | Origin advertised in metadata, the sitemap and the social card.                                               |
-| `DATABASE_URL`                 | unset                        | Neon Postgres, pooled. **Server-only.** Unset means the blog is empty and the rest of the site is unaffected. |
-| `DIRECT_DATABASE_URL`          | falls back to `DATABASE_URL` | The same database over the plain Postgres protocol, for `drizzle-kit` only.                                   |
-| `NEXT_PUBLIC_MEDIA_ORIGIN`     | unset                        | Origin cover images may be loaded from. Unset means no cover renders.                                         |
-| `BETTER_AUTH_SECRET`           | unset                        | Session signing key. **Server-only.**                                                                         |
-| `BETTER_AUTH_URL`              | `NEXT_PUBLIC_SITE_URL`       | Origin OAuth callbacks return to.                                                                             |
-| `GITHUB_CLIENT_ID` / `_SECRET` | unset                        | GitHub OAuth App. **Secret is server-only.**                                                                  |
-| `ALLOWED_GITHUB_ID`            | unset                        | The one numeric GitHub user id allowed to sign in.                                                            |
-| `R2_*`                         | unset                        | Cover storage. Absent means uploads answer 501.                                                               |
-
-### The admin
-
-`/admin` exists only when all five auth variables are set. Without them the auth
-endpoints answer 404 and there is nothing to sign in to - an unconfigured
-deployment is closed rather than half-open.
-
-`/admin` is the author dashboard: it shows live post counts, the latest draft,
-and which optional services are configured. `/admin/posts` holds the complete
-post list, including drafts and archived posts. The editor stays at
-`/admin/new` and `/admin/edit/[id]`.
-
-Set it up once:
-
-1. Create a GitHub OAuth App with the callback URL
-   `https://<your-origin>/api/auth/callback/github`.
-2. Put its client id and secret in the environment.
-3. Set `ALLOWED_GITHUB_ID` to your numeric GitHub user id - not your username,
-   which can be changed and reclaimed:
-   `curl -s https://api.github.com/users/<you> | jq .id`
-4. `openssl rand -base64 32` for `BETTER_AUTH_SECRET`.
-5. Run `npm run db:migrate` so the session tables exist.
-
-Enable 2FA on that GitHub account. It is now the only credential standing between
-anyone and the ability to publish here.
-
-Account linking is disabled, so only that one GitHub account can ever reach the
-admin - not any account that happens to share an email address with it.
-
-### The blog database
-
-The blog reads from Postgres through `@neondatabase/serverless`, which speaks
-Neon's HTTP protocol — the only driver that works on Cloudflare Workers, which
-cannot open raw TCP sockets. A stock Postgres does not speak that protocol, so
-local development runs one behind a Neon-compatible proxy. The application then
-uses a single driver everywhere and only `DATABASE_URL` differs.
+The development command serves public SSR through Vite and watches an independent
+admin browser build in `public/admin/` (generated and ignored). Production-equivalent preview
+builds both public SSR and the independent admin and runs them in Workerd:
 
 ```bash
-npm run db:up        # Postgres + Neon proxy, via docker compose
-npm run db:migrate   # apply drizzle/*.sql
-npm run db:seed      # three posts, one of them a draft
-npm run db:studio    # browse the data
-npm run db:down      # stop the stack
+npm run preview
+npm run preview:dev
 ```
 
-Copy `.env.example` to `.env.local` and uncomment the two local connection
-strings it documents. Postgres is published on **55432**, not 5432, so the stack
-does not collide with a Postgres already running on the machine.
+During development, a Vite middleware reads generated admin assets directly from
+disk so new chunk filenames remain available after watched rebuilds. Admin HTML
+and authentication still pass through the Worker. Production serves the assembled
+assets through the normal `ASSETS` binding.
 
-Against Neon, set `DATABASE_URL` to the pooled connection string and run
-`npm run db:migrate`. Migrate a Neon branch before production — see §13 of
-`docs/blog-spec.md`.
+Use `.env.local` as the shared local configuration for Vite, Worker bindings,
+database tooling and preview. Copy `.env.example` and fill in the settings you need.
+Cloudflare loads this file natively during development; remove legacy `.dev.vars`
+files after migrating their values because they take precedence over dotenv files.
+The same `.env.local` is used when selecting `CLOUDFLARE_ENV=dev`; additional
+environment-specific local configuration is not required. Local preview uses local
+KV/D1 and does not provision remote resources. Public environment variables are
+compiled by Vite; changing them requires rebuilding both bundles.
 
-### Testing
+Put `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
+`ALLOWED_GITHUB_ID` in `.env.local`. Keep `DIRECT_DATABASE_URL` there for Drizzle's
+direct PostgreSQL connection; the Worker and seed use the HTTP `DATABASE_URL`. If the
+login page says “Author access is unavailable,” check that these settings are
+present there. Keep the browser host and port, `BETTER_AUTH_URL`, and the GitHub
+OAuth callback `<origin>/api/auth/callback/github` consistent; `localhost` and
+`127.0.0.1` are different origins.
 
-Two suites, and they answer different questions.
+For local development auth, set `BETTER_AUTH_URL` to the Vite browser origin.
+Preview explicitly reads the root `.env.local` even though its Worker configuration
+lives in `build/server`. It uses `http://127.0.0.1:<port>` for auth by default,
+including custom ports; export `BETTER_AUTH_URL` to override it. Exported runtime
+settings also override `.env.local`, so CI and browser tests use their isolated
+database/auth fixtures. Overrides are written only to a protected temporary file
+outside the build and removed when preview exits. Remote auth uses the deployed
+HTTPS origin. The preview runner preserves the loopback request origin so production
+routes cannot rewrite local auth/CSRF headers.
 
-**Vitest** covers what a browser cannot cheaply reach: the exact expiry boundary
-of a preview token, a signature altered by one character, the sanitiser's
-response to a `javascript:` URL the renderer will happily emit. Fast enough to
-sit on the same gate as the linter, so `npm run check` runs it.
+The final build step removes the local secret file generated by Cloudflare's Vite
+plugin. Preview reads `.env.local` directly, so this copy is not needed in build
+artifacts.
+
+Vite embeds only `SITE_URL`, `SITE_UPDATED_AT`, `MEDIA_ORIGIN`, and
+`ANALYTICS_ENABLED` through an explicit allowlist. Variable names do not determine
+browser visibility; database URLs, tokens, and OAuth secrets remain server-only.
+
+| Setting                                                         | Purpose                                                     |
+| --------------------------------------------------------------- | ----------------------------------------------------------- |
+| `SITE_URL`                                                      | Canonical origin; defaults to `https://indrax.uk`           |
+| `SITE_UPDATED_AT`                                               | Optional `YYYY-MM-DD` override; otherwise Git revision date |
+| `ANALYTICS_ENABLED`                                             | Build-time flag for consent-gated analytics                 |
+| `POSTHOG_PROJECT_TOKEN`, `POSTHOG_HOST`                         | Runtime-only ingestion credential and regional upstream     |
+| `MEDIA_ORIGIN`                                                  | HTTPS origin allowed for cover images                       |
+| `DATABASE_URL`                                                  | Server-only Neon HTTP connection; absent is supported       |
+| `DIRECT_DATABASE_URL`                                           | Plain Postgres connection for migration tooling             |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                         | Server session/preview signing and callback origin          |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_ID` | GitHub single-author authentication                         |
+| `MEDIA_BUCKET` (Wrangler binding)                               | Environment-specific R2 Standard storage; no S3 credentials |
+
+When upgrading from the previous variable names, remove the Next.js public prefix
+from local environment keys and GitHub `Preview`/`Production` build variables.
+CI reads `ANALYTICS_ENABLED` and `MEDIA_ORIGIN`; preserve their existing values.
+The next Worker deployment applies `SITE_URL` and `MEDIA_ORIGIN` from Wrangler.
+Keep the current runtime bindings until that deployment.
+
+Without a database, static profile pages remain available and public writing
+lists are empty. Without auth configuration, signing in is unavailable and
+private operations remain closed. The admin shell alone never grants access.
+
+R2 setup, free-tier limits and verification are documented in [R2 uploads](docs/r2-uploads.md).
+
+### Local database and author configuration
 
 ```bash
-npm run test          # once
-npm run test:watch    # while working
+npm run db:up
+npm run db:migrate
+npm run db:seed
+npm run db:studio
 ```
 
-**Playwright** proves the system works in place — the authorization boundary, the
-draft that stays invisible, the PDF that really downloads.
+Compose exposes the Neon-compatible HTTP proxy on `4444` and plain Postgres on
+`55432`. Use the example local URLs from `.env.example`; this preserves the same
+HTTP driver in local and deployed Workers. The seed is idempotent by fixture slug
+and does not erase unrelated posts. Use disposable databases for integration and
+browser tests.
+
+Create a GitHub OAuth App with `<origin>/api/auth/callback/github`, configure its
+client credentials and your **numeric GitHub ID**, and generate the signing secret
+with `openssl rand -base64 32`. Apply migrations before login. Set `BETTER_AUTH_URL`
+to the matching origin. Account linking is disabled; allowlist/session checks run
+on each private request.
+
+## Checks and testing
 
 ```bash
-npx playwright install chromium   # once
+npm run check
+TEST_DATABASE_URL='<isolated-loopback-HTTP-URL>' npm run test:integration
 npm run test:e2e
+npx playwright show-report
 ```
 
-On an OS Playwright no longer builds Chromium for - it answers
-`does not support chromium on mac13` outright - borrow an installed browser
-instead of editing the config:
+`check` covers format, lint, Wrangler binding/React Router route type generation, TypeScript and
+unit tests. Integration tests require an explicit loopback database and check
+actual SQL round trips and rollback. Playwright builds the production application
+and serves it through Wrangler/Workerd, with read cases before write cases.
+Fixture-dependent tests may skip without local database/auth configuration.
+See [the test guide](docs/testing.md) for setup, reports and coverage limits.
+
+For 25 additional local writing samples, run the seed with an explicit local URL:
 
 ```bash
-PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
+DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run db:seed -- --pagination
 ```
 
-The suite builds the site and runs against `next start`, because the CV and the
-social card are prerendered at build time and behave differently under `next dev`.
+The optional samples are idempotent and restricted to loopback databases. Browse
+`/writing?tag=pagination-demo` or `/writing?q=pagination%20demo` for
+10 / 10 / 5 results. The archive also includes the two original published fixtures,
+giving 10 / 10 / 7 results. Configure `DATABASE_URL` in `.env.local` to use this
+database for the Worker and seed. See [release preparation and optimization proposals](docs/public-site-release.md).
 
-`e2e/blog-content.spec.ts` needs content, so it skips itself unless
-`DATABASE_URL` is set. To run it, bring the local stack up and seed it first:
+## Delivery
+
+See [development and deployment workflow](docs/development-and-deployment.md) for
+feature PRs, staging promotion, required release review and production verification.
+
+GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
+runs only on enabled pushes to `develop`/`main`, using separate GitHub environments
+and Cloudflare resources. Superseded quality jobs are canceled; deploy jobs
+serialize by branch and let an active upload/activation finish. Keep Workers
+dashboard Git Builds disconnected to avoid a second release pipeline.
+
+| Branch    | GitHub environment | Worker       | Domain                       |
+| --------- | ------------------ | ------------ | ---------------------------- |
+| `develop` | Preview            | `indrax-dev` | `dev.indrax.uk`              |
+| `main`    | Production         | `indrax`     | `indrax.uk`, `www.indrax.uk` |
+
+The build emits `build/server/wrangler.json`; deployment uses that generated
+configuration so the matching environment and bundled assets stay together.
+`CLOUDFLARE_ENV=dev` selects the development build. CI builds and validates both
+production and develop targets, then runs browser tests against the production
+build with isolated local fixtures. Before uploading, each deploy command compares
+the generated Worker name, routes, site URL and KV/D1 bindings with the source
+Wrangler configuration resolved for its intended environment. A mismatched
+build fails before upload; for example, an inherited `CLOUDFLARE_ENV=dev` cannot
+make `npm run deploy` upload the development Worker.
+
+Deploy commands are release operations, not validation commands:
 
 ```bash
-npm run db:up && npm run db:migrate && npm run db:seed
-DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require' npm run test:e2e
+npm run deploy:dev
+npm run deploy
 ```
 
-### Privacy and consent
+CI needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in each GitHub environment;
+the **repository or organization variable** `CLOUDFLARE_DEPLOY_ENABLED=true`
+enables the deployment job. Do not set that gate only as a Preview/Production
+environment variable: GitHub evaluates the job condition before environment
+variables are available. Use environment-scoped credentials and public build
+variables for Preview and Production. Its token needs the
+existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
+separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
+Configure public analytics/media variables in each GitHub environment as needed.
+Both site and media hostnames are public. Admin routes and private APIs use the
+application's GitHub OAuth session and numeric author allowlist; Cloudflare Access
+is not required. Dev remains non-indexable. See
+[public dev access and admin authentication](docs/cloudflare-access.md).
 
-PostHog sets first-party cookies, so for UK and EU visitors PECR wants consent
-_before_ they are set rather than an opt-out afterwards. The tracker therefore
-does not initialise at all until the visitor agrees - not
-initialised-then-opted-out, never started, so nothing is written and nothing is
-sent. Declining and ignoring produce the same state.
+The deploy job prepares `analytics_quota` and `analytics_replay_sessions` in the
+matching `APP_D1` before deploying, preserving existing counters. New environments
+also need the cache `revalidations` table initialized. PostgreSQL migrations remain
+a reviewed release step; CI migration/seeding targets only its throwaway local
+database.
+Repository checks cannot prove runtime secrets, database isolation, environment
+protection rules or disabled dashboard Git Builds; verify those in the target
+account before a production release.
 
-The decision lives in `localStorage`, not a cookie, which means the site sets no
-cookies whatsoever before consent. It can be withdrawn from the **Cookies**
-control in the footer of every page, which stops the tracker and clears what it
-stored.
+Promote current `develop` through a release PR into `main`. Main requires one
+reviewer approval, dismisses stale approvals after new commits, requires resolved
+review conversations, up-to-date GitHub Actions `check`/`e2e` checks and a successful
+`Preview` environment deployment. Protections apply to administrators and block
+force pushes and deletion. The owner reviews the release before merging; merging
+triggers the Production pipeline. These controls are GitHub repository settings.
 
-### Continuous integration
+Invocation logs redact URL query strings to protect OAuth codes and preview tokens.
+Automatic HTTP traces are disabled because PostHog configuration URLs contain the
+server ingestion token in their path; see [analytics gateway](docs/posthog-gateway.md).
+Inspect CPU time separately from wall time in Observability. No local test or
+framework migration guarantees that every request fits Workers Free's CPU budget.
 
-`.github/workflows/ci.yml` runs `npm run check` and a production build on every
-pull request. The build runs with no `DATABASE_URL` on purpose: every read
-degrades to an empty result rather than throwing, so the site builds without one,
-and asserting that in CI keeps it true.
+## Customization
 
-Playwright runs there too, in a second job: it brings up the same
-`docker-compose.yml` stack this repository uses locally, migrates, seeds, and
-runs the whole suite against Playwright's own pinned Chromium. The auth and
-database values in that job are throwaway literals rather than repository
-secrets - nothing in the suite authenticates against anything real, and a real
-credential placed where it is not needed is the worse option.
+Resume data and project evidence live under `features/resume/data/`; verify stack
+claims against [portfolio source evidence](docs/portfolio-sources.md). Shared styles
+live in `app/globals.css`, UI primitives in `components/ui`, and feature composition
+stays beside its data. The revision date comes from Git metadata unless overridden.
 
-`.github/dependabot.yml` raises weekly npm and Actions updates, minor and patch
-grouped into one pull request so majors stay separate and get read.
-
-### A note on `overrides`
-
-`package.json` pins three transitive dependencies through overrides.
-
-`esbuild`: `better-auth` declares
-`drizzle-kit` as a **runtime** dependency rather than a peer or dev one, which
-drags `@esbuild-kit/esm-loader` and an `esbuild` carrying
-[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99) into the
-production dependency tree. Nothing in that path ever runs in a request, but it is
-in the tree, and `npm audit --omit=dev` is right to say so. The override takes it out of the tree; `npm run db:generate`, `db:migrate`,
-`db:seed` and `npm run build` were re-run to confirm nothing depended on the old
-version.
-
-`sharp` is an optional dependency of Next used for image optimisation, pinned
-past [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)
-(libheif). `js-yaml` reaches the tree through ESLint, pinned to the patched 4.x
-rather than the 5.x major, which `@eslint/eslintrc` does not accept.
-
-Both audits report zero. Re-run `npm audit` and `npm audit --omit=dev` after any
-dependency change: these pins exist because an advisory was published against a
-tree that was clean a few days earlier, and that will happen again.
-
-## 📜 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint errors
-- `npm run type-check` - Run TypeScript type checking
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
-- `npm run clean` - Clean build artifacts
-- `npm run check` - Format check, lint, type-check and unit tests in one pass
-- `npm run test` - Run the Vitest unit suite
-- `npm run test:watch` - The same suite, in watch mode
-- `npm run test:e2e` - Run the Playwright suite against a production build
-- `npm run test:e2e:ui` - The same suite in Playwright's UI mode
-- `npm run db:up` / `db:down` - Start or stop the local Postgres + Neon proxy
-- `npm run db:generate` / `db:migrate` / `db:seed` / `db:studio` - Database tooling
-- `npm run preview` - Build with `@opennextjs/cloudflare` and run it in workerd
-- `npm run deploy` - Build and deploy to Cloudflare Workers
-- `npm run cf-typegen` - Regenerate the Cloudflare binding types
-
-## 🎨 Customization
-
-### Update Resume Data
-
-Edit `features/resume/data/resume.ts` to update your personal information, experiences, portfolio, etc.
-
-### Styling
-
-- Global styles: `app/globals.css`
-- Theme colors: Update CSS variables in `@theme` block
-- Component styles: Use Tailwind classes or modify component files
-
-### Components
-
-- UI components: `components/ui/`
-- Resume feature components: `features/resume/components/`
-
-## 📦 Deployment
-
-### Cloudflare Workers
-
-`@opennextjs/cloudflare` adapts the Next build for workerd. `wrangler.jsonc` and
-`open-next.config.ts` are inert until one of these is run, so `npm run build`
-and `npm run start` behave exactly as they always have.
-
-```bash
-npm run preview   # build and run locally in workerd
-npm run deploy    # build and deploy
-```
-
-Secrets are never committed. Set them with `wrangler secret put DATABASE_URL`,
-and put local ones in `.dev.vars`, which is gitignored.
-
-The `workerd` package needs its install script to run to fetch its binary. If
-`npm install` was run with install scripts blocked, approve it once with
-`npm install-scripts approve workerd` before `npm run preview`.
-
-### Other platforms
-
-Build the project:
-
-```bash
-npm run build
-```
-
-The output will be in the `.next` directory.
-
-## 📝 License
-
-Private project - All rights reserved
-
-## 👤 Author
-
-**Indra Cahya Edytya**
-
-- Email: indracahyae@gmail.com
-- GitHub: [@indraxyz](https://github.com/indraxyz)
-
----
-
-Made with ❤️ using Next.js and TypeScript
+Author: [Indra Cahya Edytya](https://github.com/indraxyz).

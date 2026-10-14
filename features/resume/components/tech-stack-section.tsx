@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { SECTION_COPY } from "@/features/resume/config"
-import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { techStackGroups } from "@/features/resume/utils/groups"
+import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { Code } from "lucide-react"
 
 export function TechStackSection() {
@@ -13,6 +13,9 @@ export function TechStackSection() {
       title="Tech Stack"
       subtitle={SECTION_COPY.techStack}
       carousel
+      className="w-full"
+      // The page container excludes the browser scrollbar from its width.
+      contentClassName="w-[100cqw] ms-[calc(50%_-_50cqw)] print:ms-0 print:w-auto"
     >
       {techStackGroups.map(([groupName, stacks]) => (
         <Card

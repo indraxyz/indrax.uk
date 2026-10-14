@@ -1,6 +1,7 @@
 import { Document, Image, Link, Page, Text, View } from "@react-pdf/renderer"
 
-import { RESUME_CONFIG, SECTION_COPY, SITE_HOST, SOCIAL_LINKS } from "@/features/resume/config"
+import { SITE_HOST, SOCIAL_LINKS } from "@/config/site"
+import { RESUME_CONFIG, SECTION_COPY, UPDATED_DATE_FORMAT } from "@/features/resume/config"
 import {
   achievements,
   bio,
@@ -80,7 +81,6 @@ export function ResumeDocument() {
         {/* Hero */}
         <View style={[styles.card, { backgroundColor: styles.chipPrimary.backgroundColor }]}>
           <View style={[styles.cardBody, styles.hero]}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image takes no alt */}
             <Image src="/foto-profile.jpg" style={styles.heroPhoto} />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroName}>{firstName.toUpperCase()}</Text>
@@ -263,13 +263,21 @@ export function ResumeDocument() {
                 {item.title.toUpperCase()}
               </Text>
               <Text style={{ marginTop: 1.5 }}>{item.description}</Text>
-              {item.link ? <Text style={styles.itemMeta}>{item.link}</Text> : null}
+              <Text style={styles.itemMeta}>FEATURES</Text>
+              {item.features.map((feature) => (
+                <Text key={feature}>• {feature}</Text>
+              ))}
+              <Text style={styles.itemMeta}>TECH STACK</Text>
+              <Text>{item.techStack.join(" · ")}</Text>
+              <Link src={item.link} style={styles.itemMeta}>
+                {item.link}
+              </Link>
             </View>
           ))}
         </Card>
 
         <Text style={styles.footer}>
-          {`UPDATED ${formatDate(RESUME_CONFIG.updatedAt).toUpperCase()} - ${SITE_HOST.toUpperCase()}`}
+          {`${RESUME_CONFIG.updatedAt ? `UPDATED ${formatDate(RESUME_CONFIG.updatedAt, UPDATED_DATE_FORMAT).toUpperCase()} - ` : ""}${SITE_HOST.toUpperCase()}`}
         </Text>
       </Page>
     </Document>

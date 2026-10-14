@@ -1,0 +1,189 @@
+import { expect, test } from "@playwright/test"
+
+import { isIndexableSite } from "../config/site"
+
+/**
+ * The public writing surface, asserted without a database.
+ *
+ * Everything here holds whether or not `DATABASE_URL` is set: the routes exist,
+ * the feed and the sitemap are well-formed, drafts and unknown slugs 404, and an
+ * empty archive renders an empty state rather than a crash. Content-dependent
+ * assertions live in `writing-content.spec.ts`, which needs a seeded database.
+ */
+test.describe("the writing public surface", () => {
+  test("lists articles without crashing, empty or not", async ({ page }) => {
+    const errors: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text())
+    })
+
+    const response = await page.goto("/writing")
+
+    expect(response?.status()).toBe(200)
+    // The list page has no hero, so its section header is the page h1.
+    await expect(page.getByRole("heading", { level: 1, name: "Writing" })).toBeVisible()
+    await expect(page.getByRole("main")).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test("loads cards from the API and retries only when the reader requests it", async ({
+    page,
+  }) => {
+    let requests = 0
+    await page.route("**/api/writing/posts*", async (route) => {
+      requests += 1
+      if (requests === 1)
+        return route.fulfill({ status: 503, json: { message: "Temporarily unavailable" } })
+      return route.fulfill({
+        json: {
+          posts: [
+            {
+              id: "client-post",
+              slug: "client-card",
+              title: "Client API card",
+              excerpt: "Fetched in the browser",
+              coverUrl: null,
+              coverAlt: null,
+              publishedAt: "2026-10-09T00:00:00Z",
+              updatedAt: "2026-10-09T00:00:00Z",
+              readingTime: 1,
+              tags: [],
+            },
+          ],
+          page: 1,
+          pageCount: 1,
+        },
+      })
+    })
+    await page.goto("/writing")
+    await expect(page.getByRole("alert")).toContainText("Unable to load writing")
+    expect(requests).toBe(1)
+    await page.getByRole("button", { name: "Try again" }).click()
+    await expect(page.getByRole("link", { name: "Client API card" })).toBeVisible()
+    expect(requests).toBe(2)
+  })
+
+  test("404s an unknown slug with the site's own not-found page", async ({ page }) => {
+    const response = await page.goto("/writing/no-such-article-exists")
+
+    expect(response?.status()).toBe(404)
+    await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
+  })
+
+  test("retired writing discovery pages return the site not-found response", async ({ page }) => {
+    for (const path of ["/writing/search?q=typescript", "/writing/tags/no-such-tag"]) {
+      const response = await page.goto(path)
+      expect(response?.status()).toBe(404)
+      await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible()
+      await expect(page).toHaveURL(new RegExp(path.split("?")[0] + "(?:\\?|$)"))
+    }
+  })
+
+  test("serves a valid RSS 2.0 feed", async ({ request }) => {
+    const response = await request.get("/writing/rss.xml")
+
+    expect(response.status()).toBe(200)
+    expect(response.headers()["content-type"]).toContain("application/rss+xml")
+
+    const xml = await response.text()
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true)
+    expect(xml).toContain('<rss version="2.0"')
+    expect(xml).toContain("<channel>")
+    expect(xml).toContain('rel="self"')
+
+    // Every URL in a feed is read somewhere other than this origin, so a relative
+    // one would point at whatever the reader happens to be.
+    for (const [, href] of xml.matchAll(/<link>([^<]+)<\/link>/g)) {
+      expect(href).toMatch(/^https?:\/\//)
+    }
+  })
+
+  test("permanently redirects legacy writing and feed URLs", async ({ request }) => {
+    const legacyPaths = [
+      ["/blog", "/writing"],
+      ["/blog?ref=legacy", "/writing?ref=legacy"],
+      ["/blog/old-article?ref=legacy", "/writing/old-article?ref=legacy"],
+      ["/blog/tag/typescript?page=2", "/writing?page=2&tag=typescript"],
+      ["/blog/search?q=typescript", "/writing?q=typescript"],
+      [
+        "/blog/tag/typescript?tag=react&sort=oldest&page=2",
+        "/writing?tag=react&sort=oldest&page=2&tag=typescript",
+      ],
+      ["/blog/tag/typescript?tag=typescript", "/writing?tag=typescript"],
+      ["/blog/series/example?page=2", "/writing/series/example?page=2"],
+      ["/blog/an-article/preview?token=example", "/writing/an-article/preview?token=example"],
+      ["/rss.xml", "/writing/rss.xml"],
+    ] as const
+
+    for (const [source, destination] of legacyPaths) {
+      const response = await request.get(source, { maxRedirects: 0 })
+      const location = new URL(response.headers().location!, "http://localhost")
+
+      expect(response.status(), source).toBe(308)
+      expect(`${location.pathname}${location.search}`).toBe(destination)
+    }
+  })
+
+  test("advertises the feed from every page", async ({ page }) => {
+    for (const path of ["/", "/writing"]) {
+      // Stepped, so a failure names the route that lost the link rather than just
+      // the loop.
+      await test.step(path, async () => {
+        await page.goto(path)
+        const feed = page.locator('head link[rel="alternate"][type="application/rss+xml"]')
+        await expect(feed).toHaveCount(1)
+        await expect(feed).toHaveAttribute("href", "/writing/rss.xml")
+      })
+    }
+  })
+
+  test("serves a well-formed sitemap and keeps the admin out of robots", async ({ request }) => {
+    const sitemap = await request.get("/sitemap.xml")
+    expect(sitemap.status()).toBe(200)
+
+    const xml = await sitemap.text()
+    expect(xml).toContain("<urlset")
+    // The root entry is unconditional, so it can be asserted with no database.
+    // The /writing entry depends on something being published and is covered in
+    // writing-content.spec.ts instead.
+    const loc = /<loc>(https?:\/\/[^<]+)<\/loc>/.exec(xml)?.[1]
+    expect(loc).toBeTruthy()
+
+    // The build's own site URL decides the policy, and the sitemap reports it:
+    // CI previews the production URL, a local build may use another.
+    const siteUrl = new URL(loc!).origin
+    const robots = await (await request.get("/robots.txt")).text()
+    expect(robots).not.toContain("/admin")
+    if (isIndexableSite(siteUrl)) {
+      expect(robots).toContain("Disallow: /api/\n")
+      expect(robots).toContain(`Sitemap: ${siteUrl}/sitemap.xml`)
+    } else {
+      expect(robots).toBe("User-Agent: *\nDisallow: /\n")
+    }
+  })
+
+  test("sets the baseline security headers", async ({ request }) => {
+    const headers = (await request.get("/writing")).headers()
+
+    expect(headers["x-content-type-options"]).toBe("nosniff")
+    expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin")
+    expect(headers["x-frame-options"]).toBe("DENY")
+    expect(headers["strict-transport-security"]).toContain("max-age=")
+
+    const csp = headers["content-security-policy"] ?? ""
+    expect(csp).toContain("frame-ancestors 'none'")
+    expect(csp).toContain("base-uri 'none'")
+    expect(csp).toContain("object-src 'none'")
+    expect(csp).toContain("form-action 'self'")
+    expect(csp).toContain("frame-src 'none'")
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+
+    // Scripts need this origin, the theme hash or the response's nonce; an
+    // injected one has none of these. `e2e/security.spec.ts` proves it in a browser.
+    expect(csp).toContain("default-src 'self'")
+    expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval' 'sha256-[^']+' 'nonce-[^']+'/)
+    expect(csp).not.toContain("'unsafe-inline' 'unsafe-eval'")
+    expect(csp).toContain("connect-src 'self';")
+    expect(csp).not.toContain("posthog.com")
+  })
+})

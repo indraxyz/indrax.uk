@@ -1,13 +1,13 @@
 import posthog from "posthog-js"
 
-import { POSTHOG_HOST } from "@/lib/analytics-host"
+import { ANALYTICS_GATEWAY_PATH, ANALYTICS_GATEWAY_TOKEN } from "@/lib/analytics-gateway"
 import { readConsent } from "@/lib/consent"
 
-// Analytics is opt-in twice over. With no key configured - a fork, a preview
+// Analytics is opt-in twice over. Without the public enable flag - a fork, a preview
 // build, a local run - nothing initialises and every capture below is a no-op.
-// And with a key configured, nothing initialises until the visitor has said yes:
+// And when enabled, nothing initialises until the visitor has said yes:
 // see `lib/consent.ts` and `startAnalytics` below.
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
+const ANALYTICS_ENABLED = process.env.ANALYTICS_ENABLED === "true"
 
 // The events this site records. A union rather than a bare string, so a typo in a
 // call site is a build error instead of a silently orphaned event in PostHog.
@@ -51,33 +51,64 @@ function redactUrl(value: unknown): unknown {
 export type ContactChannel = "email" | "linkedin" | "github"
 
 let started = false
+let initialized = false
 
 /**
- * Start the tracker, if there is a key and the visitor has agreed.
+ * Start the tracker, if enabled and the visitor has agreed.
  *
  * The consent check is here rather than at the call site so that there is one
  * place it can be got wrong, and that place is the one that owns the cookie.
  * Nothing is written and nothing is sent before this returns.
  */
 export function startAnalytics() {
-  if (!POSTHOG_KEY || started) return
+  if (!ANALYTICS_ENABLED || started) return
   if (readConsent() !== "granted") return
 
   started = true
 
   try {
-    posthog.init(POSTHOG_KEY, {
-      api_host: POSTHOG_HOST,
-      // Opts into PostHog's current defaults - pageview and pageleave capture
-      // among them - rather than pinning behaviour this file would have to track.
+    if (initialized) {
+      // init() is a no-op on an existing PostHog instance. Re-enable the
+      // instance that was opted out when consent was withdrawn.
+      posthog.opt_in_capturing({ captureEventName: false })
+      return
+    }
+
+    // Session replay needs remote configuration to learn whether this project
+    // records sessions.
+    // This is a public placeholder, never the project's ingestion credential.
+    // The Worker validates and budgets every request before adding its secret.
+    posthog.init(ANALYTICS_GATEWAY_TOKEN, {
+      api_host: `${window.location.origin}${ANALYTICS_GATEWAY_PATH}`,
+      ui_host: window.location.origin,
+      api_transport: "fetch",
+      disable_compression: true,
+      // Keep rrweb event data inspectable so the gateway can redact signed URLs.
+      // Request compression and nested recorder compression are separate settings.
+      session_recording: { compress_events: false },
+      rewriteRequestPath: (url) => {
+        url.protocol = window.location.protocol
+        url.host = window.location.host
+        url.username = ""
+        url.password = ""
+        if (!url.pathname.startsWith(`${ANALYTICS_GATEWAY_PATH}/`))
+          url.pathname = `${ANALYTICS_GATEWAY_PATH}${url.pathname}`
+        return url
+      },
+      // Enables history-change pageviews and pageleave capture. Keep this date
+      // pinned: the guide's 2026-05-30 defaults tag localhost as an internal/test
+      // host, hiding local visits when that dashboard filter is enabled.
       defaults: "2025-05-24",
       // Nobody signs in here, so there is no person to profile and no reason to
       // store one. Visitors stay anonymous.
       person_profiles: "identified_only",
+      // Initial attribution also feeds /flags requests, outside before_send.
+      // Avoid persisting the unfiltered landing URL of signed draft previews.
+      save_referrer: false,
+      save_campaign_params: false,
       respect_dnt: true,
-      // There are no feature flags, experiments or surveys on a static resume, so
-      // the flag request PostHog would otherwise make on every load is pure latency.
-      advanced_disable_flags: true,
+      // Withdrawing consent must remove PostHog's persisted identifiers too.
+      opt_out_persistence_by_default: true,
       // Runs on every event, including the automatic pageviews, before anything
       // is sent.
       before_send: (event) => {
@@ -106,6 +137,14 @@ export function startAnalytics() {
         return event
       },
     })
+    initialized = true
+
+    // PostHog persists its own opt-out across reloads. If consent was withdrawn
+    // in an earlier page load, init() reads that opt-out and suppresses captures
+    // even though our consent store now says granted.
+    if (posthog.has_opted_out_capturing()) {
+      posthog.opt_in_capturing({ captureEventName: false })
+    }
   } catch (error) {
     // Analytics is the least important thing on the page; it does not get to break
     // the render.
@@ -131,10 +170,8 @@ export function captureEvent(
 /**
  * Stop tracking and discard what the tracker stored.
  *
- * Withdrawing consent has to undo the thing consent allowed, not merely stop
- * adding to it: `opt_out_capturing` ends the session and clears the cookies and
- * stored identifiers PostHog set. `started` is reset so a later re-grant starts
- * cleanly rather than assuming an initialised client.
+ * Withdrawing consent stops capture and clears stored identifiers. PostHog's
+ * reset() clears its own consent state, so opt out again after resetting it.
  */
 export function stopAnalytics() {
   if (!started) return
@@ -142,6 +179,7 @@ export function stopAnalytics() {
   try {
     posthog.opt_out_capturing()
     posthog.reset()
+    posthog.opt_out_capturing()
   } catch (error) {
     console.error("Analytics failed to stop", error)
   } finally {

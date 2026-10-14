@@ -1,27 +1,130 @@
 /**
- * Cloudflare Workers deployment, via @opennextjs/cloudflare.
+ * Cloudflare Workers runtime for React Router SSR and the independent CSR admin.
  *
- * Nothing here affects `npm run build` or `npm run start`. The adapter only runs
- * when `npm run preview` or `npm run deploy` is invoked explicitly, so adding it
- * leaves the existing build path untouched.
+ * Vite builds the Worker and Wrangler runs the local preview and deployments.
  *
  * Secrets are never listed here. `DATABASE_URL` is set with
- * `wrangler secret put DATABASE_URL`, and locally in `.dev.vars`, which is
+ * `wrangler secret put DATABASE_URL`, and locally in `.env.local`, which is
  * gitignored.
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "indrax",
-  "main": ".open-next/worker.js",
+  "routes": [
+    { "pattern": "indrax.uk", "custom_domain": true },
+    { "pattern": "www.indrax.uk", "custom_domain": true },
+  ],
+  "vars": {
+    "SITE_URL": "https://indrax.uk",
+    "MEDIA_ORIGIN": "https://media.indrax.uk",
+    "POSTHOG_HOST": "https://us.i.posthog.com",
+  },
+  // Reachable only on the custom domains above. A *.workers.dev or preview URL
+  // would bypass domain-level rules and add another origin to maintain. Public
+  // pages use these domains; admin access is enforced in the app through GitHub
+  // OAuth and author checks. See docs/cloudflare-access.md.
+  "workers_dev": false,
+  "preview_urls": false,
+  "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-media" }],
+  "main": "workers/app.ts",
   "compatibility_date": "2026-09-01",
-  // The Next.js server and the Neon driver both need Node built-ins. `nodejs_compat`
+  // The request context and Neon driver need Node built-ins. `nodejs_compat`
   // supplies them; without it the Worker fails at import time, not at request time.
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "directory": "build/client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/admin", "/admin/*", "/api/*"],
   },
+  // Separate existing resources for each environment. Public cached reads use KV
+  // and the existing D1 revalidations table; private API responses never use KV.
+  // See docs/worker-cpu-optimization.md. No remote resources are created by build.
+  "kv_namespaces": [
+    {
+      "binding": "CACHE_KV",
+      "id": "3b3a56d04aed4aca8492ab4d46002923",
+    },
+  ],
+  // Edge request limits per client IP, ahead of any database work. See
+  // lib/edge-rate-limit.ts. Namespace ids are account-scoped labels, not secrets;
+  // each environment gets its own so dev traffic never spends production's budget.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_STRICT",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 },
+    },
+    { "name": "RATE_LIMIT_API", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+  ],
+  "d1_databases": [
+    {
+      "binding": "APP_D1",
+      "database_name": "indrax-next-tags",
+      "database_id": "768e0a3c-8014-4b32-9a7f-39f2b7ee2a58",
+    },
+  ],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+    "head_sampling_rate": 1,
+    // OAuth callbacks carry codes and state in the URL query string.
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true,
+    },
+    "traces": {
+      // PostHog config URLs contain the server token in the path. Automatic fetch
+      // spans record that path; query redaction cannot protect it. Keep logs and
+      // invocation monitoring, but do not collect credential-bearing HTTP spans.
+      "enabled": false,
+      "persist": false,
+    },
+    "issues": {
+      "enabled": true,
+    },
+  },
+  "env": {
+    "dev": {
+      "routes": [{ "pattern": "dev.indrax.uk", "custom_domain": true }],
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": {
+        "SITE_URL": "https://dev.indrax.uk",
+        "MEDIA_ORIGIN": "https://dev-media.indrax.uk",
+        "POSTHOG_HOST": "https://us.i.posthog.com",
+      },
+      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
+      "assets": {
+        "directory": "build/client",
+        "binding": "ASSETS",
+        "run_worker_first": ["/admin", "/admin/*", "/api/*"],
+      },
+      "kv_namespaces": [
+        {
+          "binding": "CACHE_KV",
+          "id": "55163065696741c397d875991d3eb8d6",
+        },
+      ],
+      "ratelimits": [
+        {
+          "name": "RATE_LIMIT_STRICT",
+          "namespace_id": "2001",
+          "simple": { "limit": 30, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_API",
+          "namespace_id": "2002",
+          "simple": { "limit": 120, "period": 60 },
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "APP_D1",
+          "database_name": "indrax-dev-next-tags",
+          "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
+        },
+      ],
+    },
+  },
 }

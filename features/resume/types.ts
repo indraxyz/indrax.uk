@@ -9,8 +9,10 @@ export interface ExperienceItem {
 export interface PortfolioItem {
   title: string
   description: string
+  features: string[]
+  techStack: string[]
   year: string
-  link?: string
+  link: string
 }
 
 export interface TechStack {

@@ -42,9 +42,8 @@ describe("logServerError", () => {
     expect(typeof record.at).toBe("string")
   })
 
-  it("carries the digest the reader was shown, so a report becomes a query", () => {
-    // This is the whole point of the file: Next renders this number on the error
-    // page and withholds everything else, so it is the only handle a reader has.
+  it("preserves a diagnostic digest supplied by an upstream error", () => {
+    // Preserve an upstream reference so operators can correlate diagnostics.
     const error = Object.assign(new Error("Boom"), { digest: "1607737151" })
 
     expect(captured(error).record.reference).toBe("1607737151")
@@ -61,19 +60,20 @@ describe("logServerError", () => {
   })
 
   it("lets the caller add context, and does not let it be overwritten silently", () => {
-    const { record } = captured(new Error("Boom"), { scope: "blog.getFeedPosts", slug: "a-post" })
+    const { record } = captured(new Error("Boom"), {
+      scope: "writing.getFeedPosts",
+      slug: "a-post",
+    })
 
-    expect(record.scope).toBe("blog.getFeedPosts")
+    expect(record.scope).toBe("writing.getFeedPosts")
     expect(record.slug).toBe("a-post")
   })
 })
 
 describe("logServerError — a reader who left is not a failure", () => {
   /**
-   * Next prefetches an RSC payload on hover and cancels it when the pointer moves
-   * on. Five of these appeared in a single end-to-end run; a real tag list
-   * produces them steadily. At `error` they bury the failures the digest exists
-   * to make findable.
+   * Navigating away can cancel a request or close its response stream. Logging
+   * these expected disconnects as errors would hide actual server failures.
    */
   const disconnects = [
     new Error("The destination stream closed early."),
@@ -95,10 +95,10 @@ describe("logServerError — a reader who left is not a failure", () => {
 
   it("still records it rather than swallowing it", () => {
     // Demoted, not hidden. A flood of these is itself a signal.
-    const { record } = captured(new Error("aborted"), { scope: "render:/blog/tag/[tag]" })
+    const { record } = captured(new Error("aborted"), { scope: "render:/writing" })
 
     expect(record.message).toBe("aborted")
-    expect(record.scope).toBe("render:/blog/tag/[tag]")
+    expect(record.scope).toBe("render:/writing")
   })
 
   it("does not demote a real error that merely mentions aborting", () => {

@@ -1,13 +1,13 @@
 import { ExperienceSection } from "@/features/resume/components/experience-section"
 import { HeroSection } from "@/features/resume/components/hero-section"
 import { PortfolioSection } from "@/features/resume/components/portfolio-section"
-import { PublicShell } from "@/features/resume/components/public-shell"
+import { PublicShell } from "@/components/layout/public-shell"
 import { SidebarInfo } from "@/features/resume/components/sidebar-info"
 import { TechStackSection } from "@/features/resume/components/tech-stack-section"
 
 export function ResumePage() {
   return (
-    <PublicShell activePage="resume">
+    <PublicShell activePage="resume" className="@container">
       <HeroSection />
 
       {/* On screen this content lives in the drawer, which unmounts while closed

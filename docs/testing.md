@@ -1,0 +1,310 @@
+# Test suite guide
+
+The application now builds React Router 8.4.0 public SSR and a separate CSR admin.
+The browser suite serves production artifacts in **Wrangler/Workerd**. Counts change as the migration adds coverage; use runner output for
+current totals rather than treating historical counts as current results.
+
+## Test layers
+
+| Layer                 | Command                    | Boundary                                                           |
+| --------------------- | -------------------------- | ------------------------------------------------------------------ |
+| Formatting/lint/types | `npm run check`            | Formatting, ESLint, route type generation and TypeScript           |
+| Unit                  | `npm run test`             | Pure logic, query transport mapping, auth, cache and API contracts |
+| Real SQL integration  | `npm run test:integration` | Actual Neon HTTP/Drizzle SQL, round-trip budgets and rollback      |
+| Browser/HTTP          | `npm run test:e2e`         | Built public/admin apps and resource/API behavior in Workerd       |
+| Packaging             | `npm run build`            | SSR Worker, independent admin assets and generated Wrangler config |
+
+Unit coverage lives beside modules. Key areas include writing validators, slug and
+search normalization, excerpts/reading time, sanitized rendering/lazy highlighting,
+preview signatures, public query projections and published filters, guarded admin
+queries, batch mutations, per-request auth, KV/D1 invalidation, API Origin/size/auth
+boundaries, metadata/resource responses and shared utilities. Query tests mock only
+external transport and inspect actual Drizzle-generated SQL where appropriate.
+
+The isolated integration suite provisions its own uniquely named fixtures and checks
+real public/admin projections, request counts, changed/unchanged tags, series rules,
+transaction rollback and body-safe list reads. It mocks authorization/public cache
+boundaries so database behavior is the subject of the test. It deletes only its own
+rows and refuses non-loopback database hosts.
+
+The browser suite covers routes/SEO, accessibility, mobile/print/layout, consent and
+analytics, PDF/social images, writing search/filter/sort and series content, navigation, signed
+previews, authoring and session isolation. Database/auth/media prerequisites can
+cause skips; a passing subset does not verify skipped flows.
+
+Local cover uploads have a separate development-runtime suite:
+
+```bash
+E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
+```
+
+It requires the loopback Postgres/Neon proxy and existing migrated schema. The
+suite mints a real temporary author/session with the existing Better Auth helper,
+checks full-width mobile cover previews, centered remove controls, confirmation cancellation and local-only removal, verifies that
+selecting a PNG does not write to the server, then uploads and saves only on Save.
+It checks persisted-cover removal, upload/save failure retries, verifies the signed
+preview's cover data and checks the stored image decodes in a browser. HTTP assertions cover anonymous and cross-origin
+refusal, malformed bytes and oversized bodies. Tests delete only their own
+drafts, covers and identity. The server uses a private temporary Wrangler config,
+fixture secrets and an isolated local R2 bucket/dependency cache; it does not
+change `.env.local` or use live R2. The production suite excludes this spec, and
+CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
+to another loopback database when needed; remote hosts are refused.
+
+Run this suite with the ordinary `npm run dev` watcher stopped: both build admin
+assets into `public/admin`, and simultaneous watchers can replace the test's
+media-origin configuration. Restart development afterward to restore local assets.
+
+Inspect the current inventory without changing application data:
+
+```bash
+rg --files -g '*.test.ts' -g '*.test.tsx' -g '!node_modules' -g '!build'
+npx playwright test --list
+```
+
+## Prerequisites and local gate
+
+Use Node 22.22+ (CI: Node 24), npm and the lockfile. Install browser binaries/system
+libraries for browser tests. Docker Compose is required for the disposable SQL setup.
+
+```bash
+npm ci
+npm run check
+npx playwright install chromium
+```
+
+`type-check` generates Wrangler binding types and React Router route types before
+`tsc`, including on a fresh clone without ignored generated files. Unit tests do not load
+real remote resources. Integration tests are excluded from ordinary `check` and
+require `TEST_DATABASE_URL` explicitly; there is no fallback to a stored database URL.
+
+For author configuration checks, authenticate API requests explicitly with the
+minted fixture cookie and assert the returned author before reading settings.
+Playwright's HTTP request client does not share Chromium's secure-cookie exception
+for loopback URLs; an anonymous response omits those settings. Accessibility scans
+of animated sheets wait for the opening transition to finish before testing contrast.
+
+## Disposable database setup
+
+Never use production or a shared staging database. The session/integration helpers
+reject non-loopback hosts, but loopback alone does not make a database disposable.
+Compose publishes the proxy on 4444 and Postgres on 55432; an alternate project name
+alone does not change these ports. Stop or isolate conflicting services first.
+
+```bash
+docker compose -p indrax-e2e up -d --wait
+export DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require'
+export DIRECT_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:55432/indrax'
+export BETTER_AUTH_SECRET='local-only-test-secret-for-disposable-database-0000'
+export ALLOWED_GITHUB_ID='1'
+export GITHUB_CLIENT_ID='local-test'
+export GITHUB_CLIENT_SECRET='local-test'
+npm run db:migrate
+npm run db:seed
+TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+npm run test:e2e
+```
+
+These credentials are local fixtures, not real GitHub/R2/PostHog secrets. DB tooling
+loads `.env.local`/`.env`, while test helpers use exported variables. Explicit exports
+avoid accidentally selecting a saved Neon URL. Wrangler preview explicitly loads
+the root `.env.local`; exported fixture variables override those local settings
+through a temporary environment file outside the build, removed when preview exits.
+Public variables are compiled into both Vite bundles, so rebuild when they
+change. The Playwright configuration supplies its own origin and dummy analytics
+settings; real ingestion/provider credentials are unnecessary.
+
+Clean up only the Compose project created for the test after verifying its name:
+
+```bash
+docker compose -p indrax-e2e down --volumes
+```
+
+That last command deletes that project's local test volume. Do not use it on a
+normal development database whose contents should be retained.
+
+### Fixture contract
+
+The seed validates through the authoring schema and inserts/updates known slugs;
+it does not clear unrelated posts. Current fixture names are centralized in
+`e2e/support/constants.ts`:
+
+| Slug                                               | State     | Series order |
+| -------------------------------------------------- | --------- | ------------ |
+| `rendering-an-article-without-shipping-a-renderer` | Published | 1            |
+| `a-database-that-is-allowed-to-be-absent`          | Published | 2            |
+| `notes-on-preview-tokens`                          | Draft     | 3            |
+
+The `building-this-site` series exposes only published parts. Session helpers use
+Better Auth's adapter to mint unique fixture users/sessions and signed cookies.
+They can backdate creation or change the numeric GitHub ID for expiry/allowlist
+coverage; cleanup removes only fixture users/posts. Interrupted runs can leave data,
+which is another reason to use a disposable database. Even read projects can write
+view counts or isolated OAuth state; their names do not promise zero writes.
+
+### Skip conditions
+
+Writing content tests need a migrated/seeded `DATABASE_URL`. Authoring/session tests
+also require signing/auth configuration and the matching allowlist. OAuth-state
+checks require dummy client settings. Media controls cannot verify real upload
+success without optional R2 configuration. Missing secrets are not a reason to
+supply real production ones to local tests.
+
+## Browser execution and reports
+
+Playwright uses bundled Chromium with Desktop Chrome settings; mobile tests resize
+viewports. `PLAYWRIGHT_CHANNEL=chrome` optionally uses installed Chrome. The server
+command builds both applications, then `npm run start -- --port <E2E_PORT>` runs
+Wrangler against `build/server/wrangler.json`. Default port is 3210. Existing local
+servers may be reused; CI does not reuse them. Confirm environment/build freshness
+before trusting a reused server.
+
+`reads` runs in parallel. `writes` depends on `reads` and disables file-level case
+parallelism; shared authoring lifecycle cases are serial. Separate files may still
+use different workers. Use one worker when debugging shared writes. Local retries
+are zero; CI allows two retries. Report recovered flakes instead of describing them
+as a clean first pass.
+
+```bash
+npm run test:e2e -- e2e/writing-content.spec.ts
+npm run test:e2e -- --project=reads
+npm run test:e2e -- --project=writes
+npm run test:e2e -- --workers=1
+E2E_PORT=3420 npm run test:e2e
+E2E_SCREENSHOTS=on npm run test:e2e
+npx playwright show-report
+npx playwright show-trace test-results/<case-directory>/trace.zip
+```
+
+For smoke checks without fixtures, explicitly export empty database/auth values.
+Such a run verifies static/anonymous behavior, not authoring or fixture content.
+
+| Artifact             | Behavior                                               |
+| -------------------- | ------------------------------------------------------ |
+| `playwright-report/` | HTML report; never opens automatically                 |
+| `test-results/`      | Failure screenshots, retained traces and error context |
+| Passing screenshots  | Only when `E2E_SCREENSHOTS=on`                         |
+| Video                | Not configured                                         |
+| Coverage percentages | No statement/branch threshold configured               |
+
+Directories are ignored and later runs can replace evidence. Copy reports/results
+elsewhere before rerunning when evidence must be retained. Screenshots are failure
+artifacts, not visual-diff baselines.
+
+Analytics helpers grant/deny consent before navigation and intercept the same-origin
+analytics gateway; they decode outbound events without contacting a dashboard.
+Replay tests load the installed SDK recorder with synthetic remote configuration.
+Server gateway tests use a real SQLite database to verify atomic quota reservations,
+including concurrent callers, and mock only the upstream network boundary. Hydration
+helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests
+verify file signatures/content properties and lazy loading; social image tests
+verify PNG dimensions/signature, not pixel baselines.
+
+## CI and release boundaries
+
+The check job runs install, formatting/lint/types/unit tests, build without a DB and
+audit. The E2E job creates a local Compose database, migrates/seeds, runs SQL
+integration tests and then Chromium tests, followed by the separate isolated local upload suite. Audit currently reports findings without
+blocking CI. Failure browser artifacts are retained for 14 days. Exact workflow
+settings are authoritative in `.github/workflows/ci.yml`.
+
+Deployment needs both jobs and enabled branch/environment controls. Main also
+requires an eligible reviewer approval, resolved conversations, up-to-date checks
+and a successful Preview environment deployment; new commits dismiss stale
+approvals. See the [development and deployment workflow](development-and-deployment.md)
+for environment setup and release sequence. A green check
+does not authorize shipping a review-only migration. Local package/build success
+also does not prove remote CPU compliance or live OAuth/R2 behavior.
+
+## Troubleshooting
+
+| Symptom                            | Next check                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| Fixture cases skipped              | Export database/auth values into test process and served Worker            |
+| Cards never load                   | Inspect browser writing API response, request origin and Query error state |
+| Admin shell loads but data fails   | Inspect session endpoint, allowlist and private API status                 |
+| Incorrect connection/content       | Rebuild, restart and check matching runtime local variables                |
+| Origin rejected on save/logout     | Match test/public auth origin; do not weaken Origin validation             |
+| Proxy connection fails             | Check Compose health, 4444/55432 or isolated overrides                     |
+| Port occupied                      | Stop conflicting service or change `E2E_PORT`                              |
+| Visible control does nothing       | Check browser errors/hydration and existing readiness helper               |
+| No analytics event                 | Check consent setup, dummy-host interception and decoded payload           |
+| Only authoring suffix was selected | Its shared post is created by earlier cases; run the full lifecycle        |
+| Busy-machine flakes                | Lower workers and inspect traces before changing timeouts                  |
+
+Do not paste secrets, session cookies, preview tokens or draft screenshots into
+public issues. Never bypass a security assertion merely to make a suite green.
+
+## Adding tests and known limits
+
+Use colocated unit tests for deterministic logic and handlers. Put actual SQL and
+transaction budgets in `test/integration`; place browser/request behavior in `e2e`.
+Reuse fixture/session/analytics/hydration helpers, role/label locators and web-first
+assertions. Keep fixtures unique and clean up only their rows. Shared writes must
+belong to the writes project and be ignored by reads. Do not add production test-login
+endpoints or duplicate implementation logic in assertions.
+
+There are no Firefox/WebKit or physical-device projects, no automated screen-reader
+review, image baselines, PDF layout diff or performance threshold. Tests do not run
+live GitHub OAuth, real PostHog ingestion or a real R2 upload/download flow. Workerd
+checks are local: production routing, quotas, CPU and remote cache behavior still
+need approved deployment verification. Record commands, runtime, skipped/retried
+cases and evidence locations when presenting results.
+
+`npm run db:up` idempotently initializes the local Neon proxy control-plane table
+from `config/local-neon.sql`, including on existing local volumes. This is local
+Docker setup and is never applied to a remote Neon database.
+
+## Local workerd diagnostics
+
+A message such as `kj::getCaughtExceptionAsKj() ... disconnected: write():
+Broken pipe (os error 32)` is emitted by the local workerd runtime. In its
+[Rust/KJ I/O adapter](https://github.com/cloudflare/workerd/blob/main/src/rust/cxx/kj-rs-io/error.rs),
+`BrokenPipe`/`EPIPE` is classified as `DISCONNECTED`: the receiving side of a
+stream has closed while the runtime is writing. It does not identify the affected
+URL, peer, or the reason that peer disconnected.
+
+Browser navigation, aborted fetches and test teardown can close connections.
+These are possible explanations, not a confirmed cause for this repository's CI
+messages. The error was also observed during the local public browser suite.
+Local trace inspection also found Chromium `net::ERR_NETWORK_CHANGED` errors
+interrupting JS/CSS asset loads. This is consistent with disconnected client
+requests, but does not identify the stream behind the earlier CI message.
+Both the local tests and the observed CI run kept serving after the messages; there was no accompanying runtime exit or connection-refused failure.
+Keep these logs visible. If requests fail, retain the preceding logs and trace,
+check whether Wrangler exited, and correlate the first error with the request
+rather than treating later browser timeouts as independent product failures.
+
+Cloudflare also tracks a
+[stdout EPIPE report under Playwright](https://github.com/cloudflare/workers-sdk/issues/15202).
+That report describes runtime termination while writing captured logs; it is not
+evidence that our socket-adapter error has the same cause. Do not redirect logs
+or suppress errors as a substitute for establishing which stream failed.
+
+`State not found access_denied` is expected from the login test that deliberately
+sends an OAuth callback without state. Better Auth's missing-base-URL warning is
+not expected: both the Worker and the session-minting fixture configure their
+auth origins, with the fixture using the shared Playwright base URL.
+
+Admin action regression tests (`e2e/admin-post-actions.spec.ts`) use mocked private
+APIs and never write real posts. They verify publication confirmations for both
+menu actions and form saves, cancellation/error retries, stale-action disabling,
+copy loading/clipboard refusal, hidden preview URLs, mobile toolbar scrolling with
+Undo/Redo first, and grouped cover preview/URL/alt fields on new/edit forms at
+320px and 1280px without server writes before Save.
+The real authoring lifecycle separately exercises saved previews, publication,
+unpublication and confirmed deletion. Unit checks verify new toolbar markup and
+that the public render pipeline preserves underline, heading 4, line breaks and
+horizontal rules.
+
+Stack disclosure regressions (`e2e/stack-disclosures.spec.ts`) verify independent
+Why toggles, Enter/Space activation and focus, 320px/1280px layouts without
+horizontal overflow, reduced-motion transitions and expanded accessibility.
+The Stack smoke check keeps its implementation-content assertions and opens the
+related disclosure before checking its reason text.
+
+Admin card checks in `e2e/admin-filters.spec.ts` exercise excerpts and configured
+full-height left covers at 768px/1280px and full-width top covers at 320px,
+with two-line truncation and no horizontal
+overflow. Unit checks retain media-origin validation and absent-cover behavior;
+query tests verify cover/excerpt summaries without loading article bodies.

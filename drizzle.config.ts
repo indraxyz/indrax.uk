@@ -7,7 +7,7 @@ loadLocalEnv()
 // drizzle-kit speaks the Postgres wire protocol, not Neon's HTTP one, so it is
 // pointed at the database directly rather than through the proxy the application
 // uses. Locally that is the `postgres` service in docker-compose.yml; against Neon
-// the two are the same host and `DATABASE_URL` alone is enough.
+// DIRECT_DATABASE_URL selects the direct endpoint while runtime uses the pooler.
 const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL
 
 if (!url) {

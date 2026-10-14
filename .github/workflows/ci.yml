@@ -16,17 +16,14 @@ on:
   push:
     branches: [main, develop]
 
-# A second push supersedes the first; no point finishing a run for a commit that
-# has already been replaced.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
 jobs:
   check:
+    concurrency:
+      group: check-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -48,7 +45,15 @@ jobs:
       # No DATABASE_URL here on purpose. Every read degrades to an empty result
       # rather than throwing, so the site builds without one - and asserting that
       # keeps the property true, since it is also what a fresh clone gets.
-      - run: npm run build
+      - name: Build and validate production target
+        run: |
+          npm run build
+          node scripts/assert-deploy-target.mjs production
+
+      - name: Build and validate develop target
+        run: |
+          CLOUDFLARE_ENV=dev npm run build
+          node scripts/assert-deploy-target.mjs dev
 
       # Advisories appear between commits, not because of them, so this reports
       # rather than blocks - a high finding in a transitive dependency should not
@@ -64,9 +69,12 @@ jobs:
   # ran against a database: search would have indexed every `href` in an article,
   # making an injected spam link a search term, and the series clash check matched
   # nothing so every duplicate part number would have reached the author as a 500.
-  # Forty-seven of the specs skip themselves without a database, and those
-  # forty-seven are where both bugs lived.
+  # Seeded-content and authenticated specs skip without their fixture environment,
+  # so a database-free smoke run cannot establish the same coverage.
   e2e:
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -74,7 +82,7 @@ jobs:
       # The same stack `npm run db:up` starts locally, on the same ports, from the
       # same docker-compose.yml - so CI and a laptop cannot drift apart. The
       # application reaches Postgres through the Neon HTTP proxy on 4444, because
-      # that is the only protocol Workers can speak; drizzle-kit speaks the wire
+      # that is the transport used by our Worker driver; drizzle-kit speaks the wire
       # protocol and goes to 55432 directly.
       DATABASE_URL: postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=require
       DIRECT_DATABASE_URL: postgres://indrax:indrax@127.0.0.1:55432/indrax
@@ -111,6 +119,9 @@ jobs:
           npm run db:migrate
           npm run db:seed
 
+      - name: Check database request budgets and atomic writes
+        run: TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+
       # Browsers are ~150MB and change only with the Playwright version, which
       # moves with the lockfile.
       - name: Cache Playwright browsers
@@ -138,6 +149,9 @@ jobs:
       - name: Run the suite
         run: npx playwright test
 
+      - name: Verify isolated local cover uploads
+        run: E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
+
       # Only on failure, and only for a fortnight. A passing run's report is
       # noise; a failing one holds the trace, the screenshot and the accessibility
       # snapshot that says which element was actually on top.
@@ -149,4 +163,62 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            test-results-uploads/
           retention-days: 14
+
+  deploy:
+    # This job condition intentionally reads the repository/organization variable;
+    # environment variables are unavailable until the job starts.
+    if: github.event_name == 'push' && vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    needs: [check, e2e]
+    # Do not interrupt an upload/activation already in progress. Quality jobs still
+    # cancel superseded runs independently above.
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ANALYTICS_ENABLED: ${{ vars.ANALYTICS_ENABLED }}
+      MEDIA_ORIGIN: ${{ vars.MEDIA_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN in the GitHub environment' >&2; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID in the GitHub environment' >&2; exit 1; }
+
+      - name: Prepare the matching analytics quota table
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env '' --remote --file config/analytics-quota.sql
+          else
+            npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --file config/analytics-quota.sql
+          fi
+
+      - name: Deploy the matching Worker
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            npm run deploy
+          else
+            npm run deploy:dev
+          fi
+
+      - name: Verify public and private security boundaries
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            npm run security:smoke -- production
+          else
+            npm run security:smoke -- dev
+          fi

@@ -22,15 +22,14 @@ const PATHS = [
   { name: "home", path: "/" },
   { name: "resume", path: "/resume" },
   { name: "tech stack", path: "/tech-stack" },
-  { name: "archive", path: "/blog" },
-  { name: "article", path: `/blog/${SEEDED_POST_SLUG}` },
-  { name: "tag", path: `/blog/tag/${SEEDED_TAG_SLUG}` },
-  { name: "series", path: `/blog/series/${SEEDED_SERIES_SLUG}` },
-  // Both states: the search box on its own, and the box with results under it.
-  { name: "search", path: "/blog/search" },
-  { name: "search results", path: "/blog/search?q=postgres" },
-  { name: "not found", path: "/blog/no-such-article" },
+  { name: "archive", path: "/writing" },
+  { name: "article", path: `/writing/${SEEDED_POST_SLUG}` },
+  { name: "tag filter", path: `/writing?tag=${SEEDED_TAG_SLUG}` },
+  { name: "series", path: `/writing/series/${SEEDED_SERIES_SLUG}` },
+  { name: "search results", path: "/writing?q=postgres" },
+  { name: "not found", path: "/writing/no-such-article" },
   { name: "sign in", path: "/admin/login" },
+  { name: "sign-in failure", path: "/admin/login?error=account_not_permitted" },
 ]
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
@@ -41,6 +40,40 @@ async function scan(page: Page) {
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`accessibility (${theme})`, () => {
+    for (const width of [375, 1232]) {
+      test(`filter sheet has no serious or critical violations at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.addInitScript((value) => localStorage.setItem("indrax-theme", value), theme)
+        await page.route("**/api/writing/tags", (route) =>
+          route.fulfill({ json: [{ id: "react", slug: "react", name: "React", postCount: 2 }] })
+        )
+        await page.route("**/api/writing/posts*", (route) =>
+          route.fulfill({ json: { posts: [], page: 1, pageCount: 0, total: 0 } })
+        )
+        await page.goto(
+          "/writing?tag=react&date=custom&from=2026-01-01&duration=short&sort=updated"
+        )
+        await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
+        await page.getByRole("button", { name: "Filters and sort" }).click()
+        const sheet = page.getByRole("dialog", { name: "Filters and sort" })
+        await expect(sheet).toBeVisible()
+        // Opacity during the opening transition is not the final contrast.
+        await sheet.evaluate(async (element) => {
+          await Promise.all(element.getAnimations().map((animation) => animation.finished))
+        })
+        const results = await scan(page)
+        expect(
+          results.violations
+            .filter(
+              (violation) => violation.impact === "serious" || violation.impact === "critical"
+            )
+            .map((violation) => ({
+              id: violation.id,
+              nodes: violation.nodes.map((node) => node.target.join(" ")),
+            }))
+        ).toEqual([])
+      })
+    }
     for (const { name, path } of PATHS) {
       test(`${name} has no serious or critical violations`, async ({ page }) => {
         await page.addInitScript((value) => {

@@ -34,6 +34,9 @@ test.describe("the CV download", () => {
     expect(text).toContain("JetBrainsMono-Regular")
     expect(text).toContain("JetBrainsMono-ExtraBold")
     expect(text).toContain("DCTDecode")
+    // Repository links must survive the shared portfolio data change in the export.
+    expect(text).toContain("https://github.com/indraxyz/fullstack-kademix")
+    expect(text).toContain("https://github.com/indraxyz/crimenesia_web")
   })
 
   test("does not ship the renderer until it is asked for", async ({ page }) => {
@@ -44,6 +47,11 @@ test.describe("the CV download", () => {
 
     await page.goto("/", { waitUntil: "networkidle" })
     const beforeClick = scripts.size
+    const pdfScripts = () =>
+      [...scripts].filter((url) =>
+        /\/(?:pdf-|generate-resume\.client-)/.test(new URL(url).pathname)
+      )
+    expect(pdfScripts()).toEqual([])
 
     // Idle and usable with the renderer still unfetched: that is the point of the
     // dynamic import, and a static import would quietly undo it.
@@ -53,5 +61,14 @@ test.describe("the CV download", () => {
     await Promise.all([page.waitForEvent("download"), control.click()])
 
     expect(scripts.size).toBeGreaterThan(beforeClick)
+    expect(pdfScripts()).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("/pdf-fonts-"),
+        expect.stringContaining("/pdf-writer-"),
+        expect.stringContaining("/pdf-text-"),
+        expect.stringContaining("/pdf-reconciler-"),
+        expect.stringContaining("/pdf-layout-"),
+      ])
+    )
   })
 })

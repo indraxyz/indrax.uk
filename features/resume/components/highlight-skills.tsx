@@ -1,5 +1,3 @@
-"use client"
-
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { Badge, badgeVariants } from "@/components/ui/badge"

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test"
 
-import { E2E_BASE_URL, E2E_PORT, E2E_POSTHOG_HOST, E2E_POSTHOG_KEY } from "./e2e/support/constants"
+import { E2E_BASE_URL, E2E_PORT } from "./e2e/support/constants"
 
 /**
  * The browser both projects run in.
@@ -25,11 +25,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: [[process.env.CI ? "github" : "list"], ["html", { open: "never" }]],
 
   use: {
     baseURL: E2E_BASE_URL,
-    trace: "on-first-retry",
+    screenshot: process.env.E2E_SCREENSHOTS === "on" ? "on" : "only-on-failure",
+    trace: "retain-on-failure",
   },
 
   /*
@@ -41,15 +42,20 @@ export default defineConfig({
    * same archive, feed and sitemap at the same time - and a spec that publishes a
    * post while another asserts on the feed's contents is a coin flip, not a test.
    *
-   * So the writing specs run last, alone, and only once the reading ones are done.
-   * `dependencies` enforces the ordering; `fullyParallel: false` keeps them from
-   * racing each other.
+   * So the writing project runs after the reading project. `dependencies` enforces
+   * that ordering; `fullyParallel: false` keeps cases within each file sequential.
+   * Separate files may still use different workers; use --workers=1 when debugging
+   * writes that require complete serialization.
    */
   projects: [
     {
       name: "reads",
       use: browser,
-      testIgnore: [/admin-authoring\.spec\.ts/, /admin-session\.spec\.ts/],
+      testIgnore: [
+        /admin-authoring\.spec\.ts/,
+        /admin-session\.spec\.ts/,
+        /local-uploads\.spec\.ts/,
+      ],
     },
     {
       name: "writes",
@@ -61,18 +67,17 @@ export default defineConfig({
   ],
 
   webServer: {
-    // The suite asserts on prerendered output - the PDF and the OG card are drawn
-    // during the build, not on demand - so it runs against a production build
-    // rather than `next dev`, where those routes behave differently.
+    // Production bundling, OG output, and secure auth cookies are part of the
+    // contract under test. The PDF is still generated in the browser on demand;
+    // the tests assert that its renderer is loaded lazily.
     command: `npm run build && npm run start -- --port ${E2E_PORT}`,
     url: E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     env: {
-      NEXT_PUBLIC_POSTHOG_KEY: E2E_POSTHOG_KEY,
-      NEXT_PUBLIC_POSTHOG_HOST: E2E_POSTHOG_HOST,
+      ANALYTICS_ENABLED: "true",
       // Passed through when it is set, and absent otherwise - the site builds and
-      // serves either way. `blog-content.spec.ts` skips itself when it is missing,
+      // serves either way. `writing-content.spec.ts` skips itself when it is missing,
       // so the suite is green on a clone with no database.
       ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
       // Same again for the admin. `admin-authoring.spec.ts` mints a session

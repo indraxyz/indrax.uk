@@ -1,5 +1,3 @@
-"use client"
-
 import { Download, Loader2 } from "lucide-react"
 import { useCallback, useState } from "react"
 
@@ -18,12 +16,8 @@ export function DownloadResumeButton() {
     try {
       // The renderer is a large dependency and nobody needs it to read the page,
       // so it only arrives once someone actually asks for the file.
-      const [{ pdf }, { ResumeDocument }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/features/resume/pdf/resume-document"),
-      ])
-
-      const blob = await pdf(<ResumeDocument />).toBlob()
+      const { generateResumePdf } = await import("@/features/resume/pdf/generate-resume.client")
+      const blob = await generateResumePdf()
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
 
