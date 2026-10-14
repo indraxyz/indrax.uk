@@ -22,6 +22,32 @@ test.use({
 const DOWNLOAD_TIMEOUT_MS = 90_000
 
 test.describe("analytics", () => {
+  test("keeps heatmaps disabled despite remote opt-in while forwarding normal events", async ({
+    page,
+  }) => {
+    const analytics = await recordAnalytics(page, { heatmaps: true, validateGateway: true })
+    const rejected: string[] = []
+    page.on("response", (response) => {
+      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+        rejected.push(`${response.status()} ${new URL(response.url()).pathname}`)
+    })
+    await page.goto("/")
+    await whenHydrated(page)
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$pageview")
+    await page.getByRole("button", { name: "Open personal information" }).click()
+    await expect
+      .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
+      .toContain("$autocapture")
+    // Heatmaps flush every five seconds in the installed SDK. Give the remote
+    // setting and this click a complete flush window to catch accidental capture.
+    await page.waitForTimeout(6000)
+    expect(analytics.everything()).toContain("/api/analytics/i/v0/e/")
+    expect(rejected).toEqual([])
+    expect(analytics.captured("$$heatmap")).toBe(false)
+  })
+
   test("loads remote-enabled web vitals and dead-click scripts through the gateway", async ({
     page,
   }) => {

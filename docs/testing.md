@@ -196,6 +196,9 @@ analytics gateway; they decode outbound events without contacting a dashboard.
 Replay tests load the installed SDK recorder with synthetic remote configuration.
 Performance tests enable remote web-vitals/dead-click settings, execute their
 installed SDK scripts through the gateway, and check that surveys stay disabled.
+The heatmap regression advertises remote heatmap opt-in and `/i/v0/e/`, then
+checks a complete SDK flush interval: pageviews/clicks are forwarded, `$$heatmap`
+is absent, and analytics responses are successful.
 Server gateway tests use a real SQLite database to verify atomic quota reservations,
 including concurrent callers, and mock only the upstream network boundary. Hydration
 helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests

@@ -66,6 +66,8 @@ export interface RecordOptions {
   replay?: boolean
   /** Enable remote web-vitals/dead-click settings and load their installed scripts. */
   performance?: boolean
+  /** Advertise remote heatmap capture and the current ingestion endpoint. */
+  heatmaps?: boolean
   /** Validate real SDK requests through the server handler and atomic SQLite quota. */
   validateGateway?: boolean
 }
@@ -118,6 +120,16 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
       hasFeatureFlags: true,
       // The SDK waits for an explicit server opt-in before automatic click capture.
       autocapture_opt_out: false,
+      ...(options.heatmaps
+        ? {
+            analytics: { endpoint: "/i/v0/e/" },
+            heatmaps: {
+              captureMode: "url_allowlist",
+              urlAllowlist: [],
+              urlAllowlistEnforced: false,
+            },
+          }
+        : {}),
       ...(options.performance
         ? { capturePerformance: { web_vitals: true }, captureDeadClicks: true, surveys: true }
         : {}),
@@ -145,24 +157,7 @@ export async function recordAnalytics(page: Page, options: RecordOptions = {}) {
           const upstreamUrl = new URL(input instanceof Request ? input.url : String(input))
           if (init?.body) forwarded.push(String(init.body))
           if (upstreamUrl.pathname.endsWith("/config")) {
-            return Response.json({
-              hasFeatureFlags: true,
-              autocapture_opt_out: false,
-              ...(options.performance
-                ? {
-                    capturePerformance: { web_vitals: true },
-                    captureDeadClicks: true,
-                    surveys: true,
-                  }
-                : {}),
-              sessionRecording: options.replay
-                ? {
-                    endpoint: "/s/",
-                    sampleRate: "1",
-                    minimumDurationMilliseconds: 0,
-                  }
-                : false,
-            })
+            return Response.json(config)
           }
           if (upstreamUrl.pathname.includes("/static/"))
             return new Response(body, { headers: { "Content-Type": "application/javascript" } })

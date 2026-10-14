@@ -21,6 +21,14 @@ response size and JavaScript MIME checks. Surveys are explicitly disabled with t
 SDK's `disable_surveys` option: this site does not support survey response events
 or endpoints. Arbitrary SDK scripts remain refused.
 
+Heatmap capture is explicitly disabled with `capture_heatmaps: false`, overriding
+remote project settings. The SDK's `$$heatmap` events are outside the gateway's
+supported event policy; enabling them remotely would otherwise cause 400 responses
+and can reject a whole mixed batch. Supported events still use the project's
+remote ingestion endpoint (`/i/v0/e/`) when configured; that endpoint itself is
+allowed. Adding heatmaps requires a separate review of payload validation, privacy,
+and quota policy rather than accepting arbitrary event names.
+
 ## Configuration and limits
 
 | Setting                   | Location                                  | Purpose                                                     |

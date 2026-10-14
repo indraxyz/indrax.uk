@@ -86,6 +86,9 @@ export function startAnalytics() {
       // Surveys are outside this site's event/route allowlist. Do not load their
       // SDK or offer a UI whose response requests the gateway would refuse.
       disable_surveys: true,
+      // Remote project settings can enable heatmaps, whose $$heatmap events are
+      // outside the gateway allowlist. Keep capture off before those batches form.
+      capture_heatmaps: false,
       // Keep rrweb event data inspectable so the gateway can redact signed URLs.
       // Request compression and nested recorder compression are separate settings.
       session_recording: { compress_events: false },
