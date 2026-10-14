@@ -22,6 +22,48 @@ test.use({
 const DOWNLOAD_TIMEOUT_MS = 90_000
 
 test.describe("analytics", () => {
+  test("loads remote-enabled web vitals and dead-click scripts through the gateway", async ({
+    page,
+  }) => {
+    const analytics = await recordAnalytics(page, { performance: true, validateGateway: true })
+    const assets = ["web-vitals-with-attribution.js", "dead-clicks-autocapture.js"]
+    const responses = assets.map((asset) =>
+      page.waitForResponse((response) => new URL(response.url()).pathname.endsWith(`/${asset}`))
+    )
+    await page.goto("/")
+    for (const response of await Promise.all(responses)) {
+      expect(response.status()).toBe(200)
+      expect(response.headers()["content-type"]).toContain("text/javascript")
+    }
+    await page.waitForFunction(() => {
+      const extensions = (
+        window as Window & {
+          __PosthogExtensions__?: {
+            initDeadClicksAutocapture?: unknown
+            postHogWebVitalsCallbacksByFlavor?: Record<string, unknown>
+          }
+        }
+      ).__PosthogExtensions__
+      return (
+        typeof extensions?.initDeadClicksAutocapture === "function" &&
+        !!extensions?.postHogWebVitalsCallbacksByFlavor?.["web-vitals-with-attribution"]
+      )
+    })
+    await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
+    expect(analytics.sent.join("\n")).not.toMatch(/\/surveys(?:\.js|\/)/)
+    expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+  })
+
+  test("serves the favicon referenced by the public layout", async ({ page, request }) => {
+    await recordAnalytics(page, { consent: "denied" })
+    await page.goto("/")
+    const href = await page.locator('link[rel="icon"]').getAttribute("href")
+    expect(href).toBe("/favicon.svg")
+    const response = await request.get(href!)
+    expect(response.status()).toBe(200)
+    expect(response.headers()["content-type"]).toContain("image/svg+xml")
+  })
+
   test("records a pageview on arrival", async ({ page }) => {
     const analytics = await recordAnalytics(page)
     await page.goto("/")

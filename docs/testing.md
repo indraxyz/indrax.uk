@@ -194,6 +194,8 @@ artifacts, not visual-diff baselines.
 Analytics helpers grant/deny consent before navigation and intercept the same-origin
 analytics gateway; they decode outbound events without contacting a dashboard.
 Replay tests load the installed SDK recorder with synthetic remote configuration.
+Performance tests enable remote web-vitals/dead-click settings, execute their
+installed SDK scripts through the gateway, and check that surveys stay disabled.
 Server gateway tests use a real SQLite database to verify atomic quota reservations,
 including concurrent callers, and mock only the upstream network boundary. Hydration
 helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests
@@ -204,7 +206,7 @@ verify PNG dimensions/signature, not pixel baselines.
 local test harness with isolated D1 and fixture credentials. Its upstream stub
 constructs requests inside Workerd before responding, so runtime-incompatible fetch
 options cannot pass through a Node mock. It checks configuration transports, SDK
-event/flag forwarding, recorder assets and refusal of upstream redirects without
+event/flag forwarding, recorder/performance assets and refusal of upstream redirects without
 contacting PostHog or any remote database. Run it with the existing analytics browser
 suite using `npx playwright test e2e/analytics-runtime.spec.ts e2e/analytics.spec.ts --project=reads`.
 

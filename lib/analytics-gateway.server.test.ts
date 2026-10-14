@@ -305,7 +305,44 @@ describe("protected PostHog gateway", () => {
     expect(script).not.toContain(TOKEN)
   })
 
-  it("allows only recorder assets and fixed regional hosts", async () => {
+  it.each(["web-vitals", "web-vitals-with-attribution", "dead-clicks-autocapture"])(
+    "serves versioned and fallback %s assets as JavaScript within the shared quota",
+    async (name) => {
+      upstream.mockImplementation(
+        async () =>
+          new Response("/* SDK asset */", {
+            headers: { "Content-Type": "application/javascript" },
+          })
+      )
+      for (const path of [`/static/1.434.18/${name}.js`, `/static/${name}.js?v=1.434.18`]) {
+        const response = await handle(get(path))
+        expect(response.status).toBe(200)
+        expect(response.headers.get("content-type")).toBe("text/javascript; charset=utf-8")
+        expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+        expect(upstream.mock.calls.at(-1)?.[0].toString()).toBe(
+          `https://us-assets.i.posthog.com${path}`
+        )
+      }
+      expect(
+        sqlite.prepare("SELECT units FROM analytics_quota WHERE category='assets'").get()
+      ).toEqual({ units: 2 })
+    }
+  )
+
+  it("refuses JSON responses for supported SDK scripts and unsupported asset names", async () => {
+    upstream.mockResolvedValue(Response.json({ ok: false }))
+    expect((await handle(get("/static/web-vitals-with-attribution.js"))).status).toBe(502)
+    for (const path of [
+      "/static/surveys.js",
+      "/static/anything.js",
+      "/static/1.434.18/evil.js",
+      "/static/1.434.18/nested/web-vitals.js",
+    ])
+      expect((await handle(get(path))).status).toBe(404)
+    expect(upstream).toHaveBeenCalledTimes(1)
+  })
+
+  it("allows only supported SDK assets and fixed regional hosts", async () => {
     env.POSTHOG_HOST = "https://eu.i.posthog.com"
     upstream.mockResolvedValue(
       new Response("window.recorder = true", {

@@ -4,6 +4,10 @@ import { verifyAnalytics } from "./verify-analytics.mjs"
 it.each(["dev", "production"])("checks live config transports in %s", async (target) => {
   const fetcher = vi
     .fn<typeof fetch>()
+    .mockImplementation(
+      async () =>
+        new Response("/* SDK asset */", { headers: { "content-type": "text/javascript" } })
+    )
     .mockResolvedValueOnce(Response.json({ sessionRecording: {} }))
     .mockResolvedValueOnce(
       new Response('window._POSTHOG_REMOTE_CONFIG["phc_indrax_gateway"]={config:{}};', {
@@ -12,11 +16,24 @@ it.each(["dev", "production"])("checks live config transports in %s", async (tar
     )
   await verifyAnalytics(target, fetcher)
   const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
-  expect(fetcher).toHaveBeenCalledTimes(2)
+  expect(fetcher).toHaveBeenCalledTimes(5)
   expect(fetcher).toHaveBeenCalledWith(
     `${origin}/api/analytics/array/phc_indrax_gateway/config`,
     expect.objectContaining({ headers: { Referer: `${origin}/` }, redirect: "manual" })
   )
+})
+
+it("fails if a deployed SDK asset returns JSON", async () => {
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(Response.json({}))
+    .mockResolvedValueOnce(
+      new Response('window._POSTHOG_REMOTE_CONFIG["phc_indrax_gateway"]={config:{}};', {
+        headers: { "content-type": "text/javascript" },
+      })
+    )
+    .mockResolvedValueOnce(Response.json({ ok: false }, { status: 404 }))
+  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("web-vitals.js failed: HTTP 404")
 })
 
 it.each([502, 503, 429, 302])("fails the smoke check on HTTP %s", async (status) => {

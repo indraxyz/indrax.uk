@@ -16,7 +16,11 @@ globalThis.fetch = async (input, init) => {
     })
   if (url.pathname === `/array/${projectToken}/config`)
     return Response.json({ token: projectToken, sessionRecording: { enabled: true } })
-  if (url.pathname === "/static/recorder.js")
+  if (
+    /^\/static\/(?:\d+\.\d+\.\d+\/)?(?:recorder|web-vitals|web-vitals-with-attribution|dead-clicks-autocapture)\.js$/.test(
+      url.pathname
+    )
+  )
     return new Response("/* fixture recorder */", {
       headers: { "Content-Type": "text/javascript" },
     })

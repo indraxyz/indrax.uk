@@ -47,6 +47,7 @@ it("initializes only with a placeholder and routes SDK assets and events through
     expect.objectContaining({
       api_host: `https://indrax.uk${ANALYTICS_GATEWAY_PATH}`,
       respect_dnt: true,
+      disable_surveys: true,
     })
   )
   const options = tracker.init.mock.calls[0][1]

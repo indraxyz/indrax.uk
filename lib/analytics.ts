@@ -83,6 +83,9 @@ export function startAnalytics() {
       ui_host: window.location.origin,
       api_transport: "fetch",
       disable_compression: true,
+      // Surveys are outside this site's event/route allowlist. Do not load their
+      // SDK or offer a UI whose response requests the gateway would refuse.
+      disable_surveys: true,
       // Keep rrweb event data inspectable so the gateway can redact signed URLs.
       // Request compression and nested recorder compression are separate settings.
       session_recording: { compress_events: false },
