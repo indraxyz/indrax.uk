@@ -196,6 +196,14 @@ analytics gateway; they decode outbound events without contacting a dashboard.
 Replay tests load the installed SDK recorder with synthetic remote configuration.
 Performance tests enable remote web-vitals/dead-click settings, execute their
 installed SDK scripts through the gateway, and check that surveys stay disabled.
+Heatmap coverage advertises remote opt-in/out and `/i/v0/e/`, exercises the installed
+SDK's coordinate capture, and checks successful forwarding alongside pageviews and
+clicks. Browser and Worker tests cover URL-key redaction, collision merging, mixed
+batch quotas, long URLs and malformed/oversized payload refusal. Browser tests also
+observe a full SDK flush window for remote opt-out and consent withdrawal.
+Combined SDK coverage forwards pageviews, clicks, heatmaps, replay snapshots and
+web vitals in one browser session. The installed dead-click detector also receives
+synthetic touch events to verify native `$dead_swipe` forwarding.
 Server gateway tests use a real SQLite database to verify atomic quota reservations,
 including concurrent callers, and mock only the upstream network boundary. Hydration
 helpers wait for meaningful UI readiness rather than arbitrary delays. PDF tests

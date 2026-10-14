@@ -21,6 +21,27 @@ response size and JavaScript MIME checks. Surveys are explicitly disabled with t
 SDK's `disable_surveys` option: this site does not support survey response events
 or endpoints. Arbitrary SDK scripts remain refused.
 
+Heatmap capture follows the SDK's native remote settings; the application does not
+force capture on or off. The gateway accepts `$$heatmap` envelopes, including mixed
+batches with ordinary events, at `/e/` and the remote ingestion endpoint `/i/v0/e/`.
+The installed SDK groups coordinate arrays by absolute HTTP(S) page URL. Each point
+has finite `x`/`y` coordinates (including negative/fractional values), boolean
+`target_fixed`, and type `click`, `mousemove`, `rageclick` or `deadclick`. Additional
+point fields and malformed payloads are refused before quota reservation.
+
+URL keys are redacted in the browser before transmission and again by the Worker,
+including preview/OAuth query values and URL credentials. Colliding redacted keys
+combine their point arrays with linear appends. Validated heatmap URL keys may be up to 8,192 characters; ordinary
+property keys retain their 256-character limit. Heatmaps use the existing 1 MiB
+request limit and bounded sanitization traversal. Each heatmap envelope reserves
+one event unit, and its full serialized payload counts against the events byte
+budget. No extra quota table or unmetered forwarding path is introduced.
+The SDK's scroll-depth properties continue through existing pageview/pageleave
+events. Native dead-swipe events from the touch dead-click detector are also
+accepted under the same event budget. Consent withdrawal stops new capture and
+clears identifiers as before; the SDK may still send previously captured events
+that were already queued while consent was granted.
+
 ## Configuration and limits
 
 | Setting                   | Location                                  | Purpose                                                     |

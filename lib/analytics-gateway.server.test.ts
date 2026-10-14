@@ -19,6 +19,11 @@ const event = (name = "$pageview") => ({
     $current_url: `${origin}/writing/example?preview=secret-preview&token=secret-token`,
   },
 })
+const point = (type = "click") => ({ x: -1.25, y: 20.5, target_fixed: false, type })
+const heatmap = (data: unknown = { [origin]: [point()] }) => ({
+  event: "$$heatmap",
+  properties: { distinct_id: "anonymous-visitor", $heatmap_data: data },
+})
 const snapshot = (session = "session") => ({
   event: "$snapshot",
   properties: {
@@ -71,6 +76,157 @@ afterEach(() => {
 })
 
 describe("protected PostHog gateway", () => {
+  it("forwards SDK heatmaps in mixed batches and reserves one event unit per envelope", async () => {
+    env.POSTHOG_MONTHLY_EVENTS_LIMIT = "2"
+    const coordinates = ["click", "mousemove", "rageclick", "deadclick"].map(point)
+    const response = await handle(
+      request("/i/v0/e/", {
+        api_key: "attacker",
+        batch: [event(), heatmap({ [origin]: coordinates })],
+      })
+    )
+    expect(response.status).toBe(200)
+    const data = JSON.parse(upstream.mock.calls[0][1].body)
+    expect(data.api_key).toBe(TOKEN)
+    expect(data.batch[1].properties.$heatmap_data).toEqual({ [origin]: coordinates })
+    expect(data.batch[1].properties.token).toBe(TOKEN)
+    expect(data.batch[1].properties.$ip).toBe("203.0.113.1")
+    expect(
+      sqlite.prepare("SELECT units, bytes FROM analytics_quota WHERE category='events'").get()
+    ).toEqual({
+      units: 2,
+      bytes: new TextEncoder().encode(upstream.mock.calls[0][1].body).byteLength,
+    })
+    expect((await handle(request("/i/v0/e/", heatmap()))).status).toBe(429)
+  })
+
+  it("redacts URL keys server-side, merging points without losing signed-link groups", async () => {
+    const first = `${origin}/preview?token=one&code=first`
+    const second = `${origin}/preview?token=two&code=second`
+    expect(
+      (
+        await handle(
+          request("/e/", heatmap({ [first]: [point()], [second]: [point("mousemove")] }))
+        )
+      ).status
+    ).toBe(200)
+    const body = upstream.mock.calls[0][1].body as string
+    expect(body).not.toMatch(/token=one|token=two|code=first|code=second/)
+    expect(JSON.parse(body).properties.$heatmap_data).toEqual({
+      [`${origin}/preview?token=redacted&code=redacted`]: [point(), point("mousemove")],
+    })
+  })
+
+  it("accepts long heatmap URLs while retaining normal property-key bounds", async () => {
+    const page = `${origin}/writing/${"a".repeat(512)}?preview=bearer`
+    expect((await handle(request("/e/", heatmap({ [page]: [point()] })))).status).toBe(200)
+    expect(
+      Object.keys(JSON.parse(upstream.mock.calls[0][1].body).properties.$heatmap_data)
+    ).toEqual([page.replace("bearer", "redacted")])
+    expect(
+      (
+        await handle(
+          request("/e/", {
+            ...heatmap(),
+            properties: { ...heatmap().properties, ["a".repeat(257)]: "invalid" },
+          })
+        )
+      ).status
+    ).toBe(400)
+  })
+
+  it.each([
+    null,
+    [],
+    {},
+    { relative: [point()] },
+    { "javascript:alert(1)": [point()] },
+    { [origin]: [] },
+    { [origin]: {} },
+    { [origin]: [{ ...point(), x: "1" }] },
+    { [origin]: [{ ...point(), y: null }] },
+    { [origin]: [{ ...point(), target_fixed: 1 }] },
+    { [origin]: [{ ...point(), type: "scroll" }] },
+    { [origin]: [{ ...point(), text: "private DOM text" }] },
+    { [origin]: [{ x: 1, y: 2, type: "click" }] },
+    { [`${origin}/${"a".repeat(8192)}`]: [point()] },
+  ])("refuses malformed heatmap data before quota reservation: %j", async (data) => {
+    expect(
+      (await handle(request("/e/", { api_key: "attacker", batch: [event(), heatmap(data)] })))
+        .status
+    ).toBe(400)
+    expect(upstream).not.toHaveBeenCalled()
+    expect(sqlite.prepare("SELECT COUNT(*) AS total FROM analytics_quota").get()).toEqual({
+      total: 0,
+    })
+  })
+
+  it("enforces the existing body ceiling on heatmap batches", async () => {
+    const data = { [origin]: Array.from({ length: 20000 }, () => point()) }
+    expect((await handle(request("/e/", heatmap(data)))).status).toBe(413)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
+  it("does not grant heatmap URL-key bounds to nested objects in other events", async () => {
+    const data = event()
+    Object.assign(data.properties, {
+      nested: heatmap({ [`${origin}/${"a".repeat(512)}`]: [point()] }),
+    })
+    expect((await handle(request("/e/", data))).status).toBe(400)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
+  it("rejects non-finite JSON heatmap coordinates", async () => {
+    const body = `{"event":"$$heatmap","properties":{"distinct_id":"visitor","$heatmap_data":{"${origin}":[{"x":1e309,"y":2,"target_fixed":false,"type":"click"}]}}}`
+    expect((await handle(request("/e/", undefined, { body }))).status).toBe(400)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
+  it("merges many URL aliases without dropping or reordering coordinates", async () => {
+    const data = Object.fromEntries(
+      Array.from({ length: 1000 }, (_, x) => [`${origin}/?token=${x}`, [{ ...point(), x }]])
+    )
+    expect((await handle(request("/e/", heatmap(data)))).status).toBe(200)
+    const groups = JSON.parse(upstream.mock.calls[0][1].body).properties.$heatmap_data
+    expect(Object.keys(groups)).toEqual([`${origin}/?token=redacted`])
+    expect(groups[`${origin}/?token=redacted`].map((entry: { x: number }) => entry.x)).toEqual(
+      Array.from({ length: 1000 }, (_, x) => x)
+    )
+  })
+
+  it("preserves native scroll-depth and dead-swipe metadata in ordinary mixed batches", async () => {
+    const scroll = {
+      $prev_pageview_pathname: "/writing",
+      $prev_pageview_max_scroll: 800,
+      $prev_pageview_max_scroll_percentage: 0.8,
+      $prev_pageview_last_scroll: 400,
+      $prev_pageview_last_scroll_percentage: 0.4,
+      $prev_pageview_max_content: 1000,
+      $prev_pageview_max_content_percentage: 1,
+      $prev_pageview_last_content: 600,
+      $prev_pageview_last_content_percentage: 0.6,
+    }
+    const swipe = {
+      $dead_swipe_direction: "right",
+      $dead_swipe_distance_px: 130.5,
+      $dead_swipe_absolute_delay_ms: 2200,
+    }
+    const payload = [
+      { ...event("$pageleave"), properties: { ...event().properties, ...scroll } },
+      { ...event("$dead_swipe"), properties: { ...event().properties, ...swipe } },
+      heatmap(),
+    ]
+    expect(
+      (await handle(request("/i/v0/e/", { api_key: "attacker", batch: payload }))).status
+    ).toBe(200)
+    const data = JSON.parse(upstream.mock.calls[0][1].body).batch
+    expect(data[0].properties).toMatchObject(scroll)
+    expect(data[1].properties).toMatchObject(swipe)
+    expect(
+      sqlite.prepare("SELECT units FROM analytics_quota WHERE category='events'").get()
+    ).toEqual({ units: 3 })
+  })
+
   it.each([301, 302, 303, 307, 308])(
     "refuses upstream redirects (%s) without forwarding credentials",
     async (status) => {
