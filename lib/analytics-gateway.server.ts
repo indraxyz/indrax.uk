@@ -369,7 +369,9 @@ export async function handleAnalyticsGateway(request: Request): Promise<Response
     const response = await fetch(upstream, {
       method: request.method,
       body,
-      redirect: "error",
+      // Workers only supports follow/manual. Refuse 3xx through response.ok below
+      // so redirects never forward the project credential to another destination.
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
       headers: body ? { "Content-Type": "application/json" } : {},
     })
