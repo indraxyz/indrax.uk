@@ -97,7 +97,7 @@ test.describe("search", () => {
 
     await page.goto("/writing")
     await page.getByRole("searchbox", { name: /search articles/i }).fill("renderer")
-    await page.getByRole("button", { name: "Search" }).click()
+    await page.getByRole("searchbox").press("Enter")
 
     await expect(page).toHaveURL(/\/writing\?q=renderer/)
     await expect(page.getByRole("link", { name: /rendering an article/i })).toHaveCount(0)

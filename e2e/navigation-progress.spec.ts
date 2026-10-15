@@ -90,11 +90,11 @@ test("public navigation keeps the current page until writing data is ready", asy
   })
   await page.route("**/api/writing/tags", (route) => route.fulfill({ json: [] }))
   await page.goto("/")
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
   await page.getByRole("link", { name: "Writing", exact: true }).first().click()
   try {
     await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toBeVisible()
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
     await expect(page).toHaveURL(/\/$/)
   } finally {
     release()

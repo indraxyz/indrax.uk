@@ -1,5 +1,6 @@
 import type { RefObject } from "react"
 import { Loader2 } from "lucide-react"
+import type { PostStatus } from "@/features/writing/types"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -15,7 +16,7 @@ import {
 export function PostStatusDialog({
   open,
   onOpenChange,
-  publishing,
+  targetStatus,
   title,
   pending,
   error,
@@ -24,13 +25,33 @@ export function PostStatusDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  publishing: boolean
+  targetStatus: PostStatus
   title: string
   pending: boolean
   error?: string | null
   onConfirm: () => void
   returnFocus?: RefObject<HTMLElement | null>
 }) {
+  const copy = {
+    published: {
+      heading: "Publish post?",
+      description: `Publish “${title}”? It will be visible to everyone.`,
+      action: "Publish post",
+      pending: "Publishing…",
+    },
+    draft: {
+      heading: "Unpublish post?",
+      description: `Unpublish “${title}”? It will no longer be visible on the public site.`,
+      action: "Unpublish post",
+      pending: "Unpublishing…",
+    },
+    archived: {
+      heading: "Archive post?",
+      description: `Archive “${title}”? It will be hidden from the public site. You can publish it again later.`,
+      action: "Archive post",
+      pending: "Archiving…",
+    },
+  }[targetStatus]
   return (
     <AlertDialog
       open={open}
@@ -40,12 +61,8 @@ export function PostStatusDialog({
     >
       <AlertDialogContent finalFocus={returnFocus}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{publishing ? "Publish post?" : "Unpublish post?"}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {publishing
-              ? `Publish “${title}”? It will be visible to everyone.`
-              : `Unpublish “${title}”? It will no longer be visible on the public site.`}
-          </AlertDialogDescription>
+          <AlertDialogTitle>{copy.heading}</AlertDialogTitle>
+          <AlertDialogDescription>{copy.description}</AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
           <p role="alert" className="mt-4 text-sm font-semibold text-destructive">
@@ -56,13 +73,7 @@ export function PostStatusDialog({
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <Button type="button" size="sm" disabled={pending} onClick={onConfirm}>
             {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {pending
-              ? publishing
-                ? "Publishing…"
-                : "Unpublishing…"
-              : publishing
-                ? "Publish post"
-                : "Unpublish post"}
+            {pending ? copy.pending : copy.action}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

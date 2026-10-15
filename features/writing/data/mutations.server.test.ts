@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   requireAuthor: vi.fn(),
   getDb: vi.fn(),
   updateTag: vi.fn(),
+  drainCoverCleanup: vi.fn(),
 }))
 vi.mock("@/lib/auth-guard.server", () => ({ requireAuthor: mocks.requireAuthor }))
+vi.mock("@/lib/cover-cleanup.server", () => ({ drainCoverCleanup: mocks.drainCoverCleanup }))
 vi.mock("@/lib/cache.server", () => ({
   invalidateTags: async (...tags: string[]) => {
     tags.forEach((tag) => mocks.updateTag(tag))
@@ -45,9 +47,16 @@ function database(selectResults: unknown[][]) {
   const onConflictDoNothing = vi.fn().mockReturnValue({ returning })
   const values = vi.fn().mockReturnValue({ returning, onConflictDoNothing, onConflictDoUpdate })
   const insertSelect = vi.fn().mockReturnValue({ onConflictDoNothing })
-  const batch = vi.fn().mockResolvedValue([[{ id: ID, slug: payload.slug }]])
+  const batch = vi
+    .fn()
+    .mockResolvedValue(Array.from({ length: 3 }, () => [{ id: ID, slug: payload.slug }]))
   const select = vi.fn().mockImplementation((projection) => {
-    if (projection?.id === schema.tags.id || projection?.tagId === schema.tags.id) {
+    if (
+      projection?.id === schema.tags.id ||
+      projection?.tagId === schema.tags.id ||
+      projection?.lockedPostId ||
+      projection?.url
+    ) {
       return drizzle.mock().select(projection)
     }
     const result = Promise.resolve(selectResults.shift() ?? [])
@@ -117,7 +126,7 @@ describe("savePost", () => {
     expect(db.set).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt, excerpt: "An author-written excerpt." })
     )
-    expect(db.insert).not.toHaveBeenCalled()
+    expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
     expect(mocks.updateTag.mock.calls).toEqual([["posts"], ["post:new-title"], ["post:old-title"]])
   })
 
@@ -149,7 +158,7 @@ describe("savePost database round trips", () => {
       ok: true,
       postId: ID,
     })
-    expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(6)
     expect(db.values).toHaveBeenCalledWith([
       { slug: "react", name: "REACT" },
       { slug: "vue-js", name: "Vue.js" },
@@ -167,18 +176,18 @@ describe("savePost database round trips", () => {
       postId: ID,
     })
     expect(db.batch).toHaveBeenCalledTimes(1)
-    expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(6)
     expect(db.values).toHaveBeenCalledWith([{ slug: "vue-js", name: "Vue.js" }])
-    expect(db.insertSelect).toHaveBeenCalledTimes(1)
+    expect(db.insertSelect).toHaveBeenCalledTimes(2)
     expect(db.delete).toHaveBeenCalledWith(schema.postTags)
   })
 
   it("clears removed tags in the same batch without creating or reading tag rows", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
     expect(await savePost({ ...payload, id: ID })).toMatchObject({ ok: true })
-    expect(db.batch.mock.calls[0][0]).toHaveLength(2)
-    expect(db.select).toHaveBeenCalledTimes(1)
-    expect(db.insert).not.toHaveBeenCalled()
+    expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+    expect(db.select).toHaveBeenCalledTimes(3)
+    expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
   })
 
   it("assigns a new post ID before batching its tag joins", async () => {
@@ -201,7 +210,7 @@ describe("savePost database round trips", () => {
         seriesDescription: "",
       })
     ).toMatchObject({ ok: true })
-    expect(db.select).toHaveBeenCalledTimes(1)
+    expect(db.select).toHaveBeenCalledTimes(3)
     expect(db.onConflictDoUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         target: schema.series.slug,
@@ -252,8 +261,12 @@ describe("savePost database round trips", () => {
 describe("other post mutations", () => {
   it("deletes with RETURNING and invalidates the article without a preliminary body read", async () => {
     const db = database([])
+    db.batch.mockResolvedValue([[], [], [{ slug: payload.slug }]])
     expect(await deletePost(ID)).toEqual({ ok: true })
-    expect(db.select).not.toHaveBeenCalled()
+    expect(db.select).toHaveBeenCalledWith({
+      url: expect.anything(),
+      attemptedAt: expect.anything(),
+    })
     expect(db.delete).toHaveBeenCalledWith(schema.posts)
     expect(db.returning).toHaveBeenCalledWith({ slug: schema.posts.slug })
     expect(mocks.updateTag.mock.calls).toEqual([["posts"], ["post:new-title"]])
@@ -261,7 +274,7 @@ describe("other post mutations", () => {
 
   it("does not invalidate cache if a deleted post no longer exists", async () => {
     const db = database([])
-    db.returning.mockResolvedValue([])
+    db.batch.mockResolvedValue([[], [], []])
     expect(await deletePost(ID)).toMatchObject({ ok: false })
     expect(mocks.updateTag).not.toHaveBeenCalled()
   })
@@ -294,5 +307,69 @@ describe("other post mutations", () => {
     const db = database([])
     expect(await setPostStatus("invalid", "published")).toMatchObject({ ok: false })
     expect(db.select).not.toHaveBeenCalled()
+  })
+})
+
+describe("cover cleanup transactions", () => {
+  const coverUrl = "https://media.example.com/covers/550e8400-e29b-41d4-a716-446655440000.png"
+
+  it.each([undefined, "https://media.example.com/covers/550e8400-e29b-41d4-a716-446655440001.png"])(
+    "queues a removed or replaced saved cover in the atomic post batch: %s",
+    async (nextCover) => {
+      const db = database([[{ id: ID, slug: payload.slug, publishedAt: null, coverUrl }]])
+      expect(
+        await savePost({ ...payload, id: ID, coverUrl: nextCover, coverAlt: "Cover" })
+      ).toMatchObject({ ok: true })
+      expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
+      expect(db.insertSelect).toHaveBeenCalledOnce()
+      expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+      expect(mocks.drainCoverCleanup).toHaveBeenCalledWith(
+        expect.objectContaining({ batch: db.batch })
+      )
+      expect(mocks.drainCoverCleanup.mock.invocationCallOrder[0]).toBeGreaterThan(
+        db.batch.mock.invocationCallOrder[0]
+      )
+    }
+  )
+
+  it("checks the persisted cover even when the preliminary read matches the submitted URL", async () => {
+    const db = database([[{ id: ID, slug: payload.slug, publishedAt: null, coverUrl }]])
+    await savePost({ ...payload, id: ID, coverUrl, coverAlt: "Cover" })
+    expect(db.insertSelect).toHaveBeenCalledOnce()
+  })
+
+  it("returns a missing-post error without cleanup when a concurrent delete wins", async () => {
+    const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
+    db.batch.mockResolvedValue([[], [], []])
+    expect(await savePost({ ...payload, id: ID, tags: ["React"] })).toMatchObject({
+      ok: false,
+      message: "That post no longer exists.",
+    })
+    expect(mocks.updateTag).not.toHaveBeenCalled()
+    expect(mocks.drainCoverCleanup).not.toHaveBeenCalled()
+  })
+
+  it("does not delete storage when the database save fails", async () => {
+    const db = database([[{ id: ID, slug: payload.slug, publishedAt: null, coverUrl }]])
+    db.batch.mockRejectedValue(new Error("Database unavailable"))
+    await expect(savePost({ ...payload, id: ID })).rejects.toThrow("Database unavailable")
+    expect(mocks.drainCoverCleanup).not.toHaveBeenCalled()
+  })
+
+  it("queues the persisted cover and deletes its post in one batch", async () => {
+    const db = database([])
+    db.batch.mockResolvedValue([[], [], [{ slug: payload.slug }]])
+    await deletePost(ID)
+    expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
+    expect(db.insertSelect).toHaveBeenCalledOnce()
+    expect(db.batch.mock.calls[0][0]).toHaveLength(3)
+    expect(mocks.drainCoverCleanup).toHaveBeenCalledOnce()
+  })
+
+  it("does not attempt storage cleanup when the delete transaction fails", async () => {
+    const db = database([])
+    db.batch.mockRejectedValue(new Error("Database unavailable"))
+    await expect(deletePost(ID)).rejects.toThrow("Database unavailable")
+    expect(mocks.drainCoverCleanup).not.toHaveBeenCalled()
   })
 })

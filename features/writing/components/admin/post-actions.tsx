@@ -1,11 +1,10 @@
 import { Menu } from "@base-ui/react/menu"
-import { Check, Eye, EyeOff, Link2, Loader2, MoreHorizontal, Trash2 } from "lucide-react"
+import { Archive, ExternalLink, Eye, EyeOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   cloneElement,
   isValidElement,
-  useEffect,
   useRef,
   useState,
   useTransition,
@@ -27,27 +26,36 @@ import { controlClassNames } from "@/components/ui/variants"
 import { PostStatusDialog } from "./post-status-dialog"
 import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
 import { apiErrorMessage } from "@/lib/api-client"
-import type { AdminPost } from "@/features/writing/types"
+import type { AdminPost, PostStatus } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
-type Action = "copy" | "status" | "delete"
+type Action = "view" | "status" | "delete"
 const menuItemClass =
   "flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted data-disabled:opacity-50"
 
-/** Save stays primary; secondary actions share one accessible overflow menu. */
+/** Shared editor/list actions, ordered from viewing to status changes to deletion. */
 export function PostActions({
-  post,
+  post: savedPost,
   children,
   onDeleted,
   hasUnsavedChanges = false,
   saving = false,
+  context = "editor",
 }: {
-  post: AdminPost
+  post: Pick<AdminPost, "id" | "slug" | "title" | "status"> | null
   children?: ReactNode
   onDeleted?: () => void
   hasUnsavedChanges?: boolean
   saving?: boolean
+  context?: "editor" | "list"
 }) {
+  const post = savedPost ?? { id: "", slug: "", title: "Untitled post", status: "draft" as const }
+  const savedHint = !savedPost
+    ? "Save the post first"
+    : hasUnsavedChanges
+      ? "Save changes first"
+      : undefined
+  const actionLabel = context === "list" ? `Actions for ${post.title}` : "More post actions"
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pending, startTransition] = useTransition()
@@ -57,16 +65,15 @@ export function PostActions({
   const [menuOpen, setMenuOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [statusPublishing, setStatusPublishing] = useState(post.status !== "published")
+  const [targetStatus, setTargetStatus] = useState<PostStatus>(
+    post.status === "published" ? "draft" : "published"
+  )
   const [statusOpen, setStatusOpen] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const trigger = useRef<HTMLButtonElement>(null)
-  useEffect(() => () => clearTimeout(copyTimer.current), [])
   const published = post.status === "published"
   const busy = pending || saving
-  const requiresSaved = busy || hasUnsavedChanges
+  const requiresSaved = !savedPost || busy || hasUnsavedChanges
 
   const run = (
     kind: Action,
@@ -74,7 +81,7 @@ export function PostActions({
     then?: () => void,
     reportError = setError
   ) => {
-    if (running.current || saving) return
+    if (!savedPost || running.current || saving) return
     running.current = true
     setActiveAction(kind)
     reportError(null)
@@ -85,7 +92,7 @@ export function PostActions({
           reportError(result.message ?? "That did not work.")
           return
         }
-        if (kind !== "copy")
+        if (kind !== "view")
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
             queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
@@ -103,28 +110,34 @@ export function PostActions({
     })
   }
 
-  const copyLink = () =>
-    run("copy", async () => {
-      let url = new URL(`/writing/${post.slug}`, location.origin).toString()
-      if (!published) {
-        const result = await adminApi.createPreviewLink(post.id)
-        if (!result.ok || !result.url)
-          return { ok: false, message: result.message ?? "That link could not be created." }
-        url = new URL(result.url, location.origin).toString()
-      }
+  const openPost = () => {
+    if (running.current || requiresSaved) return
+    // Open during the click so async preview signing does not trigger popup blockers.
+    const tab = window.open("about:blank", "_blank")
+    if (!tab) {
+      setError("Could not open the post. Allow pop-ups for this site and try again.")
+      return
+    }
+    tab.opener = null
+    run("view", async () => {
+      let opened = false
       try {
-        await navigator.clipboard.writeText(url)
-      } catch {
-        return {
-          ok: false,
-          message: "Could not copy the link. Allow clipboard access and try again.",
+        let url = `/writing/${post.slug}`
+        if (!published) {
+          const result = await adminApi.createPreviewLink(post.id)
+          if (!result.ok || !result.url)
+            return { ok: false, message: result.message ?? "That preview could not be opened." }
+          url = result.url
         }
+        if (!tab.closed) tab.location.replace(new URL(url, location.origin).toString())
+        opened = true
+        setMenuOpen(false)
+        return { ok: true }
+      } finally {
+        if (!opened) tab.close()
       }
-      setCopied(true)
-      clearTimeout(copyTimer.current)
-      copyTimer.current = setTimeout(() => setCopied(false), 3000)
-      return { ok: true }
     })
+  }
   const saveControl = isValidElement<{ disabled?: boolean }>(children)
     ? cloneElement(children, { disabled: busy || children.props.disabled })
     : children
@@ -138,8 +151,8 @@ export function PostActions({
             ref={trigger}
             data-slot="button"
             disabled={busy}
-            aria-label="More post actions"
-            title="More post actions"
+            aria-label={actionLabel}
+            title={actionLabel}
             className={cn(
               controlClassNames,
               "h-11 w-11 shrink-0 justify-center bg-card p-0 disabled:opacity-60"
@@ -150,31 +163,36 @@ export function PostActions({
           <Menu.Portal>
             <Menu.Positioner align="end" sideOffset={8} className="z-[60]">
               <Menu.Popup className="min-w-48 max-w-[calc(100vw-2rem)] border-2 border-border bg-card p-1 text-card-foreground shadow-soft-lg outline-none">
+                {!savedPost && (
+                  <p className="max-w-64 px-3 py-2 text-xs text-muted-foreground">
+                    Save the post to enable these actions.
+                  </p>
+                )}
                 <Menu.Item
                   disabled={requiresSaved}
                   closeOnClick={false}
-                  onClick={copyLink}
+                  onClick={openPost}
                   className={menuItemClass}
-                  title={hasUnsavedChanges ? "Save changes first" : undefined}
+                  title={savedHint ?? "Opens in a new tab"}
                 >
-                  {activeAction === "copy" ? (
+                  {activeAction === "view" ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : copied ? (
-                    <Check className="h-4 w-4" aria-hidden />
+                  ) : published ? (
+                    <ExternalLink className="h-4 w-4" aria-hidden />
                   ) : (
-                    <Link2 className="h-4 w-4" aria-hidden />
+                    <Eye className="h-4 w-4" aria-hidden />
                   )}
-                  {activeAction === "copy" ? "Copying…" : copied ? "Copied" : "Copy link"}
+                  {activeAction === "view" ? "Opening…" : published ? "Visit" : "Preview"}
                 </Menu.Item>
                 <Menu.Item
                   disabled={requiresSaved}
                   onClick={() => {
-                    setStatusPublishing(!published)
+                    setTargetStatus(published ? "draft" : "published")
                     setStatusError(null)
                     setStatusOpen(true)
                   }}
                   className={menuItemClass}
-                  title={hasUnsavedChanges ? "Save changes first" : undefined}
+                  title={savedHint}
                 >
                   {published ? (
                     <EyeOff className="h-4 w-4" aria-hidden />
@@ -183,6 +201,21 @@ export function PostActions({
                   )}
                   {published ? "Unpublish" : "Publish"}
                 </Menu.Item>
+                {post.status !== "archived" && (
+                  <Menu.Item
+                    disabled={requiresSaved}
+                    onClick={() => {
+                      setTargetStatus("archived")
+                      setStatusError(null)
+                      setStatusOpen(true)
+                    }}
+                    className={menuItemClass}
+                    title={savedHint}
+                  >
+                    <Archive className="h-4 w-4" aria-hidden />
+                    Archive
+                  </Menu.Item>
+                )}
                 {error && (
                   <p
                     role="alert"
@@ -193,7 +226,8 @@ export function PostActions({
                 )}
                 <Menu.Separator className="my-1 h-0.5 bg-border" />
                 <Menu.Item
-                  disabled={busy}
+                  disabled={busy || !savedPost}
+                  title={savedPost ? undefined : savedHint}
                   onClick={() => {
                     setDeleteError(null)
                     setDeleteOpen(true)
@@ -213,13 +247,10 @@ export function PostActions({
           {error}
         </p>
       )}
-      <span role="status" className="sr-only">
-        {copied ? "Link copied" : ""}
-      </span>
       <PostStatusDialog
         open={statusOpen}
         onOpenChange={setStatusOpen}
-        publishing={statusPublishing}
+        targetStatus={targetStatus}
         title={post.title}
         pending={activeAction === "status"}
         error={statusError}
@@ -227,7 +258,7 @@ export function PostActions({
         onConfirm={() =>
           run(
             "status",
-            () => adminApi.setPostStatus(post.id, statusPublishing ? "published" : "draft"),
+            () => adminApi.setPostStatus(post.id, targetStatus),
             () => setStatusOpen(false),
             setStatusError
           )
@@ -262,7 +293,7 @@ export function PostActions({
                   () => {
                     setDeleteOpen(false)
                     onDeleted?.()
-                    navigate("/admin/posts", { replace: true })
+                    if (context === "editor") navigate("/admin/posts", { replace: true })
                   },
                   setDeleteError
                 )

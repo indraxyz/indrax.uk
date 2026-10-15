@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test"
 
 const id = "550e8400-e29b-41d4-a716-446655440000"
-async function editorFixture(page: Page) {
+async function editorFixture(page: Page, status = "draft") {
   let post = {
     id,
     slug: "actions-fixture",
     title: "Actions fixture",
-    status: "draft",
+    status,
     excerpt: null,
     coverUrl: null,
     coverAlt: null,
@@ -66,33 +66,96 @@ async function more(page: Page) {
   await page.getByRole("button", { name: "More post actions", exact: true }).click()
 }
 
-test("keeps Copy link loading on its own icon, reports clipboard failure and shows no preview URL", async ({
-  page,
-}) => {
-  await editorFixture(page)
-  await page.evaluate(() =>
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: async () => {
-          throw new Error("Denied")
-        },
-      },
+for (const status of ["draft", "archived", "published"]) {
+  test(`opens ${status === "published" ? "Visit" : "Preview"} in a separate tab for ${status} posts`, async ({
+    page,
+  }) => {
+    await editorFixture(page, status)
+    const previewCalls: string[] = []
+    await page.route("**/preview", (route) => {
+      previewCalls.push(route.request().url())
+      return route.fulfill({
+        json: { ok: true, url: "/writing/actions-fixture/preview?token=test" },
+      })
     })
-  )
+    await page
+      .context()
+      .route(/\/writing\/actions-fixture(?:\/preview\?.*)?$/, (route) =>
+        route.fulfill({ contentType: "text/html", body: "<h1>Post destination</h1>" })
+      )
+    await more(page)
+    await expect(page.getByRole("menuitem")).toHaveText([
+      status === "published" ? "Visit" : "Preview",
+      status === "published" ? "Unpublish" : "Publish",
+      ...(status === "archived" ? [] : ["Archive"]),
+      "Delete",
+    ])
+    await expect(page.getByRole("menu").getByRole("separator")).toHaveCount(1)
+    await expect(page.getByRole("menuitem", { name: "Copy link", exact: true })).toHaveCount(0)
+    const opened = page.waitForEvent("popup")
+    await page
+      .getByRole("menuitem", { name: status === "published" ? "Visit" : "Preview", exact: true })
+      .click()
+    const tab = await opened
+    await expect(tab).toHaveURL(
+      status === "published"
+        ? /\/writing\/actions-fixture$/
+        : /\/writing\/actions-fixture\/preview\?token=test$/
+    )
+    await expect(tab.getByRole("heading")).toHaveText("Post destination")
+    expect(await tab.evaluate(() => window.opener)).toBeNull()
+    await expect(page).toHaveURL(new RegExp(`/admin/edit/${id}$`))
+    expect(previewCalls).toHaveLength(status === "published" ? 0 : 1)
+    await tab.close()
+  })
+}
+
+test("new posts enable their action menu after their first successful save", async ({ page }) => {
+  await editorFixture(page)
+  await page.goto("/admin/new")
+  await more(page)
+  await expect(page.getByRole("menuitem")).toHaveText(["Preview", "Publish", "Archive", "Delete"])
+  for (const item of await page.getByRole("menuitem").all()) await expect(item).toBeDisabled()
+  await expect(page.getByRole("menu")).toContainText("Save the post to enable these actions.")
+  await page.keyboard.press("Escape")
+  await page.getByLabel("Title", { exact: true }).fill("New actions fixture")
+  await page.locator(".tiptap").fill("A new draft body")
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/admin/edit/${id}$`))
+  await more(page)
+  await expect(page.getByRole("menuitem", { name: "Preview", exact: true })).toBeEnabled()
+})
+
+test("shows preview loading, closes a failed tab and allows retry", async ({ page }) => {
+  await editorFixture(page)
   let release!: () => void
   const held = new Promise<void>((resolve) => {
     release = resolve
   })
+  let attempts = 0
   await page.route("**/preview", async (route) => {
-    await held
-    await route.fulfill({ json: { ok: true, url: "/writing/actions-fixture/preview?token=test" } })
+    attempts++
+    if (attempts === 1) {
+      await held
+      await route.fulfill({ json: { ok: false, message: "Temporary preview failure." } })
+    } else {
+      await route.fulfill({
+        json: { ok: true, url: "/writing/actions-fixture/preview?token=retry" },
+      })
+    }
   })
+  await page
+    .context()
+    .route("**/writing/actions-fixture/preview?token=retry", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<h1>Preview retry</h1>" })
+    )
   await more(page)
-  await page.getByRole("menuitem", { name: "Copy link", exact: true }).click()
+  const opened = page.waitForEvent("popup")
+  await page.getByRole("menuitem", { name: "Preview", exact: true }).click()
+  const tab = await opened
   try {
     await expect(
-      page.getByRole("menuitem", { name: "Copying…", exact: true }).locator("svg")
+      page.getByRole("menuitem", { name: "Opening…", exact: true }).locator("svg")
     ).toHaveClass(/animate-spin/)
     await expect(
       page.getByRole("menuitem", { name: "Publish", exact: true }).locator("svg")
@@ -100,17 +163,25 @@ test("keeps Copy link loading on its own icon, reports clipboard failure and sho
   } finally {
     release()
   }
-  await expect(page.getByRole("alert")).toContainText("Allow clipboard access")
-  await expect(page.getByLabel("Preview link", { exact: true })).toHaveCount(0)
-  await page.evaluate(() =>
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: async () => {} },
-    })
-  )
-  await page.getByRole("menuitem", { name: "Copy link", exact: true }).click()
-  await expect(page.getByRole("menuitem", { name: "Copied", exact: true })).toBeVisible()
+  await expect.poll(() => tab.isClosed()).toBe(true)
+  await expect(page.getByRole("alert")).toContainText("Temporary preview failure")
+  const retry = page.waitForEvent("popup")
+  await page.getByRole("menuitem", { name: "Preview", exact: true }).click()
+  const retriedTab = await retry
+  await expect(retriedTab).toHaveURL(/token=retry$/)
   await expect(page.getByRole("alert")).toHaveCount(0)
+  await retriedTab.close()
+})
+
+test("reports a blocked popup before requesting a preview", async ({ page }) => {
+  const { writes } = await editorFixture(page)
+  await page.evaluate(() => {
+    window.open = () => null
+  })
+  await more(page)
+  await page.getByRole("menuitem", { name: "Preview", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Allow pop-ups for this site")
+  expect(writes).toHaveLength(0)
 })
 
 test("confirms publish/unpublish and keeps a failed request open for retry", async ({ page }) => {
@@ -144,6 +215,35 @@ test("confirms publish/unpublish and keeps a failed request open for retry", asy
   expect(writes.at(-1)?.data.status).toBe("draft")
 })
 
+test("archives a saved post with confirmation and retry, then offers Publish again", async ({
+  page,
+}) => {
+  const { writes } = await editorFixture(page)
+  let attempts = 0
+  await page.route("**/status", async (route) => {
+    if (++attempts === 1)
+      await route.fulfill({ json: { ok: false, message: "Temporary archive failure." } })
+    else await route.fallback()
+  })
+  await more(page)
+  await page.getByRole("menuitem", { name: "Archive", exact: true }).click()
+  const dialog = page.getByRole("alertdialog", { name: "Archive post?", exact: true })
+  await expect(dialog).toContainText("You can publish it again later.")
+  expect(writes).toHaveLength(0)
+  await dialog.getByRole("button", { name: "Archive post", exact: true }).click()
+  await expect(dialog.getByRole("alert")).toContainText("Temporary archive failure.")
+  await dialog.getByRole("button", { name: "Archive post", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes.at(-1)?.data.status).toBe("archived")
+  await more(page)
+  await expect(page.getByRole("menuitem")).toHaveText(["Preview", "Publish", "Delete"])
+  await page.getByRole("menuitem", { name: "Publish", exact: true }).click()
+  const publish = page.getByRole("alertdialog", { name: "Publish post?", exact: true })
+  await publish.getByRole("button", { name: "Publish post", exact: true }).click()
+  await expect(publish).toHaveCount(0)
+  expect(writes.at(-1)?.data.status).toBe("published")
+})
+
 test("confirms publication when saving form status and disables stale secondary actions", async ({
   page,
 }) => {
@@ -151,7 +251,7 @@ test("confirms publication when saving form status and disables stale secondary 
   await page.getByLabel("Status", { exact: true }).selectOption("published")
   await more(page)
   await expect(page.getByRole("menuitem", { name: "Publish", exact: true })).toBeDisabled()
-  await expect(page.getByRole("menuitem", { name: "Copy link", exact: true })).toBeDisabled()
+  await expect(page.getByRole("menuitem", { name: "Preview", exact: true })).toBeDisabled()
   await page.keyboard.press("Escape")
   await page.getByRole("button", { name: "Save", exact: true }).click()
   const dialog = page.getByRole("alertdialog", { name: "Publish post?", exact: true })

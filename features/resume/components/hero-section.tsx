@@ -14,8 +14,6 @@ export function HeroSection({
   fullWidth?: boolean
   showSkills?: boolean
 }) {
-  const firstName = personalInfo.name.trim().split(/\s+/)[0]
-
   return (
     <Card
       variant={fullWidth ? "ghost" : "card"}
@@ -26,7 +24,7 @@ export function HeroSection({
     >
       <CardContent
         className={cn(
-          "relative p-8 print:p-4 lg:p-12",
+          "relative p-4 sm:p-8 print:p-4 lg:p-12",
           fullWidth && `${SITE_CONTAINER_CLASS} !px-4 py-8 lg:py-12`
         )}
       >
@@ -53,26 +51,21 @@ export function HeroSection({
             />
           </div>
 
-          <div className="space-y-6 text-center print:space-y-3 sm:text-left">
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-2 print:space-y-1 sm:flex-1">
-                <h1 className="text-4xl font-black uppercase tracking-tight text-foreground print:text-3xl md:text-5xl">
-                  {firstName}
-                </h1>
-                <p className="text-sm font-black uppercase tracking-[0.18em] text-[var(--variant-border)] print:text-xs md:text-base">
-                  {personalInfo.title}
-                </p>
-              </div>
-              <div className="flex items-center justify-center gap-2 print:hidden">
-                <PersonalInfoSheet />
-                <DownloadResumeButton />
-              </div>
-            </div>
+          <div className="min-w-0 flex-1 space-y-6 text-center print:space-y-3 sm:text-left">
+            <h1 className="text-[clamp(1.5rem,calc(1rem+2.5vw),2.5rem)] font-black uppercase leading-tight tracking-tight text-foreground print:text-3xl">
+              Software Engineer
+            </h1>
             {showSkills && <HighlightSkills skills={personalInfo.highlightSkills ?? []} />}
             <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground print:text-sm print:leading-snug sm:mx-0 md:text-lg">
               {bio}
             </p>
-            <ContactLinks />
+            <div className="flex items-center justify-between gap-4 print:hidden">
+              <ContactLinks />
+              <div className="flex shrink-0 items-center gap-2">
+                <PersonalInfoSheet />
+                <DownloadResumeButton />
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

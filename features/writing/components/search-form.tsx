@@ -1,13 +1,12 @@
-import { useRef, useState } from "react"
-import { Form, useNavigate } from "react-router"
+import { useEffect, useRef, useState } from "react"
+import { Form, useNavigate, useNavigation } from "react-router"
 import { Search, X } from "lucide-react"
 
-import { controlClassNames } from "@/components/ui/variants"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 import { archiveSearchParams, type ArchiveOptions } from "@/features/writing/utils/archive-options"
 
-/** A GET navigation keeps searches shareable and avoids requests on every keypress. */
+/** Debounced GET navigation keeps searches shareable; Enter submits immediately. */
 export function SearchForm({
   query,
   options,
@@ -22,10 +21,14 @@ export function SearchForm({
   params?: URLSearchParams
 }) {
   const navigate = useNavigate()
+  const navigation = useNavigation()
   const input = useRef<HTMLInputElement>(null)
-  const [draft, setDraft] = useState({ query, value: query })
-  // Reset draft text when navigation changes the applied query, keeping the input mounted.
-  if (draft.query !== query) setDraft({ query, value: query })
+  const [composing, setComposing] = useState(false)
+  const [draft, setDraft] = useState({ query, value: query, submitted: null as string | null })
+  // A completed search acknowledges its submitted text, preserving any later
+  // keystrokes. Other navigations (including Back) restore the committed query.
+  if (draft.query !== query)
+    setDraft({ query, value: draft.submitted === query ? draft.value : query, submitted: null })
   const preserved = params
     ? new URLSearchParams(params)
     : options
@@ -33,11 +36,24 @@ export function SearchForm({
       : new URLSearchParams()
   preserved.delete("q")
   preserved.delete("page")
+  const preservedQuery = preserved.toString()
+  useEffect(() => {
+    if (composing || draft.query !== query || draft.value.trim() === query) return
+    const timer = window.setTimeout(() => {
+      setDraft((current) => ({ ...current, submitted: draft.value.trim() }))
+      const search = new URLSearchParams(preservedQuery)
+      if (draft.value.trim()) search.set("q", draft.value.trim())
+      const suffix = search.toString()
+      void navigate(suffix ? `${action}?${suffix}` : action, { replace: true })
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [action, composing, draft.query, draft.value, navigate, preservedQuery, query])
   return (
     <Form
       action={action}
       method="get"
       role="search"
+      onSubmit={() => setDraft((current) => ({ ...current, submitted: current.value.trim() }))}
       className="flex min-w-0 flex-1 items-stretch gap-3"
     >
       {Array.from(preserved).map(([name, value]) => (
@@ -52,10 +68,13 @@ export function SearchForm({
           ref={input}
           type="search"
           name="q"
+          enterKeyHint="search"
+          onCompositionStart={() => setComposing(true)}
+          onCompositionEnd={() => setComposing(false)}
           // Echoed back so the box still holds what was searched for after the
           // navigation, which is what makes refining a search possible.
           value={draft.query === query ? draft.value : query}
-          onChange={(event) => setDraft({ query, value: event.target.value })}
+          onChange={(event) => setDraft((current) => ({ ...current, value: event.target.value }))}
           // The server refuses anything longer anyway; saying so here turns a
           // silently empty result into a limit the browser enforces.
           maxLength={WRITING_CONFIG.maxQueryLength}
@@ -73,9 +92,9 @@ export function SearchForm({
             aria-label="Clear search"
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             onClick={() => {
-              setDraft({ query, value: "" })
+              setDraft({ query, value: "", submitted: query ? "" : null })
               input.current?.focus()
-              if (query) {
+              if (query || navigation.state !== "idle") {
                 const search = preserved.toString()
                 void navigate(search ? `${action}?${search}` : action)
               }
@@ -85,15 +104,6 @@ export function SearchForm({
           </button>
         )}
       </div>
-
-      <button
-        type="submit"
-        aria-label="Search"
-        className={cn(controlClassNames, "min-h-11 shrink-0 justify-center px-3 py-2 sm:px-4")}
-      >
-        <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
-        <span className="hidden sm:inline">Search</span>
-      </button>
     </Form>
   )
 }

@@ -149,6 +149,9 @@ jobs:
       - name: Run the suite
         run: npx playwright test
 
+      - name: Verify development document hydration
+        run: E2E_PORT=3352 npx playwright test --config playwright.hydration.config.ts
+
       - name: Verify isolated local cover uploads
         run: E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
 

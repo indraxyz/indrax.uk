@@ -217,12 +217,16 @@ including requests without Content-Length. The document limit and structural
 checks apply independently; client checks never replace server checks. Search,
 page numbers and limits are bounded before reaching SQL or persistent cache keys.
 
-Save is the primary control in a Base UI/shadcn button group. Copy link,
+Save is the primary control in a Base UI/shadcn button group. Preview (draft/archived) or
+Visit (published),
 publish/unpublish and delete are in an accessible overflow menu. Publication and
-copy require saved fields, preventing actions on stale post content; deletion
+viewing require saved fields, preventing actions on stale post content; deletion
 remains available for dirty forms. Active actions and saves disable competing
-controls. Copy feedback stays on the copy item; clipboard refusal is reported
-without exposing a preview-URL field. New and edit forms share the same status
+controls. Preview signs the saved post and opens it in a separate tab; Visit opens
+the public article. A blank tab is opened during the click before preview signing
+to avoid popup blockers, detached from the editor with `opener = null`, and closed
+if signing fails. Loading feedback stays on the active item, with retryable errors
+for blocked popups or failed signing. New posts show the menu with disabled actions until their first successful Save. New and edit forms share the same status
 confirmation component. Cover changes have an explicit save-time notice.
 The cover preview, image URL/upload picker and alt text are grouped in one
 bordered fieldset using the shared shadcn field components on both new and edit
@@ -324,3 +328,18 @@ The session query passes its abort signal to the transport. Sign-out and
 authorization failures still clear admin queries and mutations, and every
 server API independently verifies author access. Session data remains in memory
 only; HTTP responses continue to use `no-store`.
+
+### Post list actions
+
+The editor and post list share the same action order. Each admin post card keeps
+Edit directly accessible, followed by an overflow menu
+ordered by task: Visit (published) or Preview (draft/archived), Publish/Unpublish,
+Archive, then a divider and Delete. Archived rows omit Archive. The same shared
+post action component handles signing previews, publication and deletion; list
+rows pass summary fields and never download the article body just to show actions.
+
+Status changes and deletion require confirmation, retain retryable errors and
+refresh the active archive after success. List actions preserve the current URL,
+filters and pagination instead of redirecting to an unfiltered list. Archive
+preserves the post and cover; Delete uses the existing managed R2 cleanup flow.
+Row controls use 44px targets and a post-specific accessible menu name.

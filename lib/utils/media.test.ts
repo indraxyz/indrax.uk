@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { isAllowedMediaUrl } from "./media"
+import { isAllowedMediaUrl, mediaUrl } from "./media"
 
 /**
  * The only gate on cover images (threat T-6).
@@ -10,9 +10,43 @@ import { isAllowedMediaUrl } from "./media"
  * assert and each one is a real bypass somebody has shipped.
  */
 const ORIGIN = "https://media.example.com"
+const COVER_PATH = "/local-media/covers/51dad294-2e29-40c4-9c1f-2df003c48e57.png"
 
 afterEach(() => {
   vi.unstubAllEnvs()
+})
+
+describe("mediaUrl", () => {
+  it("renders stored local covers on the current development server after its port changes", () => {
+    vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5174/local-media")
+    expect(mediaUrl(`http://localhost:5173${COVER_PATH}`)).toBe(
+      `http://localhost:5174${COVER_PATH}`
+    )
+    expect(mediaUrl(`http://127.0.0.1:5173${COVER_PATH}`)).toBe(
+      `http://localhost:5174${COVER_PATH}`
+    )
+    // Validation still requires the configured origin for newly submitted values.
+    expect(isAllowedMediaUrl(`http://localhost:5173${COVER_PATH}`)).toBe(false)
+  })
+
+  it("does not normalize arbitrary paths, remote origins, or local covers in production", () => {
+    vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5174/local-media")
+    for (const value of [
+      "http://localhost:5173/private/file.png",
+      `http://localhost.evil.test:5173${COVER_PATH}`,
+      `http://localhost:5173${COVER_PATH}?redirect=evil`,
+      COVER_PATH,
+    ])
+      expect(mediaUrl(value)).toBeNull()
+    vi.stubEnv("DEV", false)
+    expect(mediaUrl(`http://localhost:5173${COVER_PATH}`)).toBeNull()
+  })
+
+  it("preserves trusted production URLs and rejects local URLs with production configuration", () => {
+    vi.stubEnv("MEDIA_ORIGIN", ORIGIN)
+    expect(mediaUrl(`${ORIGIN}/covers/a.png`)).toBe(`${ORIGIN}/covers/a.png`)
+    expect(mediaUrl(`http://localhost:5173${COVER_PATH}`)).toBeNull()
+  })
 })
 
 describe("isAllowedMediaUrl", () => {

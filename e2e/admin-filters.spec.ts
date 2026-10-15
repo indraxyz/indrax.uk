@@ -165,7 +165,7 @@ test.describe("admin post discovery", () => {
     expect(params(page).get("status")).toBe("draft")
     expect(params(page).getAll("tag")).toEqual(["private", "typescript"])
     await page.getByRole("searchbox", { name: "Search posts", exact: true }).fill("database")
-    await page.getByRole("button", { name: "Search", exact: true }).click()
+    await page.getByRole("searchbox").press("Enter")
     await expect(page).toHaveURL(/q=database/)
     expect(params(page).get("page")).toBeNull()
     expect(params(page).get("status")).toBe("draft")
@@ -175,15 +175,51 @@ test.describe("admin post discovery", () => {
     ).toBeVisible()
   })
 
+  test("automatically searches private posts while keeping status and tags", async ({ page }) => {
+    await page.goto("/admin/posts?status=draft&tag=private&page=2")
+    const input = page.getByRole("searchbox", { name: "Search posts" })
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0)
+    await input.fill("database")
+    await expect(page).toHaveURL(/q=database/)
+    expect(params(page).get("status")).toBe("draft")
+    expect(params(page).get("tag")).toBe("private")
+    expect(params(page).get("page")).toBeNull()
+    await expect(input).toBeFocused()
+  })
+
+  test("retains newer private search text when an earlier request completes", async ({ page }) => {
+    let release: () => void = () => {}
+    await page.route("**/api/admin/posts/archive*", async (route) => {
+      if (new URL(route.request().url()).searchParams.get("q") === "re")
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+      await route.fallback()
+    })
+    await page.goto("/admin/posts?status=draft&tag=private")
+    const input = page.getByRole("searchbox", { name: "Search posts" })
+    const first = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === "/api/admin/posts/archive" &&
+        new URL(request.url()).searchParams.get("q") === "re"
+    )
+    await input.fill("re")
+    await first
+    await input.fill("react")
+    release()
+    await expect(page).toHaveURL(/q=re(?:&|$)/)
+    await expect(input).toHaveValue("react")
+    await expect(page).toHaveURL(/q=react(?:&|$)/)
+    expect(params(page).get("status")).toBe("draft")
+    expect(params(page).get("tag")).toBe("private")
+  })
+
   test("uses pointer cursors for admin actions and preserves disabled states", async ({ page }) => {
     await page.goto("/admin/posts")
     await expect(
       page.getByRole("link", { name: "Admin archive fixture 1", exact: true })
     ).toHaveCSS("cursor", "pointer")
-    await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCSS(
-      "cursor",
-      "pointer"
-    )
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0)
     const dialog = await filters(page)
     await expect(dialog.getByLabel("Status", { exact: true })).toHaveCSS("cursor", "pointer")
     const tag = dialog.getByRole("button", { name: "Private notes (2)", exact: true })
@@ -255,7 +291,7 @@ test.describe("admin post discovery", () => {
     await expect(relevance).toHaveAttribute("disabled", "")
     await page.keyboard.press("Escape")
     await page.getByRole("searchbox", { name: "Search posts", exact: true }).fill("renderer")
-    await page.getByRole("button", { name: "Search", exact: true }).click()
+    await page.getByRole("searchbox").press("Enter")
     await expect(page).toHaveURL(/q=renderer/)
     const searched = await filters(page)
     await expect(
