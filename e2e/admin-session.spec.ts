@@ -294,7 +294,13 @@ test.describe("sessions", () => {
     const { context } = await contextWith(browser, { createdAtMsAgo: thirtyOneDays })
     const page = await context.newPage()
 
+    const sessionResponse = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/admin/session"
+    )
     await page.goto("/admin")
+    const response = await sessionResponse
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toMatchObject({ author: null })
     await expect(page).toHaveURL(/\/admin\/login/)
 
     await context.close()

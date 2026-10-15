@@ -1,5 +1,6 @@
-import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, ne, notInArray, sql } from "drizzle-orm"
 import { invalidateTags } from "@/lib/cache.server"
+import { drainCoverCleanup } from "@/lib/cover-cleanup.server"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { CACHE_TAGS } from "@/features/writing/data/queries.server"
@@ -254,9 +255,8 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
   let saved: { id: string; slug: string }
 
   try {
-    // The post UPDATE locks this row before synchronizing joins. Always perform
-    // the tag synchronization inside the same transaction: comparing a prior
-    // read could otherwise miss a concurrent save that changed its tags.
+    // Synchronize tags in the post transaction: comparing a prior read could
+    // otherwise miss a concurrent save that changed its tags.
     // Existing desired joins survive; only undesired joins are deleted, and
     // ON CONFLICT leaves both original tag names and existing joins untouched.
     const removeJoins = db.delete(schema.postTags).where(
@@ -273,7 +273,37 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
           )
         : eq(schema.postTags.postId, postId)
     )
-    const [written] = await db.batch([
+    // Lock before capturing the detached cover. A prior read can be stale when
+    // another save replaces the image, or a deletion commits while we validate.
+    const lockAndQueue = current
+      ? ([
+          db
+            .select({ lockedPostId: schema.posts.id })
+            .from(schema.posts)
+            .where(eq(schema.posts.id, postId))
+            .for("update"),
+          db
+            .insert(schema.coverCleanup)
+            .select(
+              db
+                .select({
+                  url: sql<string>`${schema.posts.coverUrl}`.as("url"),
+                  attemptedAt: sql<Date>`now()`.as("attempted_at"),
+                })
+                .from(schema.posts)
+                .where(
+                  and(
+                    eq(schema.posts.id, postId),
+                    isNotNull(schema.posts.coverUrl),
+                    sql`${schema.posts.coverUrl} is distinct from ${row.coverUrl}`
+                  )
+                )
+            )
+            .onConflictDoNothing(),
+        ] as const)
+      : ([] as const)
+    const results = await db.batch([
+      ...lockAndQueue,
       writePost,
       ...(wanted.size > 0
         ? [
@@ -291,16 +321,19 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
               .select(
                 db
                   .select({
-                    postId: sql<string>`${postId}::uuid`.as("post_id"),
+                    postId: schema.posts.id,
                     tagId: schema.tags.id,
                   })
                   .from(schema.tags)
+                  .innerJoin(schema.posts, eq(schema.posts.id, postId))
                   .where(inArray(schema.tags.slug, [...wanted.keys()]))
               )
               .onConflictDoNothing(),
           ]
         : []),
     ])
+    const written = results[lockAndQueue.length] as { id: string; slug: string }[]
+    if (!written[0]) return failure("That post no longer exists.")
     saved = written[0]
   } catch (error) {
     // Individual Drizzle writes wrap the driver error; Neon batches expose it
@@ -313,6 +346,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
   }
 
   await revalidatePost(saved.slug, current?.slug)
+  await drainCoverCleanup(db)
 
   return { ok: true, postId: saved.id }
 }
@@ -362,6 +396,7 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
     .where(eq(schema.posts.id, id))
 
   await revalidatePost(current.slug)
+  await drainCoverCleanup(db)
 
   return { ok: true, postId: id }
 }
@@ -378,13 +413,31 @@ export async function deletePost(id: string): Promise<ActionResult> {
 
   // RETURNING also detects a missing post. Cascading joins and the post delete
   // happen in one statement, without first downloading its article body.
-  const [current] = await db
-    .delete(schema.posts)
-    .where(eq(schema.posts.id, id))
-    .returning({ slug: schema.posts.slug })
+  const [, , deleted] = await db.batch([
+    db
+      .select({ lockedPostId: schema.posts.id })
+      .from(schema.posts)
+      .where(eq(schema.posts.id, id))
+      .for("update"),
+    db
+      .insert(schema.coverCleanup)
+      .select(
+        db
+          .select({
+            url: sql<string>`${schema.posts.coverUrl}`.as("url"),
+            attemptedAt: sql<Date>`now()`.as("attempted_at"),
+          })
+          .from(schema.posts)
+          .where(and(eq(schema.posts.id, id), isNotNull(schema.posts.coverUrl)))
+      )
+      .onConflictDoNothing(),
+    db.delete(schema.posts).where(eq(schema.posts.id, id)).returning({ slug: schema.posts.slug }),
+  ])
+  const [current] = deleted
   if (!current) return failure("That post no longer exists.")
 
   await revalidatePost(current.slug)
+  await drainCoverCleanup(db)
 
   return { ok: true }
 }

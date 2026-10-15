@@ -182,6 +182,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   expect(writes).toHaveLength(2)
   const beforeSave = await author.request.get(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`)
   expect((await beforeSave.json()).coverUrl).toBe(publicUrl)
+  expect((await request.get(publicUrl)).status()).toBe(200)
   const removed = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/admin/posts" &&
@@ -192,11 +193,14 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   const afterSave = await author.request.get(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`)
   expect((await afterSave.json()).coverUrl).toBeNull()
   expect(writes).toEqual(["/api/upload", "/api/admin/posts", "/api/admin/posts"])
-  expect((await request.get(publicUrl)).status()).toBe(200)
+  expect((await request.get(publicUrl)).status()).toBe(404)
+  covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
 })
 
-test("retains a selected cover after upload failure and reuses its upload after a save failure", async () => {
+test("retains a selected cover after failures and deletes its stored image with the post", async ({
+  request,
+}) => {
   test.setTimeout(60_000)
   const page = await author.newPage()
   await page.goto(`${E2E_BASE_URL}/admin/new`)
@@ -249,6 +253,15 @@ test("retains a selected cover after upload failure and reuses its upload after 
   posts.push(outcome.postId)
   expect(uploads).toBe(2)
   expect(saves).toBe(2)
+  expect((await request.get(publicUrl)).status()).toBe(200)
+  const deleted = await author.request.delete(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`, {
+    data: {},
+    headers: { Origin: E2E_BASE_URL },
+  })
+  expect((await deleted.json()).ok).toBe(true)
+  expect((await request.get(publicUrl)).status()).toBe(404)
+  posts.splice(posts.indexOf(outcome.postId), 1)
+  covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
 })
 

@@ -587,22 +587,19 @@ test.describe("authoring", () => {
     const page = await context.newPage()
 
     await page.goto(postPath)
-    await page.evaluate(() =>
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: { writeText: async () => {} },
-      })
-    )
     const previewResponse = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith("/preview") &&
         response.request().method() === "POST"
     )
+    const opened = page.waitForEvent("popup")
     await page.getByRole("button", { name: "More post actions", exact: true }).click()
-    await page.getByRole("menuitem", { name: "Copy link", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Preview", exact: true }).click()
     const { url } = await (await previewResponse).json()
     const previewUrl = new URL(url, E2E_BASE_URL).toString()
-    await expect(page.getByRole("menuitem", { name: "Copied", exact: true })).toBeVisible()
+    const previewTab = await opened
+    await expect(previewTab).toHaveURL(previewUrl)
+    await previewTab.close()
     await expect(page.getByLabel("Preview link", { exact: true })).toHaveCount(0)
 
     // A fresh context: the link has to work for whoever it is sent to, and that

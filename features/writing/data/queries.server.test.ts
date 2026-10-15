@@ -86,6 +86,27 @@ describe("public database round trips", () => {
     expect(db.query.mock.calls[1][1]).toContain(WRITING_CONFIG.pageSize)
   })
 
+  it.each(["", "q=database"])(
+    "uses nine cards and matching page boundaries for archive %s",
+    async (query) => {
+      const db = database([[[19]], Array.from({ length: 9 }, () => summaryRow)])
+      const results = await getArchivePosts(
+        parseArchiveOptions(new URLSearchParams(`${query}&page=2`))
+      )
+      expect(results).toMatchObject({ page: 2, pageCount: 3, total: 19 })
+      expect(results.posts).toHaveLength(9)
+      const parameters = db.query.mock.calls[1][1] as unknown[]
+      // Both LIMIT and the second page OFFSET must be nine.
+      expect(parameters.slice(-2)).toEqual([9, 9])
+    }
+  )
+
+  it("separates archive caches from older page sizes", async () => {
+    database([[[0]], []])
+    await getArchivePosts()
+    expect(JSON.parse(mocks.cache.mock.calls[0][0])[1]).toBe("ArchivePosts:9")
+  })
+
   it("corrects a stale out-of-range page to the last real page", async () => {
     const db = database([[[WRITING_CONFIG.pageSize + 1]], [], [summaryRow]])
     expect(await getPublishedPosts(9)).toMatchObject({

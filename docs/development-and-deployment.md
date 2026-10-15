@@ -28,7 +28,7 @@ GitHub Actions runs these jobs on PRs and pushes to `develop`/`main`:
 | Job     | Required coverage                                                                                                                        |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `check` | Formatting, lint, generated binding/route types, TypeScript, unit tests, production and develop builds with deployment-target validation |
-| `e2e`   | Disposable migrated/seeded SQL integration, Chromium browser/HTTP tests and separate isolated local R2 upload coverage                   |
+| `e2e`   | Disposable migrated/seeded SQL integration, Chromium browser/HTTP tests, development hydration and isolated local R2 upload coverage     |
 
 Audit reports findings without blocking the job. Quality jobs cancel superseded
 runs. Test output, skips and retries determine what was verified; a green local
@@ -66,6 +66,11 @@ deploying. Existing counters are preserved. Its token needs D1 write permission
 alongside Worker/route and KV permissions. Newly provisioned D1 databases also
 need the `revalidations` table as a reviewed operator step; see
 [D1/KV preparation](d1-kv-cache.md#preparing-remote-d1).
+
+Apply pending PostgreSQL migrations to the matching environment before its Worker
+deployment, including before a develop merge that triggers Preview deployment.
+Cover removal/deletion requires `0006_cover_cleanup`. CI fixture migration prepares
+only the disposable test database; it does not migrate deployed Neon branches.
 
 `npm run deploy:dev` builds with `CLOUDFLARE_ENV=dev`; `npm run deploy` expects
 production, with `CLOUDFLARE_ENV` unset. The target guard rejects a mismatched build.

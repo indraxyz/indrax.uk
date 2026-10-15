@@ -1,4 +1,4 @@
-import { IMAGE_FORMATS, type ImageMediaType } from "./file-signature"
+import { IMAGE_FORMATS, type ImageMediaType } from "./file-signature.ts"
 
 /**
  * What one kind of upload may contain and where it lands.
@@ -41,4 +41,12 @@ export function describeTypes(policy: UploadPolicy): string {
   return labels.length > 1
     ? `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`
     : labels.join("")
+}
+
+const COVER_KEY =
+  /^covers\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif)$/
+
+/** One generated-key contract for local media serving and managed R2 cleanup. */
+export function isGeneratedCoverKey(value: string): boolean {
+  return COVER_KEY.test(value) && !/[\r\n]/.test(value)
 }

@@ -1,5 +1,6 @@
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -23,7 +24,11 @@ const post: AdminPostSummary = {
 
 const render = (changes: Partial<AdminPostSummary> = {}) =>
   renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(PostRow, { post: { ...post, ...changes } }))
+    createElement(
+      QueryClientProvider,
+      { client: new QueryClient() },
+      createElement(MemoryRouter, null, createElement(PostRow, { post: { ...post, ...changes } }))
+    )
   )
 
 beforeEach(() => vi.stubEnv("MEDIA_ORIGIN", "https://media.indrax.uk"))
@@ -55,8 +60,7 @@ describe("PostRow", () => {
     expect(html).toContain("TypeScript")
     expect(html).toContain('href="/admin/edit/post-id"')
     expect(html).toContain('aria-label="Edit Sample post"')
-    expect(html).toContain('href="/writing/sample"')
-    expect(html).toContain('rel="noopener noreferrer"')
+    expect(html).toContain('aria-label="Actions for Sample post"')
   })
 
   it("uses the stored word-boundary excerpt and limits its visible lines", () => {

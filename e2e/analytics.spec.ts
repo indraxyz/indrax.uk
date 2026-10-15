@@ -323,7 +323,7 @@ test.describe("analytics", () => {
     await page.route("**/api/analytics/**", (route) => route.abort())
     await page.goto("/")
 
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
 
     await whenHydrated(page)
     const download = await Promise.all([

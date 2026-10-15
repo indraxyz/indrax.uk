@@ -43,6 +43,13 @@
       "when": 1789129159848,
       "tag": "0005_drop_markdown_content",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792051741393,
+      "tag": "0006_cover_cleanup",
+      "breakpoints": true
     }
   ]
 }

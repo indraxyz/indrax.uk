@@ -576,9 +576,12 @@ function publicRead<A extends unknown[], T>(name: string, read: (...args: A) => 
     cachedRead(JSON.stringify(["writing", name, ...args]), [CACHE_TAGS.posts], () => read(...args))
 }
 
-const cachedArchivePosts = publicRead("ArchivePosts", readArchivePosts)
-const cachedPublishedPosts = publicRead("PublishedPosts", readPublishedPosts)
-const cachedPostsByTag = publicRead("PostsByTag", readPostsByTag)
+const cachedArchivePosts = publicRead(`ArchivePosts:${WRITING_CONFIG.pageSize}`, readArchivePosts)
+const cachedPublishedPosts = publicRead(
+  `PublishedPosts:${WRITING_CONFIG.pageSize}`,
+  readPublishedPosts
+)
+const cachedPostsByTag = publicRead(`PostsByTag:${WRITING_CONFIG.pageSize}`, readPostsByTag)
 const cachedTagsInUse = publicRead("TagsInUse", readTagsInUse)
 const cachedFeedPosts = publicRead("FeedPosts", readFeedPosts)
 const cachedRecentPosts = publicRead("RecentPosts", readRecentPosts)

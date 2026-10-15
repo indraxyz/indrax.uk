@@ -1,9 +1,9 @@
-import { ExternalLink, PencilLine } from "lucide-react"
+import { PencilLine } from "lucide-react"
 import { Link } from "react-router"
 
 import { Badge } from "@/components/ui/badge"
 import type { VisualVariant } from "@/components/ui/variants"
-import { WRITING_CONFIG } from "@/features/writing/config"
+import { PostActions } from "./post-actions"
 import { PostCover } from "@/features/writing/components/post-cover"
 import type { AdminPostSummary, PostStatus } from "@/features/writing/types"
 import { formatDate } from "@/lib/utils"
@@ -56,26 +56,13 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link
             to={`/admin/edit/${post.id}`}
-            className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex h-11 w-11 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label={`Edit ${post.title}`}
           >
             <PencilLine className="h-4 w-4" aria-hidden />
           </Link>
 
-          {/* Only published posts have a public page to look at; linking a draft
-            would be a link to a 404. */}
-          {post.status === "published" && (
-            <Link
-              to={`${WRITING_CONFIG.basePath}/${post.slug}`}
-              reloadDocument
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 w-9 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              aria-label={`View ${post.title} on the site`}
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden />
-            </Link>
-          )}
+          <PostActions post={post} context="list" />
         </div>
       </div>
     </li>

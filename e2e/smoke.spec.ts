@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 test.describe("the public pages", () => {
-  test("renders the home hero and names the person", async ({ page }) => {
+  test("renders the home hero with the engineering role", async ({ page }) => {
     const errors: string[] = []
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text())
@@ -9,31 +9,45 @@ test.describe("the public pages", () => {
 
     await page.goto("/")
 
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Indra")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
     await expect(page).toHaveTitle(/Indra Cahya Edytya/)
     await expect(page.getByText("Full-stack, APIs & Integrations", { exact: true })).toHaveCount(0)
     expect(errors).toEqual([])
   })
 
-  test("stacks hero actions below the title on mobile home and resume", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-
-    for (const path of ["/", "/resume"]) {
-      await page.goto(path)
-
-      const title = await page.getByRole("heading", { level: 1 }).boundingBox()
-      const profile = await page
-        .getByRole("button", { name: "Open personal information" })
-        .boundingBox()
-      const download = await page
-        .getByRole("button", { name: "Download resume as PDF" })
-        .boundingBox()
-
-      expect(title).not.toBeNull()
-      expect(profile).not.toBeNull()
-      expect(download).not.toBeNull()
-      expect(profile!.y).toBeGreaterThan(title!.y + title!.height)
-      expect(download!.y).toBe(profile!.y)
+  test("separates social links and bottom-right hero actions at every viewport", async ({
+    page,
+  }) => {
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 844 })
+      for (const path of ["/", "/resume"]) {
+        await page.goto(path)
+        const heading = page.getByRole("heading", { level: 1 })
+        await expect(heading).toHaveText("Software Engineer")
+        const contact = page.getByRole("navigation", { name: "Contact", exact: true })
+        const links = contact.getByRole("link")
+        await expect(links).toHaveCount(2)
+        for (const link of await links.all()) {
+          await expect(link).toHaveText("")
+          await expect(link.locator("svg")).toBeVisible()
+        }
+        const social = await contact.boundingBox()
+        const profile = await page
+          .getByRole("button", { name: "Open personal information" })
+          .boundingBox()
+        const download = await page
+          .getByRole("button", { name: "Download resume as PDF" })
+          .boundingBox()
+        const title = await heading.boundingBox()
+        expect(profile!.x - (social!.x + social!.width)).toBeGreaterThanOrEqual(16)
+        expect(profile!.y).toBe(social!.y)
+        expect(download!.y).toBe(profile!.y)
+        expect(profile!.y).toBeGreaterThan(title!.y + title!.height)
+        expect(download!.x + download!.width).toBeLessThanOrEqual(width - 16)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+          width
+        )
+      }
     }
   })
 
@@ -49,18 +63,16 @@ test.describe("the public pages", () => {
         await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
         const searchbox = page.getByRole("searchbox", { name: "Search articles" })
         const search = await searchbox.boundingBox()
-        const button = page.getByRole("button", { name: "Search", exact: true })
-        const action = await button.boundingBox()
-
+        const filter = await page.getByRole("button", { name: "Filters and sort" }).boundingBox()
+        await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0)
         expect(search).not.toBeNull()
-        expect(action).not.toBeNull()
-        expect(action!.x).toBeGreaterThan(search!.x + search!.width)
-        expect(action!.y).toBeLessThan(search!.y + search!.height)
-        expect(action!.x + action!.width).toBeLessThanOrEqual(width)
-        await expect(button.locator("svg")).toBeVisible()
+        expect(filter).not.toBeNull()
+        expect(filter!.x).toBeGreaterThan(search!.x + search!.width)
+        expect(filter!.y).toBe(search!.y)
+        expect(filter!.x + filter!.width).toBeLessThanOrEqual(width)
 
         await searchbox.fill("typescript")
-        await button.click()
+        await searchbox.press("Enter")
         await expect(page).toHaveURL(/\/writing\?q=typescript/)
       }
     }
@@ -343,7 +355,7 @@ test.describe("the public pages", () => {
     }
   })
 
-  test("shows the spec-driven delivery lifecycle with and without motion", async ({ page }) => {
+  test("shows the spec-driven delivery lifecycle without animated traces", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" })
     await page.goto("/")
 
@@ -352,7 +364,7 @@ test.describe("the public pages", () => {
     await expect(process.getByText(/spec-driven workflow/i)).toBeVisible()
     await expect(process.locator("ol li")).toHaveCount(5)
     await expect(process.locator("figure svg line")).toHaveCount(5)
-    await expect(process.locator("figure svg path[pathLength]")).toHaveCount(8)
+    await expect(process.locator("figure svg path[pathLength]")).toHaveCount(0)
     for (const label of [
       "Specify the outcome",
       "Living context & memory",
@@ -363,11 +375,15 @@ test.describe("the public pages", () => {
       await expect(process.getByText(new RegExp(label, "i")).first()).toBeVisible()
     }
     await expect(process.getByText(/release decision stays with a person/i)).toBeVisible()
-    const trace = process.locator("figure svg path[pathLength]").first()
-    expect(await trace.evaluate((path) => getComputedStyle(path).animationName)).toBe("none")
-
     await page.emulateMedia({ reducedMotion: "no-preference" })
-    expect(await trace.evaluate((path) => getComputedStyle(path).animationName)).not.toBe("none")
+    await expect(process.locator("figure svg path[pathLength]")).toHaveCount(0)
+    expect(
+      await process
+        .locator("figure svg path")
+        .evaluateAll((paths) =>
+          paths.every((path) => getComputedStyle(path).animationName === "none")
+        )
+    ).toBe(true)
   })
 
   test("keeps the sequence diagram readable and its arrowheads clear", async ({ page }) => {
@@ -377,18 +393,9 @@ test.describe("the public pages", () => {
     const diagram = page.locator("section[aria-labelledby='process-heading'] figure svg")
     const message = diagram.locator("text").filter({ hasText: "Define acceptance criteria" })
     const desktop = await diagram.evaluate((svg) => {
-      const arrowGaps = [...svg.querySelectorAll<SVGPathElement>("path[pathLength]")].map(
-        (trace) => {
-          const arrow = trace.previousElementSibling as SVGPathElement
-          const arrowTip = arrow.getPointAtLength(arrow.getTotalLength())
-          const traceEnd = trace.getPointAtLength(trace.getTotalLength())
-          return Math.abs(arrowTip.x - traceEnd.x)
-        }
-      )
-
       return {
         width: svg.getBoundingClientRect().width,
-        arrowGaps,
+        arrows: svg.querySelectorAll('path[marker-end="url(#process-arrowhead)"]').length,
       }
     })
     const desktopLabelHeight = await message.evaluate(
@@ -398,8 +405,7 @@ test.describe("the public pages", () => {
     expect(desktop.width).toBeLessThanOrEqual(1100)
     expect(desktopLabelHeight).toBeGreaterThanOrEqual(12)
     expect(desktopLabelHeight).toBeLessThanOrEqual(18)
-    expect(desktop.arrowGaps).toHaveLength(8)
-    expect(Math.min(...desktop.arrowGaps)).toBeGreaterThanOrEqual(10)
+    expect(desktop.arrows).toBe(8)
 
     await page.setViewportSize({ width: 390, height: 844 })
     const mobile = await diagram.evaluate((svg) => {

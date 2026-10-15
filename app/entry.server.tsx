@@ -2,6 +2,7 @@ import { renderToReadableStream } from "react-dom/server"
 import { ServerRouter, type EntryContext } from "react-router"
 import { logServerError } from "@/lib/observability"
 import { contentSecurityPolicy, createCspNonce } from "@/lib/security-headers"
+import { CspNonceContext } from "@/lib/csp-nonce"
 export default async function handleRequest(
   request: Request,
   status: number,
@@ -12,7 +13,9 @@ export default async function handleRequest(
   // renders, and the policy below admits only those (threat T-12).
   const nonce = createCspNonce()
   const stream = await renderToReadableStream(
-    <ServerRouter context={context} url={request.url} nonce={nonce} />,
+    <CspNonceContext.Provider value={nonce}>
+      <ServerRouter context={context} url={request.url} nonce={nonce} />
+    </CspNonceContext.Provider>,
     {
       nonce,
       signal: request.signal,

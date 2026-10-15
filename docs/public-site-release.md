@@ -97,9 +97,11 @@ optimizations later in this document are follow-ups, not release requirements.
    See [D1/KV initialization and inspection](d1-kv-cache.md#deployed-develop-and-production)
    for environment-specific operator commands and cache recovery considerations.
 4. Review pending SQL migrations against production and apply required ones with
-   the production migration connection. The unified public/admin discovery change uses existing columns
-   and indexes and introduces no schema migration. Do not run local fixture seeding
-   as a release step.
+   the production migration connection. Post cover cleanup requires
+   `0006_cover_cleanup` before the corresponding Worker deployment. Apply it to
+   the develop database before merging the feature PR when Preview deployment is
+   enabled, and to production before promotion. Worker deployment does not run
+   PostgreSQL migrations. Do not run local fixture seeding as a release step.
 5. Open a develop-to-main release PR and review the full diff, which may contain
    multiple develop features. Require one reviewer approval, current
    up-to-date check/e2e checks and a successful Preview deployment. Resolve review

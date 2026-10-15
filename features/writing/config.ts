@@ -8,9 +8,10 @@ export const WRITING_CONFIG = {
   basePath: "/writing",
   feedPath: "/writing/rss.xml",
   viewPath: "/api/views",
-  // Cards per list page. Small enough that page two is reachable early, which is
-  // what makes the pagination crawlable rather than decorative.
-  pageSize: 10,
+  // Complete rows of three cards on the public archive.
+  pageSize: 9,
+  // Admin lists retain their existing density independently of public cards.
+  adminPageSize: 10,
   // Items in the feed. Fixed rather than "everything", so the feed does not grow
   // without bound as the archive does.
   feedSize: 20,
@@ -33,7 +34,7 @@ export const WRITING_CONFIG = {
    */
   maxQueryLength: 120,
   /** Results per search page. Matches the archive so the cards look the same. */
-  searchPageSize: 10,
+  searchPageSize: 9,
   /**
    * The highest search page a request may ask for.
    *

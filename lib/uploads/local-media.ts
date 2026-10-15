@@ -1,10 +1,13 @@
+import { isGeneratedCoverKey } from "./policy.ts"
+
 /** Same-origin URLs for isolated local R2 objects, never arbitrary relative URLs. */
 export const LOCAL_MEDIA_PREFIX = "/local-media/"
-const COVER_PATH =
-  /^\/local-media\/covers\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif)$/
 
 export function isLocalMediaPath(value: string): boolean {
-  return COVER_PATH.test(value) && !/[\r\n]/.test(value)
+  return (
+    value.startsWith(LOCAL_MEDIA_PREFIX) &&
+    isGeneratedCoverKey(value.slice(LOCAL_MEDIA_PREFIX.length))
+  )
 }
 
 export function localMediaOrigin(value: string | undefined): URL | null {
@@ -45,6 +48,13 @@ export function allowsLocalMediaUrl(value: string): boolean {
   if (import.meta.env?.DEV !== true || !isLocalMediaUrl(value)) return false
   const origin = localMediaOrigin(process.env.MEDIA_ORIGIN)
   return Boolean(origin && new URL(value).origin === origin.origin)
+}
+
+/** Stored development covers survive a change of the local server's host/port. */
+export function currentLocalMediaUrl(value: string): string {
+  if (import.meta.env?.DEV !== true || !isLocalMediaUrl(value)) return value
+  const origin = localMediaOrigin(process.env.MEDIA_ORIGIN)
+  return origin ? new URL(new URL(value).pathname, origin.origin).href : value
 }
 
 export function isLoopbackUrl(value: string): boolean {

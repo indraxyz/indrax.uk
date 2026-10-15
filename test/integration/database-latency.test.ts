@@ -98,9 +98,9 @@ it("returns a tagged page in one HTTP batch and clamps an oversized page correct
   const first = await getPostsByTag(tagName)
   expect(calls).toBe(1)
   expect(first).toMatchObject({ page: 1, pageCount: 2 })
-  expect(first.posts).toHaveLength(10)
+  expect(first.posts).toHaveLength(9)
   expect(first.posts.flatMap((post) => post.tags.map((tag) => tag.slug))).toEqual(
-    Array(10).fill(tagName)
+    Array(9).fill(tagName)
   )
   expect(first.posts.map((post) => post.id)).not.toContain(postIds[12])
 
@@ -108,7 +108,7 @@ it("returns a tagged page in one HTTP batch and clamps an oversized page correct
   const last = await getPostsByTag(tagName, 999)
   expect(calls).toBeLessThanOrEqual(2)
   expect(last).toMatchObject({ page: 2, pageCount: 2 })
-  expect(last.posts).toHaveLength(2)
+  expect(last.posts).toHaveLength(3)
 })
 
 it("returns recent cards with tags in one request and never includes a draft body", async () => {
@@ -122,7 +122,7 @@ it("returns recent cards with tags in one request and never includes a draft bod
 it("searches and counts tagged public results in one batch", async () => {
   const results = await searchPosts("Latencyfixture")
   expect(calls).toBe(1)
-  expect(results.posts).toHaveLength(10)
+  expect(results.posts).toHaveLength(9)
   expect(results.pageCount).toBe(2)
   expect(results.posts.every((post) => post.tags.some((tag) => tag.slug === tagName))).toBe(true)
 })

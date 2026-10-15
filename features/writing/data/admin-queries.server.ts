@@ -195,15 +195,15 @@ export async function getAdminArchivePosts(
       .from(schema.posts)
       .where(filter)
       .orderBy(...criteria.order)
-      .limit(WRITING_CONFIG.pageSize)
-      .offset((page - 1) * WRITING_CONFIG.pageSize)
+      .limit(WRITING_CONFIG.adminPageSize)
+      .offset((page - 1) * WRITING_CONFIG.adminPageSize)
   const [totals, initialRows] = await db.batch([
     db.select({ total: count() }).from(schema.posts).where(filter),
     cards(options.page),
   ])
   const total = totals[0].total
   const pageCount = Math.min(
-    Math.ceil(total / WRITING_CONFIG.pageSize),
+    Math.ceil(total / WRITING_CONFIG.adminPageSize),
     archivePageLimit(options.q)
   )
   const page = Math.min(options.page, Math.max(1, pageCount))

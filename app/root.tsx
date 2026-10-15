@@ -14,9 +14,11 @@ import { ConsentBanner } from "@/components/consent-banner"
 import { PostHogAnalytics } from "@/components/posthog-analytics"
 import { SiteErrorPage } from "@/components/site-error-page"
 import { THEME_INIT_SCRIPT } from "@/lib/theme"
+import { useCspNonce } from "@/lib/csp-nonce"
 import "./globals.css"
 
 export function Layout({ children }: { children: ReactNode }) {
+  const nonce = useCspNonce()
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -30,13 +32,13 @@ export function Layout({ children }: { children: ReactNode }) {
           href="/writing/rss.xml"
         />
         <Meta />
-        <Links />
+        <Links nonce={nonce} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   )
