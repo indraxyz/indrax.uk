@@ -80,6 +80,12 @@ When `ANALYTICS_ENABLED=true`, `scripts/verify-analytics.mjs` also checks the li
 analytics gateway's JSON and JavaScript configuration transports against PostHog.
 It also checks the installed SDK's performance/dead-click scripts with JavaScript
 responses, so a missing asset allowlist entry fails the deployment verification.
+Each analytics endpoint has a 15-second timeout covering the request and config
+body read. Timeouts and recognized transient connection failures receive up to
+three attempts with one- and two-second backoff. Retries repeat only the failed
+endpoint and log its public URL and attempt; HTTP errors, invalid MIME types and
+invalid configuration fail immediately. A persistent transport failure still
+fails CI with the endpoint and reason instead of an unlabelled exception.
 It creates no synthetic events; verify consented browser event delivery in the
 matching PostHog project separately. See [analytics setup](posthog-gateway.md).
 A failed smoke step can follow an already active Worker deployment: inspect the
