@@ -300,7 +300,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
         // An author can keep editing while a request runs. Retain those fields
         // and the created ID; the next save updates that post without losing edits.
         if (outcome.postId && outcome.postId !== post?.id && !isDirty())
-          navigate(`/admin/edit/${outcome.postId}`, { replace: true })
+          navigate(`/admin/posts/edit/${outcome.postId}`, { replace: true })
       } catch (error) {
         setResult({ ok: false, message: apiErrorMessage(error) })
       } finally {
@@ -364,7 +364,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
       <PostStatusDialog
         open={statusConfirmationOpen}
         onOpenChange={setStatusConfirmationOpen}
-        publishing={status === "published"}
+        targetStatus={status}
         title={title.trim() || "Untitled post"}
         pending={pending}
         error={result?.ok === false ? result.message : null}
@@ -375,7 +375,8 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
           <AlertDialogHeader>
             <AlertDialogTitle>Remove cover image?</AlertDialogTitle>
             <AlertDialogDescription>
-              The cover will be removed from the post when you save. The stored image will be kept.
+              The cover will be removed when you save. Its stored image will also be deleted if no
+              other post uses it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

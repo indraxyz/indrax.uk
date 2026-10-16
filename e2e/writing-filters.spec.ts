@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
+import { expectIconPagination } from "./support/pagination"
+
 /** Browser behavior uses isolated API responses; no writes to the development database. */
 async function archive(page: Page) {
   await page.route("**/api/writing/tags", (route) =>
@@ -67,7 +69,7 @@ test.describe("unified writing filters", () => {
     await dialog.getByLabel("Reading duration", { exact: true }).selectOption("short")
     expect(params(page).get("page")).toBe("2")
     expect(params(page).getAll("tag")).toEqual([])
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).not.toBeVisible()
     expect(params(page).getAll("tag")).toEqual(["react", "typescript"])
     expect(params(page).get("sort")).toBe("oldest")
@@ -82,12 +84,109 @@ test.describe("unified writing filters", () => {
     expect(params(page).getAll("tag")).toEqual(["react", "typescript"])
     expect(params(page).get("q")).toBe("renderer")
     await page.getByRole("searchbox", { name: /search articles/i }).fill("database")
-    await page.getByRole("button", { name: "Search", exact: true }).click()
+    await page.getByRole("searchbox").press("Enter")
     await expect(page.getByRole("link", { name: "Archive fixture 1" })).toBeVisible()
     expect(params(page).get("q")).toBe("database")
     expect(params(page).get("page")).toBeNull()
     expect(params(page).get("duration")).toBe("short")
     expect(params(page).getAll("tag")).toEqual(["react", "typescript"])
+  })
+
+  test("searches as typing pauses without a submit button and preserves filters", async ({
+    page,
+  }) => {
+    await page.goto("/writing?tag=react&sort=oldest&page=2")
+    await expect(page.getByRole("link", { name: "Archive fixture 2", exact: true })).toBeVisible()
+    const input = page.getByRole("searchbox", { name: "Search articles" })
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0)
+    await input.fill("database")
+    await expect(page).toHaveURL(/q=database/)
+    expect(params(page).get("page")).toBeNull()
+    expect(params(page).get("tag")).toBe("react")
+    expect(params(page).get("sort")).toBe("oldest")
+    await expect(input).toBeFocused()
+    await input.fill("")
+    await expect(page).not.toHaveURL(/q=/)
+    expect(params(page).get("tag")).toBe("react")
+  })
+
+  test("waits for input composition to finish before automatic search", async ({ page }) => {
+    await page.goto("/writing")
+    await expect(page.getByRole("link", { name: "Archive fixture 1", exact: true })).toBeVisible()
+    const input = page.getByRole("searchbox", { name: "Search articles" })
+    await input.dispatchEvent("compositionstart")
+    await input.fill("database")
+    await page.waitForTimeout(500)
+    expect(params(page).get("q")).toBeNull()
+    await input.dispatchEvent("compositionend")
+    await expect(page).toHaveURL(/q=database/)
+  })
+
+  test("retains newer typing across a slow search and cancels pending searches when cleared", async ({
+    page,
+  }) => {
+    let release: () => void = () => {}
+    await page.route("**/api/writing/posts*", async (route) => {
+      if (
+        ["re", "pending", "first"].includes(
+          new URL(route.request().url()).searchParams.get("q") ?? ""
+        )
+      )
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+      await route.fallback()
+    })
+    await page.goto("/writing?tag=react&sort=oldest")
+    await expect(page.getByRole("link", { name: "Archive fixture 1", exact: true })).toBeVisible()
+    const input = page.getByRole("searchbox", { name: "Search articles" })
+    const first = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === "/api/writing/posts" &&
+        new URL(request.url()).searchParams.get("q") === "re"
+    )
+    await input.fill("re")
+    await first
+    await input.fill("react")
+    release()
+    await expect(page).toHaveURL(/q=re(?:&|$)/)
+    await expect(input).toHaveValue("react")
+    await expect(page).toHaveURL(/q=react(?:&|$)/)
+    expect(params(page).get("tag")).toBe("react")
+    expect(params(page).get("sort")).toBe("oldest")
+
+    const pending = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === "/api/writing/posts" &&
+        new URL(request.url()).searchParams.get("q") === "pending"
+    )
+    await input.fill("pending")
+    await pending
+    await page.getByRole("button", { name: "Clear search" }).click()
+    await expect(page).not.toHaveURL(/q=/)
+    release()
+    await page.waitForTimeout(500)
+    await expect(input).toHaveValue("")
+    await expect(page).not.toHaveURL(/q=/)
+    await page.goBack()
+    await expect(page).toHaveURL(/q=react(?:&|$)/)
+    await expect(input).toHaveValue("react")
+
+    // Clearing must also cancel a first search whose query has never committed.
+    await page.getByRole("button", { name: "Clear search" }).click()
+    await expect(page).not.toHaveURL(/q=/)
+    const firstPending = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === "/api/writing/posts" &&
+        new URL(request.url()).searchParams.get("q") === "first"
+    )
+    await input.fill("first")
+    await firstPending
+    await page.getByRole("button", { name: "Clear search" }).click()
+    release()
+    await page.waitForTimeout(500)
+    await expect(page).not.toHaveURL(/q=/)
+    await expect(input).toHaveValue("")
   })
 
   test("Escape discards pending changes and restores focus; back restores applied state", async ({
@@ -111,7 +210,7 @@ test.describe("unified writing filters", () => {
       "false"
     )
     await dialog.getByRole("button", { name: /TypeScript.*12/i }).click()
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/tag=typescript/)
     await page.goBack()
     await expect(page).toHaveURL(/\/writing$/)
@@ -125,7 +224,7 @@ test.describe("unified writing filters", () => {
   test("clear filters keeps the search term and resets pagination and sort", async ({ page }) => {
     await page.goto("/writing?q=renderer&tag=react&sort=oldest&date=30d&duration=short&page=2")
     const dialog = await openFilters(page)
-    await dialog.getByRole("button", { name: "Clear filters" }).click()
+    await dialog.getByRole("button", { name: "Clear", exact: true }).click()
     await expect(page).toHaveURL(/\/writing\?q=renderer$/)
     expect(params(page).getAll("tag")).toEqual([])
     expect(params(page).get("page")).toBeNull()
@@ -175,7 +274,7 @@ test.describe("unified writing filters", () => {
       "cursor",
       "pointer"
     )
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toHaveCSS(
+    await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toHaveCSS(
       "cursor",
       "pointer"
     )
@@ -184,7 +283,7 @@ test.describe("unified writing filters", () => {
     await expect(
       dialog.getByText("Earliest published articles first.", { exact: true })
     ).toHaveCount(0)
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/sort=oldest/)
     await expect(page.getByRole("link", { name: "Archive fixture 1", exact: true })).toHaveCSS(
       "cursor",
@@ -225,12 +324,12 @@ test.describe("unified writing filters", () => {
     await dialog.getByLabel("Publication date", { exact: true }).selectOption("custom")
     await dialog.getByLabel("From", { exact: true }).fill("2026-10-09")
     await dialog.getByLabel("To", { exact: true }).fill("2026-10-01")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole("alert")).toContainText("start on or before the end")
     expect(params(page).get("date")).toBeNull()
     await dialog.getByLabel("To", { exact: true }).fill("2026-10-09")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).not.toBeVisible()
     expect(params(page).get("from")).toBe("2026-10-09")
     expect(params(page).get("to")).toBe("2026-10-09")
@@ -254,9 +353,9 @@ test.describe("unified writing filters", () => {
       await page.goto("/writing?tag=react")
       await expect(page.getByRole("status").filter({ hasText: /articles?/ })).toBeVisible()
       const input = await page.getByRole("searchbox", { name: /search articles/i }).boundingBox()
-      const search = await page.getByRole("button", { name: "Search", exact: true }).boundingBox()
+      await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0)
       const filter = await page.getByRole("button", { name: "Filters and sort" }).boundingBox()
-      for (const control of [input!, search!, filter!]) {
+      for (const control of [input!, filter!]) {
         expect(control.height).toBe(44)
         expect(control.y).toBe(input!.y)
       }
@@ -279,7 +378,7 @@ test.describe("unified writing filters", () => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto("/writing")
     const dialog = await openFilters(page)
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible()
+    await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible()
     await expect
       .poll(async () => {
         const bounds = await dialog.boundingBox()
@@ -290,7 +389,16 @@ test.describe("unified writing filters", () => {
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
     await dialog.getByRole("button", { name: /React.*5/i }).click()
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/tag=react/)
   })
 })
+
+for (const width of [320, 1280]) {
+  test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await archive(page)
+    await page.goto("/writing?page=2")
+    await expectIconPagination(page, "Writing pages", width)
+  })
+}

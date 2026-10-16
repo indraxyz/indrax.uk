@@ -1,4 +1,15 @@
-import { FileText, House, LogOut, Menu, PencilLine, UserRound, X } from "lucide-react"
+import { Menu as DropdownMenu } from "@base-ui/react/menu"
+import {
+  ChevronDown,
+  FileText,
+  Globe,
+  Layers,
+  LogOut,
+  Menu,
+  PencilLine,
+  UserRound,
+  X,
+} from "lucide-react"
 import { Link } from "react-router"
 import { useEffect, useState } from "react"
 
@@ -19,12 +30,42 @@ import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
-const links = [
-  { href: "/admin", label: "Admin home", page: "home", icon: House },
-  { href: "/admin/posts", label: "Posts", page: "posts", icon: FileText },
-  { href: "/resume", label: "Resume", page: null, icon: UserRound },
-  { href: WRITING_CONFIG.basePath, label: WRITING_CONFIG.title, page: null, icon: PencilLine },
+const links = [{ href: "/admin/posts", label: "Posts", page: "posts", icon: FileText }] as const
+
+const publicLinks = [
+  { href: "/resume", label: "Resume", icon: UserRound },
+  { href: WRITING_CONFIG.basePath, label: WRITING_CONFIG.title, icon: PencilLine },
+  { href: "/tech-stack", label: "Stack", icon: Layers },
 ] as const
+
+function PublicMenu({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger className={cn(controlClassNames, "min-h-11 px-3 py-2")}>
+        <Globe className="h-4 w-4" aria-hidden />
+        Public
+        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Positioner align="end" sideOffset={8} className="z-[70]">
+          <DropdownMenu.Popup className="min-w-48 border-2 border-border bg-card p-1 text-card-foreground shadow-soft-lg outline-none">
+            {publicLinks.map(({ href, label, icon: Icon }) => (
+              <DropdownMenu.Item
+                key={href}
+                render={<a href={href} />}
+                onClick={onNavigate}
+                className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted"
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                {label}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Popup>
+        </DropdownMenu.Positioner>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
 
 interface AdminNavigationProps {
   activePage?: "home" | "posts"
@@ -48,19 +89,18 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
       <div className="hidden items-center gap-2 md:flex">
         {signedIn && (
           <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
-            {links.map(({ href, label, page, icon: Icon }) => (
+            {links.map(({ href, label, page }) => (
               <Link
                 key={href}
-                reloadDocument={page === null}
                 to={href}
                 aria-label={label}
-                title={page === "home" ? label : undefined}
                 aria-current={activePage === page ? "page" : undefined}
                 className="inline-flex min-h-11 items-center text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                {page === "home" ? <Icon className="h-4 w-4" aria-hidden /> : label}
+                {label}
               </Link>
             ))}
+            <PublicMenu />
           </nav>
         )}
         <ThemeToggle />
@@ -105,7 +145,6 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                 {links.map(({ href, label, page, icon: Icon }) => (
                   <Link
                     key={href}
-                    reloadDocument={page === null}
                     to={href}
                     onClick={() => setOpen(false)}
                     aria-current={activePage === page ? "page" : undefined}
@@ -119,6 +158,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                     {label}
                   </Link>
                 ))}
+                <PublicMenu onNavigate={() => setOpen(false)} />
               </nav>
             )}
           </div>

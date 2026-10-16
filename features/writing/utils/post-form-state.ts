@@ -1,4 +1,5 @@
 import type { AdminPost, PostDocument, PostStatus } from "@/features/writing/types"
+import { currentLocalMediaUrl } from "@/lib/uploads/local-media"
 
 /** Keep raw editable values together so a save acknowledges its exact submitted
  * snapshot, while later edits and reverting fields remain accurately tracked. */
@@ -22,7 +23,7 @@ export function createPostFormFields(post: AdminPost | null): PostFormFields {
     excerpt: post?.excerpt ?? "",
     status: post?.status ?? "draft",
     tags: post?.tags.map((tag) => tag.name).join(", ") ?? "",
-    coverUrl: post?.coverUrl ?? "",
+    coverUrl: currentLocalMediaUrl(post?.coverUrl ?? ""),
     coverAlt: post?.coverAlt ?? "",
     body: post?.content ?? null,
     seriesTitle: post?.seriesTitle ?? "",

@@ -146,7 +146,6 @@ export function BuildProcessSection() {
                 const lineStart = start + direction * 10
                 const lineEnd = end - direction * 12
                 const path = `M ${lineStart} ${message.y} H ${lineEnd}`
-                const tracePath = `M ${lineStart} ${message.y} H ${lineEnd - direction * 12}`
 
                 return (
                   <g key={message.label}>
@@ -164,12 +163,6 @@ export function BuildProcessSection() {
                       d={path}
                       className={styles.baseLine}
                       markerEnd="url(#process-arrowhead)"
-                    />
-                    <path
-                      d={tracePath}
-                      pathLength="1"
-                      className={styles.trace}
-                      style={{ animationDelay: `${index * 2.5}s` }}
                     />
                   </g>
                 )

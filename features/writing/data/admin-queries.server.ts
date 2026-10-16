@@ -114,7 +114,7 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
   if (!db) return null
 
   // A uuid column will not simply fail to match a non-uuid - it raises. Treating
-  // a malformed id as "no such post" is what turns `/admin/edit/anything` from a
+  // a malformed id as "no such post" is what turns `/admin/posts/edit/anything` from a
   // 500 into a 404.
   if (!postIdSchema.safeParse(id).success) return null
 
@@ -195,15 +195,15 @@ export async function getAdminArchivePosts(
       .from(schema.posts)
       .where(filter)
       .orderBy(...criteria.order)
-      .limit(WRITING_CONFIG.pageSize)
-      .offset((page - 1) * WRITING_CONFIG.pageSize)
+      .limit(WRITING_CONFIG.adminPageSize)
+      .offset((page - 1) * WRITING_CONFIG.adminPageSize)
   const [totals, initialRows] = await db.batch([
     db.select({ total: count() }).from(schema.posts).where(filter),
     cards(options.page),
   ])
   const total = totals[0].total
   const pageCount = Math.min(
-    Math.ceil(total / WRITING_CONFIG.pageSize),
+    Math.ceil(total / WRITING_CONFIG.adminPageSize),
     archivePageLimit(options.q)
   )
   const page = Math.min(options.page, Math.max(1, pageCount))

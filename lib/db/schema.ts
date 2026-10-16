@@ -138,6 +138,17 @@ export const tags = pgTable("tags", {
   slug: text("slug").notNull().unique(),
 })
 
+/** Persisted in the post transaction; failed R2 cleanup survives the response. */
+export const coverCleanup = pgTable(
+  "cover_cleanup",
+  {
+    url: text("url").primaryKey(),
+    // Rotated on each attempt so shared images/failures cannot starve new work.
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_cover_cleanup_attempted").on(table.attemptedAt, table.url)]
+)
+
 export const postTags = pgTable(
   "post_tags",
   {

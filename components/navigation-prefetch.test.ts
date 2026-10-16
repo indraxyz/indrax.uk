@@ -1,5 +1,6 @@
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router"
 import { expect, it } from "vitest"
 
@@ -19,25 +20,29 @@ it("keeps public navigation clickable without speculative page requests", () => 
 it("does not prefetch edit forms and article rendering from each admin post row", () => {
   const html = renderToStaticMarkup(
     createElement(
-      MemoryRouter,
-      null,
-      createElement(PostRow, {
-        post: {
-          id: "post-id",
-          title: "Post title",
-          slug: "post-title",
-          status: "published",
-          excerpt: null,
-          coverUrl: null,
-          coverAlt: null,
-          publishedAt: "2026-01-01T00:00:00Z",
-          updatedAt: "2026-01-01T00:00:00Z",
-          tags: [],
-        },
-      })
+      QueryClientProvider,
+      { client: new QueryClient() },
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(PostRow, {
+          post: {
+            id: "post-id",
+            title: "Post title",
+            slug: "post-title",
+            status: "published",
+            excerpt: null,
+            coverUrl: null,
+            coverAlt: null,
+            publishedAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+            tags: [],
+          },
+        })
+      )
     )
   )
   expect(html).not.toContain('rel="prefetch"')
-  expect(html).toContain('href="/admin/edit/post-id"')
-  expect(html).toContain('href="/writing/post-title"')
+  expect(html).toContain('href="/admin/posts/edit/post-id"')
+  expect(html).toContain('aria-label="Actions for Post title"')
 })

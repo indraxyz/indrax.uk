@@ -75,7 +75,7 @@ it.each([
 })
 
 it("allows browser-owned image previews only for admin responses", () => {
-  for (const path of ["/admin", "/admin/new", "/writing"]) {
+  for (const path of ["/admin", "/admin/posts/new", "/writing"]) {
     const response = applySecurityHeaders(new Response(""), path, {
       strictScripts: true,
       noindex: false,

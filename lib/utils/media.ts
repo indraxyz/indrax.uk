@@ -6,7 +6,14 @@
  * which origin is trusted. With no configured origin nothing remote is loaded.
  * Builds use the environment's R2 media origin by default (threat T-6).
  */
-import { allowsLocalMediaUrl, localMediaOrigin } from "../uploads/local-media"
+import { allowsLocalMediaUrl, currentLocalMediaUrl, localMediaOrigin } from "../uploads/local-media"
+
+/** Resolve a cover for display without rewriting stored production URLs. */
+export function mediaUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const current = currentLocalMediaUrl(value)
+  return isAllowedMediaUrl(current) ? current : null
+}
 
 function mediaOrigin(): URL | null {
   const value = process.env.MEDIA_ORIGIN

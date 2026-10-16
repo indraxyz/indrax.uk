@@ -52,7 +52,7 @@ export function Component() {
       title="Overview"
       activePage="home"
       actions={
-        <Link to="/admin/new" className={cn(controlClassNames, "px-3 py-2")}>
+        <Link to="/admin/posts/new" className={cn(controlClassNames, "px-3 py-2")}>
           <Plus className="h-3.5 w-3.5" aria-hidden />
           New post
         </Link>
@@ -110,7 +110,7 @@ export function Component() {
           </p>
         </div>
         <Link
-          to={latestDraft ? "/admin/edit/" + latestDraft.id : "/admin/new"}
+          to={latestDraft ? "/admin/posts/edit/" + latestDraft.id : "/admin/posts/new"}
           className={cn(controlClassNames, "px-3 py-2")}
         >
           <FilePenLine className="h-3.5 w-3.5" aria-hidden />

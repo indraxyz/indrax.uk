@@ -509,7 +509,8 @@ async function readRecentPosts(limit: number): Promise<PostSummary[]> {
  * Other published posts sharing at least one tag with this one.
  *
  * Ranked by how many tags they share before how recent they are, so "also about
- * Postgres and caching" beats "also about TypeScript, and newer". One query with
+ * Postgres and caching" beats "also about TypeScript, and newer". The post UUID
+ * resolves equal scores and publication dates consistently. One query with
  * a join and a count, rather than fetching this post's tags and then fetching
  * each tag's posts - which is the same answer at several times the round trips.
  */
@@ -537,7 +538,7 @@ async function readRelatedPosts(postId: string, limit: number): Promise<PostSumm
     .from(schema.posts)
     .innerJoin(shared, eq(shared.postId, schema.posts.id))
     .where(isPublic)
-    .orderBy(desc(shared.shared), desc(schema.posts.publishedAt))
+    .orderBy(desc(shared.shared), desc(schema.posts.publishedAt), asc(schema.posts.id))
     .limit(limit)
 
   return summaries(rows)
@@ -576,13 +577,16 @@ function publicRead<A extends unknown[], T>(name: string, read: (...args: A) => 
     cachedRead(JSON.stringify(["writing", name, ...args]), [CACHE_TAGS.posts], () => read(...args))
 }
 
-const cachedArchivePosts = publicRead("ArchivePosts", readArchivePosts)
-const cachedPublishedPosts = publicRead("PublishedPosts", readPublishedPosts)
-const cachedPostsByTag = publicRead("PostsByTag", readPostsByTag)
+const cachedArchivePosts = publicRead(`ArchivePosts:${WRITING_CONFIG.pageSize}`, readArchivePosts)
+const cachedPublishedPosts = publicRead(
+  `PublishedPosts:${WRITING_CONFIG.pageSize}`,
+  readPublishedPosts
+)
+const cachedPostsByTag = publicRead(`PostsByTag:${WRITING_CONFIG.pageSize}`, readPostsByTag)
 const cachedTagsInUse = publicRead("TagsInUse", readTagsInUse)
 const cachedFeedPosts = publicRead("FeedPosts", readFeedPosts)
 const cachedRecentPosts = publicRead("RecentPosts", readRecentPosts)
-const cachedRelatedPosts = publicRead("RelatedPosts", readRelatedPosts)
+const cachedRelatedPosts = publicRead("RelatedPosts:v2", readRelatedPosts)
 const cachedPublishedSlugs = publicRead("PublishedSlugs", readPublishedSlugs)
 
 /** Normalize again at the data boundary so internal callers cannot bypass URL limits.

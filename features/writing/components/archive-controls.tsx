@@ -336,7 +336,7 @@ export function ArchiveControls({
                   "min-h-11 justify-center px-4 py-3 variant-primary variant-chip"
                 )}
               >
-                Apply filters
+                Apply
               </button>
               <button
                 type="button"
@@ -351,7 +351,7 @@ export function ArchiveControls({
                 }}
                 className={cn(controlClassNames, "min-h-11 justify-center px-4 py-3")}
               >
-                Clear filters
+                Clear
               </button>
             </SheetFooter>
           </form>

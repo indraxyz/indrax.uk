@@ -28,7 +28,7 @@ export function Component() {
       title="Posts"
       activePage="posts"
       actions={
-        <Link to="/admin/new" className={`${controlClassNames} px-3 py-2`}>
+        <Link to="/admin/posts/new" className={`${controlClassNames} px-3 py-2`}>
           <Plus className="h-3.5 w-3.5" aria-hidden />
           New post
         </Link>
@@ -63,7 +63,7 @@ export function Component() {
             ) : (
               <p>
                 Nothing written yet. Start with{" "}
-                <Link to="/admin/new" className="underline">
+                <Link to="/admin/posts/new" className="underline">
                   a new post
                 </Link>
                 .

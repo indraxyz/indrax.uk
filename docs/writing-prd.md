@@ -148,7 +148,7 @@ Format: **ID · Story · AC**. AC use Given/When/Then and are written to be exec
 
 **AC**
 
-- Given an existing post, when I open `/admin/edit/{id}`, then the form is populated with current values.
+- Given an existing post, when I open `/admin/posts/edit/{id}`, then the form is populated with current values.
 - Given the post form, then its save button is in the page heading actions, immediately after Delete on edit pages; new-post pages use the same heading placement.
 - Given unsaved changes, then the button reads Save and shows an orange indicator with an accessible description. Successful saves show Saved in the button, without a separate visible success message; further edits restore Save and the indicator.
 - Given saving is in progress, then the button shows Saving and prevents duplicate submissions. Failed saves keep unsaved changes and display the existing validation/error feedback.

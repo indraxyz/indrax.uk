@@ -10,13 +10,3 @@ export const UPDATED_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   month: "long",
   day: "numeric",
 }
-
-// Section wording lives here because both the page and the PDF render it; when
-// each kept its own copy the two drifted apart.
-export const SECTION_COPY = {
-  experiences:
-    "Professional timeline across product engineering, fullstack delivery, and agentic workflow execution.",
-  techStack: "Core tools and platforms used to design, build, and run digital products.",
-  portfolio:
-    "Selected projects that show practical delivery across web, mobile, and integrated product systems.",
-} as const

@@ -42,7 +42,7 @@ export const postStatusSchema = z.enum(POST_STATUSES)
  *
  * `posts.id` is a `uuid`, so a value that is not one makes Postgres raise 22P02 -
  * a 500 - rather than simply matching nothing. Every action and admin read parses
- * through this first, so `/admin/edit/anything` is a not-found rather than a
+ * through this first, so `/admin/posts/edit/anything` is a not-found rather than a
  * crash.
  */
 export const postIdSchema = z.uuid()

@@ -74,7 +74,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
 }) => {
   test.setTimeout(60_000)
   const page = await author.newPage()
-  await page.goto(`${E2E_BASE_URL}/admin/new`)
+  await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
   const cover = page.getByRole("group", { name: "Cover image", exact: true })
   await expect(cover.getByRole("button", { name: "Upload a cover" })).toBeEnabled()
   await expect(cover).not.toContainText("unavailable")
@@ -150,7 +150,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   expect(outcome.ok).toBe(true)
   posts.push(outcome.postId)
   expect(writes).toEqual(["/api/upload", "/api/admin/posts"])
-  await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/edit/${outcome.postId}`)
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/posts/edit/${outcome.postId}`)
   await expect(cover.getByLabel("Cover image URL")).toHaveValue(publicUrl)
   await expect(cover.locator("img")).toHaveAttribute("src", publicUrl)
   const preview = await author.request.post(
@@ -182,6 +182,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   expect(writes).toHaveLength(2)
   const beforeSave = await author.request.get(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`)
   expect((await beforeSave.json()).coverUrl).toBe(publicUrl)
+  expect((await request.get(publicUrl)).status()).toBe(200)
   const removed = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/admin/posts" &&
@@ -192,14 +193,17 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   const afterSave = await author.request.get(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`)
   expect((await afterSave.json()).coverUrl).toBeNull()
   expect(writes).toEqual(["/api/upload", "/api/admin/posts", "/api/admin/posts"])
-  expect((await request.get(publicUrl)).status()).toBe(200)
+  expect((await request.get(publicUrl)).status()).toBe(404)
+  covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
 })
 
-test("retains a selected cover after upload failure and reuses its upload after a save failure", async () => {
+test("retains a selected cover after failures and deletes its stored image with the post", async ({
+  request,
+}) => {
   test.setTimeout(60_000)
   const page = await author.newPage()
-  await page.goto(`${E2E_BASE_URL}/admin/new`)
+  await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
   const cover = page.getByRole("group", { name: "Cover image", exact: true })
   await page.getByLabel("Title", { exact: true }).fill(`Cover retry ${crypto.randomUUID()}`)
   await page.locator(".ProseMirror").fill("A cover retry test article.")
@@ -249,6 +253,15 @@ test("retains a selected cover after upload failure and reuses its upload after 
   posts.push(outcome.postId)
   expect(uploads).toBe(2)
   expect(saves).toBe(2)
+  expect((await request.get(publicUrl)).status()).toBe(200)
+  const deleted = await author.request.delete(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`, {
+    data: {},
+    headers: { Origin: E2E_BASE_URL },
+  })
+  expect((await deleted.json()).ok).toBe(true)
+  expect((await request.get(publicUrl)).status()).toBe(404)
+  posts.splice(posts.indexOf(outcome.postId), 1)
+  covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
 })
 
@@ -260,7 +273,7 @@ test("redirects to sign-in when author access expires during a deferred upload",
   const page = await context.newPage()
   page.on("dialog", (dialog) => void dialog.accept())
   try {
-    await page.goto(`${E2E_BASE_URL}/admin/new`)
+    await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
     await page
       .getByRole("group", { name: "Cover image", exact: true })
       .locator('input[type="file"]')

@@ -15,6 +15,9 @@ URL state uses `q`, repeated `tag`, `sort`, `date`, `from`, `to`, `duration` and
 sheet holds draft controls until Apply. Closing discards drafts; applying or
 submitting search resets pagination. Keep selected options through browser
 history, refresh and copied URLs. Tag counts represent published articles.
+Public archive and search pages show nine cards per page; admin lists keep ten rows.
+Both search inputs search after a 400 ms typing pause or immediately with Enter,
+without a submit button. Input composition finishes before automatic search.
 Both search inputs include an accessible clear button. Clearing an applied query
 preserves the selected filters and sort, resets pagination, and keeps input focus;
 when no query is applied, clearing unsubmitted text only changes the input.

@@ -1,7 +1,8 @@
 import { Document, Image, Link, Page, Text, View } from "@react-pdf/renderer"
 
 import { SITE_HOST, SOCIAL_LINKS } from "@/config/site"
-import { RESUME_CONFIG, SECTION_COPY, UPDATED_DATE_FORMAT } from "@/features/resume/config"
+import { SECTION_COPY } from "@/features/resume/data/page"
+import { RESUME_CONFIG, UPDATED_DATE_FORMAT } from "@/features/resume/config"
 import {
   achievements,
   bio,

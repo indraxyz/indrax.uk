@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { whenHydrated } from "./support/hydration"
+
 const EMAIL = "indracahyae@gmail.com"
 
 test.describe("contact actions", () => {
@@ -9,6 +11,7 @@ test.describe("contact actions", () => {
     for (const width of [320, 1280]) {
       await page.setViewportSize({ width, height: 700 })
       await page.goto("/resume")
+      await whenHydrated(page)
       const trigger = page.getByRole("button", { name: "Open personal information" })
       await trigger.click()
       const sheet = page.getByRole("dialog", { name: "Personal Information", exact: true })
@@ -36,6 +39,7 @@ test.describe("contact actions", () => {
   test("offers an email action in personal information", async ({ page }) => {
     for (const path of ["/", "/resume"]) {
       await page.goto(path)
+      await whenHydrated(page)
       await expect(
         page.getByRole("navigation", { name: "Contact" }).getByRole("link", { name: /email/i })
       ).toHaveCount(0)
@@ -51,6 +55,7 @@ test.describe("contact actions", () => {
 
   test("links out to LinkedIn and GitHub safely", async ({ page }) => {
     await page.goto("/")
+    await whenHydrated(page)
     const contact = page.getByRole("navigation", { name: "Contact" })
 
     for (const [name, host] of [
@@ -67,6 +72,7 @@ test.describe("contact actions", () => {
 
   test("is reachable by keyboard", async ({ page }) => {
     await page.goto("/")
+    await whenHydrated(page)
 
     await page.getByRole("button", { name: "Open personal information" }).click()
     const email = page.getByRole("link", { name: EMAIL })
@@ -77,6 +83,7 @@ test.describe("contact actions", () => {
 
   test("is the page's only GitHub control", async ({ page }) => {
     await page.goto("/")
+    await whenHydrated(page)
 
     // The header used to carry a second "GitHub profile" link. Two links sharing
     // an accessible name is ambiguous for anyone navigating by link list, so the

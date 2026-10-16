@@ -14,11 +14,8 @@ export function ContactLinks() {
     // A labelled landmark, not a bare row: it gives the outbound profile links a
     // name of their own in a landmark and link-list walk, where unlabelled
     // links floating in the hero would otherwise sit with no stated purpose.
-    <nav
-      aria-label="Contact"
-      className="flex flex-wrap items-center justify-center gap-3 sm:justify-start"
-    >
-      <Button asChild variant="secondary" size="sm" className="print:hidden">
+    <nav aria-label="Contact" className="flex shrink-0 items-center gap-2">
+      <Button asChild variant="secondary" size="icon" className="print:hidden">
         <a
           href={SOCIAL_LINKS.linkedin}
           target="_blank"
@@ -27,11 +24,10 @@ export function ContactLinks() {
           onClick={() => trackContact("linkedin")}
         >
           <LinkedinIcon aria-hidden="true" />
-          LinkedIn
         </a>
       </Button>
 
-      <Button asChild variant="secondary" size="sm" className="print:hidden">
+      <Button asChild variant="secondary" size="icon" className="print:hidden">
         <a
           href={SOCIAL_LINKS.github}
           target="_blank"
@@ -40,7 +36,6 @@ export function ContactLinks() {
           onClick={() => trackContact("github")}
         >
           <GithubIcon aria-hidden="true" />
-          GitHub
         </a>
       </Button>
     </nav>

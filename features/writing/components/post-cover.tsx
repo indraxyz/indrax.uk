@@ -1,5 +1,5 @@
 import type { PostSummary } from "@/features/writing/types"
-import { cn, isAllowedMediaUrl } from "@/lib/utils"
+import { cn, mediaUrl } from "@/lib/utils"
 
 // The stored aspect ratio for every cover. Fixed rather than measured, because
 // the ratio is what reserves the space before the bytes arrive - a cover cannot
@@ -22,12 +22,13 @@ interface PostCoverProps {
  * loading priorities without a server image optimizer.
  */
 export function PostCover({ post, className, priority = false }: PostCoverProps) {
-  if (!isAllowedMediaUrl(post.coverUrl)) return null
+  const coverUrl = mediaUrl(post.coverUrl)
+  if (!coverUrl) return null
 
   return (
     <div data-print-clip className={cn("border-b-2 border-border", className)}>
       <img
-        src={post.coverUrl}
+        src={coverUrl}
         // Empty alt is correct for a decorative cover, and the validator requires
         // alt text before a post carrying one can be published - so a missing
         // string here means decorative, not forgotten.

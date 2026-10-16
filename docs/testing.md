@@ -101,9 +101,15 @@ export GITHUB_CLIENT_ID='local-test'
 export GITHUB_CLIENT_SECRET='local-test'
 npm run db:migrate
 npm run db:seed
-TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+TEST_DATABASE_URL="$DATABASE_URL" TEST_DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" npm run test:integration
 npm run test:e2e
 ```
+
+`TEST_DIRECT_DATABASE_URL` points the concurrency tests’ locking connection at the
+same disposable PostgreSQL database. It is required when the Neon proxy uses a
+custom port; the default 4444 proxy otherwise maps to direct port 55432. Both
+connections must stay on loopback. This avoids silently locking a different local
+database when running an isolated stack on alternate ports.
 
 These credentials are local fixtures, not real GitHub/R2/PostHog secrets. DB tooling
 loads `.env.local`/`.env`, while test helpers use exported variables. Explicit exports
@@ -174,6 +180,14 @@ E2E_PORT=3420 npm run test:e2e
 E2E_SCREENSHOTS=on npm run test:e2e
 npx playwright show-report
 npx playwright show-trace test-results/<case-directory>/trace.zip
+```
+
+The hydration regression also has a development-server configuration, because
+React Router's critical CSS link only appears in development. It checks the home,
+resume and writing pages for hydration warnings and consistent document nonces:
+
+```bash
+E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
 ```
 
 For smoke checks without fixtures, explicitly export empty database/auth values.
@@ -307,7 +321,8 @@ auth origins, with the fixture using the shared Playwright base URL.
 Admin action regression tests (`e2e/admin-post-actions.spec.ts`) use mocked private
 APIs and never write real posts. They verify publication confirmations for both
 menu actions and form saves, cancellation/error retries, stale-action disabling,
-copy loading/clipboard refusal, hidden preview URLs, mobile toolbar scrolling with
+status-based Preview/Visit tabs, preview loading/failure retries, popup refusal,
+opener isolation, mobile toolbar scrolling with
 Undo/Redo first, and grouped cover preview/URL/alt fields on new/edit forms at
 320px and 1280px without server writes before Save.
 The real authoring lifecycle separately exercises saved previews, publication,
@@ -326,3 +341,23 @@ full-height left covers at 768px/1280px and full-width top covers at 320px,
 with two-line truncation and no horizontal
 overflow. Unit checks retain media-origin validation and absent-cover behavior;
 query tests verify cover/excerpt summaries without loading article bodies.
+
+Admin list action tests (`e2e/admin-post-list-actions.spec.ts`) use isolated API
+fixtures for multiple rows and statuses. They check menu order, private preview
+and public visit tabs, publish/archive/delete confirmations and retry behavior,
+active-list refresh without dropping filters/page state, and mobile/keyboard use.
+The editor action suite also runs when the shared action or status dialog changes.
+
+CI runs the dedicated development hydration configuration after the production
+browser suite and before isolated uploads. Its separate Vite cache avoids mixing
+development dependency output with production checks. Final shipping verification
+uses a fresh local database, applies all migrations and seeds repository fixtures
+before running SQL integration and the full production browser suite.
+
+Hero and admin navigation regressions verify personal/PDF controls left of social
+links and a 24–32px role heading on both public profile pages. Fixture-based admin
+checks cover distinct action icons, cover links to `/admin/posts/edit/:id`, legacy
+editor redirects, and the Public menu’s Resume/Writing/Stack destinations with
+keyboard focus restoration at 320px and 1280px. The unauthenticated session check
+asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
+with 200 when configured. These checks do not require real private writes.
