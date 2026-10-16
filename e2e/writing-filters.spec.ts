@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
+import { expectIconPagination } from "./support/pagination"
+
 /** Browser behavior uses isolated API responses; no writes to the development database. */
 async function archive(page: Page) {
   await page.route("**/api/writing/tags", (route) =>
@@ -67,7 +69,7 @@ test.describe("unified writing filters", () => {
     await dialog.getByLabel("Reading duration", { exact: true }).selectOption("short")
     expect(params(page).get("page")).toBe("2")
     expect(params(page).getAll("tag")).toEqual([])
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).not.toBeVisible()
     expect(params(page).getAll("tag")).toEqual(["react", "typescript"])
     expect(params(page).get("sort")).toBe("oldest")
@@ -208,7 +210,7 @@ test.describe("unified writing filters", () => {
       "false"
     )
     await dialog.getByRole("button", { name: /TypeScript.*12/i }).click()
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/tag=typescript/)
     await page.goBack()
     await expect(page).toHaveURL(/\/writing$/)
@@ -222,7 +224,7 @@ test.describe("unified writing filters", () => {
   test("clear filters keeps the search term and resets pagination and sort", async ({ page }) => {
     await page.goto("/writing?q=renderer&tag=react&sort=oldest&date=30d&duration=short&page=2")
     const dialog = await openFilters(page)
-    await dialog.getByRole("button", { name: "Clear filters" }).click()
+    await dialog.getByRole("button", { name: "Clear", exact: true }).click()
     await expect(page).toHaveURL(/\/writing\?q=renderer$/)
     expect(params(page).getAll("tag")).toEqual([])
     expect(params(page).get("page")).toBeNull()
@@ -272,7 +274,7 @@ test.describe("unified writing filters", () => {
       "cursor",
       "pointer"
     )
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toHaveCSS(
+    await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toHaveCSS(
       "cursor",
       "pointer"
     )
@@ -281,7 +283,7 @@ test.describe("unified writing filters", () => {
     await expect(
       dialog.getByText("Earliest published articles first.", { exact: true })
     ).toHaveCount(0)
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/sort=oldest/)
     await expect(page.getByRole("link", { name: "Archive fixture 1", exact: true })).toHaveCSS(
       "cursor",
@@ -322,12 +324,12 @@ test.describe("unified writing filters", () => {
     await dialog.getByLabel("Publication date", { exact: true }).selectOption("custom")
     await dialog.getByLabel("From", { exact: true }).fill("2026-10-09")
     await dialog.getByLabel("To", { exact: true }).fill("2026-10-01")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole("alert")).toContainText("start on or before the end")
     expect(params(page).get("date")).toBeNull()
     await dialog.getByLabel("To", { exact: true }).fill("2026-10-09")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(dialog).not.toBeVisible()
     expect(params(page).get("from")).toBe("2026-10-09")
     expect(params(page).get("to")).toBe("2026-10-09")
@@ -376,7 +378,7 @@ test.describe("unified writing filters", () => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto("/writing")
     const dialog = await openFilters(page)
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible()
+    await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible()
     await expect
       .poll(async () => {
         const bounds = await dialog.boundingBox()
@@ -387,7 +389,16 @@ test.describe("unified writing filters", () => {
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
     await dialog.getByRole("button", { name: /React.*5/i }).click()
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/tag=react/)
   })
 })
+
+for (const width of [320, 1280]) {
+  test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await archive(page)
+    await page.goto("/writing?page=2")
+    await expectIconPagination(page, "Writing pages", width)
+  })
+}

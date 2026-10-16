@@ -34,6 +34,16 @@ CSR moves list/editor rendering to the browser. Authentication, validation,
 mutations and article sanitization remain server responsibilities; this design
 does not guarantee a deployed Worker CPU ceiling.
 
+## Related articles
+
+Published article pages recommend up to three other public posts sharing at least
+one tag. Rank by shared-tag count descending, publication date descending, then
+post UUID ascending for stable ties. Exclude the source article, drafts, archived
+posts, and posts missing content or a publication date. No matches means no
+Related section. One SQL query returns summaries and tags without article bodies.
+Public caching uses the shared posts invalidation tag; the related-read key is
+versioned when ranking changes.
+
 ## Unified writing archive
 
 Discovery uses `/writing` for search, filters, sorting and pagination. The URL is

@@ -114,7 +114,7 @@ export async function getPostForEdit(id: string): Promise<AdminPost | null> {
   if (!db) return null
 
   // A uuid column will not simply fail to match a non-uuid - it raises. Treating
-  // a malformed id as "no such post" is what turns `/admin/edit/anything` from a
+  // a malformed id as "no such post" is what turns `/admin/posts/edit/anything` from a
   // 500 into a 404.
   if (!postIdSchema.safeParse(id).success) return null
 

@@ -15,14 +15,24 @@ async function archiveFixture(page: Page, query = "") {
     title: `${status} fixture`,
     status: status as Status,
     excerpt: "An independent post with list actions.",
-    coverUrl: null,
-    coverAlt: null,
+    coverUrl: process.env.MEDIA_ORIGIN ? `${process.env.MEDIA_ORIGIN}/covers/fixture.png` : null,
+    coverAlt: "Fixture cover",
     tags: [],
     publishedAt: null,
     updatedAt: "2026-10-10T00:00:00Z",
     readingTime: 2,
     viewCount: 0,
   }))
+  if (process.env.MEDIA_ORIGIN)
+    await page.route(`${process.env.MEDIA_ORIGIN}/covers/fixture.png`, (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5XsAAAAASUVORK5CYII=",
+          "base64"
+        ),
+      })
+    )
   const writes: { method: string; path: string; data?: Record<string, unknown> }[] = []
   const archiveQueries: string[] = []
   const fullPostReads: string[] = []
@@ -105,7 +115,7 @@ for (const status of ["draft", "published", "archived"] as const) {
     const { writes, fullPostReads } = await archiveFixture(page)
     await expect(
       page.getByRole("link", { name: `Edit ${status} fixture`, exact: true })
-    ).toHaveAttribute("href", `/admin/edit/${ids[status]}`)
+    ).toHaveAttribute("href", `/admin/posts/edit/${ids[status]}`)
     await actions(page, status).click()
     const published = status === "published"
     await expect(page.getByRole("menuitem")).toHaveText([
@@ -115,6 +125,12 @@ for (const status of ["draft", "published", "archived"] as const) {
       "Delete",
     ])
     await expect(page.getByRole("menu").getByRole("separator")).toHaveCount(1)
+    const icons = await page
+      .getByRole("menuitem")
+      .locator("svg")
+      .evaluateAll((elements) => elements.map((element) => element.innerHTML))
+    expect(new Set(icons).size).toBe(icons.length)
+
     const opened = page.waitForEvent("popup")
     await page.getByRole("menuitem", { name: published ? "Visit" : "Preview", exact: true }).click()
     const tab = await opened
@@ -278,3 +294,50 @@ for (const width of [320, 1280]) {
     await expect(trigger).toBeFocused()
   })
 }
+
+for (const width of [320, 1280]) {
+  test(`groups public destinations and supports keyboard navigation at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await archiveFixture(page)
+    if (width < 768) await page.getByRole("button", { name: "Open admin menu" }).click()
+    const navigation = page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .filter({ visible: true })
+    await expect(navigation.getByRole("link")).toHaveCount(1)
+    await expect(navigation.getByRole("link", { name: "Posts", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
+    )
+    const trigger = navigation.getByRole("button", { name: "Public", exact: true })
+    await trigger.focus()
+    await page.keyboard.press("Enter")
+    const menu = page.getByRole("menu", { name: "Public", exact: true })
+    await expect(menu.getByRole("menuitem")).toHaveText(["Resume", "Writing", "Stack"])
+    for (const [name, href] of [
+      ["Resume", "/resume"],
+      ["Writing", "/writing"],
+      ["Stack", "/tech-stack"],
+    ])
+      await expect(menu.getByRole("menuitem", { name, exact: true })).toHaveAttribute("href", href)
+    await expect(menu.getByRole("menuitem", { name: "Resume", exact: true })).toBeFocused()
+    await page.screenshot({
+      path: test.info().outputPath(`public-menu-${width}.png`),
+      fullPage: false,
+    })
+    await page.keyboard.press("Escape")
+    await expect(trigger).toBeFocused()
+    await trigger.click()
+    await menu.getByRole("menuitem", { name: "Stack", exact: true }).click()
+    await expect(page).toHaveURL(/\/tech-stack$/)
+    await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
+  })
+}
+
+test("opens the editor from a post cover", async ({ page }) => {
+  test.skip(!process.env.MEDIA_ORIGIN, "Cover validation needs the configured public media origin")
+  await archiveFixture(page)
+  await page.getByRole("link", { name: "Edit cover for draft fixture", exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${ids.draft}$`))
+})

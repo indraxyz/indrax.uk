@@ -26,7 +26,7 @@ describe("postIdSchema", () => {
 
   it("refuses anything a uuid column would raise on", () => {
     // Postgres raises 22P02 rather than simply not matching, so this is what
-    // keeps /admin/edit/anything a not-found instead of a 500.
+    // keeps /admin/posts/edit/anything a not-found instead of a 500.
     for (const id of ["", "anything", "123", "0f441098-c606-421b-a951", "' OR 1=1--"]) {
       expect(postIdSchema.safeParse(id).success, id).toBe(false)
     }

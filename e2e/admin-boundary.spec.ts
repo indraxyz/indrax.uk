@@ -20,7 +20,7 @@ import { expect, test } from "@playwright/test"
  * deployment must be *more* closed than a configured one, never less.
  */
 test.describe("the admin boundary", () => {
-  const GUARDED = ["/admin", "/admin/posts", "/admin/new", "/admin/edit/some-id"]
+  const GUARDED = ["/admin", "/admin/posts", "/admin/posts/new", "/admin/posts/edit/some-id"]
 
   test("sends a signed-out visitor to the login page", async ({ page }) => {
     for (const path of GUARDED) {
@@ -137,12 +137,16 @@ test.describe("the admin boundary", () => {
   test("hands no session to an unauthenticated caller", async ({ request }) => {
     // Asserted on the body rather than the status, because both answers are
     // correct depending on configuration: a deployment with no OAuth application
-    // 404s the whole surface, and a configured one answers with an empty session.
+    // returns an explicit 503, and a configured one answers with an empty session.
     // What must never happen is either of them returning one.
     const response = await request.get("/api/auth/get-session")
 
-    if (response.status() === 404) return
+    if (response.status() === 503) {
+      expect(await response.json()).toEqual({ error: "Authentication is not configured." })
+      return
+    }
 
+    expect(response.status()).toBe(200)
     const body = await response.text()
     expect(body === "" || body === "null" || JSON.parse(body) === null).toBe(true)
   })

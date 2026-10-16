@@ -101,9 +101,15 @@ export GITHUB_CLIENT_ID='local-test'
 export GITHUB_CLIENT_SECRET='local-test'
 npm run db:migrate
 npm run db:seed
-TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+TEST_DATABASE_URL="$DATABASE_URL" TEST_DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" npm run test:integration
 npm run test:e2e
 ```
+
+`TEST_DIRECT_DATABASE_URL` points the concurrency tests’ locking connection at the
+same disposable PostgreSQL database. It is required when the Neon proxy uses a
+custom port; the default 4444 proxy otherwise maps to direct port 55432. Both
+connections must stay on loopback. This avoids silently locking a different local
+database when running an isolated stack on alternate ports.
 
 These credentials are local fixtures, not real GitHub/R2/PostHog secrets. DB tooling
 loads `.env.local`/`.env`, while test helpers use exported variables. Explicit exports
@@ -347,3 +353,11 @@ browser suite and before isolated uploads. Its separate Vite cache avoids mixing
 development dependency output with production checks. Final shipping verification
 uses a fresh local database, applies all migrations and seeds repository fixtures
 before running SQL integration and the full production browser suite.
+
+Hero and admin navigation regressions verify personal/PDF controls left of social
+links and a 24–32px role heading on both public profile pages. Fixture-based admin
+checks cover distinct action icons, cover links to `/admin/posts/edit/:id`, legacy
+editor redirects, and the Public menu’s Resume/Writing/Stack destinations with
+keyboard focus restoration at 320px and 1280px. The unauthenticated session check
+asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
+with 200 when configured. These checks do not require real private writes.

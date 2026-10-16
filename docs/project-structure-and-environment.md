@@ -38,8 +38,12 @@ run behind the same Worker and origin, rather than separate deployed backends.
   components stay in `features/writing/components/admin/`.
 - Shared public layout: `components/layout/`; reusable UI primitives:
   `components/ui/`.
-- Global site origin, host and social links: `config/site.ts`. Resume-specific
-  wording and options stay in `features/resume/config.ts`.
+- Global site origin, host and social links: `config/site.ts`. Resume records live
+  in `features/resume/data/resume.ts`; page metadata, hero heading, and shared page/PDF
+  descriptions live in `features/resume/data/page.ts`. Runtime display options stay
+  in `features/resume/config.ts`. Stack page copy, sections, and source links live
+  in `features/tech-stack/data/stack.ts`. Use typed TypeScript content objects and
+  keep layout and interactions in components.
 - Shared infrastructure: `lib/`; writing API handlers and database operations:
   `features/writing/api/` and `features/writing/data/`.
 - Build/development runners: `scripts/`. Unit tests normally sit beside the code
@@ -88,7 +92,8 @@ For a new admin area, add its route modules to `admin/routes/<area>/` and map th
 in `admin/routes.tsx`. Keep its domain behavior, API contracts and substantial UI
 in `features/<feature>/`, following the existing writing modules. Add admin-wide
 UI only when shared across areas. Folder names do not determine URLs, so this
-organization preserves `/admin/new` and `/admin/edit/:id` and requires no redirects.
+post editor uses `/admin/posts/new` and `/admin/posts/edit/:id`. The former
+`/admin/new` and `/admin/edit/:id` URLs redirect to these routes.
 
 ## What does `workers/` do? Can React Router provide the backend?
 

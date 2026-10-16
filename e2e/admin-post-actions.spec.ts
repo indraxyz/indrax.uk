@@ -57,7 +57,7 @@ async function editorFixture(page: Page, status = "draft") {
     else if (request.method() === "POST") post = { ...post, ...data } as typeof post
     await route.fulfill({ json: { ok: true, postId: id } })
   })
-  await page.goto(`/admin/edit/${id}`)
+  await page.goto(`/admin/posts/edit/${id}`)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue(post.title)
   await expect(page.locator(".tiptap")).toBeVisible()
   return { writes }
@@ -104,7 +104,7 @@ for (const status of ["draft", "archived", "published"]) {
     )
     await expect(tab.getByRole("heading")).toHaveText("Post destination")
     expect(await tab.evaluate(() => window.opener)).toBeNull()
-    await expect(page).toHaveURL(new RegExp(`/admin/edit/${id}$`))
+    await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${id}$`))
     expect(previewCalls).toHaveLength(status === "published" ? 0 : 1)
     await tab.close()
   })
@@ -112,7 +112,7 @@ for (const status of ["draft", "archived", "published"]) {
 
 test("new posts enable their action menu after their first successful save", async ({ page }) => {
   await editorFixture(page)
-  await page.goto("/admin/new")
+  await page.goto("/admin/posts/new")
   await more(page)
   await expect(page.getByRole("menuitem")).toHaveText(["Preview", "Publish", "Archive", "Delete"])
   for (const item of await page.getByRole("menuitem").all()) await expect(item).toBeDisabled()
@@ -121,7 +121,7 @@ test("new posts enable their action menu after their first successful save", asy
   await page.getByLabel("Title", { exact: true }).fill("New actions fixture")
   await page.locator(".tiptap").fill("A new draft body")
   await page.getByRole("button", { name: "Save", exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/admin/edit/${id}$`))
+  await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${id}$`))
   await more(page)
   await expect(page.getByRole("menuitem", { name: "Preview", exact: true })).toBeEnabled()
 })
@@ -314,7 +314,7 @@ for (const width of [320, 1280]) {
         ),
       })
     )
-    for (const path of [`/admin/edit/${id}`, "/admin/new"]) {
+    for (const path of [`/admin/posts/edit/${id}`, "/admin/posts/new"]) {
       await page.goto(path)
       await expect(page).toHaveURL(new RegExp(`${path}$`))
       const cover = page.getByRole("group", { name: "Cover image", exact: true })
@@ -335,3 +335,13 @@ for (const width of [320, 1280]) {
     await page.screenshot({ path: `test-results/cover-field-group-${width}.png`, fullPage: true })
   })
 }
+
+test("redirects bookmarked editor URLs to the posts area", async ({ page }) => {
+  await editorFixture(page)
+  await page.goto(`/admin/edit/${id}`)
+  await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${id}$`))
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Actions fixture")
+  await page.goto("/admin/new")
+  await expect(page).toHaveURL(/\/admin\/posts\/new$/)
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("")
+})

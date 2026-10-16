@@ -118,7 +118,7 @@ test.describe("authoring", () => {
     if (latestDraft) {
       await expect(page.getByRole("link", { name: "Edit draft", exact: true })).toHaveAttribute(
         "href",
-        `/admin/edit/${latestDraft.id}`
+        `/admin/posts/edit/${latestDraft.id}`
       )
       await expect(page.locator('section[aria-labelledby="next-heading"]')).toContainText(
         latestDraft.title
@@ -156,12 +156,19 @@ test.describe("authoring", () => {
     await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible()
     await expectOverview(page)
-    await expect(
-      page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Resume" })
-    ).toHaveAttribute("href", "/resume")
-    await expect(
-      page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Admin home" })
-    ).toHaveAttribute("href", "/admin")
+    await page
+      .getByRole("navigation", { name: "Admin" })
+      .getByRole("button", { name: "Public", exact: true })
+      .click()
+    await expect(page.getByRole("menuitem", { name: "Resume", exact: true })).toHaveAttribute(
+      "href",
+      "/resume"
+    )
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("link", { name: "Indra's Admin", exact: true })).toHaveAttribute(
+      "href",
+      "/admin"
+    )
     await page
       .getByRole("navigation", { name: "Admin" })
       .getByRole("link", { name: "Posts" })
@@ -172,12 +179,19 @@ test.describe("authoring", () => {
     await breadcrumb.getByRole("link", { name: "Admin", exact: true }).click()
     await expect(page).toHaveURL(/\/admin$/)
     await page.goto("/admin/posts")
-    await expect(page.getByRole("link", { name: "Admin home" })).toHaveAttribute("href", "/admin")
-    await expect(
-      page
-        .getByRole("navigation", { name: "Admin", exact: true })
-        .getByRole("link", { name: "Writing", exact: true })
-    ).toHaveAttribute("href", "/writing")
+    await expect(page.getByRole("link", { name: "Indra's Admin", exact: true })).toHaveAttribute(
+      "href",
+      "/admin"
+    )
+    await page
+      .getByRole("navigation", { name: "Admin", exact: true })
+      .getByRole("button", { name: "Public", exact: true })
+      .click()
+    await expect(page.getByRole("menuitem", { name: "Writing", exact: true })).toHaveAttribute(
+      "href",
+      "/writing"
+    )
+    await page.keyboard.press("Escape")
     // The draft the seed creates is only visible here - it 404s everywhere public.
     // Matched on its exact title: each row renders the title as a link *and* an
     // "Edit <title>" control, so a loose match finds both.
@@ -187,7 +201,7 @@ test.describe("authoring", () => {
 
   test("edits table structure and keeps controls in sync with the selection", async () => {
     const page = await context.newPage()
-    await page.goto("/admin/new")
+    await page.goto("/admin/posts/new")
     const body = page.locator(".ProseMirror")
     await expect(body).toBeVisible()
     await expect(page.getByRole("toolbar", { name: "Table editing" })).toHaveCount(0)
@@ -272,7 +286,7 @@ test.describe("authoring", () => {
 
   test("keeps formatting visible below the admin header while scrolling long content", async () => {
     const page = await context.newPage()
-    await page.goto("/admin/new")
+    await page.goto("/admin/posts/new")
     const body = page.locator(".ProseMirror")
     await expect(body).toBeVisible()
     await body.fill(
@@ -310,7 +324,7 @@ test.describe("authoring", () => {
     const settings = await authorSettings()
     test.skip(settings.coverUploadsConfigured, "needs unavailable media storage")
     const page = await context.newPage()
-    await page.goto("/admin/new")
+    await page.goto("/admin/posts/new")
     const cover = page.getByRole("group", { name: "Cover image", exact: true })
     await expect(cover).toHaveAttribute("disabled", "")
     await expect(cover.getByLabel("Cover image URL")).toBeDisabled()
@@ -353,7 +367,7 @@ test.describe("authoring", () => {
     const settings = await authorSettings()
     test.skip(!settings.coverUploadsConfigured, "needs the local R2 binding and a media origin")
     const page = await context.newPage()
-    await page.goto("/admin/new")
+    await page.goto("/admin/posts/new")
     const cover = page.getByRole("group", { name: "Cover image", exact: true })
     await expect(cover).not.toHaveAttribute("disabled", "")
     await expect(cover.getByLabel("Cover image URL")).toBeEnabled()
@@ -375,7 +389,7 @@ test.describe("authoring", () => {
     const errors: string[] = []
     page.on("pageerror", (error) => errors.push(String(error)))
 
-    await page.goto("/admin/new")
+    await page.goto("/admin/posts/new")
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb", exact: true })
     await expect(breadcrumb.locator("li")).toHaveText(["Admin", "Posts", "New post"])
     await expect(breadcrumb.getByRole("link", { name: "Posts", exact: true })).toHaveAttribute(
@@ -423,7 +437,7 @@ test.describe("authoring", () => {
     await expect(page.getByLabel("Slug", { exact: true })).toHaveValue(SLUG_PATTERN)
 
     await page.getByRole("button", { name: /^save$/i }).click()
-    await page.waitForURL(/\/admin\/edit\//)
+    await page.waitForURL(/\/admin\/posts\/edit\//)
     await expect(breadcrumb.locator("li")).toHaveText(["Admin", "Posts", "Edit post"])
 
     // The slug is corrected before saving and validated again by the server.

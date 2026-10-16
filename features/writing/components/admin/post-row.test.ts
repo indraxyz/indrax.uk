@@ -41,7 +41,7 @@ describe("PostRow", () => {
     expect(html).toContain(`src="${post.coverUrl}"`)
     expect(html).toContain('alt="Sample cover"')
     expect(html).toContain('loading="lazy"')
-    expect(html.indexOf("<img")).toBeLessThan(html.indexOf("Sample post"))
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Sample post</a>"))
     expect(html).toContain("h-40 w-full shrink-0 self-stretch")
     expect(html).toContain("sm:h-auto sm:w-48")
     expect(html).toContain("lg:w-56")
@@ -58,9 +58,12 @@ describe("PostRow", () => {
     expect(html).toContain("Published ")
     expect(html).toContain("Edited ")
     expect(html).toContain("TypeScript")
-    expect(html).toContain('href="/admin/edit/post-id"')
+    expect(html).toContain('href="/admin/posts/edit/post-id"')
     expect(html).toContain('aria-label="Edit Sample post"')
     expect(html).toContain('aria-label="Actions for Sample post"')
+    expect(html).toMatch(
+      /<a[^>]*aria-label="Edit cover for Sample post"[^>]*>[\s\S]*?<img[\s\S]*?<\/a>/
+    )
   })
 
   it("uses the stored word-boundary excerpt and limits its visible lines", () => {
@@ -83,6 +86,7 @@ describe("PostRow", () => {
     const html = render({ coverUrl, excerpt: null, status: "draft", publishedAt: null })
 
     expect(html).not.toContain("<img")
+    expect(html).not.toContain("Edit cover for")
     expect(html).not.toContain("line-clamp-2")
     expect(html).toContain("Never published")
     expect(html).toContain('aria-label="Edit Sample post"')
