@@ -180,7 +180,7 @@ test.describe("sessions", () => {
       .getByRole("navigation", { name: "Admin", exact: true })
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
-    expect(desktopLinks).toEqual(["/admin", "/admin/posts", "/resume", "/writing"])
+    expect(desktopLinks).toEqual(["/admin/posts"])
 
     for (const width of [320, 767]) {
       await page.setViewportSize({ width, height: 700 })
@@ -222,8 +222,9 @@ test.describe("sessions", () => {
     await page.getByRole("button", { name: "Open admin menu" }).click()
     await page
       .getByRole("dialog", { name: "Admin menu", exact: true })
-      .getByRole("link", { name: "Writing", exact: true })
+      .getByRole("button", { name: "Public", exact: true })
       .click()
+    await page.getByRole("menuitem", { name: "Writing", exact: true }).click()
     await expect(page).toHaveURL(/\/writing$/)
     await expect(page.getByRole("dialog", { name: "Admin menu", exact: true })).toBeHidden()
     await page.goto("/admin/posts")
@@ -242,12 +243,15 @@ test.describe("sessions", () => {
     await expect(drawer).toBeVisible()
     await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeFocused()
 
-    await drawer.getByRole("link", { name: "Admin home", exact: true }).click()
+    await drawer.getByRole("button", { name: "Close admin menu" }).click()
+    const brand = page.getByRole("link", { name: "Indra's Admin", exact: true })
+    await brand.click()
     await expect(page).toHaveURL(/\/admin$/)
     await expect(drawer).toBeHidden()
     await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
+    await expect(brand).toHaveAttribute("aria-current", "page")
     await page.getByRole("button", { name: "Open admin menu" }).click()
-    await expect(drawer.getByRole("link", { name: "Admin home", exact: true })).toHaveAttribute(
+    await expect(drawer.getByRole("link", { name: "Posts", exact: true })).not.toHaveAttribute(
       "aria-current",
       "page"
     )

@@ -81,7 +81,7 @@ beforeEach(() => vi.clearAllMocks())
 
 it("navigates once to the created post without an extra refresh", async () => {
   await submit(null, { ok: true, postId: ID })
-  expect(mocks.replace.mock.calls).toEqual([[`/admin/edit/${ID}`]])
+  expect(mocks.replace.mock.calls).toEqual([[`/admin/posts/edit/${ID}`]])
   expect(mocks.refresh).not.toHaveBeenCalled()
   expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "tags"] })
 })

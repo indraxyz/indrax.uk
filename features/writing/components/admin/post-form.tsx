@@ -300,7 +300,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
         // An author can keep editing while a request runs. Retain those fields
         // and the created ID; the next save updates that post without losing edits.
         if (outcome.postId && outcome.postId !== post?.id && !isDirty())
-          navigate(`/admin/edit/${outcome.postId}`, { replace: true })
+          navigate(`/admin/posts/edit/${outcome.postId}`, { replace: true })
       } catch (error) {
         setResult({ ok: false, message: apiErrorMessage(error) })
       } finally {

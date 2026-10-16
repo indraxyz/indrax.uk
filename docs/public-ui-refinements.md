@@ -5,8 +5,8 @@ Branch: `fix/public-ui-hydration-and-local-media`, based on `develop`.
 ## Public pages
 
 Home and resume share a `Software Engineer` heading that scales from 24px on small
-phones to a 40px desktop cap. LinkedIn and GitHub use icon links with accessible
-names. The bottom row keeps social links left and personal information/PDF actions
+phones to a 32px desktop cap. LinkedIn and GitHub use icon links with accessible
+names. The bottom row keeps personal information/PDF actions left and social links
 right, including at 320px. Delivery sequence arrows and labels remain; the green
 trace paths and animation styles are removed.
 

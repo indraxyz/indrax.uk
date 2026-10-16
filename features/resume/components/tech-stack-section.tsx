@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
-import { SECTION_COPY } from "@/features/resume/config"
+import { SECTION_COPY } from "@/features/resume/data/page"
 import { techStackGroups } from "@/features/resume/utils/groups"
 import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
 import { Code } from "lucide-react"

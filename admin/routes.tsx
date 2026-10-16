@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet } from "react-router"
+import { createBrowserRouter, Outlet, redirect } from "react-router"
 import type { QueryKey } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { adminSessionOptions } from "@/features/writing/api/session-query"
@@ -62,9 +62,19 @@ export const router = createBrowserRouter([
             },
             lazy: () => import("./routes/posts/list"),
           },
-          { path: "new", loader: () => loadAdminPage(), lazy: () => import("./routes/posts/new") },
+          { path: "new", loader: () => redirect("/admin/posts/new") },
           {
             path: "edit/:id",
+            loader: ({ params }) =>
+              redirect(`/admin/posts/edit/${encodeURIComponent(params.id ?? "")}`),
+          },
+          {
+            path: "posts/new",
+            loader: () => loadAdminPage(),
+            lazy: () => import("./routes/posts/new"),
+          },
+          {
+            path: "posts/edit/:id",
             loader: ({ params }) =>
               loadAdminPage(adminKeys.post(params.id ?? ""), () => adminApi.post(params.id ?? "")),
             lazy: () => import("./routes/posts/edit"),

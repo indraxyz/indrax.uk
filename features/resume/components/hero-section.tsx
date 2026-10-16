@@ -3,6 +3,7 @@ import { ContactLinks } from "@/features/resume/components/contact-links"
 import { DownloadResumeButton } from "@/features/resume/components/download-resume-button"
 import { HighlightSkills } from "@/features/resume/components/highlight-skills"
 import { PersonalInfoSheet } from "@/features/resume/components/personal-info-sheet"
+import { resumePageContent } from "@/features/resume/data/page"
 import { bio, personalInfo } from "@/features/resume/data/resume"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { cn } from "@/lib/utils"
@@ -52,19 +53,19 @@ export function HeroSection({
           </div>
 
           <div className="min-w-0 flex-1 space-y-6 text-center print:space-y-3 sm:text-left">
-            <h1 className="text-[clamp(1.5rem,calc(1rem+2.5vw),2.5rem)] font-black uppercase leading-tight tracking-tight text-foreground print:text-3xl">
-              Software Engineer
+            <h1 className="text-[clamp(1.5rem,calc(1.25rem+1vw),2rem)] font-black uppercase leading-tight tracking-tight text-foreground print:text-3xl">
+              {resumePageContent.heading}
             </h1>
             {showSkills && <HighlightSkills skills={personalInfo.highlightSkills ?? []} />}
             <p className="mx-auto max-w-5xl text-base leading-relaxed text-foreground print:text-sm print:leading-snug sm:mx-0 md:text-lg">
               {bio}
             </p>
             <div className="flex items-center justify-between gap-4 print:hidden">
-              <ContactLinks />
               <div className="flex shrink-0 items-center gap-2">
                 <PersonalInfoSheet />
                 <DownloadResumeButton />
               </div>
+              <ContactLinks />
             </div>
           </div>
         </div>

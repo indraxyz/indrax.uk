@@ -15,9 +15,7 @@ test.describe("the public pages", () => {
     expect(errors).toEqual([])
   })
 
-  test("separates social links and bottom-right hero actions at every viewport", async ({
-    page,
-  }) => {
+  test("places hero actions left and social links right at every viewport", async ({ page }) => {
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 844 })
       for (const path of ["/", "/resume"]) {
@@ -39,7 +37,18 @@ test.describe("the public pages", () => {
           .getByRole("button", { name: "Download resume as PDF" })
           .boundingBox()
         const title = await heading.boundingBox()
-        expect(profile!.x - (social!.x + social!.width)).toBeGreaterThanOrEqual(16)
+        if (width === 320 || width === 1280)
+          await page.screenshot({
+            path: test.info().outputPath(`hero-${path === "/" ? "home" : "resume"}-${width}.png`),
+            fullPage: false,
+          })
+        expect(social!.x - (download!.x + download!.width)).toBeGreaterThanOrEqual(16)
+        expect(download!.x).toBeGreaterThan(profile!.x)
+        const fontSize = await heading.evaluate((element) =>
+          parseFloat(getComputedStyle(element).fontSize)
+        )
+        expect(fontSize).toBeGreaterThanOrEqual(24)
+        expect(fontSize).toBeLessThanOrEqual(32)
         expect(profile!.y).toBe(social!.y)
         expect(download!.y).toBe(profile!.y)
         expect(profile!.y).toBeGreaterThan(title!.y + title!.height)
@@ -271,20 +280,19 @@ test.describe("the public pages", () => {
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Deployment", exact: true }) })
     await expect(data.getByText(/Cloudflare KV \/ D1 \/ R2/)).toBeVisible()
-    await expect(data.getByText(/R2 buckets store article media/)).toBeVisible()
-    await expect(deployment).toContainText("KV/D1/R2 bindings")
+    await expect(data.getByText(/R2 stores uploaded images/)).toBeVisible()
+    await expect(deployment).toContainText("separate KV, D1, and R2 resources")
     const auth = page.getByRole("region", { name: "Author access", exact: true })
-    await expect(auth).toContainText("Better Auth handles GitHub OAuth sign-in, sign-out")
-    await expect(auth).toContainText("database-backed sessions through the Drizzle adapter")
-    await expect(auth).toContainText("numeric GitHub account allowlist")
+    await expect(auth).toContainText("Better Auth handles GitHub sign-in")
+    await expect(auth).toContainText("database-backed sessions")
     await auth.getByRole("button", { name: "Why Author access", exact: true }).click()
-    await expect(auth).toContainText("database sessions can be revoked")
+    await expect(auth).toContainText("sessions can be revoked")
     const local = page.getByRole("region", { name: "Local development", exact: true })
     await expect(local).toContainText("npm run dev")
     await expect(local).toContainText(".env.local")
     await expect(local).toContainText("Neon-compatible HTTP proxy")
     await expect(page.getByRole("region", { name: "Architecture overview" })).toContainText(
-      "One React Router application serves SEO pages, while a static client application serves the author dashboard."
+      "This site has two interfaces: public pages for readers and a private dashboard for publishing."
     )
     const cards = page.locator('[data-slot="stack-cards"]')
     await expect(cards.getByRole("heading", { level: 2 })).toHaveText([

@@ -1,5 +1,14 @@
 import { Menu } from "@base-ui/react/menu"
-import { Archive, ExternalLink, Eye, EyeOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react"
+import {
+  Archive,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Loader2,
+  MoreHorizontal,
+  Send,
+  Trash2,
+} from "lucide-react"
 import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -197,7 +206,7 @@ export function PostActions({
                   {published ? (
                     <EyeOff className="h-4 w-4" aria-hidden />
                   ) : (
-                    <Eye className="h-4 w-4" aria-hidden />
+                    <Send className="h-4 w-4" aria-hidden />
                   )}
                   {published ? "Unpublish" : "Publish"}
                 </Menu.Item>

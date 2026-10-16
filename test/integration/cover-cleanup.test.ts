@@ -175,8 +175,15 @@ async function whilePostLocked(
   competingWrite: "replace" | "delete",
   mutate: () => Promise<unknown>
 ) {
-  const connection = new URL(process.env.TEST_DATABASE_URL!)
-  connection.port = "55432"
+  const directUrl = process.env.TEST_DIRECT_DATABASE_URL
+  const connection = new URL(directUrl ?? process.env.TEST_DATABASE_URL!)
+  if (!["localhost", "127.0.0.1", "[::1]"].includes(connection.hostname))
+    throw new Error("TEST_DIRECT_DATABASE_URL must point to an isolated localhost database.")
+  if (!directUrl) {
+    if (connection.port && connection.port !== "4444")
+      throw new Error("Set TEST_DIRECT_DATABASE_URL when using a custom local proxy port.")
+    connection.port = "55432"
+  }
   connection.search = ""
   const client = new Client({ connectionString: connection.href })
   await client.connect()

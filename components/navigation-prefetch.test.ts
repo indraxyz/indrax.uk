@@ -43,6 +43,6 @@ it("does not prefetch edit forms and article rendering from each admin post row"
     )
   )
   expect(html).not.toContain('rel="prefetch"')
-  expect(html).toContain('href="/admin/edit/post-id"')
+  expect(html).toContain('href="/admin/posts/edit/post-id"')
   expect(html).toContain('aria-label="Actions for Post title"')
 })

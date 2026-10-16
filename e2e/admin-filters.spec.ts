@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
+import { expectIconPagination } from "./support/pagination"
+
 const excerpt =
   "An archive excerpt with the same stored ellipsis as writing cards. ".repeat(3) + "..."
 const mediaOrigin = process.env.MEDIA_ORIGIN?.replace(/\/$/, "")
@@ -150,7 +152,7 @@ test.describe("admin post discovery", () => {
     await dialog.getByLabel("Publication date", { exact: true }).selectOption("30d")
     await dialog.getByLabel("Reading duration", { exact: true }).selectOption("short")
     expect(params(page).get("status")).toBeNull()
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/status=draft/)
     expect(params(page).getAll("tag")).toEqual(["private", "typescript"])
     expect(params(page).get("sort")).toBe("oldest")
@@ -228,7 +230,7 @@ test.describe("admin post discovery", () => {
       "cursor",
       "pointer"
     )
-    await expect(dialog.getByRole("button", { name: "Clear filters" })).toHaveCSS(
+    await expect(dialog.getByRole("button", { name: "Clear", exact: true })).toHaveCSS(
       "cursor",
       "pointer"
     )
@@ -247,7 +249,7 @@ test.describe("admin post discovery", () => {
       "/admin/posts?q=renderer&status=archived&sort=oldest&tag=private&date=30d&duration=long&page=2"
     )
     const dialog = await filters(page)
-    await dialog.getByRole("button", { name: "Clear filters" }).click()
+    await dialog.getByRole("button", { name: "Clear", exact: true }).click()
     await expect(page).toHaveURL(/\/admin\/posts\?q=renderer$/)
     await expect(page.locator("[data-active-filters]")).toHaveCount(0)
     const reset = await filters(page)
@@ -271,7 +273,7 @@ test.describe("admin post discovery", () => {
     dialog = await filters(page)
     await expect(dialog.getByLabel("Status", { exact: true })).toHaveValue("any")
     await dialog.getByLabel("Status", { exact: true }).selectOption("published")
-    await dialog.getByRole("button", { name: "Apply filters" }).click()
+    await dialog.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/status=published/)
     await page.goBack()
     await expect(page).toHaveURL(/\/admin\/posts$/)
@@ -301,7 +303,7 @@ test.describe("admin post discovery", () => {
     await expect(
       searched.getByText("Best matches for your search first.", { exact: true })
     ).toHaveCount(0)
-    await searched.getByRole("button", { name: "Apply filters" }).click()
+    await searched.getByRole("button", { name: "Apply", exact: true }).click()
     await expect(page).toHaveURL(/sort=relevance/)
   })
 
@@ -338,7 +340,7 @@ test.describe("admin post discovery", () => {
     await expect(
       dialog.getByText("Counts include posts in every status.", { exact: false })
     ).toHaveCount(0)
-    await expect(dialog.getByRole("button", { name: "Apply filters" })).toBeVisible()
+    await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible()
     await expect
       .poll(async () => {
         const box = await dialog.boundingBox()
@@ -376,3 +378,12 @@ test.describe("admin post discovery", () => {
     }
   }
 })
+
+for (const width of [320, 1280]) {
+  test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await adminArchive(page)
+    await page.goto("/admin/posts?page=2")
+    await expectIconPagination(page, "Posts pagination", width)
+  })
+}

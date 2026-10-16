@@ -1,8 +1,10 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Link } from "react-router"
 
-import { controlClassNames } from "@/components/ui/variants"
+import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+
+const paginationControlClass = cn(buttonVariants({ variant: "ghost", size: "icon" }), "border-0")
 
 interface PaginationProps {
   page: number
@@ -56,42 +58,47 @@ export function Pagination({
           prefetch="none"
           to={previous}
           rel="prev"
-          className={cn(controlClassNames, "px-4 py-2")}
+          aria-label={previousLabel}
+          title={previousLabel}
+          className={paginationControlClass}
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-          {previousLabel}
         </Link>
       ) : (
         <span
           className={cn(
-            controlClassNames,
-            "px-4 py-2 cursor-default text-muted-foreground hover:bg-transparent"
+            paginationControlClass,
+            "pointer-events-none text-muted-foreground opacity-50"
           )}
           aria-hidden
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          {previousLabel}
         </span>
       )}
 
       <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-        Page {page} of {pageCount}
+        {page} of {pageCount}
       </p>
 
       {next ? (
-        <Link prefetch="none" to={next} rel="next" className={cn(controlClassNames, "px-4 py-2")}>
-          {nextLabel}
+        <Link
+          prefetch="none"
+          to={next}
+          rel="next"
+          aria-label={nextLabel}
+          title={nextLabel}
+          className={paginationControlClass}
+        >
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       ) : (
         <span
           className={cn(
-            controlClassNames,
-            "px-4 py-2 cursor-default text-muted-foreground hover:bg-transparent"
+            paginationControlClass,
+            "pointer-events-none text-muted-foreground opacity-50"
           )}
           aria-hidden
         >
-          {nextLabel}
           <ChevronRight className="h-3.5 w-3.5" />
         </span>
       )}
