@@ -1,5 +1,5 @@
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
 import type { RefObject } from "react"
-import { Loader2 } from "lucide-react"
 import type { PostStatus } from "@/features/writing/types"
 import { Button } from "@/components/ui/button"
 import {
@@ -72,7 +72,7 @@ export function PostStatusDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <Button type="button" size="sm" disabled={pending} onClick={onConfirm}>
-            {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+            {pending && <LoadingIndicator />}
             {pending ? copy.pending : copy.action}
           </Button>
         </AlertDialogFooter>

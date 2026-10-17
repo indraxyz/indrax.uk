@@ -55,7 +55,7 @@ export default {
               target.searchParams.append("tag", tag)
           } else target.pathname = path.replace(/^\/blog/, "/writing")
           response = Response.redirect(target, 308)
-        } else if (path === "/api/analytics" || path.startsWith("/api/analytics/")) {
+        } else if (path === "/analytics" || path.startsWith("/analytics/")) {
           const { handleAnalyticsGateway } = await import("../lib/analytics-gateway.server")
           response = await handleAnalyticsGateway(request)
         } else if (path.startsWith("/api/auth/")) {

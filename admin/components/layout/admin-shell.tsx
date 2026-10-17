@@ -1,9 +1,11 @@
-import { Link } from "react-router"
+import { Link, useLocation } from "react-router"
 import type { ReactNode } from "react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
+import { focusControlClassNames } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
 import { AdminNavigation } from "@/admin/components/layout/admin-navigation"
 
 interface AdminShellProps {
@@ -25,6 +27,15 @@ export function AdminShell({
   activePage,
   signedIn = true,
 }: AdminShellProps) {
+  const { pathname } = useLocation()
+  const currentPage = signedIn
+    ? pathname.startsWith("/admin/posts")
+      ? "posts"
+      : pathname === "/admin" || pathname === "/admin/"
+        ? "home"
+        : activePage
+    : undefined
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header
@@ -35,20 +46,22 @@ export function AdminShell({
           <div className="flex items-center justify-between gap-4">
             <Link
               to="/admin"
-              aria-current={activePage === "home" ? "page" : undefined}
-              className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
+              className={cn(
+                "text-lg font-black uppercase tracking-tight text-foreground sm:text-xl",
+                focusControlClassNames
+              )}
             >
               Indra&apos;s Admin
             </Link>
 
-            <AdminNavigation activePage={activePage} signedIn={signedIn} />
+            <AdminNavigation activePage={currentPage} signedIn={signedIn} />
           </div>
         </div>
       </header>
 
       <main className={`${SITE_CONTAINER_CLASS} flex-1 space-y-8 py-10 lg:py-14`}>
         <div className="space-y-4">
-          {(!signedIn || activePage !== "home") && (
+          {(!signedIn || currentPage !== "home") && (
             <Breadcrumb
               items={
                 signedIn

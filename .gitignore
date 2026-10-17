@@ -61,3 +61,6 @@ Thumbs.db
 
 # Generated admin assets for Vite development
 /public/admin/
+
+# Direct analytics browser regression artifacts
+/test-results-analytics-direct/

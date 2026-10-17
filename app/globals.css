@@ -431,8 +431,15 @@
 
   .variant-chip {
     color: var(--variant-fg);
-    border-color: color-mix(in oklab, var(--variant-border) 30%, transparent);
+    border-color: var(--semantic-border-strong);
     background-color: var(--variant-bg);
+  }
+
+  /* Preserve the original tinted edges on bright badges; dark fills need the
+     stronger outline so their boundary remains visible against the page. */
+  :root:not(.dark) .variant-chip.variant-tertiary,
+  .dark .variant-chip:is(.variant-primary, .variant-secondary) {
+    border-color: color-mix(in oklab, var(--variant-border) 30%, transparent);
   }
 
   .variant-soft-chip {

@@ -53,7 +53,7 @@ export async function verifyAnalytics(target, fetcher = fetch) {
   const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
   for (const suffix of ["", ".js"]) {
     await readAnalytics(
-      `${origin}/api/analytics/array/phc_indrax_gateway/config${suffix}`,
+      `${origin}/analytics/array/phc_indrax_gateway/config${suffix}`,
       fetcher,
       async (response) => {
         const type = response.headers.get("content-type") ?? ""
@@ -77,7 +77,7 @@ export async function verifyAnalytics(target, fetcher = fetch) {
   }
   for (const asset of ["web-vitals", "web-vitals-with-attribution", "dead-clicks-autocapture"]) {
     await readAnalytics(
-      `${origin}/api/analytics/static/${sdkVersion}/${asset}.js`,
+      `${origin}/analytics/static/${sdkVersion}/${asset}.js`,
       fetcher,
       async (response) => {
         if (

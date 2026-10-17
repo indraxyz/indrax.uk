@@ -144,7 +144,7 @@ export function ConsentControl({ className }: { className?: string }) {
       aria-label="Cookie preferences"
       title="Cookie preferences"
       className={cn(
-        "inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
+        "inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden",
         className
       )}
     >

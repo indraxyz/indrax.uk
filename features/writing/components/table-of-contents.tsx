@@ -37,7 +37,7 @@ export function TableOfContents({ entries, className }: TableOfContentsProps) {
           <li key={entry.id} className={entry.level === 3 ? "pl-4" : undefined}>
             <a
               href={`#${entry.id}`}
-              className="text-sm font-semibold leading-snug text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="text-sm font-semibold leading-snug text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {entry.text}
             </a>

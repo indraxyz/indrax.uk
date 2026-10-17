@@ -8,6 +8,10 @@ import { readConsent } from "@/lib/consent"
 // And when enabled, nothing initialises until the visitor has said yes:
 // see `lib/consent.ts` and `startAnalytics` below.
 const ANALYTICS_ENABLED = process.env.ANALYTICS_ENABLED === "true"
+const DIRECT_TRANSPORT = process.env.ANALYTICS_TRANSPORT === "direct"
+// This explicitly public build setting is independent from the Worker's secret.
+const PUBLIC_PROJECT_KEY = process.env.POSTHOG_PUBLIC_KEY?.trim() || ""
+const PUBLIC_HOST = process.env.POSTHOG_PUBLIC_HOST || "https://us.i.posthog.com"
 
 // The events this site records. A union rather than a bare string, so a typo in a
 // call site is a build error instead of a silently orphaned event in PostHog.
@@ -69,6 +73,28 @@ function redactHeatmapUrls(value: unknown): unknown {
   return result
 }
 
+/** Replay contains nested DOM attributes, relative links and serialized markup. */
+function redactNestedUrls(value: unknown, depth = 0, budget = { nodes: 0 }): unknown {
+  if (++budget.nodes > 100_000 || depth > 128)
+    throw new Error("Analytics data exceeds redaction limits")
+  if (typeof value === "string")
+    return String(redactUrl(value)).replace(
+      /([?&](?:amp;)?(?:token|preview|code|access_token|refresh_token|id_token)=)[^&#\s"'<>]*/gi,
+      "$1redacted"
+    )
+  if (Array.isArray(value)) return value.map((item) => redactNestedUrls(item, depth + 1, budget))
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        key === "$heatmap_data"
+          ? redactHeatmapUrls(item)
+          : redactNestedUrls(item, depth + 1, budget),
+      ])
+    )
+  return value
+}
+
 export type ContactChannel = "email" | "linkedin" | "github"
 
 let started = false
@@ -82,7 +108,7 @@ let initialized = false
  * Nothing is written and nothing is sent before this returns.
  */
 export function startAnalytics() {
-  if (!ANALYTICS_ENABLED || started) return
+  if (!ANALYTICS_ENABLED || started || (DIRECT_TRANSPORT && !PUBLIC_PROJECT_KEY)) return
   if (readConsent() !== "granted") return
 
   started = true
@@ -95,31 +121,29 @@ export function startAnalytics() {
       return
     }
 
-    // Session replay needs remote configuration to learn whether this project
-    // records sessions.
-    // This is a public placeholder, never the project's ingestion credential.
-    // The Worker validates and budgets every request before adding its secret.
-    posthog.init(ANALYTICS_GATEWAY_TOKEN, {
-      api_host: `${window.location.origin}${ANALYTICS_GATEWAY_PATH}`,
-      ui_host: window.location.origin,
+    // Worker mode uses a placeholder; only the gateway adds its runtime secret.
+    // Direct mode requires its separate, explicitly public project key.
+    posthog.init(DIRECT_TRANSPORT ? PUBLIC_PROJECT_KEY : ANALYTICS_GATEWAY_TOKEN, {
+      ...(DIRECT_TRANSPORT
+        ? { api_host: PUBLIC_HOST }
+        : {
+            api_host: `${window.location.origin}${ANALYTICS_GATEWAY_PATH}`,
+            ui_host: window.location.origin,
+            disable_compression: true,
+            rewriteRequestPath: (url: URL) => {
+              url.protocol = window.location.protocol
+              url.host = window.location.host
+              url.username = ""
+              url.password = ""
+              if (!url.pathname.startsWith(`${ANALYTICS_GATEWAY_PATH}/`))
+                url.pathname = `${ANALYTICS_GATEWAY_PATH}${url.pathname}`
+              return url
+            },
+          }),
       api_transport: "fetch",
-      disable_compression: true,
-      // Surveys are outside this site's event/route allowlist. Do not load their
-      // SDK or offer a UI whose response requests the gateway would refuse.
       disable_surveys: true,
-      // Leave heatmap capture unset so the SDK follows the project's remote settings.
-      // Keep rrweb event data inspectable so the gateway can redact signed URLs.
-      // Request compression and nested recorder compression are separate settings.
+      // Redact nested replay URLs before transport compression in either mode.
       session_recording: { compress_events: false },
-      rewriteRequestPath: (url) => {
-        url.protocol = window.location.protocol
-        url.host = window.location.host
-        url.username = ""
-        url.password = ""
-        if (!url.pathname.startsWith(`${ANALYTICS_GATEWAY_PATH}/`))
-          url.pathname = `${ANALYTICS_GATEWAY_PATH}${url.pathname}`
-        return url
-      },
       // Enables history-change pageviews and pageleave capture. Keep this date
       // pinned: the guide's 2026-05-30 defaults tag localhost as an internal/test
       // host, hiding local visits when that dashboard filter is enabled.
@@ -151,7 +175,7 @@ export function startAnalytics() {
           // that stays true; checking the key is a list that goes stale.
           for (const [key, value] of Object.entries(event.properties)) {
             event.properties[key] =
-              key === "$heatmap_data" ? redactHeatmapUrls(value) : redactUrl(value)
+              key === "$heatmap_data" ? redactHeatmapUrls(value) : redactNestedUrls(value)
           }
         } catch {
           // Redaction is a safety net, not a feature. If it cannot run, dropping

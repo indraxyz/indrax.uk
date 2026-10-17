@@ -1,4 +1,5 @@
-import { Download, Loader2 } from "lucide-react"
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
+import { Download } from "lucide-react"
 import { useCallback, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -57,11 +58,7 @@ export function DownloadResumeButton() {
       title={state === "error" ? "Could not build the PDF - try again" : "Download resume (PDF)"}
       className="print:hidden"
     >
-      {working ? (
-        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-      ) : (
-        <Download className="h-5 w-5" aria-hidden="true" />
-      )}
+      {working ? <LoadingIndicator /> : <Download className="h-5 w-5" aria-hidden="true" />}
       {/* Failures are silent otherwise: the icon returns to rest and nothing says why. */}
       <span aria-live="polite" className="sr-only">
         {state === "error" ? "The resume PDF could not be generated." : ""}

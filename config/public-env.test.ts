@@ -71,3 +71,58 @@ it.each([
     JSON.stringify("http://localhost:5173/local-media")
   )
 })
+
+it("defaults to Worker transport without embedding public or runtime project keys", () => {
+  environment.POSTHOG_PUBLIC_KEY = "phc_unused"
+  environment.POSTHOG_PROJECT_TOKEN = "phc_runtime_secret"
+  const definitions = publicEnvDefinitions("production")
+  expect(definitions["process.env.ANALYTICS_TRANSPORT"]).toBe('"worker"')
+  expect(definitions["process.env.POSTHOG_PUBLIC_KEY"]).toBe('""')
+  expect(JSON.stringify(definitions)).not.toContain("phc_")
+})
+
+it("embeds direct transport's explicitly public key and normalizes its regional host", () => {
+  Object.assign(environment, {
+    ANALYTICS_ENABLED: "true",
+    ANALYTICS_TRANSPORT: "direct",
+    POSTHOG_PUBLIC_KEY: " phc_public_fixture ",
+    POSTHOG_PUBLIC_HOST: " https://eu.i.posthog.com/ ",
+    POSTHOG_PROJECT_TOKEN: "phc_runtime_secret",
+  })
+  const definitions = publicEnvDefinitions("production")
+  expect(definitions["process.env.POSTHOG_PUBLIC_KEY"]).toBe('"phc_public_fixture"')
+  expect(definitions["process.env.POSTHOG_PUBLIC_HOST"]).toBe('"https://eu.i.posthog.com"')
+  expect(JSON.stringify(definitions)).not.toContain("phc_runtime_secret")
+})
+
+it.each(["proxy", " direct "])("refuses unsupported transport values: %s", (transport) => {
+  environment.ANALYTICS_TRANSPORT = transport
+  expect(() => publicEnvDefinitions("production")).toThrow("ANALYTICS_TRANSPORT")
+})
+
+it.each(["", "phx_personal_key"])(
+  "requires a public project key for enabled direct tracking: %s",
+  (key) => {
+    Object.assign(environment, {
+      ANALYTICS_TRANSPORT: "direct",
+      ANALYTICS_ENABLED: "true",
+      POSTHOG_PUBLIC_KEY: key,
+    })
+    expect(() => publicEnvDefinitions("production")).toThrow("POSTHOG_PUBLIC_KEY")
+  }
+)
+
+it("rejects direct hosts outside the CSP regional allowlist", () => {
+  Object.assign(environment, {
+    ANALYTICS_TRANSPORT: "direct",
+    POSTHOG_PUBLIC_HOST: "https://untrusted.example",
+  })
+  expect(() => publicEnvDefinitions("production")).toThrow("POSTHOG_PUBLIC_HOST")
+})
+
+it("allows analytics to stay disabled in direct mode without a key", () => {
+  environment.ANALYTICS_TRANSPORT = "direct"
+  const definitions = publicEnvDefinitions("production")
+  expect(definitions["process.env.ANALYTICS_ENABLED"]).toBe('"false"')
+  expect(definitions["process.env.POSTHOG_PUBLIC_KEY"]).toBe('""')
+})

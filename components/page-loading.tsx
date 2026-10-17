@@ -1,4 +1,4 @@
-import { LoaderCircle } from "lucide-react"
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
 
 /** Initial load has no previous page to retain. */
 export function PageLoading() {
@@ -8,8 +8,8 @@ export function PageLoading() {
       aria-label="Loading page"
       className="fixed inset-0 z-[90] grid place-items-center bg-background/95"
     >
-      <LoaderCircle
-        className="h-8 w-8 animate-spin motion-reduce:animate-none"
+      <LoadingIndicator
+        size="lg"
         style={{ color: "var(--component-navigation-progress)" }}
         aria-hidden="true"
       />

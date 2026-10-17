@@ -325,9 +325,11 @@ for (const width of [320, 1280]) {
       await expect(drawer).toBeVisible()
       await page.setViewportSize({ width, height: 900 })
     }
-    const signOut = page
-      .getByRole("button", { name: "Sign out", exact: true })
-      .filter({ visible: true })
+    const signOutContainer =
+      width < 900
+        ? page.getByRole("dialog", { name: "Admin menu", exact: true })
+        : page.locator("header")
+    const signOut = signOutContainer.getByRole("button", { name: "Sign out", exact: true })
     await expect(signOut).toHaveText(width < 900 ? "Sign out" : "")
     await expect(signOut).toHaveClass(width < 900 ? /variant-primary/ : /variant-ghost/)
     if (width < 900) {
@@ -344,10 +346,6 @@ for (const width of [320, 1280]) {
           { theme, key: THEME_STORAGE_KEY, event: THEME_CHANGE_EVENT }
         )
         await page.mouse.move(0, 0)
-        const resting = await signOut.evaluate((element) => {
-          const style = getComputedStyle(element)
-          return { background: style.backgroundColor, color: style.color, shadow: style.boxShadow }
-        })
         await expect(signOut).toHaveCSS(
           "background-color",
           theme === "light" ? "rgb(6, 59, 0)" : "rgb(225, 225, 0)"
@@ -356,6 +354,10 @@ for (const width of [320, 1280]) {
           "color",
           theme === "light" ? "rgb(255, 255, 255)" : "rgb(6, 59, 0)"
         )
+        const resting = await signOut.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return { background: style.backgroundColor, color: style.color, shadow: style.boxShadow }
+        })
         await expect(signOut.locator("svg")).toHaveCSS("color", resting.color)
         await page.screenshot({ path: test.info().outputPath(`admin-sheet-${theme}.png`) })
         await signOut.hover()
@@ -368,11 +370,12 @@ for (const width of [320, 1280]) {
     const confirmation = page.getByRole("alertdialog", { name: "Sign out?" })
     await expect(confirmation).toBeVisible()
     await confirmation.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(confirmation).toBeHidden()
     await expect(signOut).toBeFocused()
     const navigation = page
       .getByRole("navigation", { name: "Admin", exact: true })
       .filter({ visible: true })
-    await expect(navigation.getByRole("link")).toHaveCount(1)
+    await expect(navigation.getByRole("link")).toHaveCount(2)
     await expect(navigation.getByRole("link", { name: "Posts", exact: true })).toHaveAttribute(
       "aria-current",
       "page"
@@ -381,12 +384,12 @@ for (const width of [320, 1280]) {
     if (width < 900) {
       await page.mouse.move(0, 0)
       const posts = navigation.getByRole("link", { name: "Posts", exact: true })
-      await expect(posts).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
       await expect(trigger).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
       await posts.hover()
       await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
       await page.mouse.move(0, 0)
-      await expect(posts).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
     await expect(trigger.locator("svg")).toHaveCount(width < 900 ? 2 : 1)
     for (const icon of await trigger.locator("svg").all())
@@ -401,9 +404,9 @@ for (const width of [320, 1280]) {
       expect(bounds!.width).toBe(posts!.width)
       expect(bounds!.height).toBe(posts!.height)
     } else {
-      await expect(trigger).toHaveCSS("text-decoration-line", "underline")
-      await expect(trigger).toHaveCSS("border-top-width", "0px")
-      await expect(trigger).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await expect(trigger).toHaveCSS("text-decoration-line", "none")
+      await expect(trigger).toHaveCSS("border-bottom-width", "2px")
+      await expect(trigger).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
     await trigger.focus()
     await page.keyboard.press("Enter")
@@ -423,9 +426,14 @@ for (const width of [320, 1280]) {
     await page.keyboard.press("Escape")
     await expect(trigger).toBeFocused()
     await trigger.click()
+    const popupPromise = page.waitForEvent("popup")
     await menu.getByRole("menuitem", { name: "Stack", exact: true }).click()
-    await expect(page).toHaveURL(/\/tech-stack$/)
-    await expect(page.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
+    const publicPage = await popupPromise
+    await expect(publicPage).toHaveURL(/\/tech-stack$/)
+    await expect(publicPage.getByRole("heading", { level: 1, name: "Tech Stack" })).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/posts/)
+    expect(await publicPage.evaluate(() => window.opener)).toBeNull()
+    await publicPage.close()
   })
 }
 

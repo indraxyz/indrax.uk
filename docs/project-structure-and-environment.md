@@ -144,7 +144,7 @@ precedence for test fixtures; temporary override files have restricted permissio
 and are removed on exit. Build assembly removes the plugin-generated local secret
 copy from the final build.
 
-The four settings in the explicit browser-variable allowlist are embedded at build time and must contain only public
+The settings in the explicit browser-variable allowlist are embedded at build time and must contain only public
 configuration. Rebuild after changing these values. Backend values are read from
 Worker bindings; restart the dev server after changing local configuration.
 Deployed environments use their Cloudflare bindings/secrets and build settings,

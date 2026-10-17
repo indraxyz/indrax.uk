@@ -156,6 +156,7 @@ test.describe("the writing public surface", () => {
     expect(robots).not.toContain("/admin")
     if (isIndexableSite(siteUrl)) {
       expect(robots).toContain("Disallow: /api/\n")
+      expect(robots).toContain("Disallow: /analytics\n")
       expect(robots).toContain(`Sitemap: ${siteUrl}/sitemap.xml`)
     } else {
       expect(robots).toBe("User-Agent: *\nDisallow: /\n")

@@ -55,6 +55,7 @@ export default defineConfig({
         /admin-authoring\.spec\.ts/,
         /admin-session\.spec\.ts/,
         /local-uploads\.spec\.ts/,
+        /analytics-direct\.spec\.ts/,
       ],
     },
     {
@@ -76,6 +77,7 @@ export default defineConfig({
     timeout: 300_000,
     env: {
       ANALYTICS_ENABLED: "true",
+      ANALYTICS_TRANSPORT: "worker",
       // Passed through when it is set, and absent otherwise - the site builds and
       // serves either way. `writing-content.spec.ts` skips itself when it is missing,
       // so the suite is green on a clone with no database.

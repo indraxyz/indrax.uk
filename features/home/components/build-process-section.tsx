@@ -36,8 +36,8 @@ const steps = [
 const participants = [
   { x: 85, label: "You" },
   { x: 250, label: "Spec + memory" },
-  { x: 415, label: "Build agent" },
-  { x: 580, label: "Review agent" },
+  { x: 415, label: "Build" },
+  { x: 580, label: "Review" },
   { x: 745, label: "Test layers" },
 ] as const
 

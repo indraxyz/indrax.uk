@@ -22,13 +22,26 @@ test.use({
 const DOWNLOAD_TIMEOUT_MS = 90_000
 
 test.describe("analytics", () => {
+  test("routes /analytics to the built Worker gateway and retires its old API path", async ({
+    request,
+  }) => {
+    const gateway = await request.get("/analytics/unsupported")
+    expect(gateway.status()).toBe(404)
+    expect(gateway.headers()["content-type"]).toContain("application/json")
+    expect(await gateway.json()).toEqual({ ok: false })
+
+    const retired = await request.get("/api/analytics/e/")
+    expect(retired.status()).toBe(404)
+    expect(retired.headers()["content-type"]).toContain("text/html")
+  })
+
   test("forwards native heatmaps and normal events with remote capture enabled", async ({
     page,
   }) => {
     const analytics = await recordAnalytics(page, { heatmaps: true, validateGateway: true })
     const rejected: string[] = []
     page.on("response", (response) => {
-      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+      if (response.url().includes("/analytics/") && response.status() >= 400)
         rejected.push(`${response.status()} ${new URL(response.url()).pathname}`)
     })
     await page.goto("/?preview=heatmap-preview-secret&code=heatmap-oauth-secret")
@@ -44,7 +57,7 @@ test.describe("analytics", () => {
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$$heatmap")
-    expect(analytics.everything()).toContain("/api/analytics/i/v0/e/")
+    expect(analytics.everything()).toContain("/analytics/i/v0/e/")
     expect(rejected).toEqual([])
     expect(analytics.everything()).not.toMatch(/heatmap-preview-secret|heatmap-oauth-secret/)
     const envelopes = analytics.forwarded.flatMap((body) => {
@@ -92,7 +105,7 @@ test.describe("analytics", () => {
     })
     const rejected: number[] = []
     page.on("response", (response) => {
-      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+      if (response.url().includes("/analytics/") && response.status() >= 400)
         rejected.push(response.status())
     })
     await page.goto("/")
@@ -101,8 +114,8 @@ test.describe("analytics", () => {
     await page.mouse.move(100, 150)
     for (const event of ["$pageview", "$autocapture", "$$heatmap", "$snapshot", "$web_vitals"])
       await expect.poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 }).toContain(event)
-    expect(analytics.everything()).toContain("/api/analytics/i/v0/e/")
-    expect(analytics.everything()).toContain("/api/analytics/s/")
+    expect(analytics.everything()).toContain("/analytics/i/v0/e/")
+    expect(analytics.everything()).toContain("/analytics/s/")
     expect(rejected).toEqual([])
   })
 
@@ -125,7 +138,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page, { performance: true, validateGateway: true })
     const rejected: number[] = []
     page.on("response", (response) => {
-      if (response.url().includes("/api/analytics/") && response.status() >= 400)
+      if (response.url().includes("/analytics/") && response.status() >= 400)
         rejected.push(response.status())
     })
     await page.goto("/")
@@ -259,7 +272,7 @@ test.describe("analytics", () => {
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
     await page.getByRole("button", { name: "Open about me" }).click()
     await expect.poll(() => analytics.captured("$autocapture"), { timeout: 20_000 }).toBe(true)
-    expect(analytics.everything()).toContain("/api/analytics/")
+    expect(analytics.everything()).toContain("/analytics/")
     expect(analytics.everything()).not.toContain("https://us.i.posthog.com")
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
@@ -291,9 +304,7 @@ test.describe("analytics", () => {
     await page.getByRole("button", { name: "Open about me" }).click()
     await expect.poll(() => analytics.captured("$snapshot"), { timeout: 30_000 }).toBe(true)
     // Snapshot-related events can arrive before the recorder flushes its batch.
-    await expect
-      .poll(() => analytics.everything(), { timeout: 30_000 })
-      .toContain("/api/analytics/s/")
+    await expect.poll(() => analytics.everything(), { timeout: 30_000 }).toContain("/analytics/s/")
     expect(analytics.everything()).toContain("phc_indrax_gateway")
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
@@ -338,7 +349,7 @@ test.describe("analytics", () => {
     test.setTimeout(DOWNLOAD_TIMEOUT_MS)
 
     // Every analytics request errors; the page still has to work.
-    await page.route("**/api/analytics/**", (route) => route.abort())
+    await page.route("**/analytics/**", (route) => route.abort())
     await page.goto("/")
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")

@@ -1,6 +1,10 @@
 import { ChevronRight } from "lucide-react"
 import { Link } from "react-router"
 
+import { currentPageClassNames } from "@/components/ui/navigation-link"
+import { focusControlClassNames } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
+
 export interface BreadcrumbItem {
   name: string
   path?: string
@@ -21,14 +25,20 @@ export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
                 prefetch="none"
                 to={item.path}
                 reloadDocument={item.reloadDocument}
-                className="break-words hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "border-b-2 border-transparent px-1.5 py-1 break-words hover:border-ring hover:bg-muted hover:text-foreground",
+                  focusControlClassNames
+                )}
               >
                 {item.name}
               </Link>
             ) : (
               <span
                 aria-current={index === items.length - 1 ? "page" : undefined}
-                className="min-w-0 break-words text-foreground"
+                className={cn(
+                  "min-w-0 border-b-2 border-transparent px-1.5 py-1 break-words",
+                  index === items.length - 1 && currentPageClassNames
+                )}
               >
                 {item.name}
               </span>
