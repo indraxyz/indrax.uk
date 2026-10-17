@@ -325,9 +325,11 @@ for (const width of [320, 1280]) {
       await expect(drawer).toBeVisible()
       await page.setViewportSize({ width, height: 900 })
     }
-    const signOut = page
-      .getByRole("button", { name: "Sign out", exact: true })
-      .filter({ visible: true })
+    const signOutContainer =
+      width < 900
+        ? page.getByRole("dialog", { name: "Admin menu", exact: true })
+        : page.locator("header")
+    const signOut = signOutContainer.getByRole("button", { name: "Sign out", exact: true })
     await expect(signOut).toHaveText(width < 900 ? "Sign out" : "")
     await expect(signOut).toHaveClass(width < 900 ? /variant-primary/ : /variant-ghost/)
     if (width < 900) {
@@ -368,6 +370,7 @@ for (const width of [320, 1280]) {
     const confirmation = page.getByRole("alertdialog", { name: "Sign out?" })
     await expect(confirmation).toBeVisible()
     await confirmation.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(confirmation).toBeHidden()
     await expect(signOut).toBeFocused()
     const navigation = page
       .getByRole("navigation", { name: "Admin", exact: true })
