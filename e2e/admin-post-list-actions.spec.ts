@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "../lib/theme"
+import { expectReadableAction } from "./support/visual-controls"
 
 type Status = "draft" | "published" | "archived"
 const ids = {
@@ -301,7 +303,72 @@ for (const width of [320, 1280]) {
   }) => {
     await page.setViewportSize({ width, height: 900 })
     await archiveFixture(page)
-    if (width < 768) await page.getByRole("button", { name: "Open admin menu" }).click()
+    const footer = page.locator("footer")
+    await expect(footer).toHaveText("Administrator")
+    const theme = footer.getByRole("button", { name: /Switch theme/ })
+    await expect(theme).toHaveCount(1)
+    await expect(page.locator("header").getByRole("button", { name: /Switch theme/ })).toHaveCount(
+      0
+    )
+    await theme.scrollIntoViewIfNeeded()
+    const labelBox = await footer.getByText("Administrator", { exact: true }).boundingBox()
+    const themeBox = await theme.boundingBox()
+    expect(themeBox!.x).toBeGreaterThan(labelBox!.x + labelBox!.width)
+    const previousTheme = await theme.getAttribute("aria-label")
+    await theme.click()
+    await expect(theme).not.toHaveAttribute("aria-label", previousTheme!)
+    if (width < 900) {
+      await page.getByRole("button", { name: "Open admin menu" }).click()
+      const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
+      // The shared stylesheet uses a 900px desktop breakpoint, not 768px.
+      await page.setViewportSize({ width: 800, height: 900 })
+      await expect(drawer).toBeVisible()
+      await page.setViewportSize({ width, height: 900 })
+    }
+    const signOut = page
+      .getByRole("button", { name: "Sign out", exact: true })
+      .filter({ visible: true })
+    await expect(signOut).toHaveText(width < 900 ? "Sign out" : "")
+    await expect(signOut).toHaveClass(width < 900 ? /variant-primary/ : /variant-ghost/)
+    if (width < 900) {
+      await expect(signOut).toHaveCSS("justify-content", "center")
+      const button = await signOut.boundingBox()
+      const footer = await page.locator('[data-slot="drawer-footer"]').boundingBox()
+      expect(button!.width).toBeGreaterThan(footer!.width - 40)
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(
+          ({ theme, key, event }) => {
+            localStorage.setItem(key, theme)
+            window.dispatchEvent(new Event(event))
+          },
+          { theme, key: THEME_STORAGE_KEY, event: THEME_CHANGE_EVENT }
+        )
+        await page.mouse.move(0, 0)
+        const resting = await signOut.evaluate((element) => {
+          const style = getComputedStyle(element)
+          return { background: style.backgroundColor, color: style.color, shadow: style.boxShadow }
+        })
+        await expect(signOut).toHaveCSS(
+          "background-color",
+          theme === "light" ? "rgb(6, 59, 0)" : "rgb(225, 225, 0)"
+        )
+        await expect(signOut).toHaveCSS(
+          "color",
+          theme === "light" ? "rgb(255, 255, 255)" : "rgb(6, 59, 0)"
+        )
+        await expect(signOut.locator("svg")).toHaveCSS("color", resting.color)
+        await page.screenshot({ path: test.info().outputPath(`admin-sheet-${theme}.png`) })
+        await signOut.hover()
+        await expectReadableAction(page, signOut)
+        await expect(signOut).toHaveCSS("box-shadow", resting.shadow)
+      }
+    }
+    await expect(signOut.locator("svg")).toHaveCount(1)
+    await signOut.click()
+    const confirmation = page.getByRole("alertdialog", { name: "Sign out?" })
+    await expect(confirmation).toBeVisible()
+    await confirmation.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(signOut).toBeFocused()
     const navigation = page
       .getByRole("navigation", { name: "Admin", exact: true })
       .filter({ visible: true })
@@ -311,6 +378,33 @@ for (const width of [320, 1280]) {
       "page"
     )
     const trigger = navigation.getByRole("button", { name: "Public", exact: true })
+    if (width < 900) {
+      await page.mouse.move(0, 0)
+      const posts = navigation.getByRole("link", { name: "Posts", exact: true })
+      await expect(posts).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await expect(trigger).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await posts.hover()
+      await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+      await page.mouse.move(0, 0)
+      await expect(posts).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    }
+    await expect(trigger.locator("svg")).toHaveCount(width < 900 ? 2 : 1)
+    for (const icon of await trigger.locator("svg").all())
+      await expect(icon).toHaveAttribute("aria-hidden", "true")
+    await trigger.hover()
+    if (width < 900) {
+      await expect(trigger).toHaveCSS("border-top-width", "2px")
+      await expect(trigger).toHaveCSS("text-decoration-line", "none")
+      const posts = await navigation.getByRole("link", { name: "Posts", exact: true }).boundingBox()
+      const bounds = await trigger.boundingBox()
+      expect(bounds!.x).toBe(posts!.x)
+      expect(bounds!.width).toBe(posts!.width)
+      expect(bounds!.height).toBe(posts!.height)
+    } else {
+      await expect(trigger).toHaveCSS("text-decoration-line", "underline")
+      await expect(trigger).toHaveCSS("border-top-width", "0px")
+      await expect(trigger).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    }
     await trigger.focus()
     await page.keyboard.press("Enter")
     const menu = page.getByRole("menu", { name: "Public", exact: true })

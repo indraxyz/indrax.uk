@@ -141,7 +141,8 @@ inspectable. SDK consent and do-not-track behavior remain in place.
 
 Missing secrets, unsupported upstream hosts, missing D1 tables/bindings or quota
 errors fail closed. Quota/edge refusals return 429; upstream failures return a generic 502. Responses never expose upstream error text, cookies, secret headers or redirects.
-The browser CSP allows scripts and connections only from its own origin, so the
+The browser CSP allows scripts and network connections only from its own origin
+(plus local `data:` fetches for the PDF layout engine's embedded WebAssembly), so the
 SDK cannot bypass the gateway by switching to an external ingestion/asset host.
 
 Upstream fetches use `redirect: "manual"` and reject every non-success status,

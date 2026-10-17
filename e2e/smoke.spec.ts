@@ -30,9 +30,7 @@ test.describe("the public pages", () => {
           await expect(link.locator("svg")).toBeVisible()
         }
         const social = await contact.boundingBox()
-        const profile = await page
-          .getByRole("button", { name: "Open personal information" })
-          .boundingBox()
+        const profile = await page.getByRole("button", { name: "Open about me" }).boundingBox()
         const download = await page
           .getByRole("button", { name: "Download resume as PDF" })
           .boundingBox()

@@ -101,7 +101,7 @@ export function ConsentBanner() {
               onClick={() => writeConsent("granted")}
               className={cn(
                 controlClassNames,
-                "variant-tertiary bg-[var(--color-accent)] px-4 py-2 text-[var(--color-accent-foreground)]"
+                "variant-tertiary bg-[var(--variant-bg)] px-4 py-2 text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]"
               )}
             >
               Accept

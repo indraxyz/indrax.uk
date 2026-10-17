@@ -24,7 +24,7 @@ it("production scripts need this origin, the theme hash or the response nonce", 
   expect(scripts).not.toContain("'unsafe-eval'")
   expect(scripts).not.toContain("*")
   expect(directive(policy, "default-src")).toEqual(["'self'"])
-  expect(directive(policy, "connect-src")).toEqual(["'self'"])
+  expect(directive(policy, "connect-src")).toEqual(["'self'", "data:"])
   expect(directive(policy, "frame-ancestors")).toEqual(["'none'"])
   expect(directive(policy, "object-src")).toEqual(["'none'"])
 })

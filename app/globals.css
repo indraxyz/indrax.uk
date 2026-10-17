@@ -54,6 +54,11 @@
 
   --font-sans: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Register shadows as utilities so hover, focus rings and disabled resets compose. */
+  --shadow-soft-sm: 3px 3px 0 0 var(--semantic-border-strong);
+  --shadow-soft: 6px 6px 0 0 var(--semantic-border-strong);
+  --shadow-soft-lg: 10px 10px 0 0 var(--semantic-border-strong);
 }
 
 @layer base {
@@ -477,18 +482,6 @@
   filter: blur(10px);
 }
 
-.shadow-soft-sm {
-  box-shadow: 3px 3px 0 0 var(--semantic-border-strong);
-}
-
-.shadow-soft {
-  box-shadow: 6px 6px 0 0 var(--semantic-border-strong);
-}
-
-.shadow-soft-lg {
-  box-shadow: 10px 10px 0 0 var(--semantic-border-strong);
-}
-
 /* Height caps and carousels exist to keep the screen layout compact, but on paper
    there is nothing to scroll: release every bound so printing and "save as PDF"
    emit the full resume instead of the visible slice. */
@@ -567,8 +560,7 @@
  * plugin's output, which means it loses. That failure is quiet: the font-family
  * override still applied, so only the colours were wrong, and only in one theme.
  *
- * Unlayered rules win over every layer regardless of order, which is also where
- * the shadow and gradient utilities below already live.
+ * Unlayered rules win over every layer regardless of order.
  */
 /* Nothing here is a new colour. Tailwind Typography reads these variables, and
    each one is pointed at a semantic token that already flips under `.dark` - so

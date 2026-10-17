@@ -46,7 +46,9 @@ export function contentSecurityPolicy({
     "form-action 'self'",
     `img-src 'self' data: https:${allowImagePreviews ? " blob:" : ""}`,
     "font-src 'self'",
-    "connect-src 'self'",
+    // Yoga fetches its embedded base64 WebAssembly through a data URL. Allow
+    // that local payload without admitting any additional network origins.
+    "connect-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     "frame-src 'none'",
     "media-src 'self'",

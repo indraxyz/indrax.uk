@@ -1,20 +1,9 @@
 import { Menu as DropdownMenu } from "@base-ui/react/menu"
-import {
-  ChevronDown,
-  FileText,
-  Globe,
-  Layers,
-  LogOut,
-  Menu,
-  PencilLine,
-  UserRound,
-  X,
-} from "lucide-react"
+import { ChevronDown, FileText, Globe, LogOut, Menu, X } from "lucide-react"
 import { Link } from "react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Drawer,
   DrawerClose,
@@ -30,33 +19,47 @@ import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
+const navigationLinkClass =
+  "inline-flex min-h-11 items-center text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+
 const links = [{ href: "/admin/posts", label: "Posts", page: "posts", icon: FileText }] as const
 
 const publicLinks = [
-  { href: "/resume", label: "Resume", icon: UserRound },
-  { href: WRITING_CONFIG.basePath, label: WRITING_CONFIG.title, icon: PencilLine },
-  { href: "/tech-stack", label: "Stack", icon: Layers },
+  { href: "/resume", label: "Resume" },
+  { href: WRITING_CONFIG.basePath, label: WRITING_CONFIG.title },
+  { href: "/tech-stack", label: "Stack" },
 ] as const
 
-function PublicMenu({ onNavigate }: { onNavigate?: () => void }) {
+function PublicMenu({
+  onNavigate,
+  inSheet = false,
+}: {
+  onNavigate?: () => void
+  inSheet?: boolean
+}) {
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className={cn(controlClassNames, "min-h-11 px-3 py-2")}>
-        <Globe className="h-4 w-4" aria-hidden />
+      <DropdownMenu.Trigger
+        className={
+          inSheet
+            ? cn(controlClassNames, "min-h-12 w-full px-4 py-3 text-left")
+            : cn(navigationLinkClass, "gap-1.5")
+        }
+      >
+        {inSheet && <Globe className="h-4 w-4" aria-hidden />}
         Public
-        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+        <ChevronDown className={cn("h-3.5 w-3.5", inSheet && "ml-auto")} aria-hidden />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Positioner align="end" sideOffset={8} className="z-[70]">
           <DropdownMenu.Popup className="min-w-48 border-2 border-border bg-card p-1 text-card-foreground shadow-soft-lg outline-none">
-            {publicLinks.map(({ href, label, icon: Icon }) => (
+            {publicLinks.map(({ href, label }) => (
               <DropdownMenu.Item
                 key={href}
                 render={<a href={href} />}
                 onClick={onNavigate}
                 className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted"
               >
-                <Icon className="h-4 w-4" aria-hidden />
                 {label}
               </DropdownMenu.Item>
             ))}
@@ -74,42 +77,41 @@ interface AdminNavigationProps {
 
 export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) {
   const [open, setOpen] = useState(false)
+  const desktopNavigation = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 768px)")
-    const closeOnDesktop = () => {
-      if (desktop.matches) setOpen(false)
-    }
-    desktop.addEventListener("change", closeOnDesktop)
-    return () => desktop.removeEventListener("change", closeOnDesktop)
-  }, [])
+    const navigation = desktopNavigation.current
+    if (!navigation) return
+    // Follow the actual CSS breakpoint instead of duplicating it in JavaScript.
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setOpen(false)
+    })
+    observer.observe(navigation)
+    return () => observer.disconnect()
+  }, [signedIn])
+
+  if (!signedIn) return null
 
   return (
     <>
-      <div className="hidden items-center gap-2 md:flex">
-        {signedIn && (
-          <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
-            {links.map(({ href, label, page }) => (
-              <Link
-                key={href}
-                to={href}
-                aria-label={label}
-                aria-current={activePage === page ? "page" : undefined}
-                className="inline-flex min-h-11 items-center text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                {label}
-              </Link>
-            ))}
-            <PublicMenu />
-          </nav>
-        )}
-        <ThemeToggle />
-        {signedIn && (
-          <SignOutButton className={cn(controlClassNames, "min-h-11 px-3 py-2")}>
-            <LogOut className="h-3.5 w-3.5" aria-hidden />
-            Sign out
-          </SignOutButton>
-        )}
+      <div ref={desktopNavigation} className="hidden items-center gap-2 md:flex">
+        <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
+          {links.map(({ href, label, page }) => (
+            <Link
+              key={href}
+              to={href}
+              aria-label={label}
+              aria-current={activePage === page ? "page" : undefined}
+              className={navigationLinkClass}
+            >
+              {label}
+            </Link>
+          ))}
+          <PublicMenu />
+        </nav>
+        <SignOutButton className={buttonVariants({ variant: "ghost", size: "icon" })}>
+          <LogOut className="h-3.5 w-3.5" aria-hidden />
+        </SignOutButton>
       </div>
 
       <Drawer swipeDirection="right" open={open} onOpenChange={setOpen}>
@@ -126,9 +128,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                 <DrawerTitle className="font-black uppercase tracking-tight">
                   Admin menu
                 </DrawerTitle>
-                <DrawerDescription>
-                  {signedIn ? "Manage your site and preferences." : "Site preferences."}
-                </DrawerDescription>
+                <DrawerDescription>Manage your site.</DrawerDescription>
               </div>
               <DrawerClose
                 render={<Button variant="ghost" size="icon" className="shrink-0" />}
@@ -140,42 +140,35 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            {signedIn && (
-              <nav aria-label="Admin" className="flex flex-col gap-2">
-                {links.map(({ href, label, page, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    to={href}
-                    onClick={() => setOpen(false)}
-                    aria-current={activePage === page ? "page" : undefined}
-                    className={cn(
-                      controlClassNames,
-                      "min-h-12 px-4 py-3",
-                      activePage === page && "bg-muted"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden />
-                    {label}
-                  </Link>
-                ))}
-                <PublicMenu onNavigate={() => setOpen(false)} />
-              </nav>
-            )}
+            <nav aria-label="Admin" className="flex flex-col gap-2">
+              {links.map(({ href, label, page, icon: Icon }) => (
+                <Link
+                  key={href}
+                  to={href}
+                  onClick={() => setOpen(false)}
+                  aria-current={activePage === page ? "page" : undefined}
+                  className={cn(controlClassNames, "min-h-12 px-4 py-3")}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                  {label}
+                </Link>
+              ))}
+              <PublicMenu inSheet onNavigate={() => setOpen(false)} />
+            </nav>
           </div>
 
           <DrawerFooter className="shrink-0 gap-3 border-t-2 border-border pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="flex min-h-11 items-center justify-between gap-3">
-              <span className="text-xs font-black uppercase tracking-[0.14em]">Theme</span>
-              <ThemeToggle />
-            </div>
-            {signedIn && (
-              <SignOutButton
-                className={cn(controlClassNames, "min-h-12 w-full justify-center px-4 py-3")}
-              >
-                <LogOut className="h-4 w-4" aria-hidden />
-                Sign out
-              </SignOutButton>
-            )}
+            <SignOutButton
+              className={buttonVariants({
+                variant: "primary",
+                appearance: "flat",
+                size: "lg",
+                className: "w-full",
+              })}
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Sign out
+            </SignOutButton>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>

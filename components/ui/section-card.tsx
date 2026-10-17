@@ -11,6 +11,7 @@ import {
 import {
   SectionHeader,
   type SectionHeadingLevel,
+  type SectionIconVariant,
   type SectionLink,
 } from "@/components/ui/section-header"
 import { variantClassNames, type VisualVariant } from "@/components/ui/variants"
@@ -19,6 +20,8 @@ import { cn } from "@/lib/utils"
 interface SectionCardProps {
   title: string
   icon: ReactNode
+  /** Solid secondary icons match the hero social controls without acting as buttons. */
+  iconVariant?: SectionIconVariant
   children: ReactNode
   subtitle?: string
   link?: SectionLink
@@ -39,6 +42,7 @@ interface SectionCardProps {
 export function SectionCard({
   title,
   icon,
+  iconVariant,
   children,
   subtitle,
   link,
@@ -67,6 +71,7 @@ export function SectionCard({
       <CardHeader className={cn("variant-surface-header border-b-2", headerClassName)}>
         <SectionHeader
           icon={icon}
+          iconVariant={iconVariant}
           title={title}
           subtitle={subtitle}
           link={link}

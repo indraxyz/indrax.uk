@@ -11,7 +11,12 @@ export function PersonalCard() {
   const birthDetails = formatBirthDetails(personalInfo.birthPlace, personalInfo.birthDate)
 
   return (
-    <SectionCard icon={<User className="h-5 w-5" />} title="Personal" tone="tertiary">
+    <SectionCard
+      iconVariant="solid"
+      icon={<User className="h-5 w-5" />}
+      title="Personal"
+      tone="tertiary"
+    >
       <div className="space-y-1">
         <InfoItem icon={<User className="h-4 w-4" />} label="Name" value={personalInfo.name} />
         <Separator className="my-2" />

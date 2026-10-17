@@ -9,6 +9,17 @@ const EXPECTED_FILE_NAME = "Indra-Cahya-Edytya-Resume.pdf"
 // no URL to request, so everything here goes through the control itself.
 test.describe("the CV download", () => {
   test("hands over a real PDF when the hero control is used", async ({ page }) => {
+    const errors: string[] = []
+    page.on("pageerror", (error) => errors.push(error.message))
+    page.on("console", (message) => {
+      // React PDF catches image-layout exceptions and reports them as warnings.
+      if (message.type() === "error" || message.type() === "warning") errors.push(message.text())
+    })
+    await page.addInitScript(() => {
+      document.addEventListener("securitypolicyviolation", (event) => {
+        console.error(`CSP violation: ${event.effectiveDirective} ${event.blockedURI}`)
+      })
+    })
     await page.goto("/")
     await whenHydrated(page)
 
@@ -37,6 +48,7 @@ test.describe("the CV download", () => {
     // Repository links must survive the shared portfolio data change in the export.
     expect(text).toContain("https://github.com/indraxyz/fullstack-kademix")
     expect(text).toContain("https://github.com/indraxyz/crimenesia_web")
+    expect(errors).toEqual([])
   })
 
   test("does not ship the renderer until it is asked for", async ({ page }) => {

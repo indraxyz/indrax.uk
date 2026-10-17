@@ -67,6 +67,20 @@ The control announces progress, prevents duplicate requests and exposes failure
 feedback for retry. Blob URLs are revoked after the browser claims the download.
 The successful-download event is recorded after generation succeeds.
 
+The CSP permits `data:` in `connect-src` because Yoga fetches its embedded base64
+WebAssembly with the Fetch API. Network connections still require the same origin;
+WebAssembly compilation uses the existing `wasm-unsafe-eval` script permission.
+The PDF browser test checks console errors and CSP violations as well as file contents.
+
+The installed React PDF layout module also references `Buffer.isBuffer` without
+importing `Buffer`. The Vite PDF compatibility plugin supplies a module-local
+browser implementation; it stays inside the lazy PDF dependency graph. Without
+that import, image-layout exceptions are caught and logged as `Buffer is not defined`
+warnings even when the PDF downloads. PostHog's console wrapper can attribute those
+warnings to its recorder script; the recorder is not their source.
+The plugin applies the same transform during Vite development dependency prebundling
+so CommonJS dependencies keep their normal browser interop.
+
 There is no current `/resume.pdf` server resource or permanent static PDF URL.
 Providing a pasteable CV URL would be a separate asset-generation requirement;
 do not document an unavailable endpoint or a build-time PDF renderer as shipped.
