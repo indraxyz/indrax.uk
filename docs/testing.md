@@ -255,6 +255,15 @@ event/flag forwarding, recorder/performance assets and refusal of upstream redir
 contacting PostHog or any remote database. Run it with the existing analytics browser
 suite using `npx playwright test e2e/analytics-runtime.spec.ts e2e/analytics.spec.ts --project=reads`.
 
+Archive filter browser fixtures cover public writing and admin posts at desktop
+and mobile sizes, including viewport changes after hydration. Sticky controls
+track the header height and layout viewport with `ResizeObserver`; their translucent
+blurred surface reaches both viewport edges without overflowing at mobile, desktop
+and wide-screen sizes. Filters keep tags last. Navigation covers the separate admin
+Dashboard icon and plain brand hover in both themes. Variant checks cover shared
+focus/button recipes, tinted bright badge borders, and the reusable local SVG
+loader: transparent fill, soft stroke track, inherited arc color and reduced motion.
+
 ## CI and release boundaries
 
 The check job runs install, formatting/lint/types/unit tests, build without a DB and
@@ -384,3 +393,16 @@ editor redirects, and the Public menu’s Resume/Writing/Stack destinations with
 keyboard focus restoration at 320px and 1280px. The unauthenticated session check
 asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
 with 200 when configured. These checks do not require real private writes.
+
+## Analytics transport coverage
+
+The default browser suite explicitly builds `ANALYTICS_TRANSPORT=worker` and retains
+the gateway/Workerd quota and SDK integration coverage. Run
+`npm run test:e2e:analytics-direct` separately to build direct mode on port 3226
+with public fixture credentials. This checks real SDK consent, pageviews, clicks,
+withdrawal/regrant, replay/performance scripts and the selected regional CSP, with
+no `/analytics` requests. All third-party requests are intercepted. Direct artifacts
+are in `test-results-analytics-direct/`. Run the suites sequentially: both build to
+the same application output. Rebuild for your intended transport after testing.
+Unit tests cover configuration validation, secret exclusion, both SDK transports,
+nested replay redaction and CSP host restrictions, including disabled mode.

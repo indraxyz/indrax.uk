@@ -1,4 +1,5 @@
-import { AlertTriangle, Loader2, Save, X } from "lucide-react"
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
+import { AlertTriangle, Save, X } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useBeforeUnload, useBlocker, useNavigate } from "react-router"
 import {
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { PostStatusDialog } from "./post-status-dialog"
-import { controlClassNames } from "@/components/ui/variants"
+import { controlClassNames, fieldClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
@@ -49,8 +50,7 @@ import { cn, isAllowedMediaUrl } from "@/lib/utils"
 // The editor is browser-only and split from dashboard/list routes.
 const PostEditor = lazy(() => import("./editor").then((mod) => ({ default: mod.PostEditor })))
 
-const fieldClasses =
-  "w-full border-2 border-border bg-card px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+const fieldClasses = cn(fieldClassNames, "font-medium")
 
 const labelClasses = "text-xs font-black uppercase tracking-[0.14em] text-muted-foreground"
 
@@ -321,11 +321,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
         "variant-primary relative min-h-11 justify-center whitespace-nowrap bg-[var(--variant-bg)] px-3 py-2 text-[var(--variant-fg)] hover:bg-[var(--variant-hover)] disabled:opacity-60"
       )}
     >
-      {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-      ) : (
-        <Save className="h-3.5 w-3.5" aria-hidden />
-      )}
+      {pending ? <LoadingIndicator /> : <Save className="h-3.5 w-3.5" aria-hidden />}
       {pending ? "Saving" : !dirty && persistedId ? "Saved" : "Save"}
       {dirty && (
         <span

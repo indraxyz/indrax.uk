@@ -1,6 +1,8 @@
 import { Link } from "react-router"
 
 import { PublicNavigation, type PublicPage } from "@/components/public-navigation"
+import { focusControlClassNames } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 
 export function PublicHeader({ activePage }: { activePage?: PublicPage | null }) {
@@ -11,7 +13,10 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
           <Link
             prefetch="none"
             to="/"
-            className="text-lg font-black uppercase tracking-tight text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-xl"
+            className={cn(
+              "text-lg font-black uppercase tracking-tight text-foreground hover:underline sm:text-xl",
+              focusControlClassNames
+            )}
           >
             Indra
           </Link>

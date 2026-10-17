@@ -1,8 +1,9 @@
 # Protected PostHog forwarding
 
-The browser initializes the existing PostHog SDK with the public placeholder
+Worker transport is the default. In this mode, the browser initializes the existing PostHog SDK with the public placeholder
 `phc_indrax_gateway`. All event, replay, flags, remote configuration and SDK
-asset requests go to `/api/analytics/*` on the site's own origin. The Worker validates
+asset requests go to `/analytics/*` on the site's own origin. The retired
+`/api/analytics/*` namespace no longer forwards analytics requests. The Worker validates
 requests and reserves a shared quota before adding `POSTHOG_PROJECT_TOKEN` from
 its runtime secrets. The real project token is never embedded in either browser
 bundle or returned by the gateway. Personal PostHog API keys are not used.
@@ -42,11 +43,56 @@ accepted under the same event budget. Consent withdrawal stops new capture and
 clears identifiers as before; the SDK may still send previously captured events
 that were already queued while consent was granted.
 
+## Choosing a transport
+
+`ANALYTICS_ENABLED=false` disables browser analytics in either mode. To enable it,
+set `ANALYTICS_ENABLED=true` and choose one of these build-time configurations:
+
+```env
+# Default: browser -> same-origin /analytics -> PostHog
+ANALYTICS_TRANSPORT=worker
+# Keep POSTHOG_PROJECT_TOKEN in the Worker's runtime secrets.
+```
+
+```env
+# Optional: browser -> PostHog directly
+ANALYTICS_TRANSPORT=direct
+POSTHOG_PUBLIC_KEY=phc_your_public_project_ingestion_key
+POSTHOG_PUBLIC_HOST=https://us.i.posthog.com
+```
+
+Use `https://eu.i.posthog.com` for an EU project. Only these two cloud ingestion
+hosts are supported. Configure `.env.local` locally or the matching GitHub
+Preview/Production environment variables, then restart development or rebuild
+and deploy. Changing Worker runtime variables alone cannot change transport.
+Unset transport defaults to `worker`; invalid transport/host values fail the
+build, as does enabled direct mode without a valid public project key.
+
+`POSTHOG_PUBLIC_KEY` is deliberately embedded in the direct browser bundle.
+Use only a project ingestion key, never a personal API key. The existing
+`POSTHOG_PROJECT_TOKEN` remains a separate runtime secret and is never exposed,
+even in direct mode. Worker builds omit the unused public key. Both modes keep
+visitor consent, DNT, withdrawal/regrant and URL redaction, including nested
+replay snapshots. The CSP admits only the selected regional PostHog hosts for
+enabled direct builds; Worker builds keep same-origin analytics requests.
+
+Direct mode avoids Worker analytics requests and gateway D1 quotas/rate limits;
+it relies on PostHog ingestion controls and may be blocked by browser blockers.
+Dashboard authorized URLs govern toolbar access and do not guarantee rejection
+of forged public events. Worker mode retains all the safeguards described below.
+Switching to direct does not delete the gateway or its D1 tables, so switching
+back requires only configuration and a rebuild. The gateway still enforces its
+existing safeguards if called independently. CI skips gateway quota setup and
+live gateway verification for direct deployments.
+
 ## Configuration and limits
 
 | Setting                   | Location                                  | Purpose                                                     |
 | ------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
 | `ANALYTICS_ENABLED=true`  | GitHub Environment variable at build time | Enable the browser tracker; contains no credential          |
+| `ANALYTICS_TRANSPORT`     | GitHub Environment variable at build time | `worker` (default) or `direct`                              |
+| `POSTHOG_PUBLIC_KEY`      | Public build variable; direct only        | Public project ingestion key                                |
+| `POSTHOG_PUBLIC_HOST`     | Public build variable; direct only        | US (default) or EU ingestion host                           |
 | `POSTHOG_PROJECT_TOKEN`   | Cloudflare Worker runtime secret          | Real project ingestion token (`phc_`), never a personal key |
 | `POSTHOG_HOST`            | Wrangler runtime variable                 | Fixed US or EU ingestion host                               |
 | `POSTHOG_MONTHLY_*_LIMIT` | Optional Worker runtime variable          | Lower a category's hard ceiling, including zero to stop it  |
@@ -54,8 +100,8 @@ that were already queued while consent was granted.
 Set build variables separately in GitHub `Preview` and `Production`. Set runtime
 secrets separately on `indrax-dev` and `indrax`. Runtime host defaults to US Cloud;
 select `https://eu.i.posthog.com` for an EU project in both relevant Wrangler environments.
-The browser build does not read PostHog credentials or upstream hosts. Its explicit
-allowlist excludes runtime secrets and `POSTHOG_HOST` from browser definitions.
+Worker browser builds use only the placeholder and same-origin endpoint. The explicit
+allowlist excludes runtime secrets and `POSTHOG_HOST` from all browser definitions.
 
 The existing rate limiter permits at most 120 analytics requests per client IP
 per minute at each Cloudflare location. This is an eventually consistent brake;
@@ -141,7 +187,7 @@ inspectable. SDK consent and do-not-track behavior remain in place.
 
 Missing secrets, unsupported upstream hosts, missing D1 tables/bindings or quota
 errors fail closed. Quota/edge refusals return 429; upstream failures return a generic 502. Responses never expose upstream error text, cookies, secret headers or redirects.
-The browser CSP allows scripts and network connections only from its own origin
+In Worker mode, the browser CSP allows scripts and network connections only from its own origin
 (plus local `data:` fetches for the PDF layout engine's embedded WebAssembly), so the
 SDK cannot bypass the gateway by switching to an external ingestion/asset host.
 
@@ -150,7 +196,7 @@ including redirects. The installed Cloudflare runtime rejects `redirect: "error"
 before dispatch, even though Node accepts it; mocked Node/browser tests do not
 detect that runtime difference.
 
-When `ANALYTICS_ENABLED=true`, CI checks the deployed gateway's JSON and JavaScript
+When `ANALYTICS_ENABLED=true` in Worker mode, CI checks the deployed gateway's JSON and JavaScript
 configuration endpoints and the three performance/dead-click assets after deployment.
 Asset versions come from the installed, lockfile-resolved `posthog-js` package.
 Run `node scripts/verify-analytics.mjs dev`
@@ -231,3 +277,6 @@ Sources: [SDK configuration and request rewriting](https://posthog.com/docs/libr
 [project token rotation](https://posthog.com/docs/settings/projects),
 [billing limits](https://posthog.com/pricing),
 [Cloudflare rate-limiter consistency](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
+
+References for direct mode: [PostHog project tokens](https://posthog.com/docs/settings/projects),
+[public ingestion hosts and endpoints](https://posthog.com/docs/api).

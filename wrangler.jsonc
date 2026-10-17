@@ -34,7 +34,7 @@
   "assets": {
     "directory": "build/client",
     "binding": "ASSETS",
-    "run_worker_first": ["/admin", "/admin/*", "/api/*"],
+    "run_worker_first": ["/admin", "/admin/*", "/api/*", "/analytics", "/analytics/*"],
   },
   // Separate existing resources for each environment. Public cached reads use KV
   // and the existing D1 revalidations table; private API responses never use KV.
@@ -98,7 +98,7 @@
       "assets": {
         "directory": "build/client",
         "binding": "ASSETS",
-        "run_worker_first": ["/admin", "/admin/*", "/api/*"],
+        "run_worker_first": ["/admin", "/admin/*", "/api/*", "/analytics", "/analytics/*"],
       },
       "kv_namespaces": [
         {

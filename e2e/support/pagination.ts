@@ -8,11 +8,16 @@ export async function expectIconPagination(page: Page, label: string, width: num
     const link = pagination.getByRole("link", { name, exact: true })
     await expect(link).toHaveText("")
     await expect(link.locator("svg")).toBeVisible()
-    await expect(link).toHaveCSS("border-top-width", "0px")
+    await expect(link).toHaveCSS("border-top-width", "2px")
     await expect(link).toHaveCSS("width", "44px")
     await expect(link).toHaveCSS("height", "44px")
+    await page.mouse.move(0, 0)
+    await expect(link).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
     await link.hover()
-    await expect(link).toHaveCSS("border-top-width", "0px")
+    await expect(link).toHaveCSS("border-top-width", "2px")
+    await expect
+      .poll(() => link.evaluate((element) => getComputedStyle(element).borderTopColor))
+      .not.toBe("rgba(0, 0, 0, 0)")
     await link.focus()
     await expect(link).toBeFocused()
   }

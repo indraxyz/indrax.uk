@@ -63,10 +63,23 @@ test.describe("analytics in Workerd", () => {
     }
   })
 
+  test("refuses the retired /api/analytics namespace in Workerd", async () => {
+    const response = await server!.fetch(`${origin}/api/analytics/e/`, {
+      method: "POST",
+      headers: {
+        Origin: origin,
+        "CF-Connecting-IP": "198.51.100.1",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event: "$pageview", properties: { distinct_id: "visitor" } }),
+    })
+    expect(response.status).toBe(404)
+  })
+
   for (const suffix of ["", ".js"]) {
     test(`serves SDK configuration${suffix} using runtime-compatible fetch options`, async () => {
       const response = await server!.fetch(
-        `${origin}/api/analytics/array/${PLACEHOLDER}/config${suffix}`,
+        `${origin}/analytics/array/${PLACEHOLDER}/config${suffix}`,
         {
           headers: { Referer: `${origin}/`, "CF-Connecting-IP": "198.51.100.1" },
         }
@@ -95,7 +108,7 @@ test.describe("analytics in Workerd", () => {
                 },
               ],
             }
-      const response = await server!.fetch(`${origin}/api/analytics${path}`, {
+      const response = await server!.fetch(`${origin}/analytics${path}`, {
         method: "POST",
         headers: {
           Origin: origin,
@@ -121,7 +134,7 @@ test.describe("analytics in Workerd", () => {
   })
 
   test("forwards a mixed pageview/heatmap batch in Workerd with server credentials", async () => {
-    const response = await server!.fetch(`${origin}/api/analytics/i/v0/e/`, {
+    const response = await server!.fetch(`${origin}/analytics/i/v0/e/`, {
       method: "POST",
       headers: {
         Origin: origin,
@@ -161,7 +174,7 @@ test.describe("analytics in Workerd", () => {
   ]) {
     test(`serves ${asset} assets through the runtime gateway`, async () => {
       for (const path of [`/static/1.434.18/${asset}.js`, `/static/${asset}.js?v=1.434.18`]) {
-        const response = await server!.fetch(`${origin}/api/analytics${path}`, {
+        const response = await server!.fetch(`${origin}/analytics${path}`, {
           headers: { Referer: `${origin}/`, "CF-Connecting-IP": "198.51.100.1" },
         })
         expect(response.status).toBe(200)
@@ -173,7 +186,7 @@ test.describe("analytics in Workerd", () => {
   for (const status of [301, 302, 303, 307, 308]) {
     test(`refuses upstream HTTP ${status} without following it`, async () => {
       const response = await server!.fetch(
-        `${origin}/api/analytics/array/${PLACEHOLDER}/config?v=${status}`,
+        `${origin}/analytics/array/${PLACEHOLDER}/config?v=${status}`,
         {
           headers: { Referer: `${origin}/`, "CF-Connecting-IP": "198.51.100.1" },
         }

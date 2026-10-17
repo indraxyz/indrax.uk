@@ -16,7 +16,8 @@ interface CspOptions {
 /**
  * The Content-Security-Policy for every Worker response (threat T-12).
  *
- * Scripts run only from this origin, as the hashed theme initializer, or carrying
+ * Scripts run from this origin (plus the selected PostHog asset host in direct mode),
+ * as the hashed theme initializer, or carrying
  * this response's nonce. No `unsafe-inline`, no `unsafe-eval` (wasm compilation
  * alone is allowed, for the PDF renderer): an injected
  * `<script>` or `onerror=` has nothing to match, so a sanitizer bypass stops at
@@ -27,16 +28,29 @@ export function contentSecurityPolicy({
   strictScripts,
   allowImagePreviews = false,
 }: CspOptions): string {
+  // These are build-time definitions shared with the browser. Worker mode keeps
+  // its same-origin policy; direct mode admits only its configured region.
+  const host =
+    process.env.ANALYTICS_ENABLED === "true" && process.env.ANALYTICS_TRANSPORT === "direct"
+      ? process.env.POSTHOG_PUBLIC_HOST || "https://us.i.posthog.com"
+      : undefined
+  const assetHosts: Record<string, string> = {
+    "https://us.i.posthog.com": "https://us-assets.i.posthog.com",
+    "https://eu.i.posthog.com": "https://eu-assets.i.posthog.com",
+  }
+  const assetHost = host ? assetHosts[host] : undefined
+  const analyticsSources = host && assetHost ? [host, assetHost] : []
   const scriptSources = strictScripts
     ? [
         "'self'",
+        ...(assetHost ? [assetHost] : []),
         // The CV's PDF layout engine is WebAssembly. This admits compiling wasm
         // only; JavaScript `eval` and inline script stay blocked.
         "'wasm-unsafe-eval'",
         `'${THEME_INIT_SCRIPT_HASH}'`,
         ...(nonce ? [`'nonce-${nonce}'`] : []),
       ]
-    : ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+    : ["'self'", "'unsafe-inline'", "'unsafe-eval'", ...(assetHost ? [assetHost] : [])]
   return [
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
@@ -48,7 +62,7 @@ export function contentSecurityPolicy({
     "font-src 'self'",
     // Yoga fetches its embedded base64 WebAssembly through a data URL. Allow
     // that local payload without admitting any additional network origins.
-    "connect-src 'self' data:",
+    `connect-src 'self' data:${analyticsSources.length ? ` ${analyticsSources.join(" ")}` : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "frame-src 'none'",
     "media-src 'self'",

@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs"
+
 import { expect, test, type Locator, type Page } from "@playwright/test"
 
+import {
+  fieldClassNames,
+  loadingIndicatorClassNames,
+  loadingIndicatorSizes,
+} from "@/components/ui/variants"
 import { badgeVariants } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -11,19 +18,29 @@ const variants = ["primary", "secondary", "tertiary", "destructive", "ghost"] as
 
 // Exercise the shared class recipes against both independent application CSS
 // bundles. Actual UI interactions are covered by navigation and archive tests.
+const spinnerSvg = readFileSync(
+  new URL("../components/ui/loading-spinner.svg", import.meta.url),
+  "utf8"
+)
+
+const loadingFixture = (size: keyof typeof loadingIndicatorSizes = "sm") =>
+  `<span aria-hidden="true" data-slot="loading-indicator" class="${loadingIndicatorClassNames} ${loadingIndicatorSizes[size].container}">${spinnerSvg}</span>`
+
 const fixture = (appearance: "raised" | "flat") => `
   <div id="visual-variants" class="space-y-4 bg-background p-6 text-foreground">
     ${variants
       .map(
         (variant) => `
       <div class="flex flex-wrap items-center gap-4">
-        <button id="button-${variant}" class="${cn(buttonVariants({ variant, appearance }))}">${variant}</button>
+        <button id="button-${variant}" class="${cn(buttonVariants({ variant, appearance }))}">${variant}${loadingFixture()}</button>
         <button id="raw-${variant}" class="${buttonVariants({ variant, appearance })}">Raw ${variant}</button>
         <div id="badge-${variant}" class="${cn(badgeVariants({ variant }))}">${variant}</div>
       </div>
     `
       )
       .join("")}
+    <input id="shared-field" aria-label="Shared field" class="${fieldClassNames}" />
+    <div id="standalone-loading">${loadingFixture("lg")}</div>
     <div id="hover-card" class="rounded-none border-2 border-border bg-card text-card-foreground shadow-soft p-6 transition-shadow hover:shadow-soft-lg">Hover card</div>
     <div id="flat-card" class="rounded-none border-2 border-border bg-card text-card-foreground p-6 shadow-none">Flat card</div>
   </div>
@@ -98,6 +115,8 @@ for (const appearance of ["raised", "flat"] as const) {
           fixtureRoot.innerHTML = markup
           document.body.insertBefore(fixtureRoot, document.body.firstChild)
         }, fixture(appearance))
+        // Font swapping changes text widths independently of pointer interactions.
+        await page.evaluate(() => document.fonts.ready)
         await moveOffControls(page)
 
         for (const variant of variants) {
@@ -105,6 +124,35 @@ for (const appearance of ["raised", "flat"] as const) {
           const raw = page.locator(`#raw-${variant}`)
           const badge = page.locator(`#badge-${variant}`)
           const foreground = await expectedForeground(button)
+
+          const loading = button.locator('[data-slot="loading-indicator"]')
+          await expect(loading).toHaveCSS("color", foreground)
+          await expect(loading).toHaveCSS("width", "20px")
+          await expect(loading).toHaveCSS("height", "20px")
+          await expect(loading).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+          await expect(loading.locator("svg")).toHaveCSS("width", "20px")
+          await expect(loading.locator("svg")).toHaveCSS("height", "20px")
+          await expect(loading.locator("svg")).toHaveCSS("fill", "none")
+          await expect(loading.locator("circle")).toHaveCSS("stroke", foreground)
+          await expect(loading.locator("circle")).toHaveCSS("stroke-opacity", "0.18")
+          await expect(loading.locator("path")).toHaveCSS("stroke", foreground)
+          await expect(loading).toHaveCSS("animation-name", "spin")
+          if (variant !== "ghost") {
+            const subtleBorder =
+              (theme === "light" && variant === "tertiary") ||
+              (theme === "dark" && (variant === "primary" || variant === "secondary"))
+            const border = await badge.evaluate((element, subtle) => {
+              const probe = document.createElement("span")
+              probe.style.color = subtle
+                ? "color-mix(in oklab, var(--variant-border) 30%, transparent)"
+                : "var(--semantic-border-strong)"
+              element.appendChild(probe)
+              const result = getComputedStyle(probe).color
+              probe.remove()
+              return result
+            }, subtleBorder)
+            await expect(badge).toHaveCSS("border-top-color", border)
+          }
 
           // Raw buttonVariants consumers (dialogs and sign-out) must look like Button.
           await expect(button).toHaveCSS("color", foreground)
@@ -137,6 +185,7 @@ for (const appearance of ["raised", "flat"] as const) {
             }
           }
           const resting = await styles(button)
+          const restingBounds = await button.boundingBox()
           await button.hover()
           await expect
             .poll(async () => (await styles(button)).background)
@@ -144,6 +193,13 @@ for (const appearance of ["raised", "flat"] as const) {
           await button.evaluate(async (element) => {
             await Promise.all(element.getAnimations().map((animation) => animation.finished))
           })
+          expect(await button.boundingBox()).toEqual(restingBounds)
+          await page.mouse.down()
+          try {
+            expect(await button.boundingBox()).toEqual(restingBounds)
+          } finally {
+            await page.mouse.up()
+          }
           expect(await contrastRatio(button)).toBeGreaterThanOrEqual(4.5)
           await moveOffControls(page)
           await expect.poll(() => styles(button)).toEqual(resting)
@@ -180,6 +236,22 @@ for (const appearance of ["raised", "flat"] as const) {
           await expect.poll(() => styles(button)).toEqual(resting)
           if (variant === "ghost") expect(await hasVisibleShadow(button)).toBe(false)
         }
+
+        const field = page.locator("#shared-field")
+        await field.focus()
+        await expect(field).toHaveCSS("--tw-ring-offset-width", "0px")
+        await expect(page.locator('#standalone-loading [data-slot="loading-indicator"]')).toHaveCSS(
+          "width",
+          "48px"
+        )
+
+        const standaloneLoading = page.locator(
+          '#standalone-loading [data-slot="loading-indicator"]'
+        )
+        await expect(standaloneLoading.locator("svg")).toHaveCSS("width", "48px")
+        await page.emulateMedia({ reducedMotion: "reduce" })
+        await expect(standaloneLoading).toHaveCSS("animation-name", "none")
+        await page.emulateMedia({ reducedMotion: "no-preference" })
 
         const card = page.locator("#hover-card")
         const cardResting = (await styles(card)).shadow

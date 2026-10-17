@@ -18,7 +18,7 @@ it.each(["dev", "production"])("checks live config transports in %s", async (tar
   const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
   expect(fetcher).toHaveBeenCalledTimes(5)
   expect(fetcher).toHaveBeenCalledWith(
-    `${origin}/api/analytics/array/phc_indrax_gateway/config`,
+    `${origin}/analytics/array/phc_indrax_gateway/config`,
     expect.objectContaining({ headers: { Referer: `${origin}/` }, redirect: "manual" })
   )
 })
@@ -107,7 +107,7 @@ describe("transport failures", () => {
   it("bounds persistent timeouts and identifies the endpoint", async () => {
     const fetcher = setup().mockRejectedValue(new DOMException("timeout", "TimeoutError"))
     const assertion = expect(verifyAnalytics("production", fetcher)).rejects.toThrow(
-      "https://indrax.uk/api/analytics/array/phc_indrax_gateway/config failed on attempt 3: request timed out after 15000ms"
+      "https://indrax.uk/analytics/array/phc_indrax_gateway/config failed on attempt 3: request timed out after 15000ms"
     )
     await vi.runAllTimersAsync()
     await assertion

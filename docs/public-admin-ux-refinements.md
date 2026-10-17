@@ -1,6 +1,6 @@
 # Hero, admin navigation, and Stack refinements
 
-Follow-up branch: `fix/public-admin-styles-and-resume`, based on `develop`.
+Follow-up branch: `fix/analytics-and-shared-ui-consistency`, based on `develop`.
 This records the current public/admin refinements and shared style consistency fixes.
 
 ## Scope
@@ -11,22 +11,25 @@ This records the current public/admin refinements and shared style consistency f
   section icons use the hero social controls' solid secondary color, square border,
   and shadow, while remaining decorative and outside the keyboard tab order.
 - Admin navigation groups Resume, Writing, and Stack under Public on desktop and
-  mobile. The brand links to the dashboard, replacing the duplicate home control.
+  mobile. The Dashboard home icon uses the same bottom-border active treatment as
+  Posts on desktop. On mobile, Dashboard moves into the menu beside the other
+  navigation entries. The brand also links to the dashboard and has no hover underline.
   Public links load the public application; private links use browser routing.
-  Public uses the same underline hover style as Posts on desktop, with a down
+  Public uses the same bordered hover treatment as Posts on desktop, with a down
   chevron to identify its dropdown and text-only menu items. Inside the mobile
   sheet, Public matches the bordered Posts row, with a globe and trailing chevron.
   Sign-out is a ghost icon button on desktop and a full-width primary button with
   centered icon and text inside the sheet, matching Apply's primary colors.
   Sign-out and filter Apply use the shared flat button appearance: no elevation or
   movement on hover/press, with the same readable color and keyboard focus states.
-  Sheet rows have no persistent active background; `aria-current` identifies Posts.
+  Active desktop navigation uses a bottom border with `aria-current`; mobile rows
+  use a muted fill and visible border.
   Resizing closes the drawer when CSS actually reveals desktop navigation, avoiding
   a separate JavaScript breakpoint that can drift from the stylesheet.
   The theme icon lives in the page footer,
   aligned right opposite “Administrator”; the sign-in page needs no mobile menu.
 - Public Writing and admin Posts filter sheets use concise Apply/Clear actions.
-  Shared pagination uses borderless arrow icons with accessible direction labels,
+  Shared pagination uses arrow icons with visible hover borders, accessible direction labels,
   tooltips, 44px targets, visible keyboard focus, inactive end-of-list arrows, and
   a concise “Page x of x” counter on the left with both arrows grouped on the right.
 - Post creation uses `/admin/posts/new`; editing uses `/admin/posts/edit/:id`.
@@ -89,5 +92,7 @@ exercise live OAuth. Local Chromium can fail initial assets with
 `ERR_NETWORK_CHANGED`; retain traces and report isolated reruns, as described in
 the test guide.
 
-No database schema, package dependency, environment, or deployment configuration
-changes are required. This pull request targets `develop`; deployment is separate.
+No database schema or package dependency changes are required. Worker analytics
+remains the default; optional direct transport setup and the `/analytics` gateway
+route are documented in [PostHog gateway](posthog-gateway.md). This pull request
+targets `develop`; deployment is separate.

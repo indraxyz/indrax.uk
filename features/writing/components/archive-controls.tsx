@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router"
 
 import { badgeVariants } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { controlClassNames } from "@/components/ui/variants"
+import { controlClassNames, fieldClassNames } from "@/components/ui/variants"
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { StickyToolbar } from "@/components/sticky-toolbar"
 import { QueryState } from "@/features/writing/components/query-state"
 import { SearchForm } from "@/features/writing/components/search-form"
 import type { TagWithCount } from "@/features/writing/types"
@@ -33,8 +34,7 @@ import {
   type AdminArchiveOptions,
 } from "@/features/writing/utils/admin-archive-options"
 
-const selectClass =
-  "mt-2 min-h-11 w-full border-2 border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+const selectClass = cn(fieldClassNames, "mt-2")
 
 const subscribeToHydration = () => () => {}
 const hydratedSnapshot = () => true
@@ -99,7 +99,7 @@ export function ArchiveControls({
   }
 
   return (
-    <div className="flex items-stretch gap-3">
+    <StickyToolbar className="flex items-stretch gap-3">
       <SearchForm
         query={options.q}
         options={options}
@@ -197,61 +197,6 @@ export function ArchiveControls({
                   </select>
                 </label>
               )}
-              <fieldset>
-                <legend className="font-bold">Tags</legend>
-                {tagsError ? (
-                  <div className="mt-3">
-                    <QueryState error retry={retryTags} label="tags" />
-                  </div>
-                ) : tags === undefined ? (
-                  <p role="status" className="mt-3">
-                    Loading tags…
-                  </p>
-                ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {knownTags.map((tag) => (
-                      <button
-                        key={tag.slug}
-                        type="button"
-                        aria-pressed={draft.tags.includes(tag.slug)}
-                        disabled={
-                          !draft.tags.includes(tag.slug) && draft.tags.length >= MAX_ARCHIVE_TAGS
-                        }
-                        onClick={() => toggleTag(tag.slug)}
-                        className={cn(
-                          badgeVariants({
-                            variant: draft.tags.includes(tag.slug) ? "primary" : "tertiary",
-                          }),
-                          "min-h-11 disabled:opacity-50"
-                        )}
-                      >
-                        {tag.name} ({tag.postCount})
-                      </button>
-                    ))}
-                    {knownTags.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        {admin ? "No tags on posts yet." : "No tags with published writing yet."}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {unavailable.map((slug) => (
-                  <button
-                    key={slug}
-                    type="button"
-                    aria-pressed="true"
-                    onClick={() => toggleTag(slug)}
-                    className={cn(badgeVariants({ variant: "primary" }), "mt-2 min-h-11")}
-                  >
-                    {slug} (0)
-                  </button>
-                ))}
-                {draft.tags.length >= MAX_ARCHIVE_TAGS && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    You can select up to {MAX_ARCHIVE_TAGS} tags.
-                  </p>
-                )}
-              </fieldset>
               <div>
                 <label className="block font-bold">
                   Publication date
@@ -332,6 +277,61 @@ export function ArchiveControls({
                   <option value="long">Over 10 minutes</option>
                 </select>
               </label>
+              <fieldset>
+                <legend className="font-bold">Tags</legend>
+                {tagsError ? (
+                  <div className="mt-3">
+                    <QueryState error retry={retryTags} label="tags" />
+                  </div>
+                ) : tags === undefined ? (
+                  <p role="status" className="mt-3">
+                    Loading tags…
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {knownTags.map((tag) => (
+                      <button
+                        key={tag.slug}
+                        type="button"
+                        aria-pressed={draft.tags.includes(tag.slug)}
+                        disabled={
+                          !draft.tags.includes(tag.slug) && draft.tags.length >= MAX_ARCHIVE_TAGS
+                        }
+                        onClick={() => toggleTag(tag.slug)}
+                        className={cn(
+                          badgeVariants({
+                            variant: draft.tags.includes(tag.slug) ? "primary" : "tertiary",
+                          }),
+                          "min-h-11 disabled:opacity-50"
+                        )}
+                      >
+                        {tag.name} ({tag.postCount})
+                      </button>
+                    ))}
+                    {knownTags.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {admin ? "No tags on posts yet." : "No tags with published writing yet."}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {unavailable.map((slug) => (
+                  <button
+                    key={slug}
+                    type="button"
+                    aria-pressed="true"
+                    onClick={() => toggleTag(slug)}
+                    className={cn(badgeVariants({ variant: "primary" }), "mt-2 min-h-11")}
+                  >
+                    {slug} (0)
+                  </button>
+                ))}
+                {draft.tags.length >= MAX_ARCHIVE_TAGS && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    You can select up to {MAX_ARCHIVE_TAGS} tags.
+                  </p>
+                )}
+              </fieldset>
             </div>
             <SheetFooter className="shrink-0 border-t-2 border-border pb-[max(1rem,env(safe-area-inset-bottom))]">
               <Button
@@ -361,6 +361,6 @@ export function ArchiveControls({
           </form>
         </SheetContent>
       </Sheet>
-    </div>
+    </StickyToolbar>
   )
 }

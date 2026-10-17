@@ -1,14 +1,6 @@
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
 import { Menu } from "@base-ui/react/menu"
-import {
-  Archive,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  Loader2,
-  MoreHorizontal,
-  Send,
-  Trash2,
-} from "lucide-react"
+import { Archive, ExternalLink, Eye, EyeOff, MoreHorizontal, Send, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -185,7 +177,7 @@ export function PostActions({
                   title={savedHint ?? "Opens in a new tab"}
                 >
                   {activeAction === "view" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    <LoadingIndicator />
                   ) : published ? (
                     <ExternalLink className="h-4 w-4" aria-hidden />
                   ) : (
@@ -308,9 +300,7 @@ export function PostActions({
                 )
               }
             >
-              {activeAction === "delete" && (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              )}
+              {activeAction === "delete" && <LoadingIndicator />}
               {activeAction === "delete" ? "Deleting…" : "Delete post"}
             </AlertDialogAction>
           </AlertDialogFooter>

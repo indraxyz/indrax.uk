@@ -65,7 +65,7 @@ async function sitemap() {
  */
 export function robotsTxt(indexable: boolean): string {
   if (!indexable) return "User-Agent: *\nDisallow: /\n"
-  return `User-Agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${SITE_URL}/sitemap.xml\n`
+  return `User-Agent: *\nAllow: /\nDisallow: /api/\nDisallow: /analytics\nSitemap: ${SITE_URL}/sitemap.xml\n`
 }
 
 export async function handleResources(request: Request): Promise<Response> {

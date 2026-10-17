@@ -84,7 +84,7 @@ export default function WritingPage() {
           )
         }
       >
-        <div className="space-y-4">
+        <>
           <ArchiveControls
             options={options}
             tags={tags.data}
@@ -97,7 +97,7 @@ export default function WritingPage() {
               {options.q ? ` matching “${options.q}”` : ""}
             </p>
           )}
-        </div>
+        </>
       </PostListSection>
     </WritingShell>
   )

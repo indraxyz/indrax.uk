@@ -147,14 +147,17 @@ plugin. Preview reads `.env.local` directly, so this copy is not needed in build
 artifacts.
 
 Vite embeds only `SITE_URL`, `SITE_UPDATED_AT`, `MEDIA_ORIGIN`, and
-`ANALYTICS_ENABLED` through an explicit allowlist. Variable names do not determine
-browser visibility; database URLs, tokens, and OAuth secrets remain server-only.
+`ANALYTICS_ENABLED`, `ANALYTICS_TRANSPORT`, `POSTHOG_PUBLIC_KEY` and `POSTHOG_PUBLIC_HOST`
+through an explicit allowlist. Only the explicitly public project key is embedded
+for direct analytics; database URLs, runtime project tokens and OAuth secrets stay server-only.
 
 | Setting                                                         | Purpose                                                     |
 | --------------------------------------------------------------- | ----------------------------------------------------------- |
 | `SITE_URL`                                                      | Canonical origin; defaults to `https://indrax.uk`           |
 | `SITE_UPDATED_AT`                                               | Optional `YYYY-MM-DD` override; otherwise Git revision date |
 | `ANALYTICS_ENABLED`                                             | Build-time flag for consent-gated analytics                 |
+| `ANALYTICS_TRANSPORT`                                           | Build-time `worker` (default) or `direct`                   |
+| `POSTHOG_PUBLIC_KEY`, `POSTHOG_PUBLIC_HOST`                     | Public build values used only for direct analytics          |
 | `POSTHOG_PROJECT_TOKEN`, `POSTHOG_HOST`                         | Runtime-only ingestion credential and regional upstream     |
 | `MEDIA_ORIGIN`                                                  | HTTPS origin allowed for cover images                       |
 | `DATABASE_URL`                                                  | Server-only Neon HTTP connection; absent is supported       |
@@ -165,7 +168,8 @@ browser visibility; database URLs, tokens, and OAuth secrets remain server-only.
 
 When upgrading from the previous variable names, remove the Next.js public prefix
 from local environment keys and GitHub `Preview`/`Production` build variables.
-CI reads `ANALYTICS_ENABLED` and `MEDIA_ORIGIN`; preserve their existing values.
+CI reads `ANALYTICS_ENABLED`, `MEDIA_ORIGIN` and the optional analytics transport/public
+key settings; preserve existing values when switching transport.
 The next Worker deployment applies `SITE_URL` and `MEDIA_ORIGIN` from Wrangler.
 Keep the current runtime bindings until that deployment.
 

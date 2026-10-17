@@ -36,7 +36,7 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, type ReactNode } from "react"
 
-import { controlClassNames } from "@/components/ui/variants"
+import { controlClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
@@ -350,8 +350,10 @@ export function PostEditor({ value, onChange }: EditorProps) {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class:
-          "prose prose-lg max-w-none min-h-[24rem] px-4 py-4 focus:outline-none focus-visible:outline-none",
+        class: cn(
+          "prose prose-lg max-w-none min-h-[24rem] px-4 py-4 focus:outline-none",
+          focusControlClassNames
+        ),
         "aria-label": "Article body",
       },
     },

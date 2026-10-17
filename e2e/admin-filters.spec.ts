@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
+import { expectStickyArchiveControls } from "./support/sticky-archive-controls"
 import { expectIconPagination } from "./support/pagination"
 import { expectReadableAction } from "./support/visual-controls"
 
@@ -12,7 +13,7 @@ const coverUrl = mediaOrigin
   : null
 
 /** These authenticated browser fixtures never create sessions or write real posts. */
-async function adminArchive(page: Page) {
+async function adminArchive(page: Page, count = 1) {
   await page.context().addCookies([
     {
       name: "better-auth.session_token",
@@ -47,22 +48,20 @@ async function adminArchive(page: Page) {
         posts:
           params.get("q") === "nothing"
             ? []
-            : [
-                {
-                  id: `admin-fixture-${number}`,
-                  slug: `admin-fixture-${number}`,
-                  title: `Admin archive fixture ${number}`,
-                  excerpt,
-                  coverUrl,
-                  coverAlt: "Archive cover",
-                  status: params.get("status") === "published" ? "published" : "draft",
-                  publishedAt: null,
-                  updatedAt: "2026-10-10T00:00:00Z",
-                  tags: [],
-                  readingTime: 3,
-                  viewCount: 0,
-                },
-              ],
+            : Array.from({ length: count }, (_, index) => ({
+                id: `admin-fixture-${number}-${index}`,
+                slug: `admin-fixture-${number}-${index}`,
+                title: `Admin archive fixture ${number}`,
+                excerpt,
+                coverUrl,
+                coverAlt: "Archive cover",
+                status: params.get("status") === "published" ? "published" : "draft",
+                publishedAt: null,
+                updatedAt: "2026-10-10T00:00:00Z",
+                tags: [],
+                readingTime: 3,
+                viewCount: 0,
+              })),
         total: params.get("q") === "nothing" ? 0 : 21,
         page: number,
         pageCount: params.get("q") === "nothing" ? 0 : 3,
@@ -81,6 +80,9 @@ async function filters(page: Page) {
   await page.getByRole("button", { name: "Filters and sort" }).click()
   const dialog = page.getByRole("dialog", { name: "Filters and sort" })
   await expect(dialog).toBeVisible()
+  await expect(dialog.locator("form > div").first().locator(":scope > :last-child")).toHaveText(
+    /Tags/
+  )
   return dialog
 }
 
@@ -397,10 +399,24 @@ for (const theme of ["light", "dark"]) {
 }
 
 for (const width of [320, 1280]) {
-  test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {
+  test(`uses icon pagination with hover borders at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await adminArchive(page)
     await page.goto("/admin/posts?page=2")
     await expectIconPagination(page, "Posts pagination", width)
   })
+}
+
+for (const theme of ["light", "dark"]) {
+  for (const width of [320, 1280, 1920]) {
+    test(`keeps admin search below the header with a full-width blurred surface at ${width}px in ${theme}`, async ({
+      page,
+    }) => {
+      await adminArchive(page, 12)
+      await page.addInitScript((value) => localStorage.setItem("indrax-theme", value), theme)
+      await page.setViewportSize({ width, height: 720 })
+      await page.goto("/admin/posts")
+      await expectStickyArchiveControls(page)
+    })
+  }
 }

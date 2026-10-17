@@ -72,7 +72,7 @@ export function Component() {
           </div>
           <Link
             to="/admin/posts"
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Manage posts <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
