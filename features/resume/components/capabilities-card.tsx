@@ -5,6 +5,7 @@ import { techSkills } from "@/features/resume/data/resume"
 export function CapabilitiesCard() {
   return (
     <SectionCard
+      iconVariant="solid"
       icon={<Award className="h-5 w-5" />}
       title="Capabilities"
       tone="tertiary"

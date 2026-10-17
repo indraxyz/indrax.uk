@@ -183,7 +183,7 @@ test.describe("the writing public surface", () => {
     expect(csp).toContain("default-src 'self'")
     expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval' 'sha256-[^']+' 'nonce-[^']+'/)
     expect(csp).not.toContain("'unsafe-inline' 'unsafe-eval'")
-    expect(csp).toContain("connect-src 'self';")
+    expect(csp).toContain("connect-src 'self' data:;")
     expect(csp).not.toContain("posthog.com")
   })
 })

@@ -1,19 +1,34 @@
 # Hero, admin navigation, and Stack refinements
 
-Branch: `feat/public-admin-ux-refinements`, based on `develop`. No ticket number supplied.
-The change is prepared for a pull request targeting `develop`.
+Follow-up branch: `fix/public-admin-styles-and-resume`, based on `develop`.
+This records the current public/admin refinements and shared style consistency fixes.
 
 ## Scope
 
 - Home and resume share a hero heading scaled from 24px to 32px. Personal
   information and PDF controls are on the left; LinkedIn and GitHub are on the right.
+  The personal sheet is titled “About me”, with matching open/close labels. Its six
+  section icons use the hero social controls' solid secondary color, square border,
+  and shadow, while remaining decorative and outside the keyboard tab order.
 - Admin navigation groups Resume, Writing, and Stack under Public on desktop and
   mobile. The brand links to the dashboard, replacing the duplicate home control.
   Public links load the public application; private links use browser routing.
+  Public uses the same underline hover style as Posts on desktop, with a down
+  chevron to identify its dropdown and text-only menu items. Inside the mobile
+  sheet, Public matches the bordered Posts row, with a globe and trailing chevron.
+  Sign-out is a ghost icon button on desktop and a full-width primary button with
+  centered icon and text inside the sheet, matching Apply's primary colors.
+  Sign-out and filter Apply use the shared flat button appearance: no elevation or
+  movement on hover/press, with the same readable color and keyboard focus states.
+  Sheet rows have no persistent active background; `aria-current` identifies Posts.
+  Resizing closes the drawer when CSS actually reveals desktop navigation, avoiding
+  a separate JavaScript breakpoint that can drift from the stylesheet.
+  The theme icon lives in the page footer,
+  aligned right opposite “Administrator”; the sign-in page needs no mobile menu.
 - Public Writing and admin Posts filter sheets use concise Apply/Clear actions.
   Shared pagination uses borderless arrow icons with accessible direction labels,
   tooltips, 44px targets, visible keyboard focus, inactive end-of-list arrows, and
-  a concise “x of x” counter.
+  a concise “Page x of x” counter on the left with both arrows grouped on the right.
 - Post creation uses `/admin/posts/new`; editing uses `/admin/posts/edit/:id`.
   Existing `/admin/new` and `/admin/edit/:id` bookmarks redirect. Dashboard links,
   list links, save navigation, and test expectations use the new routes.

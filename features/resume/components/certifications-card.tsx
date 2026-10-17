@@ -7,6 +7,7 @@ import { Link } from "react-router"
 export function CertificationsCard() {
   return (
     <SectionCard
+      iconVariant="solid"
       icon={<Award className="h-5 w-5" />}
       title="Certifications"
       tone="tertiary"

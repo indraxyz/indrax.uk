@@ -15,6 +15,7 @@ export interface SectionLink {
 const isExternal = (href: string) => /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//")
 
 export type SectionHeaderSize = "sm" | "lg"
+export type SectionIconVariant = "outlined" | "solid"
 
 // Every section on the resume sits under the hero's h1, so h2 is the right default
 // and stays it. The writing's list and tag pages have no hero: their section header is
@@ -29,6 +30,7 @@ const titleSizeClasses: Record<SectionHeaderSize, string> = {
 
 interface SectionHeaderProps {
   icon: ReactNode
+  iconVariant?: SectionIconVariant
   title: string
   subtitle?: string
   tone?: VisualVariant
@@ -39,6 +41,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({
   icon,
+  iconVariant = "outlined",
   title,
   subtitle,
   tone = "primary",
@@ -54,9 +57,13 @@ export function SectionHeader({
   return (
     <div className={cn("flex gap-3", hasDetails ? "items-start" : "items-center")}>
       <div
+        data-slot="section-icon"
+        aria-hidden="true"
         className={cn(
-          "variant-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-none border-2",
-          variantClassNames[tone]
+          "flex shrink-0 items-center justify-center rounded-none border-2",
+          iconVariant === "solid"
+            ? "variant-secondary h-11 w-11 border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] shadow-soft-sm [&_svg]:size-4"
+            : cn("variant-icon h-10 w-10", variantClassNames[tone])
         )}
       >
         {icon}

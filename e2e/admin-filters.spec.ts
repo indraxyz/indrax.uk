@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
 import { expectIconPagination } from "./support/pagination"
+import { expectReadableAction } from "./support/visual-controls"
 
 const excerpt =
   "An archive excerpt with the same stored ellipsis as writing cards. ".repeat(3) + "..."
@@ -378,6 +379,22 @@ test.describe("admin post discovery", () => {
     }
   }
 })
+
+for (const theme of ["light", "dark"]) {
+  test(`admin filter actions remain readable during hover in ${theme} mode`, async ({ page }) => {
+    await page.addInitScript((theme) => localStorage.setItem("indrax-theme", theme), theme)
+    await page.setViewportSize({ width: 375, height: 900 })
+    await adminArchive(page)
+    await page.goto("/admin/posts")
+    const sheet = await filters(page)
+    await sheet.getByLabel("Sort by", { exact: true }).selectOption("oldest")
+    await expectReadableAction(page, sheet.getByRole("button", { name: "Apply", exact: true }))
+    await expectReadableAction(page, sheet.getByRole("button", { name: "Clear", exact: true }))
+    await sheet.getByRole("button", { name: "Apply", exact: true }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page).toHaveURL(/sort=oldest/)
+  })
+}
 
 for (const width of [320, 1280]) {
   test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {

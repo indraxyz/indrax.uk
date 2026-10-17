@@ -63,7 +63,9 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
         if (nextOpen) setFailed(false)
       }}
     >
-      <AlertDialogTrigger className={className}>{children}</AlertDialogTrigger>
+      <AlertDialogTrigger className={className} aria-label="Sign out" title="Sign out">
+        {children}
+      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Sign out?</AlertDialogTitle>

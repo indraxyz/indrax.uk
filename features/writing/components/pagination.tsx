@@ -53,55 +53,57 @@ export function Pagination({
 
   return (
     <nav aria-label={label} className="flex items-center justify-between gap-4 pt-2">
-      {previous ? (
-        <Link
-          prefetch="none"
-          to={previous}
-          rel="prev"
-          aria-label={previousLabel}
-          title={previousLabel}
-          className={paginationControlClass}
-        >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-        </Link>
-      ) : (
-        <span
-          className={cn(
-            paginationControlClass,
-            "pointer-events-none text-muted-foreground opacity-50"
-          )}
-          aria-hidden
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </span>
-      )}
-
       <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-        {page} of {pageCount}
+        Page {page} of {pageCount}
       </p>
 
-      {next ? (
-        <Link
-          prefetch="none"
-          to={next}
-          rel="next"
-          aria-label={nextLabel}
-          title={nextLabel}
-          className={paginationControlClass}
-        >
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
-      ) : (
-        <span
-          className={cn(
-            paginationControlClass,
-            "pointer-events-none text-muted-foreground opacity-50"
-          )}
-          aria-hidden
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </span>
-      )}
+      <div className="flex shrink-0 items-center gap-2">
+        {previous ? (
+          <Link
+            prefetch="none"
+            to={previous}
+            rel="prev"
+            aria-label={previousLabel}
+            title={previousLabel}
+            className={paginationControlClass}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        ) : (
+          <span
+            className={cn(
+              paginationControlClass,
+              "pointer-events-none text-muted-foreground opacity-50"
+            )}
+            aria-hidden
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </span>
+        )}
+
+        {next ? (
+          <Link
+            prefetch="none"
+            to={next}
+            rel="next"
+            aria-label={nextLabel}
+            title={nextLabel}
+            className={paginationControlClass}
+          >
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        ) : (
+          <span
+            className={cn(
+              paginationControlClass,
+              "pointer-events-none text-muted-foreground opacity-50"
+            )}
+            aria-hidden
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
     </nav>
   )
 }
