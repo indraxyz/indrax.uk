@@ -1,6 +1,7 @@
 import { Link } from "react-router"
 import type { ReactNode } from "react"
 
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { AdminNavigation } from "@/admin/components/layout/admin-navigation"
@@ -71,10 +72,11 @@ export function AdminShell({
       </main>
 
       <footer className={SITE_CONTAINER_CLASS}>
-        <div className="mt-12 flex items-center justify-center border-t-2 border-border py-10 text-center">
+        <div className="mt-12 flex items-center justify-between gap-3 border-t-2 border-border py-10">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-foreground">
-            Administrator of indrax.uk
+            Administrator
           </p>
+          <ThemeToggle />
         </div>
       </footer>
     </div>

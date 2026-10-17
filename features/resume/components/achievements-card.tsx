@@ -5,7 +5,12 @@ import { Award } from "lucide-react"
 
 export function AchievementsCard() {
   return (
-    <SectionCard icon={<Award className="h-5 w-5" />} title="Achievements" tone="tertiary">
+    <SectionCard
+      iconVariant="solid"
+      icon={<Award className="h-5 w-5" />}
+      title="Achievements"
+      tone="tertiary"
+    >
       <div className="space-y-4 print:space-y-2">
         {achievements.map((achievement, index) => (
           <div key={achievement.title}>

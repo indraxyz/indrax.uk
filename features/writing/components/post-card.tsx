@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react"
 import { Link } from "react-router"
 
 import { Card, CardContent, CardHeader, CardTitle, type CardTitleLevel } from "@/components/ui/card"
@@ -56,15 +55,6 @@ export function PostCard({ post, priority = false, headingLevel = 2 }: PostCardP
             </span>
           ))}
         </div>
-
-        {/* Decoration. The title link above already carries the navigation and its
-            hit area covers the card, so announcing a second "Read" is noise. */}
-        <span
-          aria-hidden
-          className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--component-variant-secondary-bg)]"
-        >
-          Read <ArrowRight className="h-3.5 w-3.5" />
-        </span>
       </CardContent>
     </Card>
   )

@@ -6,12 +6,14 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 import { adminDevAssets } from "./config/admin-dev-assets.ts"
 import { publicEnvDefinitions } from "./config/public-env.ts"
+import { pdfLayoutBuffer } from "./config/pdf-layout-buffer.ts"
 
 export default defineConfig(({ mode }) => {
   return {
     cacheDir: process.env.INDRAX_VITE_CACHE_DIR,
     plugins: [
       adminDevAssets(),
+      pdfLayoutBuffer(),
       cloudflare({
         viteEnvironment: { name: "ssr" },
         persistState: process.env.INDRAX_VITE_PERSIST_DIR

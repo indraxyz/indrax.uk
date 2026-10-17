@@ -19,7 +19,8 @@ export function PersonalInfoSheet() {
     <Sheet>
       <SheetTrigger
         render={<Button variant="ghost" size="icon" />}
-        aria-label="Open personal information"
+        aria-label="Open about me"
+        title="About me"
       >
         <UserRound className="h-5 w-5" aria-hidden />
       </SheetTrigger>
@@ -31,16 +32,14 @@ export function PersonalInfoSheet() {
         <SheetHeader className="shrink-0 border-b-2 border-border bg-muted/45">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-0.5 md:gap-1.5">
-              <SheetTitle className="font-black uppercase tracking-tight">
-                Personal Information
-              </SheetTitle>
+              <SheetTitle className="font-black uppercase tracking-tight">About me</SheetTitle>
               <SheetDescription className="text-xs font-semibold">
                 Profile, capabilities, education, certifications, and additional background
               </SheetDescription>
             </div>
             <SheetClose
               render={<Button variant="ghost" size="icon" className="-mr-2 shrink-0 sm:hidden" />}
-              aria-label="Close personal information"
+              aria-label="Close about me"
             >
               <X className="h-5 w-5" aria-hidden />
             </SheetClose>

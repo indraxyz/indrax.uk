@@ -182,7 +182,7 @@ test.describe("sessions", () => {
       .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
     expect(desktopLinks).toEqual(["/admin/posts"])
 
-    for (const width of [320, 767]) {
+    for (const width of [320, 899]) {
       await page.setViewportSize({ width, height: 700 })
       await expect(page.getByRole("navigation", { name: "Admin", exact: true })).toBeHidden()
       const trigger = page.getByRole("button", { name: "Open admin menu" })
@@ -196,7 +196,7 @@ test.describe("sessions", () => {
           .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
       ).toEqual(desktopLinks)
       await expect(menu.locator('[aria-current="page"]')).toHaveText("Posts")
-      await expect(drawer.getByRole("button", { name: /Switch theme/ })).toBeVisible()
+      await expect(drawer.getByRole("button", { name: /Switch theme/ })).toHaveCount(0)
       await expect(drawer.getByRole("button", { name: "Sign out", exact: true })).toBeVisible()
       const menuBox = await menu.boundingBox()
       const footerBox = await drawer.locator('[data-slot="drawer-footer"]').boundingBox()
@@ -228,12 +228,12 @@ test.describe("sessions", () => {
     await expect(page).toHaveURL(/\/writing$/)
     await expect(page.getByRole("dialog", { name: "Admin menu", exact: true })).toBeHidden()
     await page.goto("/admin/posts")
-    await page.getByRole("button", { name: "Open admin menu" }).click()
-    const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
-    const theme = drawer.getByRole("button", { name: /Switch theme/ })
+    const theme = page.locator("footer").getByRole("button", { name: /Switch theme/ })
     const previousTheme = await theme.getAttribute("aria-label")
     await theme.click()
     await expect(theme).not.toHaveAttribute("aria-label", previousTheme!)
+    await page.getByRole("button", { name: "Open admin menu" }).click()
+    const drawer = page.getByRole("dialog", { name: "Admin menu", exact: true })
     await expect(drawer).toBeVisible()
     await drawer.getByRole("button", { name: "Sign out", exact: true }).click()
     const confirmation = page.getByRole("alertdialog")

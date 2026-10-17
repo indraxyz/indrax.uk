@@ -129,16 +129,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright
         # The system libraries a browser links against live outside that cache, so
         # they are installed either way; only the download is skipped on a hit.
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
+            npx playwright install-deps chromium firefox
           else
-            npx playwright install --with-deps chromium
+            npx playwright install --with-deps chromium firefox
           fi
 
       # Builds and starts the site itself - see `webServer` in
@@ -151,6 +151,9 @@ jobs:
 
       - name: Verify development document hydration
         run: E2E_PORT=3352 npx playwright test --config playwright.hydration.config.ts
+
+      - name: Verify Firefox hydration and restored filter state
+        run: PLAYWRIGHT_BROWSER=firefox E2E_PORT=3353 npx playwright test --config playwright.hydration.config.ts
 
       - name: Verify isolated local cover uploads
         run: E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads

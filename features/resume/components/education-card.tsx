@@ -6,6 +6,7 @@ import { GraduationCap } from "lucide-react"
 export function EducationCard() {
   return (
     <SectionCard
+      iconVariant="solid"
       icon={<GraduationCap className="h-5 w-5" />}
       title="Education"
       tone="tertiary"

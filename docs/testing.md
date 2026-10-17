@@ -190,6 +190,29 @@ resume and writing pages for hydration warnings and consistent document nonces:
 E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
 ```
 
+It also reloads Writing after its filter trigger becomes enabled and verifies that
+the sheet still opens, closes, and restores focus without hydration warnings.
+CI runs this case in Firefox too: Firefox can restore dynamic button disabled states
+on reload before React hydrates. The filter trigger opts out of that restoration
+with `autocomplete="off"` while retaining its pre-hydration disabled guard.
+
+```bash
+npx playwright install firefox
+PLAYWRIGHT_BROWSER=firefox E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
+```
+
+`e2e/variants.spec.ts` exercises the shared UI class recipes against both applications'
+actual stylesheets in light and dark mode. It checks every color variant, raw
+button-class consumers, hover/reset behavior, keyboard focus, disabled states,
+and card shadows. Shadows are Tailwind theme utilities so focus rings and state
+variants compose with them. Color variants own their foreground and border colors;
+neutral base classes must not override them. Flat actions keep their color treatment
+without raised shadows or movement. Filter and admin-menu regressions additionally
+check the real Apply/sign-out controls, text contrast, and pointer reset.
+
+The admin development app is built and watched separately from public Vite HMR.
+Reload an already-open admin tab after a rebuild to load its new hashed JS/CSS.
+
 For smoke checks without fixtures, explicitly export empty database/auth values.
 Such a run verifies static/anonymous behavior, not authoring or fixture content.
 

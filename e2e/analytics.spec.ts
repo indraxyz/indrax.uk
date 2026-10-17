@@ -36,7 +36,7 @@ test.describe("analytics", () => {
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$pageview")
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$autocapture")
@@ -97,7 +97,7 @@ test.describe("analytics", () => {
     })
     await page.goto("/")
     await whenHydrated(page)
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await page.mouse.move(100, 150)
     for (const event of ["$pageview", "$autocapture", "$$heatmap", "$snapshot", "$web_vitals"])
       await expect.poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 }).toContain(event)
@@ -112,7 +112,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page, { heatmaps: false, validateGateway: true })
     await page.goto("/")
     await whenHydrated(page)
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$autocapture")
@@ -246,7 +246,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page)
     await page.goto("/")
 
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await page.getByRole("link", { name: EMAIL }).click()
 
     await expect.poll(() => analytics.captured("contact_clicked"), { timeout: 20_000 }).toBe(true)
@@ -257,7 +257,7 @@ test.describe("analytics", () => {
     const analytics = await recordAnalytics(page, { validateGateway: true })
     await page.goto("/")
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await expect.poll(() => analytics.captured("$autocapture"), { timeout: 20_000 }).toBe(true)
     expect(analytics.everything()).toContain("/api/analytics/")
     expect(analytics.everything()).not.toContain("https://us.i.posthog.com")
@@ -268,12 +268,16 @@ test.describe("analytics", () => {
     expect(analytics.everything()).not.toContain("phc_e2e_server_private")
   })
 
-  test("retains session replay using the installed recorder behind the gateway", async ({
-    page,
-  }) => {
+  test("retains session replay and downloads a PDF without console failures", async ({ page }) => {
+    test.setTimeout(DOWNLOAD_TIMEOUT_MS)
+    const consoleFailures: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "warning" || message.type() === "error")
+        consoleFailures.push(message.text())
+    })
+    page.on("pageerror", (error) => consoleFailures.push(error.message))
     const analytics = await recordAnalytics(page, { replay: true, validateGateway: true })
     await page.goto("/")
-    test.setTimeout(60_000)
     await expect.poll(() => analytics.captured("$pageview"), { timeout: 20_000 }).toBe(true)
     await page.waitForFunction(() => {
       const extensions = (
@@ -284,14 +288,28 @@ test.describe("analytics", () => {
       return typeof extensions?.rrweb?.record === "function"
     })
     await page.mouse.move(100, 100)
-    await page.getByRole("button", { name: "Open personal information" }).click()
+    await page.getByRole("button", { name: "Open about me" }).click()
     await expect.poll(() => analytics.captured("$snapshot"), { timeout: 30_000 }).toBe(true)
-    expect(analytics.everything()).toContain("/api/analytics/s/")
+    // Snapshot-related events can arrive before the recorder flushes its batch.
+    await expect
+      .poll(() => analytics.everything(), { timeout: 30_000 })
+      .toContain("/api/analytics/s/")
     expect(analytics.everything()).toContain("phc_indrax_gateway")
     await expect
       .poll(() => analytics.forwarded.join("\n"), { timeout: 20_000 })
       .toContain("$snapshot")
     expect(analytics.everything()).not.toContain("phc_e2e_server_private")
+    await page.keyboard.press("Escape")
+    await whenHydrated(page)
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Download resume as PDF" }).click(),
+    ])
+    expect(await download.failure()).toBeNull()
+    await expect
+      .poll(() => analytics.captured("resume_pdf_downloaded"), { timeout: 20_000 })
+      .toBe(true)
+    expect(consoleFailures).toEqual([])
   })
 
   test("sends nothing when the visitor has asked not to be tracked", async ({ page }) => {

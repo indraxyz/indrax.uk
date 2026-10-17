@@ -3,6 +3,7 @@ import { SlidersHorizontal } from "lucide-react"
 import { useSearchParams } from "react-router"
 
 import { badgeVariants } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { controlClassNames } from "@/components/ui/variants"
 import {
   Sheet,
@@ -118,6 +119,10 @@ export function ArchiveControls({
       >
         <SheetTrigger
           aria-label="Filters and sort"
+          // Firefox otherwise restores the enabled state from the previous page
+          // load before React hydrates this initially disabled trigger.
+          // Its button-specific autocomplete extension is absent from React's types.
+          render={<button type="button" {...{ autoComplete: "off" }} />}
           disabled={!hydrated}
           aria-describedby={filterStatusId}
           className={cn(
@@ -329,15 +334,14 @@ export function ArchiveControls({
               </label>
             </div>
             <SheetFooter className="shrink-0 border-t-2 border-border pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button
+              <Button
                 type="submit"
-                className={cn(
-                  controlClassNames,
-                  "min-h-11 justify-center px-4 py-3 variant-primary variant-chip"
-                )}
+                variant="primary"
+                appearance="flat"
+                className="h-auto min-h-11 px-4 py-3 text-xs"
               >
                 Apply
-              </button>
+              </Button>
               <button
                 type="button"
                 onClick={() => {
