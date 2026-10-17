@@ -180,7 +180,7 @@ test.describe("sessions", () => {
       .getByRole("navigation", { name: "Admin", exact: true })
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => link.getAttribute("href")))
-    expect(desktopLinks).toEqual(["/admin/posts"])
+    expect(desktopLinks).toEqual(["/admin", "/admin/posts"])
 
     for (const width of [320, 899]) {
       await page.setViewportSize({ width, height: 700 })
@@ -224,8 +224,12 @@ test.describe("sessions", () => {
       .getByRole("dialog", { name: "Admin menu", exact: true })
       .getByRole("button", { name: "Public", exact: true })
       .click()
+    const publicPagePromise = page.waitForEvent("popup")
     await page.getByRole("menuitem", { name: "Writing", exact: true }).click()
-    await expect(page).toHaveURL(/\/writing$/)
+    const publicPage = await publicPagePromise
+    await expect(publicPage).toHaveURL(/\/writing$/)
+    await expect(page).toHaveURL(/\/admin\/posts$/)
+    await publicPage.close()
     await expect(page.getByRole("dialog", { name: "Admin menu", exact: true })).toBeHidden()
     await page.goto("/admin/posts")
     const theme = page.locator("footer").getByRole("button", { name: /Switch theme/ })
@@ -249,8 +253,12 @@ test.describe("sessions", () => {
     await expect(page).toHaveURL(/\/admin$/)
     await expect(drawer).toBeHidden()
     await expect(page.getByRole("navigation", { name: "Breadcrumb", exact: true })).toHaveCount(0)
-    await expect(brand).toHaveAttribute("aria-current", "page")
+    await expect(brand).not.toHaveAttribute("aria-current")
     await page.getByRole("button", { name: "Open admin menu" }).click()
+    await expect(drawer.getByRole("link", { name: "Dashboard", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
+    )
     await expect(drawer.getByRole("link", { name: "Posts", exact: true })).not.toHaveAttribute(
       "aria-current",
       "page"

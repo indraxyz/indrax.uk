@@ -1,23 +1,21 @@
 import { House } from "lucide-react"
 import { Link } from "react-router"
 
+import { navigationLinkClassNames } from "@/components/ui/navigation-link"
 import { WRITING_CONFIG } from "@/features/writing/config"
-
-const linkClassName =
-  "text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 
 export type PublicPage = "home" | "resume" | "writing" | "tech-stack"
 
 export function PublicNavigation({ activePage }: { activePage?: PublicPage | null }) {
   return (
-    <nav aria-label="Site" className="flex items-center gap-3 sm:gap-4">
+    <nav aria-label="Site" className="flex items-center gap-1 sm:gap-2">
       <Link
         prefetch="none"
         to="/"
         aria-label="Home"
         title="Home"
         aria-current={activePage === "home" ? "page" : undefined}
-        className={linkClassName}
+        className={navigationLinkClassNames}
       >
         <House className="h-4 w-4" aria-hidden />
       </Link>
@@ -25,7 +23,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         prefetch="none"
         to="/resume"
         aria-current={activePage === "resume" ? "page" : undefined}
-        className={linkClassName}
+        className={navigationLinkClassNames}
       >
         Resume
       </Link>
@@ -33,7 +31,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         prefetch="none"
         to={WRITING_CONFIG.basePath}
         aria-current={activePage === "writing" ? "page" : undefined}
-        className={linkClassName}
+        className={navigationLinkClassNames}
       >
         {WRITING_CONFIG.title}
       </Link>
@@ -41,7 +39,7 @@ export function PublicNavigation({ activePage }: { activePage?: PublicPage | nul
         prefetch="none"
         to="/tech-stack"
         aria-current={activePage === "tech-stack" ? "page" : undefined}
-        className={linkClassName}
+        className={navigationLinkClassNames}
       >
         Stack
       </Link>

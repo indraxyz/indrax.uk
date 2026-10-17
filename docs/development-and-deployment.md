@@ -9,9 +9,9 @@ share the Worker and authenticated backend APIs. Use existing feature modules,
 components and validation rather than adding a second frontend or API pipeline.
 
 The root `.env.local` configures both local targets, database tooling and preview.
-Vite exposes only `SITE_URL`, `MEDIA_ORIGIN`, `ANALYTICS_ENABLED` and
-`SITE_UPDATED_AT` through an explicit browser allowlist. Runtime secrets stay
-server-only. Public settings require rebuilding both bundles. Wrangler defines
+Vite exposes only `SITE_URL`, `MEDIA_ORIGIN`, `ANALYTICS_ENABLED`, `SITE_UPDATED_AT`,
+`ANALYTICS_TRANSPORT`, `POSTHOG_PUBLIC_KEY` and `POSTHOG_PUBLIC_HOST` through an
+explicit browser allowlist. Runtime secrets stay server-only. Public settings require rebuilding both bundles. Wrangler defines
 `CACHE_KV`, `APP_D1` and `MEDIA_BUCKET`; environment-specific resource IDs keep
 staging and production isolated. Binding aliases are independent of the existing
 resource names and their data.
@@ -57,10 +57,11 @@ Deployment runs only after `check` and `e2e` pass and the repository/organizatio
 variable `CLOUDFLARE_DEPLOY_ENABLED` equals `true`. An environment-scoped copy
 cannot enable this job condition. Each GitHub environment supplies its own
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANALYTICS_ENABLED` and
-`MEDIA_ORIGIN`. Runtime database, auth and PostHog secrets belong to the matching
-Worker; CI does not upload local environment files or test fixture secrets.
+`MEDIA_ORIGIN`. Optional `ANALYTICS_TRANSPORT=direct` uses the public build variables
+`POSTHOG_PUBLIC_KEY` and `POSTHOG_PUBLIC_HOST`; unset transport defaults to `worker`.
+Runtime database, auth and PostHog secrets belong to the matching Worker; CI does not upload local environment files or test fixture secrets.
 
-The deploy job initializes `analytics_quota` and `analytics_replay_sessions` in
+In Worker mode, the deploy job initializes `analytics_quota` and `analytics_replay_sessions` in
 the matching `APP_D1` using `config/analytics-quota.sql` before building and
 deploying. Existing counters are preserved. Its token needs D1 write permission
 alongside Worker/route and KV permissions. Newly provisioned D1 databases also
@@ -81,7 +82,7 @@ preview and deployment dry runs are separate validation operations.
 
 Deploy jobs serialize per branch and let active upload/activation finish. The
 post-deployment `security:smoke` command checks public and private boundaries.
-When `ANALYTICS_ENABLED=true`, `scripts/verify-analytics.mjs` also checks the live
+In Worker mode, when `ANALYTICS_ENABLED=true`, `scripts/verify-analytics.mjs` also checks the live
 analytics gateway's JSON and JavaScript configuration transports against PostHog.
 It also checks the installed SDK's performance/dead-click scripts with JavaScript
 responses, so a missing asset allowlist entry fails the deployment verification.

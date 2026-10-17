@@ -4,7 +4,7 @@ import { Link } from "react-router"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-const paginationControlClass = cn(buttonVariants({ variant: "ghost", size: "icon" }), "border-0")
+const paginationControlClass = buttonVariants({ variant: "ghost", size: "icon" })
 
 interface PaginationProps {
   page: number

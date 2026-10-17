@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test"
 
+import { expectStickyArchiveControls } from "./support/sticky-archive-controls"
 import { expectIconPagination } from "./support/pagination"
 import { expectReadableAction } from "./support/visual-controls"
 
 /** Browser behavior uses isolated API responses; no writes to the development database. */
-async function archive(page: Page) {
+async function archive(page: Page, count = 1) {
   await page.route("**/api/writing/tags", (route) =>
     route.fulfill({
       json: [
@@ -21,20 +22,18 @@ async function archive(page: Page) {
         posts:
           params.get("q") === "nothing"
             ? []
-            : [
-                {
-                  id: `fixture-${pageNumber}`,
-                  slug: `fixture-${pageNumber}`,
-                  title: `Archive fixture ${pageNumber}`,
-                  excerpt: "An isolated browser fixture",
-                  coverUrl: null,
-                  coverAlt: null,
-                  publishedAt: "2026-10-09T00:00:00Z",
-                  updatedAt: "2026-10-09T00:00:00Z",
-                  readingTime: 3,
-                  tags: [],
-                },
-              ],
+            : Array.from({ length: count }, (_, index) => ({
+                id: `fixture-${pageNumber}-${index}`,
+                slug: `fixture-${pageNumber}-${index}`,
+                title: `Archive fixture ${pageNumber}`,
+                excerpt: "An isolated browser fixture",
+                coverUrl: null,
+                coverAlt: null,
+                publishedAt: "2026-10-09T00:00:00Z",
+                updatedAt: "2026-10-09T00:00:00Z",
+                readingTime: 3,
+                tags: [],
+              })),
         page: pageNumber,
         pageCount: params.get("q") === "nothing" ? 1 : 3,
         total: params.get("q") === "nothing" ? 0 : 21,
@@ -236,6 +235,9 @@ test.describe("unified writing filters", () => {
   test("offers all sorts and requires a query for relevance", async ({ page }) => {
     await page.goto("/writing")
     const dialog = await openFilters(page)
+    await expect(dialog.locator("form > div").first().locator(":scope > :last-child")).toHaveText(
+      /Tags/
+    )
     const select = dialog.getByLabel("Sort by", { exact: true })
     await expect(select.locator("option")).toHaveText([
       "Newest",
@@ -412,10 +414,24 @@ for (const theme of ["light", "dark"]) {
 }
 
 for (const width of [320, 1280]) {
-  test(`uses borderless icon pagination at ${width}px`, async ({ page }) => {
+  test(`uses icon pagination with hover borders at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await archive(page)
     await page.goto("/writing?page=2")
     await expectIconPagination(page, "Writing pages", width)
   })
+}
+
+for (const theme of ["light", "dark"]) {
+  for (const width of [320, 1280, 1920]) {
+    test(`keeps public search below the header with a full-width blurred surface at ${width}px in ${theme}`, async ({
+      page,
+    }) => {
+      await archive(page, 12)
+      await page.addInitScript((value) => localStorage.setItem("indrax-theme", value), theme)
+      await page.setViewportSize({ width, height: 720 })
+      await page.goto("/writing")
+      await expectStickyArchiveControls(page)
+    })
+  }
 }

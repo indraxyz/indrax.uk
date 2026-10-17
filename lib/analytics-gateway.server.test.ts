@@ -37,7 +37,7 @@ let env: RuntimeEnv
 let upstream: ReturnType<typeof vi.fn>
 
 function request(path: string, data: unknown = event(), extra: RequestInit = {}) {
-  return new Request(`${origin}/api/analytics${path}`, {
+  return new Request(`${origin}/analytics${path}`, {
     method: "POST",
     body: JSON.stringify(data),
     ...extra,
@@ -50,7 +50,7 @@ function request(path: string, data: unknown = event(), extra: RequestInit = {})
   })
 }
 function get(path: string) {
-  return new Request(`${origin}/api/analytics${path}`, {
+  return new Request(`${origin}/analytics${path}`, {
     headers: { "Sec-Fetch-Site": "same-origin", "CF-Connecting-IP": "203.0.113.1" },
   })
 }
@@ -76,6 +76,26 @@ afterEach(() => {
 })
 
 describe("protected PostHog gateway", () => {
+  it("accepts only the /analytics namespace and refuses the retired API gateway path", async () => {
+    expect((await handle(request("/e/"))).status).toBe(200)
+    upstream.mockClear()
+    for (const path of ["/api/analytics/e/", "/analytics-other/e/", "/analytics"]) {
+      const response = await handle(
+        new Request(`${origin}${path}`, {
+          method: "POST",
+          headers: {
+            Origin: origin,
+            "Content-Type": "application/json",
+            "CF-Connecting-IP": "203.0.113.1",
+          },
+          body: JSON.stringify(event()),
+        })
+      )
+      expect(response.status).toBe(404)
+    }
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
   it("forwards SDK heatmaps in mixed batches and reserves one event unit per envelope", async () => {
     env.POSTHOG_MONTHLY_EVENTS_LIMIT = "2"
     const coordinates = ["click", "mousemove", "rageclick", "deadclick"].map(point)
@@ -529,7 +549,7 @@ describe("protected PostHog gateway", () => {
         .status
     ).toBe(403)
     expect(
-      (await handle(new Request(`${origin}/api/analytics/array/${ANALYTICS_GATEWAY_TOKEN}/config`)))
+      (await handle(new Request(`${origin}/analytics/array/${ANALYTICS_GATEWAY_TOKEN}/config`)))
         .status
     ).toBe(403)
     env.APP_D1 = {

@@ -33,7 +33,7 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
         <Link
           prefetch="none"
           to={`${WRITING_CONFIG.seriesPath}/${series.slug}`}
-          className="text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {series.title}
         </Link>
@@ -46,7 +46,7 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
               prefetch="none"
               to={articlePath(previous.slug)}
               rel="prev"
-              className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ChevronLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {/* Named rather than "Previous": the title is what tells a reader
@@ -62,7 +62,7 @@ export function SeriesNav({ context }: { context: SeriesContext }) {
               prefetch="none"
               to={articlePath(next.slug)}
               rel="next"
-              className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:justify-end"
+              className="flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:justify-end"
             >
               <span className="line-clamp-1">{next.title}</span>
               <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />

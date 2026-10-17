@@ -130,6 +130,7 @@ it("production robots.txt advertises the sitemap without naming the admin", () =
   const robots = robotsTxt(true)
   expect(robots).toContain("Allow: /\n")
   expect(robots).toContain("Disallow: /api/\n")
+  expect(robots).toContain("Disallow: /analytics\n")
   expect(robots).toMatch(/^Sitemap: https?:\/\/.+\/sitemap\.xml$/m)
   expect(robots).not.toContain("/admin")
 })

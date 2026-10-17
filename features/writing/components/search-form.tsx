@@ -3,6 +3,7 @@ import { Form, useNavigate, useNavigation } from "react-router"
 import { Search, X } from "lucide-react"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
+import { fieldClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 import { archiveSearchParams, type ArchiveOptions } from "@/features/writing/utils/archive-options"
 
@@ -81,16 +82,18 @@ export function SearchForm({
           placeholder={label}
           aria-label={label}
           className={cn(
-            "h-full min-h-11 w-full rounded-none border-2 border-border bg-background py-2 pl-9 pr-11 [&::-webkit-search-cancel-button]:appearance-none",
-            "text-sm font-medium text-foreground placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            fieldClassNames,
+            "h-full min-h-11 w-full py-2 pl-9 pr-11 font-medium [&::-webkit-search-cancel-button]:appearance-none"
           )}
         />
         {draft.value && (
           <button
             type="button"
             aria-label="Clear search"
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            className={cn(
+              focusControlClassNames,
+              "absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:ring-inset"
+            )}
             onClick={() => {
               setDraft({ query, value: "", submitted: query ? "" : null })
               input.current?.focus()

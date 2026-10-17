@@ -1,5 +1,5 @@
 import { Menu as DropdownMenu } from "@base-ui/react/menu"
-import { ChevronDown, FileText, Globe, LogOut, Menu, X } from "lucide-react"
+import { ChevronDown, FileText, Globe, House, LogOut, Menu, X } from "lucide-react"
 import { Link } from "react-router"
 import { useEffect, useRef, useState } from "react"
 
@@ -14,15 +14,16 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
+import { navigationLinkClassNames } from "@/components/ui/navigation-link"
 import { controlClassNames } from "@/components/ui/variants"
 import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { cn } from "@/lib/utils"
 
-const navigationLinkClass =
-  "inline-flex min-h-11 items-center text-xs font-black uppercase tracking-[0.14em] text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-
-const links = [{ href: "/admin/posts", label: "Posts", page: "posts", icon: FileText }] as const
+const links = [
+  { href: "/admin", label: "Dashboard", page: "home", icon: House },
+  { href: "/admin/posts", label: "Posts", page: "posts", icon: FileText },
+] as const
 
 const publicLinks = [
   { href: "/resume", label: "Resume" },
@@ -43,7 +44,7 @@ function PublicMenu({
         className={
           inSheet
             ? cn(controlClassNames, "min-h-12 w-full px-4 py-3 text-left")
-            : cn(navigationLinkClass, "gap-1.5")
+            : cn(navigationLinkClassNames, "gap-1.5")
         }
       >
         {inSheet && <Globe className="h-4 w-4" aria-hidden />}
@@ -56,7 +57,7 @@ function PublicMenu({
             {publicLinks.map(({ href, label }) => (
               <DropdownMenu.Item
                 key={href}
-                render={<a href={href} />}
+                render={<a href={href} target="_blank" rel="noopener noreferrer" />}
                 onClick={onNavigate}
                 className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted"
               >
@@ -93,18 +94,19 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
   if (!signedIn) return null
 
   return (
-    <>
+    <div className="flex items-center gap-2">
       <div ref={desktopNavigation} className="hidden items-center gap-2 md:flex">
         <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
-          {links.map(({ href, label, page }) => (
+          {links.map(({ href, label, page, icon: Icon }) => (
             <Link
               key={href}
               to={href}
               aria-label={label}
               aria-current={activePage === page ? "page" : undefined}
-              className={navigationLinkClass}
+              title={label}
+              className={cn(navigationLinkClassNames, page === "home" && "min-w-11")}
             >
-              {label}
+              {page === "home" ? <Icon className="h-4 w-4" aria-hidden /> : label}
             </Link>
           ))}
           <PublicMenu />
@@ -147,7 +149,10 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                   to={href}
                   onClick={() => setOpen(false)}
                   aria-current={activePage === page ? "page" : undefined}
-                  className={cn(controlClassNames, "min-h-12 px-4 py-3")}
+                  className={cn(
+                    controlClassNames,
+                    "min-h-12 px-4 py-3 aria-[current=page]:border-ring aria-[current=page]:bg-muted"
+                  )}
                 >
                   <Icon className="h-4 w-4" aria-hidden />
                   {label}
@@ -172,6 +177,6 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
-    </>
+    </div>
   )
 }

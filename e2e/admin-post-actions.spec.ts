@@ -155,7 +155,9 @@ test("shows preview loading, closes a failed tab and allows retry", async ({ pag
   const tab = await opened
   try {
     await expect(
-      page.getByRole("menuitem", { name: "Opening…", exact: true }).locator("svg")
+      page
+        .getByRole("menuitem", { name: "Opening…", exact: true })
+        .locator('[data-slot="loading-indicator"]')
     ).toHaveClass(/animate-spin/)
     await expect(
       page.getByRole("menuitem", { name: "Publish", exact: true }).locator("svg")
@@ -304,7 +306,7 @@ for (const width of [320, 1280]) {
     await page.setViewportSize({ width, height: 900 })
     page.on("dialog", (dialog) => void dialog.accept())
     const { writes } = await editorFixture(page)
-    const imageUrl = "https://media.indrax.uk/covers/550e8400-e29b-41d4-a716-446655440000.png"
+    const imageUrl = `${(process.env.MEDIA_ORIGIN ?? "https://media.indrax.uk").replace(/\/$/, "")}/covers/550e8400-e29b-41d4-a716-446655440000.png`
     await page.route(imageUrl, (route) =>
       route.fulfill({
         contentType: "image/png",

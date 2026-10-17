@@ -30,6 +30,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,mts,js,jsx,mjs,json,jsonc,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,mts,js,jsx,mjs,json,jsonc,css,md}\"",
     "test:e2e": "playwright test",
+    "test:e2e:analytics-direct": "playwright test --config playwright.analytics-direct.config.ts",
     "test:e2e:uploads": "playwright test --config playwright.uploads.config.ts",
     "test:e2e:ui": "playwright test --ui"
   },

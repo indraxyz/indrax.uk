@@ -1,6 +1,8 @@
-import { expect, it } from "vitest"
+import { afterEach, expect, it, vi } from "vitest"
 import { applySecurityHeaders, contentSecurityPolicy, createCspNonce } from "./security-headers"
 import { THEME_INIT_SCRIPT_HASH } from "./theme"
+
+afterEach(() => vi.unstubAllEnvs())
 
 const directive = (policy: string, name: string) =>
   policy
@@ -87,3 +89,28 @@ it("allows browser-owned image previews only for admin responses", () => {
     )
   }
 })
+
+it.each(["us", "eu"])("admits only the selected PostHog region for direct mode: %s", (region) => {
+  vi.stubEnv("ANALYTICS_ENABLED", "true")
+  vi.stubEnv("ANALYTICS_TRANSPORT", "direct")
+  vi.stubEnv("POSTHOG_PUBLIC_HOST", `https://${region}.i.posthog.com`)
+  const policy = contentSecurityPolicy({ strictScripts: true })
+  expect(directive(policy, "connect-src")).toEqual([
+    "'self'",
+    "data:",
+    `https://${region}.i.posthog.com`,
+    `https://${region}-assets.i.posthog.com`,
+  ])
+  expect(directive(policy, "script-src")).toContain(`https://${region}-assets.i.posthog.com`)
+  expect(directive(policy, "script-src")).not.toContain("'unsafe-inline'")
+  expect(policy).not.toContain(region === "us" ? "eu.i.posthog.com" : "us.i.posthog.com")
+})
+
+it.each(["worker", "direct"])(
+  "does not admit third-party analytics hosts when disabled: %s",
+  (transport) => {
+    vi.stubEnv("ANALYTICS_ENABLED", "false")
+    vi.stubEnv("ANALYTICS_TRANSPORT", transport)
+    expect(contentSecurityPolicy({ strictScripts: true })).not.toContain("posthog.com")
+  }
+)

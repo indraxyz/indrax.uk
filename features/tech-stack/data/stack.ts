@@ -143,7 +143,7 @@ export const stackGroups = [
     title: "Measurement & monitoring",
     tools: "PostHog · Workers logs · structured server logs",
     detail:
-      "After consent, PostHog measures site use through a same-origin Worker gateway with shared monthly quotas in D1. Withdrawing consent stops capture and clears stored identifiers. Structured server errors and Cloudflare Workers logs help investigate failures.",
+      "After consent, PostHog measures site use through a same-origin Worker gateway at /analytics with shared monthly quotas in D1. Withdrawing consent stops capture and clears stored identifiers. Structured server errors and Cloudflare Workers logs help investigate failures.",
     reason:
       "The gateway validates analytics traffic and redacts sensitive URLs before forwarding. Worker logs redact query strings, and automatic fetch traces are disabled to avoid recording credentials in upstream paths. Production and Preview have separate analytics budgets.",
   },

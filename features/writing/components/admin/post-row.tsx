@@ -24,7 +24,7 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
         <Link
           to={`/admin/posts/edit/${post.id}`}
           aria-label={`Edit cover for ${post.title}`}
-          className="relative h-40 w-full shrink-0 self-stretch overflow-hidden border-b-2 border-border focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-auto sm:w-48 sm:border-b-0 sm:border-r-2 lg:w-56"
+          className="relative h-40 w-full shrink-0 self-stretch overflow-hidden border-b-2 border-border focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-48 sm:border-b-0 sm:border-r-2 lg:w-56"
         >
           <PostCover
             post={post}
@@ -39,7 +39,7 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
             <div>
               <Link
                 to={`/admin/posts/edit/${post.id}`}
-                className="break-words text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="break-words text-base font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {post.title}
               </Link>
@@ -64,7 +64,7 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link
             to={`/admin/posts/edit/${post.id}`}
-            className="flex h-11 w-11 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex h-11 w-11 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Edit ${post.title}`}
           >
             <PencilLine className="h-4 w-4" aria-hidden />
