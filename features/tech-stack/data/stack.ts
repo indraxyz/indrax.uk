@@ -62,16 +62,16 @@ export const stackGroups = [
     title: "Interface",
     tools: "React Router 8.4 · React 19 · TypeScript · Tailwind CSS 4",
     detail:
-      "The home, resume, and Stack pages arrive as server-rendered HTML, as do published articles. Writing lists load in the browser. The admin is a separate React app that shares the public site’s styles and accessible UI components.",
+      "The home, resume, and Stack pages arrive as server-rendered HTML, as do published articles. Writing lists load in the browser; the home page shows recent posts as a row you can scroll sideways. The admin is a separate React app that shares the public site’s styles and accessible UI components.",
     reason:
-      "Server rendering makes profile and article content available before JavaScript loads. Shared components keep reading and publishing consistent, while TypeScript helps catch mistakes during development.",
+      "Server rendering makes profile and article content available before JavaScript loads. Shared components keep reading and publishing consistent, while TypeScript helps catch mistakes during development. Lists show one page at a time, cover images load only as they scroll into view, and cards whose post has not changed are not redrawn when data refreshes.",
   },
   {
     icon: Route,
     title: "Data fetching & navigation",
-    tools: "TanStack Query · Ky · react-top-loading-bar",
+    tools: "TanStack Query · TanStack Table · Ky · react-top-loading-bar",
     detail:
-      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. A top progress bar shows navigation in progress; loading, empty, and error states explain what is happening.",
+      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress; loading, empty, and error states explain what is happening.",
     reason:
       "Search and filters stay in the URL so links, pagination, and browser Back preserve your choices. Cached results reduce repeat requests. Requests are not automatically retried; failed reads offer a retry control. The admin also rechecks the session on focus or reconnect, and every private API request verifies author access.",
   },
@@ -107,7 +107,7 @@ export const stackGroups = [
     title: "Local development",
     tools: "Node.js · npm · Docker Compose · PostgreSQL · Neon HTTP proxy",
     detail:
-      "npm run dev starts the public React Router / Vite server and an independent admin build watcher. Both apps and database tools share .env.local. Docker Compose supplies local PostgreSQL and a Neon-compatible HTTP proxy; local uploads use an isolated R2 bucket served at /local-media.",
+      "npm run dev starts the public React Router / Vite server and an independent admin build watcher. Both apps and database tools share .env.local. Docker Compose supplies local PostgreSQL and a Neon-compatible HTTP proxy; local uploads use an isolated R2 bucket served at /local-media. Setting DEV_PUBLIC_URL serves the same setup through a local HTTPS address such as indrax.uk.test.",
     reason:
       "The local proxy exercises the same database driver used by the deployed Worker. Migrations and seed data prepare repeatable tests, including optional sample articles for checking pagination.",
   },
@@ -167,6 +167,10 @@ export const stackResources = [
   {
     label: "TanStack Query",
     href: "https://tanstack.com/query/latest/docs/framework/react/overview",
+  },
+  {
+    label: "TanStack Table",
+    href: "https://tanstack.com/table/latest/docs/introduction",
   },
   { label: "Ky HTTP client", href: "https://github.com/sindresorhus/ky" },
   { label: "Navigation progress bar", href: "https://github.com/klendi/react-top-loading-bar" },

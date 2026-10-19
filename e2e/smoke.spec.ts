@@ -322,6 +322,7 @@ test.describe("the public pages", () => {
         "https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/",
       ],
       ["Cloudflare R2 storage", "https://developers.cloudflare.com/r2/"],
+      ["TanStack Table", "https://tanstack.com/table/latest/docs/introduction"],
       ["Workers observability", "https://developers.cloudflare.com/workers/observability/"],
     ]) {
       await expect(resources.getByRole("link", { name, exact: true })).toHaveAttribute("href", href)
