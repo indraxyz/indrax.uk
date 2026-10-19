@@ -101,7 +101,10 @@ npm run dev
 ```
 
 The development command serves public SSR through Vite and watches an independent
-admin browser build in `public/admin/` (generated and ignored). Production-equivalent preview
+admin browser build in `public/admin/` (generated and ignored). To open it through a local
+HTTPS proxy such as `https://indrax.uk.test`, set `DEV_PUBLIC_URL`, `DEV_HOST` and
+`DEV_PORT` in `.env.local` (see `.env.example`); `npm run dev` then listens there,
+allows that hostname and prints it as the public URL. Production-equivalent preview
 builds both public SSR and the independent admin and runs them in Workerd:
 
 ```bash
