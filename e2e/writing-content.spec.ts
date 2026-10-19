@@ -333,9 +333,9 @@ test.describe("a seeded writing archive", () => {
         `/writing/${SEEDED_POST_SLUG}`,
       ]) {
         await page.goto(path)
-        if (
-          ["/", "/writing", "/writing?q=renderer", `/writing?tag=${SEEDED_TAG_SLUG}`].includes(path)
-        ) {
+        // Home shows recent writing as a rail; e2e/home-writing.spec.ts checks that
+        // its cards keep this grid's column width.
+        if (["/writing", "/writing?q=renderer", `/writing?tag=${SEEDED_TAG_SLUG}`].includes(path)) {
           const grid = page.locator("[data-post-grid]").first()
           await expect(grid).toBeVisible()
 
