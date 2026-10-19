@@ -8,17 +8,20 @@
     <title>Indra’s Admin</title>
     <link rel="icon" href="/favicon.svg" />
     <style>
+      /* Mirrors components/page-loading.tsx, so React's loader replaces this one
+         without a visible change: one spinner from first byte to first data. */
       .admin-boot-loading {
         position: fixed;
         inset: 0;
+        z-index: 90;
         display: grid;
         place-items: center;
         background: var(--color-background, #fff);
         color: var(--component-navigation-progress, #90b800);
       }
       .admin-boot-loading svg {
-        width: 32px;
-        height: 32px;
+        width: 3rem;
+        height: 3rem;
         animation: admin-boot-spin 1s linear infinite;
       }
       @keyframes admin-boot-spin {
@@ -36,15 +39,7 @@
   <body>
     <div id="root">
       <div class="admin-boot-loading" role="status" aria-label="Loading page">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path d="M12 3a9 9 0 1 1-9 9" />
-        </svg>
+        <!--loading-indicator-->
       </div>
     </div>
     <script type="module" src="./main.tsx"></script>

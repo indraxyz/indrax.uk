@@ -39,16 +39,53 @@ test("admin hard refresh shows its spinner even before route code loads", async 
   const ready = new Promise<void>((resolve) => {
     release = resolve
   })
+  let releaseSession!: () => void
+  const session = new Promise<void>((resolve) => {
+    releaseSession = resolve
+  })
   await page.route(/\/admin\/assets\/index-[^/]+\.js$/, async (route) => {
     await ready
     await route.continue()
   })
+  await page.route("**/api/admin/session", async (route) => {
+    await session
+    await route.continue()
+  })
   await page.goto("/admin/login", { waitUntil: "commit" })
+  const boot = page.locator(".admin-boot-loading svg")
+  // Both icons spin, so a bounding box grows mid-rotation; the centre and the CSS
+  // size do not.
+  const geometry = (element: SVGElement | HTMLElement) => {
+    const box = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    return {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+      width: parseFloat(style.width),
+      height: parseFloat(style.height),
+    }
+  }
+  let bootBox: ReturnType<typeof geometry> | null = null
   try {
     await expect(page.locator(".admin-boot-loading")).toBeVisible()
-    await expect(page.locator(".admin-boot-loading svg")).toBeVisible()
+    await expect(boot).toBeVisible()
+    // The shared spinner vector, not a second hand-drawn icon.
+    await expect(boot).toHaveAttribute("data-loading-icon", "")
+    bootBox = await boot.evaluate(geometry)
   } finally {
     release()
+  }
+  // React's loader takes over in the same place with the same icon and size, so a
+  // hard refresh reads as one continuous spinner rather than two.
+  try {
+    const react = page.locator('[data-slot="loading-indicator"] svg')
+    await expect(react).toBeVisible()
+    await expect(page.locator(".admin-boot-loading")).toHaveCount(0)
+    const reactBox = await react.evaluate(geometry)
+    for (const key of ["x", "y", "width", "height"] as const)
+      expect(Math.abs(reactBox[key] - bootBox![key])).toBeLessThanOrEqual(1)
+  } finally {
+    releaseSession()
   }
   await expect(page.locator(".admin-boot-loading")).toHaveCount(0)
   await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0)
