@@ -94,6 +94,26 @@ defaults to Recently updated. Its backend filters/counts/pages the full set,
 including drafts and archived posts where selected, under session/allowlist
 checks and `no-store`. Private tag counts cover all statuses; publication-date
 filters exclude null dates. The schema is unchanged.
+The list shows posts as cards or as a TanStack Table, remembered per browser in
+`localStorage` rather than the URL, because search, filters and pagination rebuild
+the query from archive options alone. The table sorts manually: Title, Published
+and Updated headers write the matching archive `sort` to the URL
+(`features/writing/utils/admin-post-sorting.ts`) and the backend orders the full
+set, so a header never reorders only the current page. Updated has one direction,
+so once selected it is a plain header with `aria-sort`. The Title column is a
+sticky row header, so a narrow screen scrolling the table sideways keeps each row's
+post in view.
+
+Post lists render one server page at a time (9 public cards, 10 admin posts), so
+neither view is virtualized: a page is small enough to render whole, and keeping
+every row in the DOM preserves find-in-page, screen-reader list and table counts,
+and print. Rendering cost is kept down instead by `memo` on `PostCard`, `PostRow`
+and `PostTable` (TanStack Query's structural sharing keeps unchanged posts
+referentially equal, so a refetch re-renders only rows whose data changed), URL
+options memoized on the search params, and cached `Intl.DateTimeFormat` instances
+in `formatDate`. Covers render through `PostCover` with fixed dimensions,
+`loading="lazy"` and `decoding="async"`; only the first archive card, the likely
+LCP element, loads eagerly with high fetch priority.
 
 API functions in `features/writing/api/client.ts` return typed DTOs. The backend
 handler is `features/writing/api/server.ts`; SQL stays in the data layer.
