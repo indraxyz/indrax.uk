@@ -43,7 +43,11 @@ no binding has `remote: true`.
 
 With `npm run dev`, set `MEDIA_ORIGIN=http://localhost:5173/local-media`
 in `.env.local`, matching the exact host and port opened in the browser. Empty,
-relative, or mismatched settings keep local uploads disabled. Loopback requests
+relative, or mismatched settings keep local uploads disabled. Behind a local HTTPS
+proxy (see `DEV_PUBLIC_URL` in `.env.example`), use that origin instead, e.g.
+`MEDIA_ORIGIN=https://indrax.uk.test/local-media`: besides loopback, only names
+reserved for local use (RFC 6761 `.test` and `.localhost`) qualify, and the request
+origin must still match exactly. Local requests
 use absolute URLs under the configured `/local-media/covers/` base. The development-only route
 streams generated cover keys from simulated R2, allows GET/HEAD only and sends
 nosniff and sandbox headers. Production builds return 404 for this route. Local
@@ -54,7 +58,8 @@ use `npm run dev` to test isolated local uploads.
 
 Existing local covers retain their generated object keys when the server port
 changes. The public cover renderer and editor resolve these valid development
-URLs against the current configured loopback origin; saving the post records
+URLs against the current configured local origin, so covers uploaded at
+`http://localhost:5173` also render at `https://indrax.uk.test` and back; saving the post records
 that current URL. This requires the same local R2 state directory and bucket:
 changing the origin does not copy objects from another environment or restore
 deleted `.wrangler/state` data. Production never rewrites or accepts local URLs.

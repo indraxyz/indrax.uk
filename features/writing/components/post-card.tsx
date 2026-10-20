@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { Link } from "react-router"
 
 import { Card, CardContent, CardHeader, CardTitle, type CardTitleLevel } from "@/components/ui/card"
@@ -6,6 +7,7 @@ import { PostMeta } from "@/features/writing/components/post-meta"
 import { TagPill } from "@/features/writing/components/tag-pill"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { PostSummary } from "@/features/writing/types"
+import { cn } from "@/lib/utils"
 
 interface PostCardProps {
   post: PostSummary
@@ -13,14 +15,26 @@ interface PostCardProps {
   // h2 on the list pages, whose section header is the page h1. h3 on home,
   // where the "Writing" section header is itself an h2.
   headingLevel?: CardTitleLevel
+  // Sizing from the caller, e.g. a fixed rail width; the grid pages pass nothing.
+  className?: string
 }
 
-export function PostCard({ post, priority = false, headingLevel = 2 }: PostCardProps) {
+// Memoized so a list re-render (a background refetch, a parent state change) skips cards
+// whose post data is unchanged; query results keep those objects referentially equal.
+export const PostCard = memo(function PostCard({
+  post,
+  priority = false,
+  headingLevel = 2,
+  className,
+}: PostCardProps) {
   return (
     <Card
       variant="card"
       // `relative` is what the title's stretched hit area below is measured against.
-      className="variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)] transition-shadow hover:shadow-soft-lg"
+      className={cn(
+        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)] transition-shadow hover:shadow-soft-lg",
+        className
+      )}
     >
       <PostCover post={post} priority={priority} />
 
@@ -58,4 +72,4 @@ export function PostCard({ post, priority = false, headingLevel = 2 }: PostCardP
       </CardContent>
     </Card>
   )
-}
+})

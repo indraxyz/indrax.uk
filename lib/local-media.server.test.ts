@@ -134,3 +134,66 @@ it("refuses writes through the local read route", async () => {
   expect((await context(request, () => serveLocalMedia(request))).status).toBe(405)
   expect(bucket.get).not.toHaveBeenCalled()
 })
+
+it("enables local uploads behind a local HTTPS proxy on a reserved .test name", async () => {
+  const origin = "https://indrax.uk.test/local-media"
+  let storedKey = ""
+  bucket.put.mockImplementation(async (key) => {
+    storedKey = key
+    return { key }
+  })
+  bucket.get.mockImplementation(async (key) => (key === storedKey ? object() : null))
+  const request = new Request("https://indrax.uk.test/api/upload?purpose=cover", {
+    method: "POST",
+    headers: { Origin: "https://indrax.uk.test", "Content-Type": "image/png" },
+    body: png,
+  })
+  expect(context(request, getCoverStorageConfig, "development", origin)?.publicUrl).toBe(origin)
+  const uploaded = await context(request, () => POST(request), "development", origin)
+  expect(uploaded.status).toBe(201)
+  const { publicUrl } = (await uploaded.json()) as { publicUrl: string }
+  expect(publicUrl.startsWith(`${origin}/covers/`)).toBe(true)
+  const read = new Request(publicUrl)
+  const response = await context(read, () => serveLocalMedia(read), "development", origin)
+  expect(response.status).toBe(200)
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(png)
+})
+
+it.each([
+  // A public name is ordinary remote media configuration, never the local route.
+  "https://indrax.uk",
+  // Look-alikes that merely contain a reserved label are public names.
+  "https://indrax.uk.test.example.com",
+])("never serves the local media route on public name %s", async (site) => {
+  const request = new Request(`${site}${path}`)
+  const response = await context(
+    request,
+    () => serveLocalMedia(request),
+    "development",
+    `${site}/local-media`
+  )
+  expect(response.status).toBe(404)
+  expect(bucket.get).not.toHaveBeenCalled()
+})
+
+it.each([
+  // A reserved name still has to match the configured origin exactly.
+  ["https://indrax.uk.test/local-media", "http://indrax.uk.test"],
+  ["https://indrax.uk.test/local-media", "https://other.test"],
+])("keeps local storage closed for media origin %s on %s", async (origin, site) => {
+  const request = new Request(`${site}${path}`)
+  expect(context(request, getCoverStorageConfig, "development", origin)).toBeNull()
+  expect(
+    (await context(request, () => serveLocalMedia(request), "development", origin)).status
+  ).toBe(404)
+  expect(bucket.get).not.toHaveBeenCalled()
+})
+
+it("keeps a reserved local name closed outside development", async () => {
+  const origin = "https://indrax.uk.test/local-media"
+  const request = new Request(`https://indrax.uk.test${path}`)
+  expect(context(request, getCoverStorageConfig, "production", origin)).toBeNull()
+  expect(
+    (await context(request, () => serveLocalMedia(request), "production", origin)).status
+  ).toBe(404)
+})

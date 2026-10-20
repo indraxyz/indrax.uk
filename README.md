@@ -24,7 +24,8 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 
 - React Router Framework Mode with Vite and the Cloudflare Vite plugin; separate
   Vite admin bundle and React Router browser routing.
-- TanStack Query and Ky for writing cards, archive results, and admin data.
+- TanStack Query and Ky for writing cards, archive results, and admin data; TanStack Table
+  for the admin posts table.
 - Neon Postgres over HTTP and Drizzle ORM; batched post/tag writes.
   See [Neon environment setup](docs/neon-environments.md) for branch separation,
   runtime permissions, migration connections, and recovery preparation.
@@ -46,8 +47,9 @@ writing URLs. Search, tags, sort, publication dates and read durations share the
 The standalone `/writing/search` and `/writing/tags/:tag` routes are removed;
 use query-based archive URLs. `/blog/search` and `/blog/tag/:tag` redirect directly
 to the unified archive. The admin Posts page shares these controls, adds status filtering,
-and defaults to Recently updated; all private filtering and pagination run on
-the authenticated backend. Profile/article social cards and structured data remain server-generated.
+and defaults to Recently updated; all private filtering, sorting and pagination run on
+the authenticated backend. Posts can be shown as cards or as a sortable table; the
+choice is remembered per browser. Profile/article social cards and structured data remain server-generated.
 
 ## Structure
 
@@ -101,7 +103,10 @@ npm run dev
 ```
 
 The development command serves public SSR through Vite and watches an independent
-admin browser build in `public/admin/` (generated and ignored). Production-equivalent preview
+admin browser build in `public/admin/` (generated and ignored). To open it through a local
+HTTPS proxy such as `https://indrax.uk.test`, set `DEV_PUBLIC_URL`, `DEV_HOST` and
+`DEV_PORT` in `.env.local` (see `.env.example`); `npm run dev` then listens there,
+allows that hostname and prints it as the public URL. Production-equivalent preview
 builds both public SSR and the independent admin and runs them in Workerd:
 
 ```bash

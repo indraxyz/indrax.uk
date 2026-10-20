@@ -32,6 +32,21 @@ export default defineConfig(({ mode }) => {
           return { build: { rolldownOptions: { preserveEntrySignatures: "allow-extension" } } }
         },
       },
+      {
+        // Set by scripts/dev.mjs from DEV_PUBLIC_URL: the origin to open, which the
+        // listen address in Vite's own banner does not show behind a proxy.
+        name: "dev-public-url",
+        apply: "serve",
+        configureServer(server) {
+          const publicUrl = process.env.INDRAX_DEV_PUBLIC_URL
+          if (!publicUrl) return
+          const printUrls = server.printUrls.bind(server)
+          server.printUrls = () => {
+            printUrls()
+            server.config.logger.info(`  ➜  Public:  ${publicUrl}/`)
+          }
+        },
+      },
     ],
     resolve: {
       alias: [

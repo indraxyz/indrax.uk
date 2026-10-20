@@ -1,8 +1,26 @@
 import { spawn } from "node:child_process"
+import { loadEnv } from "vite"
+import { devAddress, hasAddressArgument } from "./dev-address.mjs"
 import { initializeLocalCache } from "./local-cache.mjs"
 import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
 const require = createRequire(import.meta.url)
+
+// An optional public origin (e.g. https://indrax.uk.test behind a local proxy) from
+// .env.local. Explicit --host/--port arguments, as test runners pass, take priority.
+const viteArgs = process.argv.slice(2)
+const address = hasAddressArgument(viteArgs)
+  ? null
+  : devAddress(loadEnv("development", process.cwd(), "DEV_"))
+const viteEnv = address
+  ? {
+      ...process.env,
+      // Vite answers 403 to Host headers it does not recognise.
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: address.publicUrl.hostname,
+      INDRAX_DEV_PUBLIC_URL: address.publicUrl.origin,
+    }
+  : process.env
+if (address) viteArgs.push("--host", address.host, "--port", String(address.port), "--strictPort")
 const vite = fileURLToPath(
   new URL(
     require("vite/package.json").bin.vite,
@@ -40,7 +58,7 @@ await new Promise((resolve, reject) => {
 })
 const children = [
   spawn(process.execPath, [...args, "--watch"], { stdio: "inherit" }),
-  spawn(process.execPath, [vite, ...process.argv.slice(2)], { stdio: "inherit" }),
+  spawn(process.execPath, [vite, ...viteArgs], { stdio: "inherit", env: viteEnv }),
 ]
 let stopping = false
 function stop(code) {

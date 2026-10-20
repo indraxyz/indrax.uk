@@ -33,13 +33,26 @@ describe("mediaUrl", () => {
     vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5174/local-media")
     for (const value of [
       "http://localhost:5173/private/file.png",
-      `http://localhost.evil.test:5173${COVER_PATH}`,
+      // A public look-alike; reserved local names (.test) are covered below.
+      `http://localhost.evil.example:5173${COVER_PATH}`,
       `http://localhost:5173${COVER_PATH}?redirect=evil`,
       COVER_PATH,
     ])
       expect(mediaUrl(value)).toBeNull()
     vi.stubEnv("DEV", false)
     expect(mediaUrl(`http://localhost:5173${COVER_PATH}`)).toBeNull()
+  })
+
+  it("moves covers between local origins, including a local HTTPS proxy", () => {
+    vi.stubEnv("MEDIA_ORIGIN", "https://indrax.uk.test/local-media")
+    expect(mediaUrl(`http://localhost:5174${COVER_PATH}`)).toBe(
+      `https://indrax.uk.test${COVER_PATH}`
+    )
+    vi.stubEnv("MEDIA_ORIGIN", "http://127.0.0.1:5173/local-media")
+    expect(mediaUrl(`https://indrax.uk.test${COVER_PATH}`)).toBe(
+      `http://127.0.0.1:5173${COVER_PATH}`
+    )
+    expect(mediaUrl(`https://indrax.uk.test.example.com${COVER_PATH}`)).toBeNull()
   })
 
   it("preserves trusted production URLs and rejects local URLs with production configuration", () => {

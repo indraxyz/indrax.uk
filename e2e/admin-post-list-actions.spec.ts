@@ -1,5 +1,7 @@
+import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "../lib/theme"
+import { ADMIN_POSTS_VIEW_STORAGE_KEY } from "../features/writing/utils/admin-posts-view"
 import { expectReadableAction } from "./support/visual-controls"
 
 type Status = "draft" | "published" | "archived"
@@ -443,3 +445,179 @@ test("opens the editor from a post cover", async ({ page }) => {
   await page.getByRole("link", { name: "Edit cover for draft fixture", exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${ids.draft}$`))
 })
+
+async function showTable(page: Page) {
+  await page
+    .getByRole("group", { name: "Posts layout" })
+    .getByRole("button", { name: "Table", exact: true })
+    .click()
+  return page.getByRole("table", { name: /^Posts, ordered by / })
+}
+
+test("switches posts between cards and a table and remembers the choice", async ({ page }) => {
+  await archiveFixture(page)
+  const layout = page.getByRole("group", { name: "Posts layout" })
+  const cards = layout.getByRole("button", { name: "Cards", exact: true })
+  const table = layout.getByRole("button", { name: "Table", exact: true })
+  await expect(cards).toHaveAttribute("aria-pressed", "true")
+  await expect(table).toHaveAttribute("aria-pressed", "false")
+  // Icon-only controls: named for assistive technology, labelled on hover, 44px targets.
+  for (const [button, name] of [
+    [cards, "Cards"],
+    [table, "Table"],
+  ] as const) {
+    await expect(button).toHaveText("")
+    await expect(button).toHaveAttribute("title", name)
+    const box = (await button.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(44)
+    expect(box.height).toBeGreaterThanOrEqual(44)
+  }
+  await expect(page.getByRole("listitem").filter({ hasText: "draft fixture" })).toBeVisible()
+
+  const grid = await showTable(page)
+  await expect(table).toHaveAttribute("aria-pressed", "true")
+  await expect(table).toBeFocused()
+  // The pointer still rests on the chosen button; hover must not hide the selection.
+  const background = (button: typeof cards) =>
+    button.evaluate((node) => getComputedStyle(node).backgroundColor)
+  expect(await background(table)).not.toBe(await background(cards))
+  expect(await background(table)).not.toBe("rgba(0, 0, 0, 0)")
+  await expect(grid).toBeVisible()
+  await expect(grid.getByRole("rowheader")).toHaveText([
+    "draft fixture",
+    "published fixture",
+    "archived fixture",
+  ])
+  await expect(grid.getByRole("columnheader")).toHaveText([
+    /Title/,
+    "Status",
+    "Tags",
+    /Published/,
+    /Updated/,
+    "Actions",
+  ])
+  await expect(page.getByRole("listitem").filter({ hasText: "draft fixture" })).toHaveCount(0)
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), ADMIN_POSTS_VIEW_STORAGE_KEY)
+  ).toBe("table")
+  await page.screenshot({ path: test.info().outputPath("posts-table.png"), fullPage: true })
+
+  // The choice belongs to this browser, not the URL, and survives a reload.
+  await expect(page).toHaveURL(/\/admin\/posts$/)
+  await page.reload()
+  await expect(page.getByRole("table", { name: /^Posts, ordered by / })).toBeVisible()
+
+  await cards.click()
+  await expect(cards).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("table")).toHaveCount(0)
+  await expect(page.getByRole("listitem").filter({ hasText: "draft fixture" })).toBeVisible()
+})
+
+test("sorts the whole archive from table headers through the server", async ({ page }) => {
+  const { archiveQueries } = await archiveFixture(page, "?page=2&status=draft")
+  const grid = await showTable(page)
+  const header = (name: string) => grid.getByRole("columnheader", { name: new RegExp(`^${name}`) })
+
+  // Activity order is the admin default and has a single direction, so its header
+  // states the order without offering a button that would do nothing.
+  await expect(header("Updated")).toHaveAttribute("aria-sort", "descending")
+  await expect(header("Updated").getByRole("button")).toHaveCount(0)
+  await expect(header("Status").getByRole("button")).toHaveCount(0)
+
+  const title = header("Title").getByRole("button")
+  await expect(title).toHaveAccessibleName("Title: sort A to Z")
+  await title.click()
+  // Sorting starts again from the first page and keeps the other criteria.
+  await expect
+    .poll(() => Object.fromEntries(new URL(page.url()).searchParams))
+    .toEqual({ status: "draft", sort: "title-asc" })
+  await expect.poll(() => archiveQueries.at(-1)).toContain("sort=title-asc")
+  await expect(grid).toHaveAccessibleName("Posts, ordered by title a-z")
+  await expect(header("Title")).toHaveAttribute("aria-sort", "ascending")
+  await expect(header("Updated")).not.toHaveAttribute("aria-sort")
+
+  // The header keeps focus across the navigation, so the keyboard can reverse it.
+  await expect(title).toBeFocused()
+  await expect(title).toHaveAccessibleName("Title: sort Z to A")
+  await page.keyboard.press("Enter")
+  await expect(page).toHaveURL(/[?&]sort=title-desc(?:&|$)/)
+  await expect(header("Title")).toHaveAttribute("aria-sort", "descending")
+
+  await header("Published").getByRole("button").click()
+  await expect(page).toHaveURL(/[?&]sort=newest(?:&|$)/)
+  await expect(header("Published")).toHaveAttribute("aria-sort", "descending")
+  await header("Published").getByRole("button").click()
+  await expect(page).toHaveURL(/[?&]sort=oldest(?:&|$)/)
+
+  // The filter sheet reads the same URL ordering.
+  await page.getByRole("button", { name: "Filters and sort" }).click()
+  await expect(page.getByRole("dialog").getByRole("combobox", { name: /Sort/ })).toHaveValue(
+    "oldest"
+  )
+})
+
+test("keeps row actions and editing available in the table", async ({ page }) => {
+  await archiveFixture(page)
+  const grid = await showTable(page)
+  const row = grid.getByRole("row").filter({ hasText: "published fixture" })
+  await expect(
+    row.getByRole("link", { name: "Edit published fixture", exact: true })
+  ).toHaveAttribute("href", `/admin/posts/edit/${ids.published}`)
+  await expect(row.getByRole("rowheader").getByRole("link")).toHaveAttribute(
+    "href",
+    `/admin/posts/edit/${ids.published}`
+  )
+  await actions(page, "published").click()
+  await expect(page.getByRole("menuitem")).toHaveText(["Visit", "Unpublish", "Archive", "Delete"])
+  await page.keyboard.press("Escape")
+  await expect(actions(page, "published")).toBeFocused()
+})
+
+test("scrolls a narrow table inside its own region instead of the page", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await archiveFixture(page)
+  const grid = await showTable(page)
+  const region = page.getByRole("region", { name: /^Posts, ordered by / })
+  await expect(region).toHaveAttribute("tabindex", "0")
+  expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await expect(grid).toBeVisible()
+
+  // The title column stays pinned while the other columns scroll beneath it, so
+  // each row keeps naming its post.
+  const title = grid.getByRole("rowheader", { name: "draft fixture" })
+  const status = grid
+    .getByRole("row")
+    .filter({ hasText: "draft fixture" })
+    .getByRole("cell")
+    .first()
+  const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
+  await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
+  await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
+  expect((await title.boundingBox())!.x).toBe(before.title)
+  // Fully opaque (card surfaces are translucent), so scrolled cells never show
+  // through the pinned one.
+  expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
+  await page.screenshot({ path: test.info().outputPath("posts-table-390.png"), fullPage: true })
+})
+
+for (const theme of ["light", "dark"] as const)
+  test(`has no serious accessibility violations in the ${theme} table`, async ({ page }) => {
+    await archiveFixture(page)
+    await page.evaluate(
+      ({ theme, key, event }) => {
+        localStorage.setItem(key, theme)
+        window.dispatchEvent(new Event(event))
+      },
+      { theme, key: THEME_STORAGE_KEY, event: THEME_CHANGE_EVENT }
+    )
+    await showTable(page)
+    const results = await new AxeBuilder({ page })
+      .include("main")
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze()
+    const blocking = results.violations.filter(
+      (violation) => violation.impact === "serious" || violation.impact === "critical"
+    )
+    expect(blocking.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([])
+  })

@@ -390,7 +390,11 @@ Hero and admin navigation regressions verify personal/PDF controls left of socia
 links and a 24–32px role heading on both public profile pages. Fixture-based admin
 checks cover distinct action icons, cover links to `/admin/posts/edit/:id`, legacy
 editor redirects, and the Public menu’s Resume/Writing/Stack destinations with
-keyboard focus restoration at 320px and 1280px. The unauthenticated session check
+keyboard focus restoration at 320px and 1280px. The posts layout checks switch
+between cards and the table, persist the choice across reloads, sort through the
+server from table headers by pointer and keyboard (resetting to page one and
+keeping other criteria), keep row actions, scroll a 390px table inside its own
+region without page overflow while the Title column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
 asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
 with 200 when configured. These checks do not require real private writes.
 
