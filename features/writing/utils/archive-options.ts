@@ -10,6 +10,17 @@ export const ARCHIVE_SORTS = [
   "title-asc",
   "title-desc",
 ] as const
+
+/** Display names for each ordering: the filter sheet's options and the table caption. */
+export const ARCHIVE_SORT_LABELS: Record<(typeof ARCHIVE_SORTS)[number], string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  views: "Most viewed",
+  updated: "Recently updated",
+  relevance: "Most Relevant",
+  "title-asc": "Title A-Z",
+  "title-desc": "Title Z-A",
+}
 export const ARCHIVE_DATES = ["any", "7d", "30d", "year", "custom"] as const
 export const ARCHIVE_DURATIONS = ["any", "short", "medium", "long"] as const
 export const MAX_ARCHIVE_TAGS = 10

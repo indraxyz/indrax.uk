@@ -14,7 +14,7 @@ export function localMediaOrigin(value: string | undefined): URL | null {
   try {
     const url = new URL(value ?? "")
     return ["http:", "https:"].includes(url.protocol) &&
-      isLoopbackUrl(url.href) &&
+      isLocalDevelopmentUrl(url.href) &&
       [LOCAL_MEDIA_PREFIX, LOCAL_MEDIA_PREFIX.slice(0, -1)].includes(url.pathname) &&
       !url.search &&
       !url.hash &&
@@ -57,7 +57,18 @@ export function currentLocalMediaUrl(value: string): string {
   return origin ? new URL(new URL(value).pathname, origin.origin).href : value
 }
 
-export function isLoopbackUrl(value: string): boolean {
+function isLoopbackUrl(value: string): boolean {
   const url = new URL(value)
   return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+}
+
+/**
+ * Loopback, or a name reserved for local use that never resolves on the public
+ * internet (RFC 6761 `.test` and `.localhost`), such as `https://indrax.uk.test`
+ * behind a local HTTPS proxy. Local media still requires development mode and an
+ * exact match with the configured MEDIA_ORIGIN.
+ */
+export function isLocalDevelopmentUrl(value: string): boolean {
+  const { hostname } = new URL(value)
+  return isLoopbackUrl(value) || /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:test|localhost)$/.test(hostname)
 }

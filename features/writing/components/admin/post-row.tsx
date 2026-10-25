@@ -1,23 +1,21 @@
 import { PencilLine } from "lucide-react"
+import { memo } from "react"
 import { Link } from "react-router"
 
 import { Badge } from "@/components/ui/badge"
-import type { VisualVariant } from "@/components/ui/variants"
 import { PostActions } from "./post-actions"
+import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS, STATUS_TONE } from "./post-display"
 import { PostCover } from "@/features/writing/components/post-cover"
-import type { AdminPostSummary, PostStatus } from "@/features/writing/types"
+import type { AdminPostSummary } from "@/features/writing/types"
 import { mediaUrl, formatDate } from "@/lib/utils"
 
-// Published is the loud one, because it is the state where a mistake is public.
-const STATUS_TONE: Record<PostStatus, VisualVariant> = {
-  draft: "ghost",
-  published: "tertiary",
-  archived: "secondary",
-}
-
-const DATE_FORMAT: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" }
-
-export function PostRow({ post }: { post: AdminPostSummary }) {
+/**
+ * One post in the admin card list.
+ *
+ * Memoized: TanStack Query keeps unchanged posts referentially equal across
+ * refetches, so after a status change or delete only the affected row renders.
+ */
+export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary }) {
   return (
     <li className="flex flex-col items-stretch border-2 border-border bg-card sm:flex-row">
       {mediaUrl(post.coverUrl) && (
@@ -54,17 +52,17 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
 
           <p className="break-words text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
             {post.publishedAt
-              ? `Published ${formatDate(post.publishedAt, DATE_FORMAT)}`
+              ? `Published ${formatDate(post.publishedAt, ADMIN_DATE_FORMAT)}`
               : "Never published"}
             {" · "}
-            Edited {formatDate(post.updatedAt, DATE_FORMAT)}
+            Edited {formatDate(post.updatedAt, ADMIN_DATE_FORMAT)}
             {post.tags.length > 0 && ` · ${post.tags.map((tag) => tag.name).join(", ")}`}
           </p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link
             to={`/admin/posts/edit/${post.id}`}
-            className="flex h-11 w-11 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={EDIT_ICON_LINK_CLASS}
             aria-label={`Edit ${post.title}`}
           >
             <PencilLine className="h-4 w-4" aria-hidden />
@@ -75,4 +73,4 @@ export function PostRow({ post }: { post: AdminPostSummary }) {
       </div>
     </li>
   )
-}
+})

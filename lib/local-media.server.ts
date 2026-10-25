@@ -1,8 +1,8 @@
 import { getRequest, getRuntimeEnv, serverEnv } from "./runtime.server"
 import { IMAGE_FORMATS } from "./uploads/file-signature"
 import {
+  isLocalDevelopmentUrl,
   isLocalMediaPath,
-  isLoopbackUrl,
   localMediaOrigin,
   LOCAL_MEDIA_PREFIX,
 } from "./uploads/local-media"
@@ -13,7 +13,7 @@ export function usesLocalMedia(): boolean {
   const request = getRequest()
   const origin = localMediaOrigin(serverEnv("MEDIA_ORIGIN"))
   return Boolean(
-    origin && isLoopbackUrl(request.url) && origin.origin === new URL(request.url).origin
+    origin && isLocalDevelopmentUrl(request.url) && origin.origin === new URL(request.url).origin
   )
 }
 

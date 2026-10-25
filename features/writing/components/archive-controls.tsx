@@ -19,6 +19,8 @@ import { QueryState } from "@/features/writing/components/query-state"
 import { SearchForm } from "@/features/writing/components/search-form"
 import type { TagWithCount } from "@/features/writing/types"
 import {
+  ARCHIVE_SORT_LABELS,
+  ARCHIVE_SORTS,
   archiveSearchParams,
   defaultArchiveOptions,
   hasArchiveFilters,
@@ -165,15 +167,19 @@ export function ArchiveControls({
                     setDraft({ ...draft, sort: event.target.value as ArchiveOptions["sort"] })
                   }
                 >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="views">Most viewed</option>
-                  <option value="updated">Recently updated</option>
-                  <option value="relevance" disabled={!options.q}>
-                    {options.q ? "Most Relevant" : "Most Relevant (search first to enable)"}
-                  </option>
-                  <option value="title-asc">Title A-Z</option>
-                  <option value="title-desc">Title Z-A</option>
+                  {ARCHIVE_SORTS.map((sort) =>
+                    sort === "relevance" ? (
+                      <option key={sort} value={sort} disabled={!options.q}>
+                        {options.q
+                          ? ARCHIVE_SORT_LABELS[sort]
+                          : `${ARCHIVE_SORT_LABELS[sort]} (search first to enable)`}
+                      </option>
+                    ) : (
+                      <option key={sort} value={sort}>
+                        {ARCHIVE_SORT_LABELS[sort]}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
               {admin && (

@@ -1,9 +1,15 @@
+import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 import { THEME_INIT_SCRIPT } from "./lib/theme.ts"
 import { publicEnvDefinitions } from "./config/public-env.ts"
+
+const LOADING_INDICATOR_SVG = readFileSync(
+  new URL("./components/ui/loading-spinner.svg", import.meta.url),
+  "utf8"
+).trim()
 
 export default defineConfig(({ mode }) => {
   return {
@@ -12,9 +18,12 @@ export default defineConfig(({ mode }) => {
     publicDir: false,
     plugins: [
       {
-        name: "admin-theme",
+        name: "admin-shell",
         transformIndexHtml: (html) =>
-          html.replace("<!--theme-init-->", `<script>${THEME_INIT_SCRIPT}</script>`),
+          html
+            .replace("<!--theme-init-->", `<script>${THEME_INIT_SCRIPT}</script>`)
+            // The same vector the React loader renders, so both spinners are one icon.
+            .replace("<!--loading-indicator-->", LOADING_INDICATOR_SVG),
       },
       react(),
       tailwindcss(),

@@ -1,7 +1,7 @@
 import { getRequest, getRuntimeEnv, serverEnv } from "@/lib/runtime.server"
 import { isAllowedMediaUrl } from "@/lib/utils/media"
 import { usesLocalMedia } from "./local-media.server"
-import { isLocalMediaUrl, isLoopbackUrl, localMediaOrigin } from "./uploads/local-media"
+import { isLocalDevelopmentUrl, isLocalMediaUrl, localMediaOrigin } from "./uploads/local-media"
 
 import { isGeneratedCoverKey } from "./uploads/policy"
 
@@ -26,7 +26,7 @@ export function getCoverStorageConfig() {
   const bucket = getRuntimeEnv().MEDIA_BUCKET as R2Bucket | undefined
   if (!bucket || typeof bucket.put !== "function") return null
   const publicUrl = serverEnv("MEDIA_ORIGIN") ?? process.env.MEDIA_ORIGIN
-  if (serverEnv("NODE_ENV") === "development" && isLoopbackUrl(getRequest().url)) {
+  if (serverEnv("NODE_ENV") === "development" && isLocalDevelopmentUrl(getRequest().url)) {
     if (!usesLocalMedia()) return null
     const local = localMediaOrigin(publicUrl)
     const rendered = localMediaOrigin(process.env.MEDIA_ORIGIN)
