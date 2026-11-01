@@ -3,9 +3,9 @@ import { isAllowedMediaUrl } from "@/lib/utils/media"
 import { usesLocalMedia } from "./local-media.server"
 import { isLocalDevelopmentUrl, isLocalMediaUrl, localMediaOrigin } from "./uploads/local-media"
 
-import { isGeneratedCoverKey } from "./uploads/policy"
+import { uploadPolicyForKey } from "./uploads/policy"
 
-/** Only server-generated covers in this deployment's bucket may be deleted. */
+/** Only server-generated images in this deployment's bucket may be deleted. */
 export function managedCoverKey(value: string, publicUrl: string): string | null {
   try {
     const base = new URL(`${publicUrl.replace(/\/$/, "")}/`)
@@ -15,7 +15,7 @@ export function managedCoverKey(value: string, publicUrl: string): string | null
     if (local ? !isLocalMediaUrl(value) : url.origin !== base.origin) return null
     if (!url.pathname.startsWith(base.pathname)) return null
     const key = url.pathname.slice(base.pathname.length)
-    return isGeneratedCoverKey(key) ? key : null
+    return uploadPolicyForKey(key) ? key : null
   } catch {
     return null
   }

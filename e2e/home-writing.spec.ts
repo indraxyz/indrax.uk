@@ -35,6 +35,17 @@ async function mockWriting(page: Page) {
 
 const rail = (page: Page) => page.getByRole("region", { name: "Writing", exact: true })
 
+test("disables both writing carousel arrows when the cards fit", async ({ page }) => {
+  await mockWriting(page)
+  await page.route("**/api/writing/recent**", (route) => route.fulfill({ json: posts.slice(0, 1) }))
+  await page.goto("/")
+  await expect(rail(page).locator("[data-print-columns] > *")).toHaveCount(1)
+  const next = page.getByRole("button", { name: "Next Writing cards" })
+  await expect(next).toBeVisible()
+  await expect(next).toBeDisabled()
+  await expect(page.getByRole("button", { name: "Previous Writing cards" })).toBeDisabled()
+})
+
 for (const width of [390, 768, 1440])
   test(`keeps grid-width cards in a full-bleed, scrollable rail at ${width}px`, async ({
     page,
@@ -49,7 +60,7 @@ for (const width of [390, 768, 1440])
 
     await page.goto("/")
     const region = rail(page)
-    const cards = region.locator(":scope > *")
+    const cards = region.locator("[data-print-columns] > *")
     await expect(cards).toHaveCount(9)
     expect(recentLimits).toContain("9")
 
@@ -77,16 +88,25 @@ test("lets the keyboard reach and scroll the rail and its articles", async ({ pa
   await mockWriting(page)
   await page.goto("/")
   const region = rail(page)
-  await expect(region.locator(":scope > *")).toHaveCount(9)
+  await expect(region.locator("[data-print-columns] > *")).toHaveCount(9)
   await expect(region).toHaveAttribute("tabindex", "0")
 
+  const firstCard = region.locator("[data-print-columns] > *").first()
+  const initialLeft = (await firstCard.boundingBox())!.x
   await region.focus()
   await page.keyboard.press("ArrowRight")
-  await expect.poll(() => region.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0)
+  await expect.poll(async () => (await firstCard.boundingBox())!.x).toBeLessThan(initialLeft)
 
   // Tabbing to an off-screen article brings it into view.
   const last = region.getByRole("link", { name: "Rail fixture 9", exact: true })
-  await last.focus()
+  await region.focus()
+  for (
+    let index = 0;
+    index < 30 && !(await last.evaluate((node) => node === document.activeElement));
+    index++
+  )
+    await page.keyboard.press("Tab")
+  await expect(last).toBeFocused()
   await expect(last).toBeInViewport()
   await expect(last).toHaveAttribute("href", "/writing/rail-fixture-8")
 })

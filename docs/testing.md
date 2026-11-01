@@ -32,7 +32,7 @@ analytics, PDF/social images, writing search/filter/sort and series content, nav
 previews, authoring and session isolation. Database/auth/media prerequisites can
 cause skips; a passing subset does not verify skipped flows.
 
-Local cover uploads have a separate development-runtime suite:
+Local cover and inline content uploads have a separate development-runtime suite:
 
 ```bash
 E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
@@ -50,6 +50,14 @@ fixture secrets and an isolated local R2 bucket/dependency cache; it does not
 change `.env.local` or use live R2. The production suite excludes this spec, and
 CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
 to another loopback database when needed; remote hosts are refused.
+
+The inline-image case inserts two uploaded images with independent alt text, saves
+and reloads the document, checks the signed preview, then verifies removal and post
+deletion clean up only detached generated objects. `editor-images.spec.ts` additionally
+uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
+modal focus/accessibility and unavailable storage without database prerequisites.
+`card-carousels.spec.ts` checks the shared Embla rails on mobile and desktop, including
+boundary arrows, keyboard navigation, dragging, print layout and no-JavaScript scrolling.
 
 Run this suite with the ordinary `npm run dev` watcher stopped: both build admin
 assets into `public/admin`, and simultaneous watchers can replace the test's

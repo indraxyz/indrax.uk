@@ -101,3 +101,11 @@ it("retains work when the deployment has no storage configured", async () => {
   expect(limit).not.toHaveBeenCalled()
   expect(bucketDelete).not.toHaveBeenCalled()
 })
+
+it("cleans an unreferenced generated content image through the same durable outbox", async () => {
+  const contentKey = "content/550e8400-e29b-41d4-a716-446655440000.webp"
+  const { db, bucketDelete, remove } = fixture([`https://media.example.com/${contentKey}`])
+  await drainCoverCleanup(db)
+  expect(bucketDelete).toHaveBeenCalledWith(contentKey)
+  expect(remove).toHaveBeenCalledOnce()
+})

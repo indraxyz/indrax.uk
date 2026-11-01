@@ -37,7 +37,7 @@ export async function drainCoverCleanup(db: Database): Promise<void> {
             )
           )
           .limit(1)
-        // Covers can be manually reused as another cover or an inline image.
+        // Uploaded images can be reused as a cover or another inline image.
         // Match the key as well as the URL so local port changes are harmless.
         if (reference) continue
         await storage.bucket.delete(key)

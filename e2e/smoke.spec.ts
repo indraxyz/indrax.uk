@@ -489,9 +489,12 @@ test.describe("the public pages", () => {
       expect(
         cardWidths.every((cardWidth) => cardWidth <= 384 && cardWidth < dimensions.width)
       ).toBe(true)
+      const initialLeft = (await cards.first().boundingBox())!.x
       await stack.focus()
       await page.keyboard.press("ArrowRight")
-      await expect.poll(() => stack.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+      await expect
+        .poll(async () => (await cards.first().boundingBox())!.x)
+        .toBeLessThan(initialLeft)
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
         width
       )

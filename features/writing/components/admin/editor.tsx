@@ -38,6 +38,7 @@ import { useEffect, useRef, type ReactNode } from "react"
 
 import { controlClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
+import { EditorImage } from "./editor-image"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
@@ -46,6 +47,7 @@ const EMPTY_DOCUMENT: PostDocument = { type: "doc", content: [{ type: "paragraph
 interface EditorProps {
   value: PostDocument | null
   onChange: (document: PostDocument) => void
+  imageUploadsConfigured?: boolean
 }
 
 interface ToolProps {
@@ -91,7 +93,13 @@ const TABLE_ACTIONS = [
   ["deleteTable", "Delete table", TableIcon, X],
 ] as const
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({
+  editor,
+  imageUploadsConfigured,
+}: {
+  editor: Editor
+  imageUploadsConfigured: boolean
+}) {
   // Tiptap v3 does not rerender useEditor consumers on transactions by default.
   // Subscribe the controls so selection changes update active/available actions.
   useEditorState({ editor, selector: ({ transactionNumber }) => transactionNumber })
@@ -285,6 +293,7 @@ function Toolbar({ editor }: { editor: Editor }) {
           disabled={!editor.can().chain().unsetAllMarks().clearNodes().run()}
           onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         />
+        <EditorImage editor={editor} uploadsConfigured={imageUploadsConfigured} />
       </div>
       {editor.isActive("table") && (
         <div className="border-t-2 border-border">
@@ -325,7 +334,7 @@ function Toolbar({ editor }: { editor: Editor }) {
  * The admin is browser-only. Delaying initialization until the first effect
  * keeps the editor lifecycle aligned with React mounting and its placeholder.
  */
-export function PostEditor({ value, onChange }: EditorProps) {
+export function PostEditor({ value, onChange, imageUploadsConfigured = false }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -352,6 +361,7 @@ export function PostEditor({ value, onChange }: EditorProps) {
       attributes: {
         class: cn(
           "prose prose-lg max-w-none min-h-[24rem] px-4 py-4 focus:outline-none",
+          "[&_img.ProseMirror-selectednode]:outline-2 [&_img.ProseMirror-selectednode]:outline-offset-2 [&_img.ProseMirror-selectednode]:outline-ring",
           focusControlClassNames
         ),
         "aria-label": "Article body",
@@ -372,7 +382,7 @@ export function PostEditor({ value, onChange }: EditorProps) {
 
   return (
     <div ref={containerRef} className="min-w-0 border-2 border-border bg-card">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} imageUploadsConfigured={imageUploadsConfigured} />
       <EditorContent editor={editor} />
     </div>
   )

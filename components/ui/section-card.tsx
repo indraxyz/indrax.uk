@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { CardCarousel } from "@/components/ui/card-carousel"
 import {
   Card,
   CardContent,
@@ -57,10 +58,9 @@ export function SectionCard({
 }: SectionCardProps) {
   const isGhost = variant === "ghost"
   const isBounded = isBoundedHeight(height)
-  // A height-capped pane scrolls vertically and a rail scrolls horizontally; both
-  // strand their content unless a keyboard can reach and a screen reader can name
-  // the scroller itself.
-  const scrolls = isBounded || carousel
+  // The carousel owns its focusable viewport; height-capped content retains its
+  // own named vertical scroll region.
+  const scrolls = isBounded && !carousel
 
   return (
     <Card
@@ -84,14 +84,9 @@ export function SectionCard({
         variant={variant}
         scrollable={scrolls}
         aria-label={scrolls ? title : undefined}
-        data-print-columns={carousel ? "" : undefined}
-        className={cn(
-          isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2",
-          carousel && "flex gap-6 overflow-x-auto",
-          contentClassName
-        )}
+        className={cn(isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2", contentClassName)}
       >
-        {children}
+        {carousel ? <CardCarousel title={title}>{children}</CardCarousel> : children}
       </CardContent>
     </Card>
   )

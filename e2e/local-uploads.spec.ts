@@ -317,3 +317,108 @@ test("refuses unauthorized, cross-origin, malformed and oversized uploads", asyn
     ).status()
   ).toBe(413)
 })
+
+test("uploads multiple inline images, persists their alt text and renders them independently of the cover", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000)
+  const page = await author.newPage()
+  await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
+  await page.getByLabel("Title", { exact: true }).fill(`Inline images ${crypto.randomUUID()}`)
+  const body = page.locator(".ProseMirror")
+  await body.fill("Before the first illustration")
+  await page.keyboard.press("Enter")
+  const images: string[] = []
+  for (const [index, alt] of [
+    "First inline illustration",
+    "Second inline illustration",
+  ].entries()) {
+    await page
+      .getByRole("toolbar", { name: "Formatting", exact: true })
+      .getByRole("button", { name: "Insert image", exact: true })
+      .click()
+    const dialog = page.getByRole("dialog", { name: "Insert image", exact: true })
+    await dialog.locator('input[type="file"]').setInputFiles({
+      name: `inline-${index}.png`,
+      mimeType: "image/png",
+      buffer: png,
+    })
+    await dialog.getByLabel("Image alt text", { exact: true }).fill(alt)
+    const uploaded = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/upload" &&
+        new URL(response.url()).searchParams.get("purpose") === "content"
+    )
+    await dialog.getByRole("button", { name: "Insert image", exact: true }).click()
+    const response = await uploaded
+    expect(response.status()).toBe(201)
+    const { publicUrl } = await response.json()
+    expect(new URL(publicUrl).pathname).toMatch(/^\/local-media\/content\/[0-9a-f-]+\.png$/)
+    images.push(publicUrl)
+    covers.push(publicUrl)
+    await expect(dialog).not.toBeVisible()
+    await expect(body.locator("img").nth(index)).toHaveAttribute("src", publicUrl)
+    await page.keyboard.type(index === 0 ? "Between the illustrations" : "After the illustrations")
+    if (index === 0) await page.keyboard.press("Enter")
+  }
+  const saved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/posts" &&
+      response.request().method() === "POST"
+  )
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  const outcome = await (await saved).json()
+  expect(outcome.ok).toBe(true)
+  posts.push(outcome.postId)
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/posts/edit/${outcome.postId}`)
+  await page.reload()
+  await expect(body.locator("img")).toHaveCount(2)
+  await expect(body.locator("img").first()).toHaveAttribute("alt", "First inline illustration")
+  await expect(body.locator("img").nth(1)).toHaveAttribute("alt", "Second inline illustration")
+  await expect(page.getByLabel("Cover image URL", { exact: true })).toHaveValue("")
+  const preview = await author.request.post(
+    `${E2E_BASE_URL}/api/admin/posts/${outcome.postId}/preview`,
+    {
+      data: {},
+      headers: { Origin: E2E_BASE_URL },
+    }
+  )
+  const { url } = await preview.json()
+  const reader = await browser.newPage()
+  await reader.setViewportSize({ width: 390, height: 844 })
+  await reader.goto(url)
+  for (const alt of ["First inline illustration", "Second inline illustration"]) {
+    const image = reader.getByRole("img", { name: alt, exact: true })
+    await expect(image).toBeVisible()
+    await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1)
+    const box = await image.boundingBox()
+    expect(box!.width).toBeLessThanOrEqual(390)
+  }
+  await reader.close()
+  await body.locator("img").first().click()
+  await page.getByRole("button", { name: "Edit image", exact: true }).click()
+  await page
+    .getByRole("dialog", { name: "Edit image", exact: true })
+    .getByRole("button", { name: "Remove image", exact: true })
+    .click()
+  const updated = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/posts" &&
+      response.request().method() === "POST"
+  )
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  expect((await (await updated).json()).ok).toBe(true)
+  expect((await request.get(images[0])).status()).toBe(404)
+  expect((await request.get(images[1])).status()).toBe(200)
+  covers.splice(covers.indexOf(images[0]), 1)
+  const deleted = await author.request.delete(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`, {
+    data: {},
+    headers: { Origin: E2E_BASE_URL },
+  })
+  expect((await deleted.json()).ok).toBe(true)
+  expect((await request.get(images[1])).status()).toBe(404)
+  covers.splice(covers.indexOf(images[1]), 1)
+  posts.splice(posts.indexOf(outcome.postId), 1)
+  await page.close()
+})

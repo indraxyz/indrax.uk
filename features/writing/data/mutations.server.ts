@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, ne, notInArray, sql } from "drizzle-orm"
+import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm"
 import { invalidateTags } from "@/lib/cache.server"
 import { drainCoverCleanup } from "@/lib/cover-cleanup.server"
 
@@ -11,7 +11,8 @@ import { createPreviewToken } from "@/features/writing/utils/preview-token.serve
 import { slugify, uniqueSlug } from "@/features/writing/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard.server"
 import { isSeriesOrderClash } from "@/features/writing/data/db-errors.server"
-import { getDb, schema } from "@/lib/db/index.server"
+import { getDb, schema, type Database } from "@/lib/db/index.server"
+import { GENERATED_IMAGE_KEY_PATTERN } from "@/lib/uploads/policy"
 import { postIdSchema, postInputSchema } from "@/lib/validators/writing"
 
 /**
@@ -129,6 +130,43 @@ interface SavePayload {
   seriesTitle?: string
   seriesDescription?: string
   seriesOrder?: number
+}
+
+/**
+ * Queue detached media while the post row is locked, in its write transaction.
+ * Read the old document in SQL so a competing save cannot hide an inline image.
+ * UNION deduplicates repeated image blocks; retained URLs never enter the outbox.
+ * The cleanup worker still verifies the configured origin/generated key and all
+ * remaining post references before deleting anything from storage.
+ */
+function queueDetachedMedia(
+  db: Database,
+  id: string,
+  nextCover: string | null = null,
+  nextContent: PostDocument | null = null
+) {
+  const imagePath = '$.** ? (@.type == "image").attrs.src'
+  return db
+    .insert(schema.coverCleanup)
+    .select(
+      db.select({
+        url: sql<string>`detached.url`.as("url"),
+        attemptedAt: sql<Date>`now()`.as("attempted_at"),
+      }).from(sql`(
+          select ${schema.posts.coverUrl} as url from ${schema.posts}
+          where ${schema.posts.id} = ${id} and ${schema.posts.coverUrl} is not null
+          union
+          select image #>> '{}' as url from ${schema.posts}
+          cross join lateral jsonb_path_query(${schema.posts.contentJson}, ${imagePath}::jsonpath) as images(image)
+          where ${schema.posts.id} = ${id} and jsonb_typeof(image) = 'string'
+        ) as detached`).where(sql`detached.url ~ ${`/${GENERATED_IMAGE_KEY_PATTERN}$`}
+          and detached.url is distinct from ${nextCover}::text
+          and not exists (
+            select 1 from jsonb_path_query(${JSON.stringify(nextContent)}::jsonb, ${imagePath}::jsonpath) as retained(image)
+            where image #>> '{}' = detached.url
+          )`)
+    )
+    .onConflictDoNothing()
 }
 
 export async function savePost(payload: SavePayload): Promise<ActionResult> {
@@ -273,7 +311,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
           )
         : eq(schema.postTags.postId, postId)
     )
-    // Lock before capturing the detached cover. A prior read can be stale when
+    // Lock before capturing detached media. A prior read can be stale when
     // another save replaces the image, or a deletion commits while we validate.
     const lockAndQueue = current
       ? ([
@@ -282,24 +320,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
             .from(schema.posts)
             .where(eq(schema.posts.id, postId))
             .for("update"),
-          db
-            .insert(schema.coverCleanup)
-            .select(
-              db
-                .select({
-                  url: sql<string>`${schema.posts.coverUrl}`.as("url"),
-                  attemptedAt: sql<Date>`now()`.as("attempted_at"),
-                })
-                .from(schema.posts)
-                .where(
-                  and(
-                    eq(schema.posts.id, postId),
-                    isNotNull(schema.posts.coverUrl),
-                    sql`${schema.posts.coverUrl} is distinct from ${row.coverUrl}`
-                  )
-                )
-            )
-            .onConflictDoNothing(),
+          queueDetachedMedia(db, postId, row.coverUrl, document),
         ] as const)
       : ([] as const)
     const results = await db.batch([
@@ -419,18 +440,7 @@ export async function deletePost(id: string): Promise<ActionResult> {
       .from(schema.posts)
       .where(eq(schema.posts.id, id))
       .for("update"),
-    db
-      .insert(schema.coverCleanup)
-      .select(
-        db
-          .select({
-            url: sql<string>`${schema.posts.coverUrl}`.as("url"),
-            attemptedAt: sql<Date>`now()`.as("attempted_at"),
-          })
-          .from(schema.posts)
-          .where(and(eq(schema.posts.id, id), isNotNull(schema.posts.coverUrl)))
-      )
-      .onConflictDoNothing(),
+    queueDetachedMedia(db, id),
     db.delete(schema.posts).where(eq(schema.posts.id, id)).returning({ slug: schema.posts.slug }),
   ])
   const [current] = deleted

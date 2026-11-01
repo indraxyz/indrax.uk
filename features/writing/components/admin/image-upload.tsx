@@ -2,32 +2,34 @@ import { ImageUp } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
-import { describeTypes, UPLOAD_POLICIES } from "@/lib/uploads/policy"
+import { describeTypes, UPLOAD_POLICIES, type UploadPurpose } from "@/lib/uploads/policy"
 import { cn } from "@/lib/utils"
 
 // The same policy the upload route enforces, so the author is told before a
 // request is made. The server's check is the one that decides - this one exists
 // to save a round trip, not to enforce anything (threat T-5).
-const POLICY = UPLOAD_POLICIES.cover
-const ACCEPTED: readonly string[] = POLICY.types
-
 interface ImageUploadProps {
   onSelected: (file: File) => void
+  purpose?: UploadPurpose
+  disabled?: boolean
 }
 
-/** Selects and checks a local file; storage writes happen only when the post is saved. */
-export function ImageUpload({ onSelected }: ImageUploadProps) {
+/** Selects and checks a local file; its caller decides when to upload it. */
+export function ImageUpload({ onSelected, purpose = "cover", disabled }: ImageUploadProps) {
   const input = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const policy = UPLOAD_POLICIES[purpose]
+  const accepted: readonly string[] = policy.types
+  const label = purpose === "cover" ? "Upload a cover" : "Upload a content image"
 
   const select = (file: File) => {
     setError(null)
-    if (!ACCEPTED.includes(file.type)) {
-      setError(`Images only: ${describeTypes(POLICY)}.`)
+    if (!accepted.includes(file.type)) {
+      setError(`Images only: ${describeTypes(policy)}.`)
       return
     }
-    if (file.size > POLICY.maxBytes) {
-      setError(`That file is larger than ${POLICY.maxBytes / 1024 / 1024}MB.`)
+    if (file.size > policy.maxBytes) {
+      setError(`That file is larger than ${policy.maxBytes / 1024 / 1024}MB.`)
       return
     }
     onSelected(file)
@@ -38,7 +40,8 @@ export function ImageUpload({ onSelected }: ImageUploadProps) {
       <input
         ref={input}
         type="file"
-        accept={ACCEPTED.join(",")}
+        accept={accepted.join(",")}
+        disabled={disabled}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0]
@@ -49,8 +52,9 @@ export function ImageUpload({ onSelected }: ImageUploadProps) {
 
       <button
         type="button"
-        aria-label="Upload a cover"
-        title="Upload a cover"
+        aria-label={label}
+        title={label}
+        disabled={disabled}
         onClick={() => input.current?.click()}
         className={cn(
           controlClassNames,

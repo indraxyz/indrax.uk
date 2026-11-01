@@ -535,6 +535,7 @@
      the mobile-only rail and forced it to print alongside the desktop layout. */
   [data-print-columns] {
     display: block !important;
+    transform: none !important;
     columns: 2;
     column-gap: 0.75rem;
   }

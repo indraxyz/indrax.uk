@@ -36,11 +36,15 @@ beforeEach(() => {
   mocks.put.mockResolvedValue({ key: "stored" })
 })
 
-it("stores a verified image under a generated key with its verified type", async () => {
-  const result = await upload(PNG)
+it.each([
+  ["cover", "covers"],
+  ["content", "content"],
+])("stores a verified %s image under its generated prefix", async (purpose, prefix) => {
+  const result = await upload(PNG, { purpose })
   expect(result.status).toBe(201)
   const { publicUrl } = (await result.json()) as { publicUrl: string }
-  expect(publicUrl).toMatch(/^https:\/\/media\.example\.test\/covers\/[0-9a-f-]{36}\.png$/)
+  expect(new URL(publicUrl).origin).toBe("https://media.example.test")
+  expect(new URL(publicUrl).pathname).toMatch(new RegExp(`^/${prefix}/[0-9a-f-]{36}\\.png$`))
 
   expect(mocks.put).toHaveBeenCalledOnce()
   expect(mocks.put).toHaveBeenCalledWith(new URL(publicUrl).pathname.slice(1), PNG, {
