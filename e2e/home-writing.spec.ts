@@ -92,6 +92,7 @@ for (const width of [390, 768, 1440])
     const gridCard = page.locator("[data-post-grid] > *").first()
     await expect(gridCard).toBeVisible()
     const gridCardWidth = (await gridCard.boundingBox())!.width
+    const gridCardLeft = (await gridCard.boundingBox())!.x
 
     await page.goto("/")
     const region = rail(page)
@@ -107,11 +108,17 @@ for (const width of [390, 768, 1440])
         )
       ).toBeLessThanOrEqual(1)
 
-    // The rail reaches both page edges and scrolls inside itself, never the page.
+    // The first card starts at the page gutter; overflow reaches the right edge.
     const viewport = await page.evaluate(() => document.documentElement.clientWidth)
     const bounds = (await region.boundingBox())!
     expect(Math.abs(bounds.x)).toBeLessThanOrEqual(1)
-    expect(Math.abs(bounds.width - viewport)).toBeLessThanOrEqual(1)
+    expect(Math.abs(bounds.x + bounds.width - viewport)).toBeLessThanOrEqual(1)
+    expect(Math.abs((await cards.first().boundingBox())!.x - gridCardLeft)).toBeLessThanOrEqual(1)
+    await page.reload()
+    await expect(region.locator("[data-print-columns] > *")).toHaveCount(9)
+    await expect
+      .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridCardLeft))
+      .toBeLessThanOrEqual(1)
     expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport

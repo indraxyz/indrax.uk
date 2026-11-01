@@ -62,10 +62,11 @@ when all cards fit. Reduced-motion preferences remove snap animation. Print CSS
 resets the Embla transform and flows all cards into the existing two-column layout.
 
 Draggable rails use grab/grabbing cursors; enabled arrows and links use a pointer.
-When the cards fit the page's content width, full-bleed rails align with the normal
-page gutters and maximum width. Overflowing rails retain their full-bleed layout.
-Alignment is recalculated when the cards or viewport change, including resizing
-between phone and desktop widths.
+The first card in a full-bleed rail starts at the normal page gutter, including on
+the initial server render and hard refresh. Responsive leading padding belongs to
+the moving track rather than the viewport: it scrolls away when navigating, so
+cards can still reach both screen edges. Returning to the first snap restores the
+container-aligned first card. This also works before hydration and without JavaScript.
 
 Browser coverage in `e2e/card-carousels.spec.ts`, `e2e/home-writing.spec.ts` and
 `e2e/smoke.spec.ts` checks navigation boundaries, dragging, resize, card widths,
@@ -89,3 +90,7 @@ keyboard reachability, page overflow, print layout and the no-JavaScript fallbac
 - Carousel alignment/cursor follow-up: all 15 focused browser tests passed without
   skips or retries, including 1–3 cards at 1440/1920 px, desktop/mobile resizing,
   drag cursors, navigation, printing and native scrolling. ESLint and TypeScript passed.
+- Initial-render alignment follow-up: 32 carousel/home/smoke browser tests passed
+  without skips or retries. Tests cover server-rendered alignment without JavaScript,
+  hard refresh at 390/1920 px, first-snap alignment, and full-width movement after
+  navigating. ESLint, TypeScript and the production build passed.

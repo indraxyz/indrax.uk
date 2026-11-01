@@ -19,10 +19,22 @@ for (const width of [390, 1440]) {
       await expect(next).toHaveCSS("cursor", "pointer")
       const first = viewport.locator("[data-print-columns] > *").first()
       const initialLeft = (await first.boundingBox())!.x
+      const navigation = page.getByRole("group", { name: `${title} carousel navigation` })
+      const containerLeft = await navigation.evaluate(
+        (node, fullBleed) =>
+          node.getBoundingClientRect().left +
+          (fullBleed ? parseFloat(getComputedStyle(node).paddingLeft) : 0),
+        title === "Tech Stack"
+      )
+      expect(Math.abs(initialLeft - containerLeft)).toBeLessThanOrEqual(1)
 
       await next.click()
       await expect(previous).toBeEnabled()
       await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(initialLeft)
+      if (title === "Tech Stack") {
+        expect((await viewport.boundingBox())!.x).toBeLessThanOrEqual(1)
+        await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(0)
+      }
       const bounds = (await viewport.boundingBox())!
       const arrow = (await next.boundingBox())!
       expect(arrow.y).toBeGreaterThanOrEqual(bounds.y + bounds.height)
@@ -37,6 +49,9 @@ for (const width of [390, 1440]) {
       await viewport.focus()
       await page.keyboard.press("Home")
       await expect(previous).toBeDisabled()
+      await expect
+        .poll(async () => Math.abs((await first.boundingBox())!.x - initialLeft))
+        .toBeLessThanOrEqual(1)
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
         width
       )
@@ -102,3 +117,40 @@ test("keeps resume cards reachable with native scrolling when JavaScript is disa
     await context.close()
   }
 })
+
+for (const width of [390, 1920]) {
+  test(`aligns the first card before hydration and on refresh at ${width}px`, async ({
+    browser,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({
+      baseURL,
+      javaScriptEnabled: false,
+      viewport: { width, height: 900 },
+    })
+    const page = await context.newPage()
+    try {
+      await page.goto("/resume")
+      for (const refresh of [false, true]) {
+        if (refresh) await page.reload()
+        for (const title of ["Tech Stack", "Portfolio"]) {
+          const first = page
+            .getByRole("region", { name: title, exact: true })
+            .locator("[data-print-columns] > *")
+            .first()
+          const controls = page.locator(`[aria-label="${title} carousel navigation"]`)
+          const expectedLeft = await controls.evaluate(
+            (node, fullBleed) =>
+              node.getBoundingClientRect().left +
+              (fullBleed ? parseFloat(getComputedStyle(node).paddingLeft) : 0),
+            title === "Tech Stack"
+          )
+          // No JavaScript is available to repair an edge-aligned initial render.
+          expect(Math.abs((await first.boundingBox())!.x - expectedLeft)).toBeLessThanOrEqual(1)
+        }
+      }
+    } finally {
+      await context.close()
+    }
+  })
+}
