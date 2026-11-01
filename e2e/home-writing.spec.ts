@@ -35,6 +35,41 @@ async function mockWriting(page: Page) {
 
 const rail = (page: Page) => page.getByRole("region", { name: "Writing", exact: true })
 
+for (const width of [1440, 1920]) {
+  for (const count of [1, 2, 3]) {
+    test(`aligns ${count} fitting writing cards with the page layout at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await mockWriting(page)
+      await page.goto("/writing")
+      const gridLeft = (await page.locator("[data-post-grid] > *").first().boundingBox())!.x
+      await page.route("**/api/writing/recent**", (route) =>
+        route.fulfill({ json: posts.slice(0, count) })
+      )
+      await page.goto("/")
+      const cards = rail(page).locator("[data-print-columns] > *")
+      await expect(cards).toHaveCount(count)
+      const next = page.getByRole("button", { name: "Next Writing cards" })
+      await expect(next).toBeDisabled()
+      await expect
+        .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridLeft))
+        .toBeLessThanOrEqual(1)
+      await expect(next).toHaveCSS("cursor", "default")
+      await expect(rail(page)).not.toHaveCSS("cursor", "grab")
+      if (count > 1) {
+        await page.setViewportSize({ width: 390, height: 900 })
+        await expect(next).toBeEnabled()
+        await page.setViewportSize({ width, height: 900 })
+        await expect(next).toBeDisabled()
+        await expect
+          .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridLeft))
+          .toBeLessThanOrEqual(1)
+      }
+    })
+  }
+}
+
 test("disables both writing carousel arrows when the cards fit", async ({ page }) => {
   await mockWriting(page)
   await page.route("**/api/writing/recent**", (route) => route.fulfill({ json: posts.slice(0, 1) }))

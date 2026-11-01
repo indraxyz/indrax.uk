@@ -35,6 +35,7 @@ interface SectionCardProps {
   // Lays the children out as a horizontal rail of cards. Owned here rather than
   // passed as classes so every rail also gets the same scroll-region semantics.
   carousel?: boolean
+  carouselFullBleed?: boolean
   className?: string
   headerClassName?: string
   contentClassName?: string
@@ -52,6 +53,7 @@ export function SectionCard({
   variant = "card",
   height = "auto",
   carousel = false,
+  carouselFullBleed = false,
   className,
   headerClassName,
   contentClassName,
@@ -86,7 +88,13 @@ export function SectionCard({
         aria-label={scrolls ? title : undefined}
         className={cn(isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2", contentClassName)}
       >
-        {carousel ? <CardCarousel title={title}>{children}</CardCarousel> : children}
+        {carousel ? (
+          <CardCarousel title={title} fullBleed={carouselFullBleed}>
+            {children}
+          </CardCarousel>
+        ) : (
+          children
+        )}
       </CardContent>
     </Card>
   )

@@ -61,6 +61,12 @@ Controls are 44 px targets outside the draggable viewport and remain disabled
 when all cards fit. Reduced-motion preferences remove snap animation. Print CSS
 resets the Embla transform and flows all cards into the existing two-column layout.
 
+Draggable rails use grab/grabbing cursors; enabled arrows and links use a pointer.
+When the cards fit the page's content width, full-bleed rails align with the normal
+page gutters and maximum width. Overflowing rails retain their full-bleed layout.
+Alignment is recalculated when the cards or viewport change, including resizing
+between phone and desktop widths.
+
 Browser coverage in `e2e/card-carousels.spec.ts`, `e2e/home-writing.spec.ts` and
 `e2e/smoke.spec.ts` checks navigation boundaries, dragging, resize, card widths,
 keyboard reachability, page overflow, print layout and the no-JavaScript fallback.
@@ -80,3 +86,6 @@ keyboard reachability, page overflow, print layout and the no-JavaScript fallbac
   multiple-inline-image upload, save, reload, preview, removal and post deletion.
 - Production build and visual carousel review passed. No live deployment or remote
   database/storage writes were performed.
+- Carousel alignment/cursor follow-up: all 15 focused browser tests passed without
+  skips or retries, including 1–3 cards at 1440/1920 px, desktop/mobile resizing,
+  drag cursors, navigation, printing and native scrolling. ESLint and TypeScript passed.

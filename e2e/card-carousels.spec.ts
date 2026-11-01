@@ -15,6 +15,8 @@ for (const width of [390, 1440]) {
       await expect(viewport).toHaveAttribute("aria-roledescription", "carousel")
       await expect(previous).toBeDisabled()
       await expect(next).toBeEnabled()
+      await expect(viewport).toHaveCSS("cursor", "grab")
+      await expect(next).toHaveCSS("cursor", "pointer")
       const first = viewport.locator("[data-print-columns] > *").first()
       const initialLeft = (await first.boundingBox())!.x
 
@@ -54,6 +56,7 @@ test("supports dragging, resizing, and printing a navigated carousel", async ({ 
   const bounds = (await viewport.boundingBox())!
   await page.mouse.move(bounds.x + bounds.width - 30, bounds.y + 30)
   await page.mouse.down()
+  await expect(viewport).toHaveCSS("cursor", "grabbing")
   await page.mouse.move(bounds.x + 30, bounds.y + 30, { steps: 12 })
   await page.mouse.up()
   await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(initialLeft)
