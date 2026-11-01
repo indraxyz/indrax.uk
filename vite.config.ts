@@ -7,10 +7,14 @@ import { defineConfig } from "vite"
 import { adminDevAssets } from "./config/admin-dev-assets.ts"
 import { publicEnvDefinitions } from "./config/public-env.ts"
 import { pdfLayoutBuffer } from "./config/pdf-layout-buffer.ts"
+import { devPublicDirectory } from "./scripts/dev-public-assets.mjs"
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   return {
     cacheDir: process.env.INDRAX_VITE_CACHE_DIR,
+    // Upload browser tests use private assets; never embed their path in a build.
+    publicDir:
+      command === "serve" ? devPublicDirectory(process.env.INDRAX_DEV_PUBLIC_DIR) : undefined,
     plugins: [
       adminDevAssets(),
       pdfLayoutBuffer(),

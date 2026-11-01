@@ -352,7 +352,7 @@ test("refuses unauthorized, cross-origin, malformed and oversized uploads", asyn
   ).toBe(413)
 })
 
-test("uploads multiple inline images, persists their alt text and renders them independently of the cover", async ({
+test("uploads multiple inline images, persists their alt text and sizes and renders them independently of the cover", async ({
   browser,
   request,
 }) => {
@@ -397,6 +397,11 @@ test("uploads multiple inline images, persists their alt text and renders them i
     await page.keyboard.type(index === 0 ? "Between the illustrations" : "After the illustrations")
     if (index === 0) await page.keyboard.press("Enter")
   }
+  await body.locator("img").first().click()
+  await body.locator('[data-resize-handle="bottom-right"]').first().focus()
+  await page.keyboard.press("Shift+ArrowRight")
+  await expect(body.locator("img").first()).toHaveCSS("width", "32px")
+  await expect(body.locator("img").first()).toHaveCSS("height", "32px")
   const saved = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/admin/posts" &&
@@ -411,6 +416,8 @@ test("uploads multiple inline images, persists their alt text and renders them i
   await page.reload()
   await expect(body.locator("img")).toHaveCount(2)
   await expect(body.locator("img").first()).toHaveAttribute("alt", "First inline illustration")
+  await expect(body.locator("img").first()).toHaveCSS("width", "32px")
+  await expect(body.locator("img").first()).toHaveCSS("height", "32px")
   await expect(body.locator("img").nth(1)).toHaveAttribute("alt", "Second inline illustration")
   await expect(page.getByLabel("Cover image URL", { exact: true })).toHaveValue("")
   const preview = await author.request.post(
@@ -428,6 +435,12 @@ test("uploads multiple inline images, persists their alt text and renders them i
     const image = reader.getByRole("img", { name: alt, exact: true })
     await expect(image).toBeVisible()
     await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1)
+    if (alt === "First inline illustration") {
+      await expect(image).toHaveAttribute("width", "32")
+      await expect(image).toHaveAttribute("height", "32")
+      await expect(image).toHaveCSS("width", "32px")
+      await expect(image).toHaveCSS("height", "32px")
+    }
     const box = await image.boundingBox()
     expect(box!.width).toBeLessThanOrEqual(390)
   }

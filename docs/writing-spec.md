@@ -263,6 +263,15 @@ remove it. Insert, update and removal are separate Undo/Redo actions, even when 
 occur rapidly; typing beside an image does not merge into its history event. Empty
 alt text marks decoration.
 
+Select an image to reveal corner handles (one external handle for small images).
+Drag a handle to resize both dimensions
+while preserving the image's proportions. Handles also accept arrow keys (one pixel),
+or Shift + arrow keys (ten pixels). Width and height are saved in the image block and
+restored by Undo/Redo. Both the editor and published article scale images proportionally
+to fit narrower containers; resize controls appear only in the editor. This uses the
+installed Tiptap Image schema with pointer and keyboard controls. A cancelled touch or
+pointer drag restores the previous dimensions without changing the document.
+
 The dialog accepts HTTPS URLs (including third-party hosts, matching the renderer's
 existing authored-content policy) or verified uploads to the configured media storage.
 Uploads use the shared `/api/upload?purpose=content` pipeline and happen when the author

@@ -51,11 +51,12 @@ change `.env.local` or use live R2. The production suite excludes this spec, and
 CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
 to another loopback database when needed; remote hosts are refused.
 
-The inline-image case inserts two uploaded images with independent alt text, saves
-and reloads the document, checks the signed preview, then verifies removal and post
+The inline-image case inserts two uploaded images with independent alt text, resizes one,
+saves and reloads the document, checks dimensions in the signed preview, then verifies removal and post
 deletion clean up only detached generated objects. `editor-images.spec.ts` additionally
 uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
-modal focus/accessibility and unavailable storage without database prerequisites.
+modal focus/accessibility and unavailable storage without database prerequisites. Resize
+coverage includes mouse dragging, keyboard steps, Undo/Redo and mobile proportions.
 The upload suite also inspects pending/attached/deleted tracking states and exercises
 removal before first save, Undo, failed saves and successful retries without another upload.
 Image-history regression tests fix browser transaction timestamps while leaving timers
@@ -67,9 +68,13 @@ the browser write suites, so temporary SQL fixtures cannot interfere with author
 `card-carousels.spec.ts` checks the shared Embla rails on mobile and desktop, including
 boundary arrows, keyboard navigation, dragging, print layout and no-JavaScript scrolling.
 
-Run this suite with the ordinary `npm run dev` watcher stopped: both build admin
-assets into `public/admin`, and simultaneous watchers can replace the test's
-media-origin configuration. Restart development afterward to restore local assets.
+The upload suite copies public inputs into its private temporary directory, excluding
+the generated `admin` subtree. `INDRAX_DEV_PUBLIC_DIR` points both the watched admin
+build and Vite's development asset root there, and the temporary Worker asset binding
+uses the same directory. The override requires an absolute path and is ignored by
+production builds. Ordinary `npm run dev` can remain running on a different port:
+its `public/admin` output and media-origin configuration are not changed by this suite.
+Temporary test public/admin assets, R2 state and dependency caches are removed on exit.
 
 Inspect the current inventory without changing application data:
 

@@ -117,7 +117,8 @@ policies in `lib/uploads/`.
 - Playwright `reads` run in parallel; `writes` (`admin-authoring`, `admin-session`)
   run after them serially. Fixture-dependent specs skip without database/auth env;
   report skips and retries rather than calling a subset a clean pass.
-- Stop `npm run dev` before `npm run test:e2e:uploads`; both write `public/admin/`.
+- Upload browser tests use a private temporary public/admin build, asset binding and
+  dependency cache; ordinary `npm run dev` can remain running on a different port.
 - Do not read or edit `.env.local` or other `.env.*` files; `.env.example`
   documents the settings.
 

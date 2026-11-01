@@ -30,6 +30,19 @@ afterEach(() => vi.unstubAllEnvs())
 describe("renderDocument — content images", () => {
   const path = "/local-media/content/51dad294-2e29-40c4-9c1f-2df003c48e57.png"
 
+  it("preserves saved image dimensions without editor resize controls", async () => {
+    const html = await render(
+      doc({
+        type: "image",
+        attrs: { src: "https://example.test/resized.png", alt: "Resized", width: 310, height: 155 },
+      })
+    )
+    expect(html).toContain('width="310"')
+    expect(html).toContain('height="155"')
+    expect(html).not.toContain("data-resize")
+    expect(html).not.toContain('style="')
+  })
+
   it("preserves multiple independent images between paragraphs with their alt text", async () => {
     const html = await render(
       doc(

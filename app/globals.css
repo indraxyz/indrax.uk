@@ -710,6 +710,107 @@
   outline: none;
 }
 
+/* Stored pixel dimensions remain proportional within narrower reading/editor columns. */
+.prose img {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.ProseMirror [data-resize-container] {
+  display: flex;
+  max-width: 100%;
+}
+
+.ProseMirror [data-resize-wrapper] {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ProseMirror [data-resize-wrapper] img {
+  margin: 0;
+}
+
+.ProseMirror [data-resize-handle] {
+  position: absolute;
+  /* Avoid covering the center of small images with overlapping corner targets. */
+  width: min(44px, 25%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  touch-action: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+}
+
+.ProseMirror [data-resize-handle]::after {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  border: 2px solid var(--color-border);
+  background: var(--color-accent);
+}
+
+.ProseMirror [data-resize-handle$="right"] {
+  left: auto;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+.ProseMirror [data-resize-handle^="bottom"] {
+  top: auto;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+}
+
+.ProseMirror [data-resize-handle="bottom-right"] {
+  transform: translate(50%, 50%);
+}
+
+/* A small image needs one external handle so it remains clickable itself. */
+.ProseMirror [data-resize-small] [data-resize-handle]:not([data-resize-handle="bottom-right"]) {
+  display: none;
+}
+
+.ProseMirror [data-resize-small] [data-resize-handle="bottom-right"] {
+  width: 44px;
+  left: max(0px, calc(100% - 44px));
+  right: auto;
+  transform: translateY(calc(100% + 2px));
+}
+
+.ProseMirror [data-resize-small] {
+  margin-bottom: 46px;
+}
+
+.ProseMirror :is([data-resize-handle="top-left"], [data-resize-handle="bottom-right"]) {
+  cursor: nwse-resize;
+}
+
+.ProseMirror :is([data-resize-handle="top-right"], [data-resize-handle="bottom-left"]) {
+  cursor: nesw-resize;
+}
+
+.ProseMirror
+  [data-resize-container]:is(.ProseMirror-selectednode, :focus-within)
+  [data-resize-handle],
+.ProseMirror [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ProseMirror [data-resize-container].ProseMirror-selectednode img {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.ProseMirror [data-resize-handle]:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .navigation-progress * {
     transition: none !important;

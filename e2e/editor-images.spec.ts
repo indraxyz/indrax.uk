@@ -44,6 +44,126 @@ async function openInsert(page: Page) {
   return dialog
 }
 
+test("resizes proportionally by drag and keyboard, saves dimensions and fits a mobile column", async ({
+  page,
+}) => {
+  await editorFixture(page)
+  await page.route(`${imageOrigin}/resize.svg`, (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="green"/></svg>',
+    })
+  )
+  const dialog = await openInsert(page)
+  await dialog.getByLabel("Image URL", { exact: true }).fill(`${imageOrigin}/resize.svg`)
+  await dialog.getByLabel("Image alt text", { exact: true }).fill("Resizable illustration")
+  await dialog.getByRole("button", { name: "Insert image", exact: true }).click()
+  const image = page.locator(".ProseMirror img")
+  await expect(image).toBeVisible()
+  await image.click()
+  const handle = page.locator('[data-resize-handle="bottom-right"]')
+  await expect(handle).toBeVisible()
+  const bounds = (await handle.boundingBox())!
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width / 2 - 100, bounds.y + bounds.height / 2 - 50, {
+    steps: 10,
+  })
+  await page.mouse.up()
+  await expect(image).toHaveCSS("width", "300px")
+  await expect(image).toHaveCSS("height", "150px")
+
+  await handle.focus()
+  await page.keyboard.press("Shift+ArrowRight")
+  await expect(image).toHaveCSS("width", "310px")
+  await expect(image).toHaveCSS("height", "155px")
+  expect((await new AxeBuilder({ page }).include(".ProseMirror").analyze()).violations).toEqual([])
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(image).toHaveCSS("width", "300px")
+  await page.getByRole("button", { name: "Redo", exact: true }).click()
+  await expect(image).toHaveCSS("width", "310px")
+  await page.getByLabel("Title", { exact: true }).fill("Resized image")
+  await page.route("**/api/admin/posts", (route) =>
+    route.fulfill({ status: 503, json: { error: "Save fixture" } })
+  )
+  const request = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === "/api/admin/posts" && request.method() === "POST"
+  )
+  await page.getByRole("button", { name: "Save", exact: true }).first().click()
+  const saved = (await request).postDataJSON()
+  expect(
+    saved.content.content.find((node: { type: string }) => node.type === "image").attrs
+  ).toMatchObject({
+    width: 310,
+    height: 155,
+    alt: "Resizable illustration",
+  })
+
+  await page.setViewportSize({ width: 320, height: 844 })
+  const mobile = (await image.boundingBox())!
+  expect(mobile.width).toBeLessThan(310)
+  expect(mobile.width / mobile.height).toBeCloseTo(2, 1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test("commits touch resizing, cancels safely and keeps short wide images inside mobile columns", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await editorFixture(page)
+  await page.route(`${imageOrigin}/panorama.svg`, (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="200"><rect width="1000" height="200" fill="green"/></svg>',
+    })
+  )
+  const dialog = await openInsert(page)
+  await dialog.getByLabel("Image URL", { exact: true }).fill(`${imageOrigin}/panorama.svg`)
+  await dialog.getByRole("button", { name: "Insert image", exact: true }).click()
+  const image = page.locator(".ProseMirror img")
+  await expect(image).toBeVisible()
+  await image.click()
+  const handle = page.locator('[data-resize-handle="bottom-right"]')
+  await expect(handle).toBeVisible()
+  await handle.scrollIntoViewIfNeeded()
+  const bounds = (await handle.boundingBox())!
+  expect(bounds.x).toBeGreaterThanOrEqual(0)
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(390)
+  const initial = (await image.boundingBox())!
+  const cdp = await page.context().newCDPSession(page)
+  const touch = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touch] })
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ ...touch, x: touch.x - 30 }],
+  })
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] })
+  await expect.poll(async () => (await image.boundingBox())!.width).toBeCloseTo(initial.width, 2)
+  await expect(page.locator("[data-resize-container]")).toHaveAttribute(
+    "data-resize-state",
+    "false"
+  )
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touch] })
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ ...touch, x: touch.x - 30 }],
+  })
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+  // Touch completion must update the saved node as well as the displayed image.
+  const resized = (await image.boundingBox())!
+  expect(resized.width).toBeLessThan(initial.width)
+  expect(resized.width / resized.height).toBeCloseTo(5, 0)
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect.poll(async () => (await image.boundingBox())!.width).toBeCloseTo(initial.width, 2)
+  await expect(page.locator("[data-resize-container]")).toHaveAttribute(
+    "data-resize-state",
+    "false"
+  )
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await cdp.detach()
+})
+
 test("keeps rapid image actions separate in Undo history", async ({ page }) => {
   // Identical transaction timestamps reproduce history grouping on fast CI runs.
   // Timers and animation frames still run normally.
