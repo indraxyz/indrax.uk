@@ -1,6 +1,6 @@
 import useEmblaCarousel from "embla-carousel-react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { useEffect, useId, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
@@ -16,8 +16,16 @@ export function CardCarousel({
   fullBleed?: boolean
 }) {
   const viewportId = useId()
+  const trackRef = useRef<HTMLDivElement>(null)
+  const align = useCallback(() => {
+    // Use the same resolved CSS gutter for every resting position, while the
+    // viewport itself stays full width for edge-to-edge dragging.
+    return fullBleed && trackRef.current
+      ? parseFloat(getComputedStyle(trackRef.current).paddingInlineStart)
+      : 0
+  }, [fullBleed])
   const [viewportRef, api] = useEmblaCarousel({
-    align: "start",
+    align,
     containScroll: "trimSnaps",
     loop: false,
     breakpoints: { "(prefers-reduced-motion: reduce)": { duration: 0 } },
@@ -63,11 +71,13 @@ export function CardCarousel({
         }}
       >
         <div
+          ref={trackRef}
           className={cn(
             "flex touch-pan-y touch-pinch-zoom gap-6",
             // Padding moves with the track: inset the first card in the initial
             // HTML, then let cards scroll all the way to both viewport edges.
-            fullBleed && "ps-[max(1rem,calc((100%_-_90rem)/2_+_1rem))] print:ps-0"
+            fullBleed &&
+              "[--carousel-gutter:max(1rem,calc((100cqw_-_90rem)/2_+_1rem))] ps-[var(--carousel-gutter)] [&>*:last-child]:me-[var(--carousel-gutter)] print:ps-0 print:[&>*:last-child]:me-0"
           )}
           data-print-columns
         >

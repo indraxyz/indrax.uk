@@ -65,8 +65,11 @@ Draggable rails use grab/grabbing cursors; enabled arrows and links use a pointe
 The first card in a full-bleed rail starts at the normal page gutter, including on
 the initial server render and hard refresh. Responsive leading padding belongs to
 the moving track rather than the viewport: it scrolls away when navigating, so
-cards can still reach both screen edges. Returning to the first snap restores the
-container-aligned first card. This also works before hydration and without JavaScript.
+cards can still reach both screen edges. Every resting snap uses the same resolved
+gutter, and a matching trailing margin keeps the last column aligned with the right
+container edge. Returning to the first snap restores the container-aligned first card.
+The initial inset also works before hydration and without JavaScript. Gutter sizes
+use the page's query-container width so nested card margins share the same value.
 
 Browser coverage in `e2e/card-carousels.spec.ts`, `e2e/home-writing.spec.ts` and
 `e2e/smoke.spec.ts` checks navigation boundaries, dragging, resize, card widths,
@@ -94,3 +97,8 @@ keyboard reachability, page overflow, print layout and the no-JavaScript fallbac
   without skips or retries. Tests cover server-rendered alignment without JavaScript,
   hard refresh at 390/1920 px, first-snap alignment, and full-width movement after
   navigating. ESLint, TypeScript and the production build passed.
+- Responsive snap alignment: all 22 focused carousel browser tests passed without
+  skips/retries, including repeated Next, End and Home at 390/578/768/1440/1920 px.
+  Resting columns match archive grid gutters, including the final column's right
+  edge. A screenshot at 578 px after two Next actions was visually checked.
+  ESLint, TypeScript and the production build passed.

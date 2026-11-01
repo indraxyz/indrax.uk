@@ -35,6 +35,52 @@ async function mockWriting(page: Page) {
 
 const rail = (page: Page) => page.getByRole("region", { name: "Writing", exact: true })
 
+for (const width of [390, 578, 768, 1440, 1920]) {
+  test(`aligns carousel columns with the container after navigating at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await mockWriting(page)
+    await page.goto("/writing")
+    const expectedLeft = (await page.locator("[data-post-grid] > *").first().boundingBox())!.x
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth)
+    await page.goto("/")
+    const region = rail(page)
+    const cards = region.locator("[data-print-columns] > *")
+    const next = page.getByRole("button", { name: "Next Writing cards" })
+    await expect(next).toBeEnabled()
+    for (const index of [1, 2]) {
+      await next.click()
+      await expect
+        .poll(async () => Math.abs((await cards.nth(index).boundingBox())!.x - expectedLeft))
+        .toBeLessThanOrEqual(1)
+      // The previous column can pass through the screen edge, without clipping
+      // the whole carousel at the content gutter.
+      expect((await region.boundingBox())!.x).toBeLessThanOrEqual(1)
+      expect((await cards.first().boundingBox())!.x).toBeLessThan(0)
+    }
+    if (width === 578) {
+      await region.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: "test-results/carousel-578-after-next.png" })
+    }
+    await region.focus()
+    await page.keyboard.press("End")
+    await expect(next).toBeDisabled()
+    await expect
+      .poll(async () => {
+        const last = (await cards.last().boundingBox())!
+        return Math.abs(last.x + last.width - (viewportWidth - expectedLeft))
+      })
+      .toBeLessThanOrEqual(1)
+    await region.focus()
+    await page.keyboard.press("Home")
+    await expect
+      .poll(async () => Math.abs((await cards.first().boundingBox())!.x - expectedLeft))
+      .toBeLessThanOrEqual(1)
+  })
+}
+
 for (const width of [1440, 1920]) {
   for (const count of [1, 2, 3]) {
     test(`aligns ${count} fitting writing cards with the page layout at ${width}px`, async ({
