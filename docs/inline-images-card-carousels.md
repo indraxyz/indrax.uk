@@ -24,13 +24,14 @@ Authors may enter an HTTPS image URL, preserving the existing authored-content p
 or upload JPEG, PNG, WebP or AVIF up to 5 MiB. Uploads use
 `POST /api/upload?purpose=content`, the existing author/Origin/signature/streaming checks,
 and generated `content/<UUIDv4>.<extension>` keys. No additional credentials, storage
-service, API route or database table is introduced. The storage availability flag already
+service or API route is introduced. The [pending-upload lifecycle](media-upload-lifecycle.md)
+adds tracking in migration `0007_media_upload_lifecycle`. The storage availability flag already
 used for covers also controls content upload availability; URL insertion remains available.
 
 Uploads happen on the explicit image insertion action. Failed uploads retain dialog
 input for retry. A successful upload followed by a failed post save remains in the
-editor for retry without another upload. An abandoned unsaved upload may remain in
-storage, as with the existing cover flow; there is no bucket-wide garbage collector.
+editor for retry without another upload. Abandoned uploads remain pending for a 24-hour
+grace period, then scheduled cleanup removes them after checking saved references.
 
 Removed or replaced saved inline images and images belonging to deleted posts enter the
 existing cleanup outbox in the same database transaction as the post mutation. Cleanup

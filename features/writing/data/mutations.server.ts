@@ -10,7 +10,11 @@ import { computeReadingTime } from "@/features/writing/utils/reading-time"
 import { createPreviewToken } from "@/features/writing/utils/preview-token.server"
 import { slugify, uniqueSlug } from "@/features/writing/utils/slug"
 import { requireAuthor } from "@/lib/auth-guard.server"
-import { isSeriesOrderClash } from "@/features/writing/data/db-errors.server"
+import {
+  isMediaUploadUnavailable,
+  isSeriesOrderClash,
+} from "@/features/writing/data/db-errors.server"
+import { attachmentQuery, collectManagedUploadKeys } from "./media-uploads.server"
 import { getDb, schema, type Database } from "@/lib/db/index.server"
 import { GENERATED_IMAGE_KEY_PATTERN } from "@/lib/uploads/policy"
 import { postIdSchema, postInputSchema } from "@/lib/validators/writing"
@@ -153,17 +157,17 @@ function queueDetachedMedia(
         url: sql<string>`detached.url`.as("url"),
         attemptedAt: sql<Date>`now()`.as("attempted_at"),
       }).from(sql`(
-          select ${schema.posts.coverUrl} as url from ${schema.posts}
+          select regexp_replace(${schema.posts.coverUrl}, '[?#].*$', '') as url from ${schema.posts}
           where ${schema.posts.id} = ${id} and ${schema.posts.coverUrl} is not null
           union
-          select image #>> '{}' as url from ${schema.posts}
+          select regexp_replace(image #>> '{}', '[?#].*$', '') as url from ${schema.posts}
           cross join lateral jsonb_path_query(${schema.posts.contentJson}, ${imagePath}::jsonpath) as images(image)
           where ${schema.posts.id} = ${id} and jsonb_typeof(image) = 'string'
         ) as detached`).where(sql`detached.url ~ ${`/${GENERATED_IMAGE_KEY_PATTERN}$`}
-          and detached.url is distinct from ${nextCover}::text
+          and detached.url is distinct from regexp_replace(${nextCover}::text, '[?#].*$', '')
           and not exists (
             select 1 from jsonb_path_query(${JSON.stringify(nextContent)}::jsonb, ${imagePath}::jsonpath) as retained(image)
-            where image #>> '{}' = detached.url
+            where regexp_replace(image #>> '{}', '[?#].*$', '') = detached.url
           )`)
     )
     .onConflictDoNothing()
@@ -278,6 +282,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
 
   const postId = current?.id ?? crypto.randomUUID()
   const wanted = normalizedTags(input.tags)
+  const uploadKeys = collectManagedUploadKeys(row.coverUrl, document)
 
   const writePost = current
     ? db
@@ -326,6 +331,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     const results = await db.batch([
       ...lockAndQueue,
       writePost,
+      ...(uploadKeys.length ? [attachmentQuery(db, uploadKeys, postId)] : []),
       ...(wanted.size > 0
         ? [
             db
@@ -357,6 +363,8 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
     if (!written[0]) return failure("That post no longer exists.")
     saved = written[0]
   } catch (error) {
+    if (isMediaUploadUnavailable(error))
+      return failure("That uploaded image has expired. Insert it again before saving.")
     // Individual Drizzle writes wrap the driver error; Neon batches expose it
     // directly. Both must produce the same actionable series-order validation.
     if (!isSeriesOrderClash(error)) throw error

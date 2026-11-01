@@ -2,6 +2,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest"
 vi.mock("./auth-guard.server", () => ({
   requireAuthor: vi.fn().mockResolvedValue({ id: "author" }),
 }))
+vi.mock("@/features/writing/data/media-uploads.server", () => ({
+  registerPendingUpload: vi.fn().mockResolvedValue(true),
+}))
 import { getCoverStorageConfig } from "./cover-storage.server"
 import { serveLocalMedia } from "./local-media.server"
 import { runWithRequest } from "./runtime.server"

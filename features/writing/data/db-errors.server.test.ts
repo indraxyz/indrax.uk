@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest"
 
-import { isSeriesOrderClash, SERIES_ORDER_CONSTRAINT } from "./db-errors.server"
+import {
+  isMediaUploadUnavailable,
+  isSeriesOrderClash,
+  SERIES_ORDER_CONSTRAINT,
+} from "./db-errors.server"
+
+it("maps retired-upload constraint failures without masking unrelated database failures", () => {
+  const error = { code: "23514", constraint: "media_uploads_attach_available" }
+  expect(isMediaUploadUnavailable(error)).toBe(true)
+  expect(isMediaUploadUnavailable({ cause: error })).toBe(true)
+  expect(
+    isMediaUploadUnavailable({ code: "23514", message: "media_uploads_attach_available" })
+  ).toBe(true)
+  expect(isMediaUploadUnavailable({ code: "23514", constraint: "another_check" })).toBe(false)
+  expect(isMediaUploadUnavailable({ code: "23505", constraint: error.constraint })).toBe(false)
+})
 
 /**
  * Pinned to the shape a real driver error actually has.

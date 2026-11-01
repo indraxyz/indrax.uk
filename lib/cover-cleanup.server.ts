@@ -1,6 +1,7 @@
 import { eq, or, sql } from "drizzle-orm"
 import { getCoverStorageConfig, managedCoverKey } from "./cover-storage.server"
 import { schema, type Database } from "./db/index.server"
+import { claimTrackedUpload, markUploadDeleted } from "@/features/writing/data/media-uploads.server"
 
 /**
  * Await cleanup after committing the post. Keep failed work for the next author
@@ -27,20 +28,29 @@ export async function drainCoverCleanup(db: Database): Promise<void> {
       // investigation rather than deleting an object from the wrong bucket.
       if (!key) continue
       try {
-        const [reference] = await db
-          .select({ id: schema.posts.id })
-          .from(schema.posts)
-          .where(
-            or(
-              sql`${schema.posts.coverUrl} like ${`%/${key}`}`,
-              sql`${schema.posts.contentJson}::text like ${`%/${key}%`}`
+        const claim = await claimTrackedUpload(db, key)
+        if (claim === "referenced") continue
+        if (claim === "deleted") {
+          await db.delete(schema.coverCleanup).where(eq(schema.coverCleanup.url, url))
+          continue
+        }
+        if (claim === "untracked") {
+          const [reference] = await db
+            .select({ id: schema.posts.id })
+            .from(schema.posts)
+            .where(
+              or(
+                sql`${schema.posts.coverUrl} like ${`%/${key}%`}`,
+                sql`${schema.posts.contentJson}::text like ${`%/${key}%`}`
+              )
             )
-          )
-          .limit(1)
-        // Uploaded images can be reused as a cover or another inline image.
-        // Match the key as well as the URL so local port changes are harmless.
-        if (reference) continue
+            .limit(1)
+          // Uploaded images can be reused as a cover or another inline image.
+          // Match the key as well as the URL so local port changes are harmless.
+          if (reference) continue
+        }
         await storage.bucket.delete(key)
+        if (claim === "claimed") await markUploadDeleted(db, key)
         await db.delete(schema.coverCleanup).where(eq(schema.coverCleanup.url, url))
       } catch {
         console.error("Cover cleanup pending; it will retry on the next post mutation.")

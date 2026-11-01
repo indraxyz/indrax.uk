@@ -56,6 +56,11 @@ and reloads the document, checks the signed preview, then verifies removal and p
 deletion clean up only detached generated objects. `editor-images.spec.ts` additionally
 uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
 modal focus/accessibility and unavailable storage without database prerequisites.
+The upload suite also inspects pending/attached/deleted tracking states and exercises
+removal before first save, Undo, failed saves and successful retries without another upload.
+SQL integration tests cover 24-hour expiry, shared references, failure retries, retired
+upload rejection and deterministic attachment/cleanup races. Run SQL integration before
+the browser write suites, so temporary SQL fixtures cannot interfere with authoring counts.
 `card-carousels.spec.ts` checks the shared Embla rails on mobile and desktop, including
 boundary arrows, keyboard navigation, dragging, print layout and no-JavaScript scrolling.
 

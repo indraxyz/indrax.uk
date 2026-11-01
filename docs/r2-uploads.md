@@ -78,10 +78,15 @@ They are independent of the cover and may appear multiple times in a post, with
 separate alt text per block. Removing or replacing a saved inline image queues its
 old managed URL only when the document is saved. Post deletion queues the cover
 and saved inline image URLs together. The existing outbox table and batch transaction
-are reused, so this feature requires no new migration. Third-party HTTPS image URLs
+are reused for detached-image cleanup. Pending uploads additionally require migration
+`0007_media_upload_lifecycle`. Third-party HTTPS image URLs
 remain supported as authored content, but never authorize storage deletion.
-Abandoning an unsaved upload may leave an object in R2; no bucket-wide garbage
-collector is provided. Failed post saves retain successful uploads for retry.
+Each new cover/content upload is tracked before the R2 write and remains pending until
+a post save attaches it in the same transaction. Unreferenced pending uploads older than
+24 hours are collected by hourly scheduled cleanup; R2 failures retain durable retry work.
+Failed post saves preserve pending uploads for retry within that grace period. A database
+transition guard prevents reattaching an asset cleanup has already claimed or deleted.
+See [pending media lifecycle](media-upload-lifecycle.md) for concurrency and retry behavior.
 
 Migration `0006_cover_cleanup` adds a small PostgreSQL outbox. The old cover URL
 is captured under a post row lock and inserted into `cover_cleanup` in the same
@@ -97,8 +102,9 @@ deploying code that saves or deletes posts.
 After commit, the Worker awaits `MEDIA_BUCKET.delete` and removes the queue row
 only after that succeeds. Failures are logged and retain the queue row; the
 committed post mutation still succeeds. Later successful post saves, deletions,
-or status changes retry pending work. There is no scheduled retry worker: if no
-one edits a post afterward, cleanup remains pending until the next mutation.
+or status changes retry pending work. Hourly scheduled cleanup also retries the outbox,
+so cleanup no longer requires another author edit. Production runs at minute 17 UTC and
+dev at minute 47; each invocation handles bounded batches of pending and detached work.
 
 Cleanup accepts only generated `covers/<UUIDv4>.(jpg|png|webp|avif)` or
 `content/<UUIDv4>.(jpg|png|webp|avif)` keys from the
@@ -108,12 +114,12 @@ Other posts' cover URLs and inline image content are checked for the object key
 before deletion, including references made through an older local port. Shared
 objects stay queued until their last post reference is removed.
 
-PostgreSQL and R2 cannot commit one transaction together. This application is a
-single-author editor; its reference check protects existing shared images, but
-manually reusing a URL concurrently with cleanup can race that check. A future
-multi-author media library should introduce asset retirement/ownership rather
-than rely on a query followed by object deletion. Deleting from R2 also does not
-purge browser or CDN caches of an already public, immutable image.
+PostgreSQL and R2 cannot commit one transaction together. Tracked uploads serialize
+attachment and retirement on their tracking row; the transition guard rejects stale
+saves after cleanup claims an asset. Older untracked images retain the existing
+reference-check cleanup behavior, which can race a concurrent manual URL reuse.
+Deleting from R2 does not purge browser or CDN caches of an already public,
+immutable image.
 
 R2 custom-domain reads go straight through Cloudflare rather than this Worker.
 One free Response Header Transform Rule, saved in

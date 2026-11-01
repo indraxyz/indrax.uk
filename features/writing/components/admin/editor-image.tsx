@@ -169,7 +169,8 @@ export function EditorImage({ editor, uploadsConfigured }: EditorImageProps) {
         <div className="space-y-2">
           <DialogTitle>{editing ? "Edit image" : "Insert image"}</DialogTitle>
           <DialogDescription>
-            Place an image in the article body. Each image has its own alt text.
+            Place an image in the article body. Each image has its own alt text. Save the post
+            within 24 hours to keep newly uploaded images.
           </DialogDescription>
         </div>
         <form
