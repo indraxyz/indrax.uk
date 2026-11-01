@@ -44,6 +44,51 @@ async function openInsert(page: Page) {
   return dialog
 }
 
+test("keeps rapid image actions separate in Undo history", async ({ page }) => {
+  // Identical transaction timestamps reproduce history grouping on fast CI runs.
+  // Timers and animation frames still run normally.
+  await page.clock.setFixedTime(new Date())
+  await editorFixture(page)
+  const body = page.locator(".ProseMirror")
+  await body.fill("Paragraph before the image")
+  await page.keyboard.press("Enter")
+  const insert = await openInsert(page)
+  await insert.getByLabel("Image URL", { exact: true }).fill(`${imageOrigin}/history.png`)
+  await insert.getByLabel("Image alt text", { exact: true }).fill("Original illustration")
+  await insert.getByRole("button", { name: "Insert image", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(1)
+  await body.locator("img").click()
+  await page.getByRole("button", { name: "Edit image", exact: true }).click()
+  const edit = page.getByRole("dialog", { name: "Edit image", exact: true })
+  await edit.getByRole("button", { name: "Remove image", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(0)
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveAttribute("alt", "Original illustration")
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(0)
+  await expect(body).toContainText("Paragraph before the image")
+  await page.getByRole("button", { name: "Redo", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(1)
+  await page.getByRole("button", { name: "Redo", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(0)
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveCount(1)
+  await body.locator("img").click()
+  await page.getByRole("button", { name: "Edit image", exact: true }).click()
+  await edit.getByLabel("Image alt text", { exact: true }).fill("Updated illustration")
+  await edit.getByRole("button", { name: "Update image", exact: true }).click()
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveAttribute("alt", "Original illustration")
+  await page.getByRole("button", { name: "Redo", exact: true }).click()
+  await expect(body.locator("img")).toHaveAttribute("alt", "Updated illustration")
+  await body.locator("p").last().click()
+  await page.keyboard.type("Text after the image")
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveAttribute("alt", "Updated illustration")
+  await expect(body).not.toContainText("Text after the image")
+  await expect(body).toContainText("Paragraph before the image")
+})
+
 test("inserts multiple images between paragraphs, edits alt text and removes only the selected image", async ({
   page,
 }) => {

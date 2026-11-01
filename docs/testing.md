@@ -58,6 +58,9 @@ uses intercepted private APIs to exercise URL insertion, image editing, upload r
 modal focus/accessibility and unavailable storage without database prerequisites.
 The upload suite also inspects pending/attached/deleted tracking states and exercises
 removal before first save, Undo, failed saves and successful retries without another upload.
+Image-history regression tests fix browser transaction timestamps while leaving timers
+and animations running. This verifies that rapid insert/edit/remove actions remain
+separately undoable rather than relying on ProseMirror's default history grouping delay.
 SQL integration tests cover 24-hour expiry, shared references, failure retries, retired
 upload rejection and deterministic attachment/cleanup races. Run SQL integration before
 the browser write suites, so temporary SQL fixtures cannot interfere with authoring counts.

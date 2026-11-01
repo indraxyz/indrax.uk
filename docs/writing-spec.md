@@ -259,7 +259,9 @@ server-only dependencies must never enter either browser build.
 The editor's Insert image action adds independent image blocks between paragraphs or
 other content blocks. Each image has its own alt text, separate from the post cover.
 Select an image and use Edit image to change its URL or alt text, replace its file, or
-remove it. Removal supports the editor's undo history. Empty alt text marks decoration.
+remove it. Insert, update and removal are separate Undo/Redo actions, even when they
+occur rapidly; typing beside an image does not merge into its history event. Empty
+alt text marks decoration.
 
 The dialog accepts HTTPS URLs (including third-party hosts, matching the renderer's
 existing authored-content policy) or verified uploads to the configured media storage.

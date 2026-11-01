@@ -467,6 +467,7 @@ test("keeps an unsaved removed image pending and attaches it only after a succes
 }) => {
   test.setTimeout(90_000)
   const page = await author.newPage()
+  await page.clock.setFixedTime(new Date())
   await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
   await page
     .getByLabel("Title", { exact: true })
