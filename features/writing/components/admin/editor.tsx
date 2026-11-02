@@ -39,6 +39,8 @@ import { useEffect, useRef, type ReactNode } from "react"
 import { controlClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
 import { EditorImage } from "./editor-image"
+import { EditorVideo } from "./editor-video"
+import { EditorAlignment } from "./editor-alignment"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
@@ -198,6 +200,9 @@ function Toolbar({
 
         <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
+        <EditorAlignment editor={editor} />
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
+
         <Tool
           label="Bullet list"
           icon={<List className={icon} />}
@@ -294,6 +299,7 @@ function Toolbar({
           onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         />
         <EditorImage editor={editor} uploadsConfigured={imageUploadsConfigured} />
+        <EditorVideo editor={editor} />
       </div>
       {editor.isActive("table") && (
         <div className="border-t-2 border-border">

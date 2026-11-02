@@ -57,6 +57,10 @@ deletion clean up only detached generated objects. `editor-images.spec.ts` addit
 uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
 modal focus/accessibility and unavailable storage without database prerequisites. Resize
 coverage includes mouse dragging, keyboard steps, Undo/Redo and mobile proportions.
+`editor-media.spec.ts` checks YouTube insertion, editing/removal, alignment, saved
+attributes, responsive bounds, accessible dialogs and controlled iframe sources.
+Media renderer tests validate provider URLs, saved dimensions/alignment, malicious
+document attributes and the exact Worker frame policy without third-party network calls.
 The upload suite also inspects pending/attached/deleted tracking states and exercises
 removal before first save, Undo, failed saves and successful retries without another upload.
 Image-history regression tests fix browser transaction timestamps while leaving timers

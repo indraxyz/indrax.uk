@@ -31,8 +31,8 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
   runtime permissions, migration connections, and recovery preparation.
 - Better Auth with GitHub OAuth, immutable numeric-ID allowlist, database sessions,
   idle/absolute expiry and private API guards.
-- Tiptap authoring; published articles rendered through the existing sanitized
-  content pipeline with lazy Shiki highlighting.
+- Tiptap authoring with resizable images, YouTube embeds and block alignment;
+  published articles use the sanitized content pipeline with lazy Shiki highlighting.
 - Existing Cloudflare KV/D1 resources cache public data and article revisions;
   private admin and preview responses always use `Cache-Control: no-store`.
 - Optional R2 cover and inline article image uploads, verified server-side, and consent-gated

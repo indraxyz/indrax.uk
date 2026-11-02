@@ -402,6 +402,26 @@ test("uploads multiple inline images, persists their alt text and sizes and rend
   await page.keyboard.press("Shift+ArrowRight")
   await expect(body.locator("img").first()).toHaveCSS("width", "32px")
   await expect(body.locator("img").first()).toHaveCSS("height", "32px")
+  const videoSource = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+  await page.route("https://www.youtube-nocookie.com/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Video fixture</title>" })
+  )
+  await body.locator("p").last().click()
+  await page.getByRole("button", { name: "Insert video", exact: true }).click()
+  const videoDialog = page.getByRole("dialog", { name: "Insert video", exact: true })
+  await videoDialog.getByLabel("Video URL", { exact: true }).fill("https://youtu.be/dQw4w9WgXcQ")
+  await videoDialog.getByLabel("Video title", { exact: true }).fill("Saved video illustration")
+  await videoDialog.getByRole("button", { name: "Insert video", exact: true }).click()
+  const video = body.locator('[data-resize-container][data-node="youtube"]')
+  await video.locator("[data-youtube-video]").click()
+  await video.locator('[data-resize-handle="bottom-right"]').focus()
+  await page.keyboard.press("Shift+ArrowLeft")
+  await expect(video.locator("iframe")).toHaveCSS("width", "630px")
+  await page.getByRole("button", { name: "Edit video", exact: true }).click()
+  const editVideo = page.getByRole("dialog", { name: "Edit video", exact: true })
+  await editVideo.getByRole("checkbox", { name: "Full content width", exact: true }).check()
+  await editVideo.getByRole("button", { name: "Update video", exact: true }).click()
+  await page.getByRole("button", { name: "Align right", exact: true }).click()
   const saved = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/admin/posts" &&
@@ -419,6 +439,10 @@ test("uploads multiple inline images, persists their alt text and sizes and rend
   await expect(body.locator("img").first()).toHaveCSS("width", "32px")
   await expect(body.locator("img").first()).toHaveCSS("height", "32px")
   await expect(body.locator("img").nth(1)).toHaveAttribute("alt", "Second inline illustration")
+  await expect(video).toHaveAttribute("data-align", "right")
+  await expect(video.locator("[data-youtube-video]")).toHaveAttribute("data-video-width", "630")
+  await expect(video.locator("[data-youtube-video]")).toHaveAttribute("data-full-width", "true")
+  await expect(video.locator("iframe")).toHaveAttribute("src", videoSource)
   await expect(page.getByLabel("Cover image URL", { exact: true })).toHaveValue("")
   const preview = await author.request.post(
     `${E2E_BASE_URL}/api/admin/posts/${outcome.postId}/preview`,
@@ -429,8 +453,22 @@ test("uploads multiple inline images, persists their alt text and sizes and rend
   )
   const { url } = await preview.json()
   const reader = await browser.newPage()
+  await reader.route("https://www.youtube-nocookie.com/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Video fixture</title>" })
+  )
   await reader.setViewportSize({ width: 390, height: 844 })
   await reader.goto(url)
+  const publishedVideo = reader.locator("[data-youtube-video]")
+  await expect(publishedVideo).toHaveAttribute("data-full-width", "true")
+  await expect(publishedVideo).toHaveAttribute("data-video-width", "630")
+  await expect(publishedVideo).toHaveAttribute("data-align", "right")
+  await expect(publishedVideo.locator("iframe")).toHaveAttribute(
+    "title",
+    "Saved video illustration"
+  )
+  const videoBounds = (await publishedVideo.boundingBox())!
+  expect(videoBounds.width).toBeLessThanOrEqual(390)
+  expect(videoBounds.width / videoBounds.height).toBeCloseTo(16 / 9, 1)
   for (const alt of ["First inline illustration", "Second inline illustration"]) {
     const image = reader.getByRole("img", { name: alt, exact: true })
     await expect(image).toBeVisible()

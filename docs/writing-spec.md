@@ -288,6 +288,24 @@ transactional, and a retired-upload guard prevents stale tabs from saving delete
 See [the feature plan and specification](inline-images-card-carousels.md) and
 [upload lifecycle](r2-uploads.md) for details.
 
+## Video embeds and block alignment
+
+Insert video accepts YouTube watch, share, Shorts and embed links. The editor stores
+a privacy-enhanced embed URL and player title, with optional supported start time.
+Select a video to edit or remove it. Video blocks support proportional mouse/touch
+resizing and keyboard controls, plus Full content width with automatic height.
+These dimensions and placement survive Save and reload. Players are selectable
+previews in the editor; readers can play them in the published article.
+
+Align left, Align center and Align right position text blocks, images and videos.
+Justify applies to text only and is disabled for a selected media block. Lists,
+quotes and table cells align their paragraphs; code blocks retain their formatting.
+Alignment uses validated document attributes and named CSS rules, and never floats
+text around media. The renderer validates saved video URLs and reconstructs trusted
+iframe permissions and dimensions. CSP admits only the exact YouTube privacy host;
+arbitrary iframe HTML and providers remain unsupported. See the
+[feature specification](video-embeds-alignment.md).
+
 ## Article rendering, discovery and design
 
 The server renders the shared Tiptap extensions to HTML, applies an explicit

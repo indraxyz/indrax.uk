@@ -176,7 +176,7 @@ test.describe("the writing public surface", () => {
     expect(csp).toContain("base-uri 'none'")
     expect(csp).toContain("object-src 'none'")
     expect(csp).toContain("form-action 'self'")
-    expect(csp).toContain("frame-src 'none'")
+    expect(csp).toContain("frame-src https://www.youtube-nocookie.com")
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")
 
     // Scripts need this origin, the theme hash or the response's nonce; an

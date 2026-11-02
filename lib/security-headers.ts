@@ -64,7 +64,8 @@ export function contentSecurityPolicy({
     // that local payload without admitting any additional network origins.
     `connect-src 'self' data:${analyticsSources.length ? ` ${analyticsSources.join(" ")}` : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "frame-src 'none'",
+    // Authored video nodes render only this exact privacy-enhanced embed origin.
+    "frame-src https://www.youtube-nocookie.com",
     "media-src 'self'",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
