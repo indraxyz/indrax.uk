@@ -316,7 +316,10 @@ loads only when code blocks require it and uses the configured language bundle.
 Copy-code controls enhance the already readable SSR article.
 
 Published articles expose title, description, canonical, Open Graph/Twitter
-metadata, `Article` and `BreadcrumbList` JSON-LD, dates and reading time. RSS and
+metadata, `Article` and `BreadcrumbList` JSON-LD, dates and reading time. Human-readable
+date labels use consistent UTC dates by default across server and
+browser rendering; calendar-only resume dates keep their authored day. The shared
+formatter also supports an explicit timezone for timestamp callers. RSS and
 sitemap contain published content only. Public detail reads return 404 for drafts,
 future publication and missing content. Signed draft previews are uncached and
 excluded from indexing. The view beacon is best-effort decoration, not a reliable
