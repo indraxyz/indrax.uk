@@ -215,6 +215,14 @@ resume and writing pages for hydration warnings and consistent document nonces:
 E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
 ```
 
+The server uses a temporary Wrangler config and `.dev.vars` that explicitly forwards
+only an exported, loopback `DATABASE_URL` into the development Worker. Shell variables
+alone do not otherwise become Worker bindings. A fresh private D1/KV state directory
+is initialized before Vite starts and removed afterward; developer secrets, caches and
+admin build output are unchanged. The article timezone regression needs the migrated,
+seeded database and checks its HTTP 200 response before waiting for hydration. Without
+`DATABASE_URL`, only that article case skips; the other hydration checks still run.
+
 It also reloads Writing after its filter trigger becomes enabled and verifies that
 the sheet still opens, closes, and restores focus without hydration warnings.
 CI runs this case in Firefox too: Firefox can restore dynamic button disabled states

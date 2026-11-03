@@ -2,21 +2,21 @@ import { expect, test } from "@playwright/test"
 import { whenHydrated } from "./support/hydration"
 import { SEEDED_POST_SLUG } from "./support/constants"
 
-test("article dates hydrate consistently in a different browser timezone", async ({ browser }) => {
-  test.skip(!process.env.DATABASE_URL, "needs the seeded local writing article")
-  const context = await browser.newContext({
-    baseURL: test.info().project.use.baseURL,
-    timezoneId: "Pacific/Honolulu",
-  })
-  try {
-    const page = await context.newPage()
+test.describe("article date hydration", () => {
+  test.use({ timezoneId: "Pacific/Honolulu" })
+
+  test("keeps dates consistent in a different browser timezone", async ({ page }) => {
+    test.skip(!process.env.DATABASE_URL, "needs the seeded local writing article")
     const errors: string[] = []
     page.on("pageerror", (error) => errors.push(error.message))
     page.on("console", (message) => {
       if (message.type() === "error" && /hydrat|server rendered HTML/i.test(message.text()))
         errors.push(message.text())
     })
-    await page.goto(`/writing/${SEEDED_POST_SLUG}`)
+    const response = await page.goto(`/writing/${SEEDED_POST_SLUG}`)
+    expect(response?.status(), "seeded article must be available to the development Worker").toBe(
+      200
+    )
     await whenHydrated(page)
     const date = page.locator("article time").first()
     const timestamp = await date.getAttribute("datetime")
@@ -30,9 +30,7 @@ test("article dates hydrate consistently in a different browser timezone", async
       })
     )
     expect(errors).toEqual([])
-  } finally {
-    await context.close()
-  }
+  })
 })
 
 test("public documents hydrate without mismatched attributes", async ({ page }) => {
