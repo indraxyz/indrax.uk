@@ -1,7 +1,4 @@
 import type { Editor } from "@tiptap/react"
-import type { ChainedCommands } from "@tiptap/core"
-import { closeHistory } from "@tiptap/pm/history"
-import { NodeSelection, Selection } from "@tiptap/pm/state"
 import { ImagePlus } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 
@@ -17,26 +14,13 @@ import {
 import { controlClassNames, fieldClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "./image-upload"
 import { contentImageUrl } from "@/features/writing/editor/image-url"
+import { runMediaAction, moveAfterInsertedMedia } from "@/features/writing/editor/media-commands"
 import { api, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 
 interface EditorImageProps {
   editor: Editor
   uploadsConfigured: boolean
-}
-
-/** Explicit image actions must not merge with adjacent typing or another image action. */
-function runImageAction(editor: Editor, action: (chain: ChainedCommands) => ChainedCommands) {
-  const chain = editor
-    .chain()
-    .focus()
-    .command(({ tr }) => {
-      closeHistory(tr)
-      return true
-    })
-  const applied = action(chain).run()
-  if (applied) editor.view.dispatch(closeHistory(editor.state.tr))
-  return applied
 }
 
 /** A modal preserves the editor selection while the author describes or uploads an image. */
@@ -112,23 +96,10 @@ export function EditorImage({ editor, uploadsConfigured }: EditorImageProps) {
         setFile(null)
       }
       if (!imageSrc || !restoreSelection()) return
-      const applied = runImageAction(editor, (chain) =>
+      const applied = runMediaAction(editor, (chain) =>
         editing
           ? chain.updateAttributes("image", { src: imageSrc, alt })
-          : chain.setImage({ src: imageSrc, alt }).command(({ tr }) => {
-              // Tiptap may leave the inserted atom selected. Typing there replaces
-              // the image, so move into the following paragraph instead.
-              if (
-                tr.selection instanceof NodeSelection &&
-                tr.selection.node.type.name === "image"
-              ) {
-                const after = tr.selection.to
-                if (!tr.doc.nodeAt(after)?.isTextblock)
-                  tr.insert(after, editor.schema.nodes.paragraph.create())
-                tr.setSelection(Selection.near(tr.doc.resolve(after), 1))
-              }
-              return true
-            })
+          : chain.setImage({ src: imageSrc, alt }).command(moveAfterInsertedMedia)
       )
       if (!applied) {
         setError("An image cannot be placed here. Choose a paragraph and try again.")
@@ -268,7 +239,7 @@ export function EditorImage({ editor, uploadsConfigured }: EditorImageProps) {
                 variant="destructive"
                 disabled={pending}
                 onClick={() => {
-                  if (restoreSelection()) runImageAction(editor, (chain) => chain.deleteSelection())
+                  if (restoreSelection()) runMediaAction(editor, (chain) => chain.deleteSelection())
                   submitted.current = true
                   setOpen(false)
                 }}

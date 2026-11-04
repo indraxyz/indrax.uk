@@ -57,6 +57,10 @@ deletion clean up only detached generated objects. `editor-images.spec.ts` addit
 uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
 modal focus/accessibility and unavailable storage without database prerequisites. Resize
 coverage includes mouse dragging, keyboard steps, Undo/Redo and mobile proportions.
+`editor-media.spec.ts` checks YouTube insertion, editing/removal, alignment, saved
+attributes, responsive bounds, accessible dialogs and controlled iframe sources.
+Media renderer tests validate provider URLs, saved dimensions/alignment, malicious
+document attributes and the exact Worker frame policy without third-party network calls.
 The upload suite also inspects pending/attached/deleted tracking states and exercises
 removal before first save, Undo, failed saves and successful retries without another upload.
 Image-history regression tests fix browser transaction timestamps while leaving timers
@@ -210,6 +214,14 @@ resume and writing pages for hydration warnings and consistent document nonces:
 ```bash
 E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
 ```
+
+The server uses a temporary Wrangler config and `.dev.vars` that explicitly forwards
+only an exported, loopback `DATABASE_URL` into the development Worker. Shell variables
+alone do not otherwise become Worker bindings. A fresh private D1/KV state directory
+is initialized before Vite starts and removed afterward; developer secrets, caches and
+admin build output are unchanged. The article timezone regression needs the migrated,
+seeded database and checks its HTTP 200 response before waiting for hydration. Without
+`DATABASE_URL`, only that article case skips; the other hydration checks still run.
 
 It also reloads Writing after its filter trigger becomes enabled and verifies that
 the sheet still opens, closes, and restores focus without hydration warnings.

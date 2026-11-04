@@ -29,6 +29,8 @@ it("production scripts need this origin, the theme hash or the response nonce", 
   expect(directive(policy, "connect-src")).toEqual(["'self'", "data:"])
   expect(directive(policy, "frame-ancestors")).toEqual(["'none'"])
   expect(directive(policy, "object-src")).toEqual(["'none'"])
+  expect(directive(policy, "frame-src")).toEqual(["https://www.youtube-nocookie.com"])
+  expect(scripts).not.toContain("https://www.youtube-nocookie.com")
 })
 
 it("omits the nonce source when no document nonce exists", () => {

@@ -10,6 +10,8 @@ import type { Element, Root as HastRoot } from "hast"
 import { SITE_URL } from "@/config/site"
 
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
+import { canonicalYouTubeEmbed, videoWidth } from "@/features/writing/editor/video-url"
+import { CONTENT_ALIGNMENTS, MEDIA_ALIGNMENTS } from "@/features/writing/editor/alignment"
 import type { PostDocument, RenderedArticle, TocEntry } from "@/features/writing/types"
 import { isLocalMediaUrl } from "@/lib/uploads/local-media"
 import { mediaUrl } from "@/lib/utils/media"
@@ -19,6 +21,68 @@ export { deriveExcerpt, deriveExcerptText, plainText } from "./plain-text"
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
 
 const headingLevel = (tagName: string) => HEADING_LEVELS.find((level) => tagName === `h${level}`)
+
+/** Rebuild approved embeds after sanitizing; no authored iframe permissions survive. */
+function rehypeYouTubeVideos() {
+  return (tree: HastRoot) => {
+    const walk = (node: HastRoot | Element) => {
+      for (let index = node.children.length - 1; index >= 0; index -= 1) {
+        const child = node.children[index]
+        if (child.type !== "element") continue
+        if (child.tagName === "iframe") {
+          node.children.splice(index, 1)
+          continue
+        }
+        if (child.tagName === "div" && child.properties.dataYoutubeVideo !== undefined) {
+          const frame = child.children.find(
+            (entry): entry is Element => entry.type === "element" && entry.tagName === "iframe"
+          )
+          const src =
+            typeof frame?.properties.src === "string"
+              ? canonicalYouTubeEmbed(frame.properties.src)
+              : null
+          if (!src) {
+            node.children.splice(index, 1)
+            continue
+          }
+          const title =
+            typeof frame?.properties.title === "string" && frame.properties.title.trim()
+              ? frame.properties.title.trim().slice(0, 200)
+              : "YouTube video player"
+          const align = child.properties.dataAlign
+          const width = videoWidth(child.properties.dataVideoWidth)
+          const fullWidth = child.properties.dataFullWidth === "true"
+          child.properties = {
+            dataYoutubeVideo: "",
+            dataVideoWidth: width,
+            ...(fullWidth ? { dataFullWidth: "true" } : {}),
+            // This declaration comes only from bounded metadata after sanitizing.
+            style: `width: ${fullWidth ? "100%" : `${width}px`}`,
+            ...(["left", "center", "right"].includes(String(align)) ? { dataAlign: align } : {}),
+          }
+          child.children = [
+            {
+              type: "element",
+              tagName: "iframe",
+              children: [],
+              properties: {
+                src,
+                title,
+                loading: "lazy",
+                referrerPolicy: "strict-origin-when-cross-origin",
+                allow: "encrypted-media; picture-in-picture; fullscreen",
+                allowFullScreen: true,
+              },
+            },
+          ]
+          continue
+        }
+        walk(child)
+      }
+    }
+    walk(tree)
+  }
+}
 
 /** Keep isolated local uploads renderable without allowing arbitrary HTTP sources. */
 function rehypeLocalImages() {
@@ -293,8 +357,8 @@ function rehypeScrollRegions() {
 /**
  * What is allowed to survive into the page.
  *
- * hast-util-sanitize's default schema with exactly one change, and the smallness
- * of that change is the point.
+ * Build on hast-util-sanitize's default schema with explicit formatting and media
+ * additions. Video transport attributes are validated and rebuilt after sanitizing.
  *
  * The default was inspected rather than assumed: it drops `<script>` and every
  * event handler, restricts `href` to `http`, `https`, `mailto`, `irc`, `ircs` and
@@ -315,9 +379,28 @@ const schema: Schema = {
   ...defaultSchema,
   // StarterKit's underline mark emits this inert element. Keep it so the
   // published article preserves the formatting offered by the editor.
-  tagNames: [...(defaultSchema.tagNames ?? []), "u"],
+  tagNames: [...(defaultSchema.tagNames ?? []), "u", "iframe"],
   attributes: {
     ...defaultSchema.attributes,
+    // These are transport attributes only. The following plugin validates the
+    // exact privacy embed URL and reconstructs every iframe permission itself.
+    iframe: ["src", "title"],
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      ["dataYoutubeVideo", ""],
+      "dataVideoWidth",
+      ["dataFullWidth", "true"],
+      ["dataAlign", "left", "center", "right"],
+    ],
+    // Alignment is an enum, never an authored style attribute. Lists and quotes
+    // use their nested paragraphs; media has placement rather than justification.
+    ...Object.fromEntries(
+      ["p", "h2", "h3", "h4", "td", "th"].map((tag) => [
+        tag,
+        [...(defaultSchema.attributes?.[tag] ?? []), ["dataAlign", ...CONTENT_ALIGNMENTS]],
+      ])
+    ),
+    img: [...(defaultSchema.attributes?.img ?? []), ["dataAlign", ...MEDIA_ALIGNMENTS]],
     // Task lists. Tiptap marks them with `data-type="taskList"` and nothing else
     // distinguishes them from an ordinary bullet list, so without this the
     // checkbox gets a bullet beside it and its text wraps underneath - each item
@@ -414,6 +497,7 @@ export async function renderDocument(document: PostDocument): Promise<RenderedAr
     .use(rehypeNormaliseHeadings)
     .use(rehypeLocalImages)
     .use(rehypeSanitize, schema)
+    .use(rehypeYouTubeVideos)
     .use(rehypeImageLoading)
     // Namespaced for the same reason footnote ids are: a heading slugging to
     // `document`, `posthog` or `__app` is a DOM-clobbering surface, and the
