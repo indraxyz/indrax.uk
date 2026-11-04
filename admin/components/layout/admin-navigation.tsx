@@ -33,13 +33,15 @@ const publicLinks = [
 
 function PublicMenu({
   onNavigate,
+  onOpenChange,
   inSheet = false,
 }: {
   onNavigate?: () => void
+  onOpenChange?: (open: boolean) => void
   inSheet?: boolean
 }) {
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger
         className={
           inSheet
@@ -74,11 +76,16 @@ function PublicMenu({
 interface AdminNavigationProps {
   activePage?: "home" | "posts"
   signedIn: boolean
+  onMenuOpenChange?: (open: boolean) => void
 }
 
-export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) {
+export function AdminNavigation({ activePage, signedIn, onMenuOpenChange }: AdminNavigationProps) {
   const [open, setOpen] = useState(false)
   const desktopNavigation = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    onMenuOpenChange?.(open)
+  }, [open, onMenuOpenChange])
 
   useEffect(() => {
     const navigation = desktopNavigation.current
@@ -109,7 +116,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
               {page === "home" ? <Icon className="h-4 w-4" aria-hidden /> : label}
             </Link>
           ))}
-          <PublicMenu />
+          <PublicMenu onOpenChange={onMenuOpenChange} />
         </nav>
         <SignOutButton className={buttonVariants({ variant: "ghost", size: "icon" })}>
           <LogOut className="h-3.5 w-3.5" aria-hidden />
@@ -158,7 +165,11 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                   {label}
                 </Link>
               ))}
-              <PublicMenu inSheet onNavigate={() => setOpen(false)} />
+              <PublicMenu
+                inSheet
+                onNavigate={() => setOpen(false)}
+                onOpenChange={(publicOpen) => onMenuOpenChange?.(open || publicOpen)}
+              />
             </nav>
           </div>
 

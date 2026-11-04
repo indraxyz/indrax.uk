@@ -47,6 +47,10 @@ decode asynchronously so an image-heavy article does not block text rendering.
 
 ## Carousel specification
 
+The follow-up [navigation and carousel UX specification](navigation-carousel-ux.md)
+unifies resume card widths and feedback with home Writing and gives Portfolio the same
+full-bleed viewport. The validation below records the original implementation.
+
 Embla applies to Home Writing, Resume Portfolio and Resume Tech Stack through their
 shared `SectionCard` carousel path. Existing grids and article image blocks are unchanged.
 Each rail has previous/next arrow controls aligned at the bottom right of its container,

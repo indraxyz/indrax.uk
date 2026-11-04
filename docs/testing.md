@@ -71,6 +71,15 @@ upload rejection and deterministic attachment/cleanup races. Run SQL integration
 the browser write suites, so temporary SQL fixtures cannot interfere with authoring counts.
 `card-carousels.spec.ts` checks the shared Embla rails on mobile and desktop, including
 boundary arrows, keyboard navigation, dragging, print layout and no-JavaScript scrolling.
+It compares both resume rails with home Writing for responsive widths and hover/focus
+feedback. `scroll-navigation.spec.ts` verifies public/admin header direction changes,
+small-scroll jitter, keyboard focus recovery, open-menu pinning, route resets, reduced
+motion, printing and the public no-JavaScript fallback. The
+[navigation and carousel specification](navigation-carousel-ux.md) records the shared UX.
+Archive filter coverage checks that public/admin search bars attach to the visible header
+edge, including zero offset when navigation hides, upward reveal and responsive wrapping.
+`sticky-editor-toolbar.spec.ts` verifies the same offset for a long article, samples the
+reveal animation for gaps/overlap, and covers keyboard formatting, reduced motion and print.
 
 The upload suite copies public inputs into its private temporary directory, excluding
 the generated `admin` subtree. `INDRAX_DEV_PUBLIC_DIR` points both the watched admin

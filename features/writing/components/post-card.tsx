@@ -1,7 +1,14 @@
 import { memo } from "react"
 import { Link } from "react-router"
 
-import { Card, CardContent, CardHeader, CardTitle, type CardTitleLevel } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cardFeedbackClassNames,
+  type CardTitleLevel,
+} from "@/components/ui/card"
 import { PostCover } from "@/features/writing/components/post-cover"
 import { PostMeta } from "@/features/writing/components/post-meta"
 import { TagPill } from "@/features/writing/components/tag-pill"
@@ -32,7 +39,8 @@ export const PostCard = memo(function PostCard({
       variant="card"
       // `relative` is what the title's stretched hit area below is measured against.
       className={cn(
-        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)] transition-shadow hover:shadow-soft-lg",
+        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)]",
+        cardFeedbackClassNames,
         className
       )}
     >

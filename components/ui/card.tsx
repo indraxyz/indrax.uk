@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils"
 export type CardVariant = "card" | "ghost"
 export type CardHeight = "auto" | "sm" | "md" | "lg" | "xl" | "2xl" | "full"
 
+export const cardFeedbackClassNames =
+  "transition-shadow hover:shadow-soft-lg focus-within:shadow-soft-lg motion-reduce:transition-none"
+
 const cardVariantClasses: Record<CardVariant, string> = {
   card: "rounded-none border-2 border-border bg-card shadow-soft",
   ghost: "rounded-none border-0 bg-transparent p-0 shadow-none",

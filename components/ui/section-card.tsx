@@ -86,7 +86,11 @@ export function SectionCard({
         variant={variant}
         scrollable={scrolls}
         aria-label={scrolls ? title : undefined}
-        className={cn(isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2", contentClassName)}
+        className={cn(
+          isGhost ? "py-6 print:py-2" : "pt-6 print:pt-2",
+          carouselFullBleed && "w-[100cqw] ms-[calc(50%_-_50cqw)] print:ms-0 print:w-auto",
+          contentClassName
+        )}
       >
         {carousel ? (
           <CardCarousel title={title} fullBleed={carouselFullBleed}>

@@ -486,9 +486,12 @@ test.describe("the public pages", () => {
         elements.map((element) => element.getBoundingClientRect().width)
       )
       expect(cardWidths.length).toBeGreaterThan(1)
-      expect(
-        cardWidths.every((cardWidth) => cardWidth <= 384 && cardWidth < dimensions.width)
-      ).toBe(true)
+      const columns = width >= 1024 ? 3 : width >= 640 ? 2 : 1
+      const expectedCardWidth =
+        (Math.min(dimensions.viewportWidth, 1440) - 32 - (columns - 1) * 24) / columns
+      expect(cardWidths.every((cardWidth) => Math.abs(cardWidth - expectedCardWidth) <= 1)).toBe(
+        true
+      )
       const initialLeft = (await cards.first().boundingBox())!.x
       await stack.focus()
       await page.keyboard.press("ArrowRight")
