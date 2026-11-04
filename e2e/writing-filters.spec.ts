@@ -162,6 +162,9 @@ test.describe("unified writing filters", () => {
     )
     await input.fill("pending")
     await pending
+    // Destination queries now mount immediately with skeletons, so their URL is
+    // committed before the response. Clearing creates a history entry after it.
+    await expect(page).toHaveURL(/q=pending(?:&|$)/)
     await page.getByRole("button", { name: "Clear search" }).click()
     await expect(page).not.toHaveURL(/q=/)
     release()
@@ -169,8 +172,8 @@ test.describe("unified writing filters", () => {
     await expect(input).toHaveValue("")
     await expect(page).not.toHaveURL(/q=/)
     await page.goBack()
-    await expect(page).toHaveURL(/q=react(?:&|$)/)
-    await expect(input).toHaveValue("react")
+    await expect(page).toHaveURL(/q=pending(?:&|$)/)
+    await expect(input).toHaveValue("pending")
 
     // Clearing must also cancel a first search whose query has never committed.
     await page.getByRole("button", { name: "Clear search" }).click()

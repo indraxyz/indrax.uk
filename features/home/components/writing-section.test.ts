@@ -12,7 +12,7 @@ vi.mock("@/features/writing/api/client", () => ({
 
 import { WritingSection } from "@/features/home/components/writing-section"
 
-it("does not query the database API while rendering the SEO home page on the server", () => {
+it("renders loading geometry without querying the API during server rendering", () => {
   const client = new QueryClient()
   const html = renderToStaticMarkup(
     createElement(
@@ -21,8 +21,23 @@ it("does not query the database API while rendering the SEO home page on the ser
       createElement(MemoryRouter, null, createElement(WritingSection))
     )
   )
-  expect(html).toBe("")
+  expect(html).toContain("Loading recent writing…")
+  expect(html).toContain("data-loading-skeleton")
+  expect(html).not.toContain('aria-roledescription="carousel"')
   expect(recent).not.toHaveBeenCalled()
+})
+
+it("removes the home writing section after a successful empty response", () => {
+  const client = new QueryClient()
+  client.setQueryData(["writing", "recent", 9], [])
+  const html = renderToStaticMarkup(
+    createElement(
+      QueryClientProvider,
+      { client },
+      createElement(MemoryRouter, null, createElement(WritingSection))
+    )
+  )
+  expect(html).toBe("")
 })
 
 it("renders writing cards from the browser query cache", () => {
@@ -52,6 +67,7 @@ it("renders writing cards from the browser query cache", () => {
     )
   )
   expect(html).toContain("Browser card")
+  expect(html).not.toContain("data-loading-skeleton")
   expect(html).toContain('href="/writing/browser-card"')
 })
 

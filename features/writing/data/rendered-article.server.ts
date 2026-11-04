@@ -5,7 +5,7 @@ import type { Post, RenderedArticle } from "@/features/writing/types"
 
 // Bump this when the rendering/sanitization rules change. A cached article must
 // never bypass a new sanitizer policy just because its stored document is old.
-const RENDER_VERSION = "3"
+const RENDER_VERSION = "4"
 
 /** Cache the expensive public render by saved revision, never a draft preview. */
 export function getRenderedArticle(post: Post): Promise<RenderedArticle> {

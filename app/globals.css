@@ -23,6 +23,34 @@
 }
 @plugin "@tailwindcss/typography";
 
+/* Added only after hydration: native/no-JavaScript images stay fully readable. */
+img[data-image-state] {
+  transition:
+    filter 240ms ease,
+    opacity 240ms ease;
+}
+
+img[data-image-state="loading"] {
+  background: var(--color-muted);
+  filter: blur(8px);
+  opacity: 0.6;
+  clip-path: inset(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img[data-image-state] {
+    transition: none;
+  }
+}
+
+@media print {
+  img[data-image-state] {
+    filter: none;
+    opacity: 1;
+    clip-path: none;
+  }
+}
+
 @theme {
   /* Custom breakpoints */
   --breakpoint-sm: 600px;

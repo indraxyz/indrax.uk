@@ -315,19 +315,23 @@ describe("renderDocument — accessibility of generated markup", () => {
 })
 
 describe("renderDocument — table of contents", () => {
-  it("collects level 2 and 3 headings, with the ids the links need", async () => {
-    const { headings } = await renderDocument(
+  it("collects levels 2 through 4 with matching focusable targets", async () => {
+    const { headings, html } = await renderDocument(
       doc(
         { type: "heading", attrs: { level: 2 }, content: [text("First")] },
         { type: "heading", attrs: { level: 3 }, content: [text("Nested")] },
-        { type: "heading", attrs: { level: 4 }, content: [text("Too deep")] }
+        { type: "heading", attrs: { level: 4 }, content: [text("Detail")] }
       )
     )
 
     expect(headings).toEqual([
       { id: "user-content-first", text: "First", level: 2 },
       { id: "user-content-nested", text: "Nested", level: 3 },
+      { id: "user-content-detail", text: "Detail", level: 4 },
     ])
+    for (const { id, level } of headings) {
+      expect(html).toContain(`<h${level} id="${id}" tabindex="-1">`)
+    }
   })
 
   it("returns nothing for a document with no headings", async () => {

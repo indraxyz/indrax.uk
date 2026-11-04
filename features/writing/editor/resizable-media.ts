@@ -52,6 +52,14 @@ export function resizableMediaView(
       if (alignment) wrapper.dataset.align = alignment
       else delete wrapper.dataset.align
     } else {
+      // Native dimensions reserve the saved aspect ratio before image bytes
+      // arrive; responsive height:auto otherwise collapses an unloaded image.
+      for (const dimension of ["width", "height"] as const) {
+        const value = Number(node.attrs[dimension])
+        if (Number.isFinite(value) && value > 0)
+          media.setAttribute(dimension, String(Math.max(1, Math.round(value))))
+        else media.removeAttribute(dimension)
+      }
       media.style.width = node.attrs.width ? `${node.attrs.width}px` : ""
       media.style.height = node.attrs.height ? `${node.attrs.height}px` : ""
     }

@@ -14,6 +14,7 @@ import { controlClassNames } from "@/components/ui/variants"
 import { ArchiveControls } from "@/features/writing/components/archive-controls"
 import { Pagination } from "@/features/writing/components/pagination"
 import { QueryState } from "@/features/writing/components/query-state"
+import { PostsSkeleton } from "@/features/writing/components/admin/posts-skeleton"
 import {
   adminArchiveSearchParams,
   hasAdminArchiveFilters,
@@ -63,8 +64,10 @@ export function Component() {
           </p>
           <PostsViewToggle view={view} />
         </div>
-        {query.isPending || query.isError ? (
-          <QueryState error={query.isError} retry={() => void query.refetch()} label="posts" />
+        {query.isPending ? (
+          <PostsSkeleton view={view} />
+        ) : query.isError && !query.data ? (
+          <QueryState error retry={() => void query.refetch()} label="posts" />
         ) : query.data.posts.length ? (
           view === "table" ? (
             <PostTable posts={query.data.posts} options={options} />

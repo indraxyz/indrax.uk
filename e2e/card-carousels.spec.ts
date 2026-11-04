@@ -178,6 +178,9 @@ for (const width of [390, 768, 1440, 1920]) {
       .locator("[data-print-columns] > *")
       .first()
     await expect(writingCard).toBeVisible()
+    // Compare settled carousels: recent writing mounts after its API response,
+    // while the resume initially supplies the native-scrolling SSR fallback.
+    await expect(page.getByRole("group", { name: "Writing carousel navigation" })).toBeVisible()
     const writingBounds = (await writingCard.boundingBox())!
     await writingCard.hover()
     const hoverShadow = await writingCard.evaluate((node) => getComputedStyle(node).boxShadow)
@@ -187,9 +190,13 @@ for (const width of [390, 768, 1440, 1920]) {
     for (const title of ["Tech Stack", "Portfolio"]) {
       const viewport = page.getByRole("region", { name: title, exact: true })
       const card = viewport.locator("[data-print-columns] > *").first()
-      const bounds = (await card.boundingBox())!
-      expect(Math.abs(bounds.width - writingBounds.width)).toBeLessThanOrEqual(1)
-      expect(Math.abs(bounds.x - writingBounds.x)).toBeLessThanOrEqual(1)
+      await expect(page.getByRole("group", { name: `${title} carousel navigation` })).toBeVisible()
+      await expect
+        .poll(async () => Math.abs((await card.boundingBox())!.width - writingBounds.width))
+        .toBeLessThanOrEqual(1)
+      await expect
+        .poll(async () => Math.abs((await card.boundingBox())!.x - writingBounds.x))
+        .toBeLessThanOrEqual(1)
       await card.hover()
       await expect(card).toHaveCSS("box-shadow", hoverShadow)
       await page.mouse.move(0, 0)

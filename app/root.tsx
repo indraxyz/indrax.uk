@@ -15,6 +15,7 @@ import { PostHogAnalytics } from "@/components/posthog-analytics"
 import { SiteErrorPage } from "@/components/site-error-page"
 import { THEME_INIT_SCRIPT } from "@/lib/theme"
 import { useCspNonce } from "@/lib/csp-nonce"
+import { ImageLoadingEffects } from "@/components/image-loading-effects"
 import "./globals.css"
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -46,6 +47,7 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <QueryProvider>
+      <ImageLoadingEffects />
       <NavigationProgress />
       <Outlet />
       <ConsentBanner />

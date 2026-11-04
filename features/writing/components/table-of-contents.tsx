@@ -1,49 +1,115 @@
+import { ChevronDown } from "lucide-react"
+import { useEffect, useState, type MouseEvent } from "react"
+
+import { stickyHeaderOffsetClassNames } from "@/components/scroll-header"
 import type { TocEntry } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
-// Below this there is nothing to navigate: a contents list for two headings costs
-// more attention than it saves.
-const MINIMUM_ENTRIES = 3
-
-interface TableOfContentsProps {
-  entries: TocEntry[]
-  className?: string
+export interface ContentsNode extends TocEntry {
+  children: ContentsNode[]
 }
 
-/**
- * In-page navigation, built from the headings the render pass already collected.
- *
- * Plain anchors to ids `rehype-slug` assigned, so it works with JavaScript
- * disabled, needs no scroll listener, and costs the reader nothing. Its absence on
- * a short article is deliberate rather than an oversight.
- */
-export function TableOfContents({ entries, className }: TableOfContentsProps) {
-  if (entries.length < MINIMUM_ENTRIES) return null
+/** Keep authored hierarchy without inventing missing parent headings. */
+export function buildContentsTree(entries: TocEntry[]): ContentsNode[] {
+  const roots: ContentsNode[] = []
+  const parents: ContentsNode[] = []
+  for (const entry of entries) {
+    while (parents.length && parents[parents.length - 1].level >= entry.level) parents.pop()
+    const node = { ...entry, children: [] }
+    const parent = parents[parents.length - 1]
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+    parents.push(node)
+  }
+  return roots
+}
+
+function ContentsList({ entries, nested = false }: { entries: ContentsNode[]; nested?: boolean }) {
+  function navigate(event: MouseEvent<HTMLAnchorElement>, id: string) {
+    const disclosure = event.currentTarget.closest("details")
+    if (
+      !disclosure ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return
+    // Close before native anchor scrolling, then transfer focus out of the hidden list.
+    disclosure.open = false
+    document.getElementById(id)?.focus({ preventScroll: true })
+  }
 
   return (
-    <nav
-      aria-labelledby="toc-heading"
-      className={cn("border-2 border-border bg-[var(--color-muted)] p-4", className)}
-    >
-      <h2
-        id="toc-heading"
-        className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground"
-      >
-        On this page
-      </h2>
+    <ol className={cn("space-y-2", nested && "mt-2 border-l-2 border-border pl-3")}>
+      {entries.map((entry) => (
+        <li key={entry.id}>
+          <a
+            href={`#${entry.id}`}
+            onClick={(event) => navigate(event, entry.id)}
+            className="block py-1 text-sm font-semibold leading-snug text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {entry.text}
+          </a>
+          {entry.children.length > 0 && <ContentsList entries={entry.children} nested />}
+        </li>
+      ))}
+    </ol>
+  )
+}
 
-      <ol className="space-y-1.5">
-        {entries.map((entry) => (
-          <li key={entry.id} className={entry.level === 3 ? "pl-4" : undefined}>
-            <a
-              href={`#${entry.id}`}
-              className="text-sm font-semibold leading-snug text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {entry.text}
-            </a>
-          </li>
-        ))}
-      </ol>
-    </nav>
+/** The desktop sidebar and native mobile disclosure share the same heading tree. */
+export function TableOfContents({
+  entries,
+  className,
+}: {
+  entries: TocEntry[]
+  className?: string
+}) {
+  const [enhanced, setEnhanced] = useState(false)
+  useEffect(() => setEnhanced(true), [])
+  if (!entries.length) return null
+  const tree = buildContentsTree(entries)
+  const navigationClassName =
+    "max-h-[min(60svh,calc(100svh_-_var(--site-header-offset,6rem)_-_5rem))] overflow-y-auto p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+
+  return (
+    <aside
+      data-article-toc
+      data-enhanced={enhanced}
+      className={cn(
+        "z-30 self-start border-2 border-border bg-background shadow-soft data-[enhanced=true]:sticky lg:sticky lg:top-[calc(var(--site-header-offset,6rem)_+_1rem)] print:hidden",
+        stickyHeaderOffsetClassNames,
+        className
+      )}
+    >
+      <details className="group lg:hidden">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
+          On this page
+          <ChevronDown
+            className="size-4 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            aria-hidden
+          />
+        </summary>
+        <nav
+          aria-label="On this page"
+          tabIndex={0}
+          className={cn(navigationClassName, "border-t-2 border-border")}
+        >
+          <ContentsList entries={tree} />
+        </nav>
+      </details>
+      <nav
+        aria-label="On this page"
+        tabIndex={0}
+        className={cn(navigationClassName, "hidden lg:block")}
+      >
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+          On this page
+        </p>
+        <ContentsList entries={tree} />
+      </nav>
+    </aside>
   )
 }

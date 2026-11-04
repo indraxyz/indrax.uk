@@ -44,6 +44,7 @@ import { EditorAlignment } from "./editor-alignment"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 import { stickyHeaderOffsetClassNames } from "@/components/scroll-header"
+import { DragScroll } from "@/components/ui/drag-scroll"
 
 const EMPTY_DOCUMENT: PostDocument = { type: "doc", content: [{ type: "paragraph" }] }
 
@@ -116,12 +117,7 @@ function Toolbar({
         stickyHeaderOffsetClassNames
       )}
     >
-      <div
-        role="toolbar"
-        aria-label="Formatting"
-        aria-orientation="horizontal"
-        className="flex min-w-0 flex-nowrap gap-1 overflow-x-auto overscroll-x-contain p-2"
-      >
+      <DragScroll role="toolbar" aria-label="Formatting" aria-orientation="horizontal">
         <Tool
           label="Undo"
           icon={<Undo2 className={icon} />}
@@ -307,10 +303,10 @@ function Toolbar({
         />
         <EditorImage editor={editor} uploadsConfigured={imageUploadsConfigured} />
         <EditorVideo editor={editor} />
-      </div>
+      </DragScroll>
       {editor.isActive("table") && (
         <div className="border-t-2 border-border">
-          <div role="toolbar" aria-label="Table editing" className="flex gap-1 overflow-x-auto p-2">
+          <DragScroll role="toolbar" aria-label="Table editing" aria-orientation="horizontal">
             {TABLE_ACTIONS.map(([command, label, Icon, Badge]) => (
               <Tool
                 key={command}
@@ -331,7 +327,7 @@ function Toolbar({
                 onClick={() => editor.chain().focus()[command]().run()}
               />
             ))}
-          </div>
+          </DragScroll>
         </div>
       )}
     </div>

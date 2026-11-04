@@ -24,13 +24,17 @@ export function ScrollHeader({
     const shell = header?.parentElement
     if (!header || !shell) return
     const updateOffset = () => {
-      shell.style.setProperty("--site-header-offset", `${isHidden ? 0 : header.offsetHeight}px`)
+      const height = header.offsetHeight
+      // Anchor targets reserve room for navigation that an upward jump reveals.
+      shell.style.setProperty("--site-header-height", `${height}px`)
+      shell.style.setProperty("--site-header-offset", `${isHidden ? 0 : height}px`)
     }
     updateOffset()
     const observer = new ResizeObserver(updateOffset)
     observer.observe(header)
     return () => {
       observer.disconnect()
+      shell.style.removeProperty("--site-header-height")
       shell.style.removeProperty("--site-header-offset")
     }
   }, [isHidden])

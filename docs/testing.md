@@ -32,6 +32,16 @@ analytics, PDF/social images, writing search/filter/sort and series content, nav
 previews, authoring and session isolation. Database/auth/media prerequisites can
 cause skips; a passing subset does not verify skipped flows.
 
+Content-loading coverage in `loading-skeletons.spec.ts` holds API responses to inspect
+public rails/grids and admin dashboard/cards/table pending states, then verifies loaded,
+empty, error/retry and cached results. `image-loading.spec.ts` checks real image load/decode,
+source replacement/error recovery, reserved dimensions, cached images and reduced motion
+on public preview and admin editor pages. `article-navigation.spec.ts` covers nested h2–h4
+contents, desktop/sidebar and mobile/disclosure layouts, upward/downward heading links,
+header clearance, keyboard access, axe and print. `toolbar-drag.spec.ts` covers mouse drag
+versus clicks, native touch, keyboard boundaries, cancelled gestures and overflow cues.
+The [content-loading specification](content-loading-article-navigation.md) records behavior.
+
 Local cover and inline content uploads have a separate development-runtime suite:
 
 ```bash
