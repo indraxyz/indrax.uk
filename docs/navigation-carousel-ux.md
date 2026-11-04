@@ -79,3 +79,35 @@ on Neon develop before CI can deploy Preview; production is outside this change.
 - Read-only Neon verification found develop migrated through `0006_cover_cleanup`, with
   `0007_media_upload_lifecycle` still pending. The existing PRs remain unmerged until that
   release prerequisite is approved/applied. No remote database changes were made.
+
+## Sticky controls follow-up plan and specification
+
+The archive filter bars and editor formatting toolbar previously measured the full header
+height independently. Once navigation hid, this left an empty header-sized gap above sticky
+controls, showing moving page content through the gap.
+
+1. Make `ScrollHeader` own one measured, shell-scoped `--site-header-offset`: header height
+   while visible and zero while hidden. Keep the value updated when navigation wraps.
+2. Let both archive filter bars and the editor formatting toolbar consume that offset,
+   replacing their separate header measurements. Their top-position transitions follow
+   the header's timing and honor reduced motion.
+3. Preserve full-width archive backgrounds, stacking order, control focus, responsive
+   widths and normal document flow. Print keeps controls in normal flow.
+4. Reproduce the gap with browser geometry assertions before the fix, then verify scrolling
+   down/up, keyboard focus, viewport resizing, reduced motion and the editor's long-content
+   sticky boundary against built Worker assets.
+5. Run repository checks, inspect screenshots, and push the fix to the existing UX PR #98.
+
+Sticky-controls verification:
+
+- The updated mobile regression failed against the old build with a 122 px gap; a desktop
+  Chromium measurement reproduced a 78 px gap.
+- After the fix, desktop/mobile measurements place the archive toolbar at 0 px with the
+  header hidden and exactly at its visible bottom after upward scrolling. Screenshots of
+  both states were visually inspected.
+- All 110 affected browser cases passed with no skips or retries: public/admin filters,
+  long-article formatting controls, navigation, inline-image/video editor regressions and
+  light/dark accessibility audits. The editor tests sample 18 animation frames and verify
+  no more than 2 px of separation during header reveal.
+- The repository check passed formatting, lint, generated types, TypeScript and all 854
+  unit tests. This follow-up changes no database schema or remote resources.

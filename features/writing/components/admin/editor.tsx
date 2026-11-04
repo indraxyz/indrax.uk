@@ -34,7 +34,7 @@ import {
   Underline,
   X,
 } from "lucide-react"
-import { useEffect, useRef, type ReactNode } from "react"
+import type { ReactNode } from "react"
 
 import { controlClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
@@ -43,6 +43,7 @@ import { EditorVideo } from "./editor-video"
 import { EditorAlignment } from "./editor-alignment"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
+import { stickyHeaderOffsetClassNames } from "@/components/scroll-header"
 
 const EMPTY_DOCUMENT: PostDocument = { type: "doc", content: [{ type: "paragraph" }] }
 
@@ -108,7 +109,13 @@ function Toolbar({
   const icon = "size-4"
 
   return (
-    <div className="sticky top-[var(--admin-header-height,0px)] z-40 border-b-2 border-border bg-[var(--color-muted)]">
+    <div
+      data-editor-toolbar
+      className={cn(
+        "sticky z-40 border-b-2 border-border bg-[var(--color-muted)] print:static",
+        stickyHeaderOffsetClassNames
+      )}
+    >
       <div
         role="toolbar"
         aria-label="Formatting"
@@ -341,24 +348,6 @@ function Toolbar({
  * keeps the editor lifecycle aligned with React mounting and its placeholder.
  */
 export function PostEditor({ value, onChange, imageUploadsConfigured = false }: EditorProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const header = document.querySelector<HTMLElement>("[data-admin-header]")
-    if (!header) return
-
-    const updateOffset = () => {
-      containerRef.current?.style.setProperty(
-        "--admin-header-height",
-        `${header.getBoundingClientRect().height}px`
-      )
-    }
-    const observer = new ResizeObserver(updateOffset)
-    observer.observe(header)
-    updateOffset()
-    return () => observer.disconnect()
-  }, [])
-
   const editor = useEditor({
     extensions: WRITING_EXTENSIONS,
     content: value ?? EMPTY_DOCUMENT,
@@ -380,14 +369,14 @@ export function PostEditor({ value, onChange, imageUploadsConfigured = false }: 
     // Reserves the same height the editor will occupy, so the form does not jump
     // when it mounts.
     return (
-      <div ref={containerRef} className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
+      <div className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
         <span className="sr-only">Loading the editor</span>
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="min-w-0 border-2 border-border bg-card">
+    <div className="min-w-0 border-2 border-border bg-card">
       <Toolbar editor={editor} imageUploadsConfigured={imageUploadsConfigured} />
       <EditorContent editor={editor} />
     </div>

@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState, type ComponentProps } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react"
 import { useLocation } from "react-router"
 
 import { cn } from "@/lib/utils"
+
+/** Sticky page controls follow the visible header with the same transition timing. */
+export const stickyHeaderOffsetClassNames =
+  "top-[var(--site-header-offset,6rem)] transition-[top] duration-200 motion-reduce:transition-none"
 
 /** Shared public/admin header; remains in document flow and reachable by keyboard. */
 export function ScrollHeader({
@@ -13,6 +17,23 @@ export function ScrollHeader({
   const headerRef = useRef<HTMLElement>(null)
   const [hidden, setHidden] = useState(false)
   const { key } = useLocation()
+  const isHidden = hidden && !pinned
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    const shell = header?.parentElement
+    if (!header || !shell) return
+    const updateOffset = () => {
+      shell.style.setProperty("--site-header-offset", `${isHidden ? 0 : header.offsetHeight}px`)
+    }
+    updateOffset()
+    const observer = new ResizeObserver(updateOffset)
+    observer.observe(header)
+    return () => {
+      observer.disconnect()
+      shell.style.removeProperty("--site-header-offset")
+    }
+  }, [isHidden])
 
   useEffect(() => {
     let previous = window.scrollY
@@ -54,7 +75,6 @@ export function ScrollHeader({
     }
   }, [key, pinned])
 
-  const isHidden = hidden && !pinned
   return (
     <header
       {...props}
