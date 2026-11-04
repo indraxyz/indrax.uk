@@ -12,7 +12,7 @@ export const wranglerPath = fileURLToPath(
 )
 
 /** Initialize only local D1 state; never provision or mutate a remote database. */
-export async function initializeLocalCache(config, environment) {
+export async function initializeLocalCache(config, environment, persistTo) {
   const analyticsSchema = await readFile(
     new URL("../config/analytics-quota.sql", import.meta.url),
     "utf8"
@@ -26,6 +26,7 @@ export async function initializeLocalCache(config, environment) {
     "--config",
     config,
     ...(environment ? ["--env", environment] : []),
+    ...(persistTo ? ["--persist-to", persistTo] : []),
     "--command",
     "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER NOT NULL);" +
       analyticsSchema,

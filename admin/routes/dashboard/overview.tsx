@@ -2,7 +2,8 @@ import { ArrowRight, FilePenLine, Plus } from "lucide-react"
 import { Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
-import { AdminError, AdminLoading } from "@/admin/components/feedback/request-state"
+import { AdminError } from "@/admin/components/feedback/request-state"
+import { DashboardSkeleton } from "@/admin/components/feedback/dashboard-skeleton"
 import { useAdminSession } from "@/admin/auth/session"
 
 import { controlClassNames } from "@/components/ui/variants"
@@ -12,8 +13,20 @@ import { cn } from "@/lib/utils"
 export function Component() {
   const session = useAdminSession()
   const overview = useQuery({ queryKey: adminKeys.overview, queryFn: adminApi.overview })
-  if (overview.isPending) return <AdminLoading />
-  if (overview.isError) return <AdminError retry={() => void overview.refetch()} />
+  const newPostAction = (
+    <Link to="/admin/posts/new" className={cn(controlClassNames, "px-3 py-2")}>
+      <Plus className="h-3.5 w-3.5" aria-hidden />
+      New post
+    </Link>
+  )
+  if (overview.isPending)
+    return (
+      <AdminShell title="Overview" activePage="home" actions={newPostAction}>
+        <DashboardSkeleton />
+      </AdminShell>
+    )
+  if (overview.isError && !overview.data)
+    return <AdminError retry={() => void overview.refetch()} />
   const { total, published, drafts, archived, latestDraft } = overview.data
   const coverUploadsConfigured = session.coverUploadsConfigured
   const analyticsEnabled = process.env.ANALYTICS_ENABLED === "true"
@@ -48,16 +61,7 @@ export function Component() {
   ]
 
   return (
-    <AdminShell
-      title="Overview"
-      activePage="home"
-      actions={
-        <Link to="/admin/posts/new" className={cn(controlClassNames, "px-3 py-2")}>
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          New post
-        </Link>
-      }
-    >
+    <AdminShell title="Overview" activePage="home" actions={newPostAction}>
       <p className="text-sm font-semibold text-muted-foreground">Welcome back, Indra.</p>
 
       <section aria-labelledby="posts-heading" className="space-y-4">

@@ -90,7 +90,18 @@ test("stack explains the current development and protected release workflow", as
   await expect(data).toContainText("Cloudflare KV caches public content")
   await expect(data).toContainText("D1 tracks cache revisions and analytics quotas")
   await data.getByRole("button", { name: "Why Data", exact: true }).click()
-  await expect(data).toContainText("replacing a cover or deleting its post queues cleanup")
+  await expect(data).toContainText("Replacing a cover or deleting its post queues cleanup")
+  await expect(data).toContainText("Covers upload on Save; inline images upload when inserted")
+  await expect(data).toContainText("24-hour grace period")
+
+  const ui = page.getByRole("region", { name: "Interface", exact: true })
+  await expect(ui).toContainText("Base UI · Embla")
+  await expect(ui).toContainText("Tech Stack and Portfolio share responsive Embla carousels")
+  await expect(ui).toContainText("return when scrolling up or receiving keyboard focus")
+
+  const content = page.getByRole("region", { name: "Content", exact: true })
+  await expect(content).toContainText("privacy-enhanced YouTube embeds")
+  await expect(content).toContainText("proportional media resizing")
 
   const ci = page.getByRole("region", { name: "CI/CD", exact: true })
   await expect(ci).toContainText("two checks for pull requests")

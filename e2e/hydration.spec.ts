@@ -1,5 +1,37 @@
 import { expect, test } from "@playwright/test"
 import { whenHydrated } from "./support/hydration"
+import { SEEDED_POST_SLUG } from "./support/constants"
+
+test.describe("article date hydration", () => {
+  test.use({ timezoneId: "Pacific/Honolulu" })
+
+  test("keeps dates consistent in a different browser timezone", async ({ page }) => {
+    test.skip(!process.env.DATABASE_URL, "needs the seeded local writing article")
+    const errors: string[] = []
+    page.on("pageerror", (error) => errors.push(error.message))
+    page.on("console", (message) => {
+      if (message.type() === "error" && /hydrat|server rendered HTML/i.test(message.text()))
+        errors.push(message.text())
+    })
+    const response = await page.goto(`/writing/${SEEDED_POST_SLUG}`)
+    expect(response?.status(), "seeded article must be available to the development Worker").toBe(
+      200
+    )
+    await whenHydrated(page)
+    const date = page.locator("article time").first()
+    const timestamp = await date.getAttribute("datetime")
+    expect(timestamp).not.toBeNull()
+    await expect(date).toHaveText(
+      new Date(timestamp!).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      })
+    )
+    expect(errors).toEqual([])
+  })
+})
 
 test("public documents hydrate without mismatched attributes", async ({ page }) => {
   const errors: string[] = []

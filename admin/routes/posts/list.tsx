@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react"
 import { useMemo } from "react"
 import { Link, useSearchParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { AdminShell } from "@/admin/components/layout/admin-shell"
 import { PostRow } from "@/features/writing/components/admin/post-row"
@@ -14,6 +14,7 @@ import { controlClassNames } from "@/components/ui/variants"
 import { ArchiveControls } from "@/features/writing/components/archive-controls"
 import { Pagination } from "@/features/writing/components/pagination"
 import { QueryState } from "@/features/writing/components/query-state"
+import { PostsSkeleton } from "@/features/writing/components/admin/posts-skeleton"
 import {
   adminArchiveSearchParams,
   hasAdminArchiveFilters,
@@ -25,14 +26,16 @@ export function Component() {
   // memoized rows and table receive from it) stays the same across unrelated
   // renders such as background refetches.
   const options = useMemo(() => parseAdminArchiveOptions(params), [params])
+  const view = useAdminPostsView()
   const query = useQuery({
     queryKey: adminKeys.archive(options),
     queryFn: ({ signal }) => adminApi.archive(options, signal),
+    // Retain the table and its focused sorting control while new rows arrive.
+    placeholderData: view === "table" ? keepPreviousData : undefined,
   })
   const tags = useQuery({ queryKey: adminKeys.tags(), queryFn: adminApi.tags })
   const paginationParams = adminArchiveSearchParams({ ...options, page: 1 }).toString()
   const filtered = !!options.q || hasAdminArchiveFilters(options)
-  const view = useAdminPostsView()
   return (
     <AdminShell
       title="Posts"
@@ -44,7 +47,7 @@ export function Component() {
         </Link>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy={query.isFetching}>
         <ArchiveControls
           admin
           options={options}
@@ -63,8 +66,10 @@ export function Component() {
           </p>
           <PostsViewToggle view={view} />
         </div>
-        {query.isPending || query.isError ? (
-          <QueryState error={query.isError} retry={() => void query.refetch()} label="posts" />
+        {query.isPending ? (
+          <PostsSkeleton view={view} />
+        ) : query.isError && !query.data ? (
+          <QueryState error retry={() => void query.refetch()} label="posts" />
         ) : query.data.posts.length ? (
           view === "table" ? (
             <PostTable posts={query.data.posts} options={options} />

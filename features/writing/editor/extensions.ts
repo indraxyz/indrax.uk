@@ -1,4 +1,6 @@
-import { Image } from "@tiptap/extension-image"
+import { ResizableImage } from "./resizable-image"
+import { ContentAlignment } from "./alignment"
+import { YoutubeVideo } from "./video"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table"
 import { StarterKit } from "@tiptap/starter-kit"
@@ -41,5 +43,7 @@ export const WRITING_EXTENSIONS = [
   TableCell,
   TaskList,
   TaskItem.configure({ nested: false }),
-  Image,
+  ResizableImage,
+  YoutubeVideo,
+  ContentAlignment,
 ]

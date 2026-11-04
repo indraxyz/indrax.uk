@@ -10,6 +10,7 @@ import { describeTypes, getUploadPolicy } from "./uploads/policy"
 
 import { requireAuthor } from "@/lib/auth-guard.server"
 import { getCoverStorageConfig } from "@/lib/cover-storage.server"
+import { registerPendingUpload } from "@/features/writing/data/media-uploads.server"
 
 type StorageSettings = NonNullable<ReturnType<typeof getCoverStorageConfig>>
 
@@ -82,6 +83,15 @@ async function handleUpload(request: Request): Promise<Response> {
     // Generated, never taken from the client. A caller-supplied name is how an
     // upload ends up overwriting something else, or escaping its prefix.
     const key = `${policy.prefix}/${crypto.randomUUID()}.${IMAGE_FORMATS[type].extension}`
+    const publicUrl = new URL(key, `${settings.publicUrl.replace(/\/$/, "")}/`).toString()
+    // Persist first: an interrupted or uncertain R2 write must remain visible
+    // to pending-upload cleanup. Refuse untracked storage writes entirely.
+    const registered = await registerPendingUpload(key, publicUrl).catch(() => false)
+    if (!registered)
+      return Response.json(
+        { error: "Image uploads are temporarily unavailable. Please try again." },
+        { status: 503 }
+      )
     if (!(await putObject(settings, key, body, type)))
       return Response.json({ error: "Storage refused the upload." }, { status: 502 })
 
@@ -89,7 +99,7 @@ async function handleUpload(request: Request): Promise<Response> {
       {
         // Must match MEDIA_ORIGIN or `isAllowedMediaUrl` will refuse to
         // render it - the same check twice on purpose (threat T-6).
-        publicUrl: new URL(key, `${settings.publicUrl.replace(/\/$/, "")}/`).toString(),
+        publicUrl,
       },
       { status: 201 }
     )

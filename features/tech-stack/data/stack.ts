@@ -60,9 +60,9 @@ export const stackGroups = [
   {
     icon: Layers3,
     title: "Interface",
-    tools: "React Router 8.4 · React 19 · TypeScript · Tailwind CSS 4",
+    tools: "React Router 8.4 · React 19 · TypeScript · Tailwind CSS 4 · Base UI · Embla",
     detail:
-      "The home, resume, and Stack pages arrive as server-rendered HTML, as do published articles. Writing lists load in the browser; the home page shows recent posts as a row you can scroll sideways. The admin is a separate React app that shares the public site’s styles and accessible UI components.",
+      "The home, resume, and Stack pages arrive as server-rendered HTML, as do published articles. Writing lists load in the browser. Home Writing and the resume’s Tech Stack and Portfolio share responsive Embla carousels, with dragging, keyboard navigation and reduced-motion support. The admin is a separate React app that shares the public site’s styles and accessible Base UI components. Both headers hide when scrolling down and return when scrolling up or receiving keyboard focus.",
     reason:
       "Server rendering makes profile and article content available before JavaScript loads. Shared components keep reading and publishing consistent, while TypeScript helps catch mistakes during development. Lists show one page at a time, cover images load only as they scroll into view, and cards whose post has not changed are not redrawn when data refreshes.",
   },
@@ -71,7 +71,7 @@ export const stackGroups = [
     title: "Data fetching & navigation",
     tools: "TanStack Query · TanStack Table · Ky · react-top-loading-bar",
     detail:
-      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress; loading, empty, and error states explain what is happening.",
+      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening.",
     reason:
       "Search and filters stay in the URL so links, pagination, and browser Back preserve your choices. Cached results reduce repeat requests. Requests are not automatically retried; failed reads offer a retry control. The admin also rechecks the session on focus or reconnect, and every private API request verifies author access.",
   },
@@ -80,9 +80,9 @@ export const stackGroups = [
     title: "Content",
     tools: "Tiptap · Shiki · rehype · React PDF · cf-workers-og",
     detail:
-      "The author writes in Tiptap. Published articles are sanitized and rendered on the server, with Shiki highlighting code blocks. React PDF builds the resume only when Download is selected; cf-workers-og creates images for shared links.",
+      "The author writes in Tiptap, with inline images, privacy-enhanced YouTube embeds, proportional media resizing and text or media alignment. Published articles are sanitized and rendered on the server, with Shiki highlighting code blocks and a restricted YouTube player host. React PDF builds the resume only when Download is selected; cf-workers-og creates images for shared links.",
     reason:
-      "The editor stays out of the reader’s article bundle. Loading the PDF tools on demand keeps them off the initial page load.",
+      "The editor stays out of the reader’s article bundle. Published and preview articles share nested h2–h4 contents navigation: a desktop sidebar and a sticky disclosure on smaller screens. Formatting toolbars support dragging, touch and keyboard scrolling with overflow cues. Images use a soft loading treatment until decoded, preserving native sources and alt text. Loading the PDF tools on demand keeps them off the initial page load.",
   },
   {
     icon: Database,
@@ -91,7 +91,7 @@ export const stackGroups = [
     detail:
       "PostgreSQL stores posts, tags, series, and sign-in sessions. Drizzle defines typed queries and migrations; the Neon HTTP driver connects the Worker to the database. Cloudflare KV caches public content, D1 tracks cache revisions and analytics quotas, and R2 stores uploaded images. Draft previews and private API responses are not cached.",
     reason:
-      "Posts, tags, and series benefit from relational storage and PostgreSQL full-text search. Public caching reduces database work. Images upload on Save with file-type and size checks; replacing a cover or deleting its post queues cleanup, while images still referenced by other posts are retained.",
+      "Posts, tags, and series benefit from relational storage and PostgreSQL full-text search. Public caching reduces database work. Covers upload on Save; inline images upload when inserted, with file-type and size checks. Replacing a cover or deleting its post queues cleanup, as does removing a saved inline image. Hourly cleanup expires abandoned uploads after a 24-hour grace period and retains images still referenced by saved posts.",
   },
   {
     icon: LockKeyhole,

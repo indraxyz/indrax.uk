@@ -75,6 +75,8 @@ it("clears a saved cover and awaits deletion of its generated R2 key", async () 
   ).toEqual([])
 })
 
+// Multi-mutation cases include several serial HTTP round trips through the Neon
+// proxy and cleanup outbox; allow the same budget as the concurrency cases.
 it("retains a reused object until the last referencing post is deleted", async () => {
   const first = await fixture()
   const second = await fixture(first.coverUrl!)
@@ -88,7 +90,7 @@ it("retains a reused object until the last referencing post is deleted", async (
   expect(
     await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, first.coverUrl!))
   ).toEqual([])
-})
+}, 15_000)
 
 it("retains images referenced in another post's inline content", async () => {
   const first = await fixture()
@@ -104,7 +106,7 @@ it("retains images referenced in another post's inline content", async () => {
   expect(mocks.remove).not.toHaveBeenCalled()
   await deletePost(second.id)
   expect(mocks.remove).toHaveBeenCalledWith(new URL(first.coverUrl!).pathname.slice(1))
-})
+}, 15_000)
 
 it("commits post deletion and retains failed cleanup for the next mutation to retry", async () => {
   const post = await fixture()
@@ -172,7 +174,7 @@ it("rolls back cover cleanup together with a post update rejected by the series 
 // waiting on that row, avoiding timing-dependent concurrent test assertions.
 async function whilePostLocked(
   postId: string,
-  competingWrite: "replace" | "delete",
+  competingWrite: "replace" | "replace-inline" | "delete",
   mutate: () => Promise<unknown>
 ) {
   const directUrl = process.env.TEST_DIRECT_DATABASE_URL
@@ -188,12 +190,17 @@ async function whilePostLocked(
   const client = new Client({ connectionString: connection.href })
   await client.connect()
   let pending: Promise<unknown> | undefined
-  const replacement = `https://cover-cleanup-integration.invalid/covers/${randomUUID()}.png`
+  const replacement = `https://cover-cleanup-integration.invalid/${competingWrite === "replace-inline" ? "content" : "covers"}/${randomUUID()}.png`
   urls.push(replacement)
   try {
     await client.query("BEGIN")
     if (competingWrite === "replace") {
       await client.query("UPDATE posts SET cover_url = $1 WHERE id = $2", [replacement, postId])
+    } else if (competingWrite === "replace-inline") {
+      await client.query("UPDATE posts SET content_json = $1 WHERE id = $2", [
+        JSON.stringify(inlineDocument(replacement)),
+        postId,
+      ])
     } else {
       await client.query("DELETE FROM posts WHERE id = $1", [postId])
     }
@@ -267,3 +274,156 @@ it("returns a missing-post error if deletion wins while an existing post is bein
     await db.delete(schema.tags).where(eq(schema.tags.slug, tag))
   }
 }, 15_000)
+
+function inlineDocument(...sources: string[]) {
+  return {
+    type: "doc",
+    content: [
+      ...content.content,
+      ...sources.map((src) => ({ type: "image", attrs: { src, alt: "Inline fixture" } })),
+    ],
+  }
+}
+
+it("queues only removed inline images and retains images elsewhere in the saved body", async () => {
+  const post = await fixture()
+  const removed = `https://cover-cleanup-integration.invalid/content/${randomUUID()}.png`
+  const retained = `https://cover-cleanup-integration.invalid/content/${randomUUID()}.webp`
+  urls.push(removed, retained)
+  await db
+    .update(schema.posts)
+    .set({ contentJson: inlineDocument(removed, retained, removed) })
+    .where(eq(schema.posts.id, post.id))
+  expect(
+    await savePost({
+      id: post.id,
+      slug: post.slug,
+      title: post.title,
+      status: "draft",
+      tags: [],
+      coverUrl: post.coverUrl!,
+      coverAlt: "Cover",
+      content: inlineDocument(retained),
+    })
+  ).toMatchObject({ ok: true })
+  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith(new URL(removed).pathname.slice(1))
+  expect(
+    await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, retained))
+  ).toEqual([])
+  mocks.remove.mockClear()
+  await deletePost(post.id)
+  expect(mocks.remove).toHaveBeenCalledWith(new URL(retained).pathname.slice(1))
+}, 15_000)
+
+it("keeps a content upload shared across post bodies until its final reference disappears", async () => {
+  const first = await fixture()
+  const second = await fixture()
+  const image = `https://cover-cleanup-integration.invalid/content/${randomUUID()}.png`
+  urls.push(image)
+  await db
+    .update(schema.posts)
+    .set({ contentJson: inlineDocument(image) })
+    .where(inArray(schema.posts.id, [first.id, second.id]))
+  await savePost({
+    id: first.id,
+    slug: first.slug,
+    title: first.title,
+    status: "draft",
+    tags: [],
+    coverUrl: first.coverUrl!,
+    coverAlt: "Cover",
+    content,
+  })
+  expect(mocks.remove).not.toHaveBeenCalled()
+  expect(
+    await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, image))
+  ).toHaveLength(1)
+  await deletePost(second.id)
+  expect(mocks.remove).toHaveBeenCalledWith(new URL(image).pathname.slice(1))
+}, 15_000)
+
+it("rolls back detached inline cleanup if the post update fails", async () => {
+  const first = await fixture()
+  const second = await fixture()
+  const seriesId = randomUUID()
+  const seriesTitle = `Inline cleanup ${seriesId}`
+  seriesIds.push(seriesId)
+  await db
+    .insert(schema.series)
+    .values({ id: seriesId, slug: `inline-cleanup-${seriesId}`, title: seriesTitle })
+  const image = `https://cover-cleanup-integration.invalid/content/${randomUUID()}.png`
+  urls.push(image)
+  await db
+    .update(schema.posts)
+    .set({ seriesId, seriesOrder: 1 })
+    .where(eq(schema.posts.id, first.id))
+  await db
+    .update(schema.posts)
+    .set({ seriesId, seriesOrder: 2, contentJson: inlineDocument(image) })
+    .where(eq(schema.posts.id, second.id))
+  expect(
+    await savePost({
+      id: second.id,
+      slug: second.slug,
+      title: second.title,
+      status: "draft",
+      tags: [],
+      content,
+      seriesTitle,
+      seriesOrder: 1,
+    })
+  ).toMatchObject({ ok: false })
+  expect(
+    await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, image))
+  ).toEqual([])
+  const [saved] = await db.select().from(schema.posts).where(eq(schema.posts.id, second.id))
+  expect(saved.contentJson).toEqual(inlineDocument(image))
+  expect(mocks.remove).not.toHaveBeenCalled()
+}, 15_000)
+
+it("captures the actual detached inline image when a competing save commits first", async () => {
+  const post = await fixture()
+  const { result, replacement } = await whilePostLocked(post.id, "replace-inline", () =>
+    savePost({
+      id: post.id,
+      slug: post.slug,
+      title: post.title,
+      status: "draft",
+      tags: [],
+      coverUrl: post.coverUrl!,
+      coverAlt: "Cover",
+      content,
+    })
+  )
+  expect(result).toMatchObject({ ok: true })
+  expect(mocks.remove).toHaveBeenCalledWith(new URL(replacement).pathname.slice(1))
+  expect(
+    await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, replacement))
+  ).toEqual([])
+}, 15_000)
+
+it("does not enqueue ordinary external inline image URLs on removal", async () => {
+  const post = await fixture()
+  const external = "https://external.example.com/photos/article-photo.png"
+  urls.push(external)
+  await db
+    .update(schema.posts)
+    .set({ contentJson: inlineDocument(external) })
+    .where(eq(schema.posts.id, post.id))
+  expect(
+    await savePost({
+      id: post.id,
+      slug: post.slug,
+      title: post.title,
+      status: "draft",
+      tags: [],
+      coverUrl: post.coverUrl!,
+      coverAlt: "Cover",
+      content,
+    })
+  ).toMatchObject({ ok: true })
+  expect(mocks.remove).not.toHaveBeenCalled()
+  expect(
+    await db.select().from(schema.coverCleanup).where(eq(schema.coverCleanup.url, external))
+  ).toEqual([])
+})

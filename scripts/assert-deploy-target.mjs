@@ -18,6 +18,7 @@ export function deploymentTarget(config) {
     ),
     siteUrl: config.vars?.SITE_URL,
     mediaOrigin: config.vars?.MEDIA_ORIGIN,
+    crons: [...(config.triggers?.crons ?? [])].sort(),
     r2: sort(
       (config.r2_buckets ?? []).map(({ binding, bucket_name }) => ({ binding, bucket_name }))
     ),

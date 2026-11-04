@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { unstable_readConfig } from "wrangler"
+import { copyPublicAssets } from "./dev-public-assets.mjs"
 
 const database = new URL(process.env.DATABASE_URL ?? "")
 if (!["localhost", "127.0.0.1", "[::1]"].includes(database.hostname))
@@ -11,6 +12,7 @@ if (!["localhost", "127.0.0.1", "[::1]"].includes(database.hostname))
 const directory = await mkdtemp(join(tmpdir(), "indrax-upload-browser-"))
 const source = unstable_readConfig({ config: "wrangler.jsonc", env: "" })
 const config = join(directory, "wrangler.json")
+const publicDirectory = join(directory, "public")
 const values = Object.fromEntries(
   [
     "DATABASE_URL",
@@ -26,6 +28,7 @@ let child
 const stop = () => child?.kill("SIGTERM")
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, stop)
 try {
+  await copyPublicAssets(resolve("public"), publicDirectory)
   // A private config and .dev.vars keep fixtures out of the user's configuration.
   // Cloudflare's Vite plugin provides this config-path override itself.
   await writeFile(
@@ -37,7 +40,7 @@ try {
       compatibility_flags: source.compatibility_flags,
       workers_dev: false,
       preview_urls: false,
-      assets: { ...source.assets, directory: resolve("public") },
+      assets: { ...source.assets, directory: publicDirectory },
       r2_buckets: [
         { binding: "MEDIA_BUCKET", bucket_name: `indrax-upload-browser-${crypto.randomUUID()}` },
       ],
@@ -63,6 +66,7 @@ try {
         CLOUDFLARE_VITE_FORCE_LOCAL: "true",
         INDRAX_VITE_CACHE_DIR: join(directory, "vite-cache"),
         INDRAX_VITE_PERSIST_DIR: join(directory, "workers-state"),
+        INDRAX_DEV_PUBLIC_DIR: publicDirectory,
       },
     }
   )

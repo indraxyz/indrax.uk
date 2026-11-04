@@ -18,7 +18,7 @@ The local loopback media override is ignored by production builds, so it cannot
 replace the deployed media origin. Production validators/renderers reject local
 cover URLs.
 
-Production and dev covers are public. Cloudflare Access was removed on
+Production and dev media images are public. Cloudflare Access was removed on
 2026-10-13; embedded cover reads no longer need an Access login or a separate
 media-host cookie. Uploads still require the application's GitHub author session
 and exact site Origin before the Worker writes through its R2 binding.
@@ -27,9 +27,11 @@ See [public dev access and admin authentication](cloudflare-access.md).
 
 ## Lightweight enforcement
 
-`/api/upload?purpose=cover` requires the author, the request's exact Origin, a
+`/api/upload?purpose=cover` and `/api/upload?purpose=content` require the author, the request's exact Origin, a
 known purpose, an allowed image Content-Type and a matching file signature.
 The body is capped while streaming at 5 MiB; client-reported size is not trusted.
+Both purposes accept JPEG, PNG, WebP and AVIF. Content images use generated
+`content/<UUIDv4>.<extension>` keys and the same bucket binding as covers.
 The Worker has 90 seconds to read an upload and at most 2 seconds to drain a
 refused body. Other bounded JSON reads use a 10-second deadline. Each body has
 one timer and one promise race, not an extra timer or race per chunk.
@@ -48,28 +50,43 @@ proxy (see `DEV_PUBLIC_URL` in `.env.example`), use that origin instead, e.g.
 `MEDIA_ORIGIN=https://indrax.uk.test/local-media`: besides loopback, only names
 reserved for local use (RFC 6761 `.test` and `.localhost`) qualify, and the request
 origin must still match exactly. Local requests
-use absolute URLs under the configured `/local-media/covers/` base. The development-only route
-streams generated cover keys from simulated R2, allows GET/HEAD only and sends
+use absolute URLs under `/local-media/covers/` or `/local-media/content/`. The development-only route
+streams generated image keys from simulated R2, allows GET/HEAD only and sends
 nosniff and sandbox headers. Production builds return 404 for this route. Local
 cover URLs pass the editor's validation and renderer; arbitrary relative paths
 are rejected. Restart the dev server after changing the upload configuration.
 The built `npm run start` preview retains the deployment's media configuration;
 use `npm run dev` to test isolated local uploads.
 
-Existing local covers retain their generated object keys when the server port
-changes. The public cover renderer and editor resolve these valid development
-URLs against the current configured local origin, so covers uploaded at
+Existing local images retain their generated object keys when the server port
+changes. The public cover/body renderers and editor resolve these valid development
+URLs against the current configured local origin, so images uploaded at
 `http://localhost:5173` also render at `https://indrax.uk.test` and back; saving the post records
 that current URL. This requires the same local R2 state directory and bucket:
 changing the origin does not copy objects from another environment or restore
 deleted `.wrangler/state` data. Production never rewrites or accepts local URLs.
 
-## Cover removal and post deletion
+## Cover and content removal and post deletion
 
 Removing a cover is deferred until a successful post Save. Replacing a saved
 cover or deleting its post also schedules its previous cover for deletion.
 Canceling the dialog, abandoning the form, validation errors and failed post
 transactions do not delete the saved image.
+
+Inline images upload when the author confirms Insert/Update image in the editor.
+They are independent of the cover and may appear multiple times in a post, with
+separate alt text per block. Removing or replacing a saved inline image queues its
+old managed URL only when the document is saved. Post deletion queues the cover
+and saved inline image URLs together. The existing outbox table and batch transaction
+are reused for detached-image cleanup. Pending uploads additionally require migration
+`0007_media_upload_lifecycle`. Third-party HTTPS image URLs
+remain supported as authored content, but never authorize storage deletion.
+Each new cover/content upload is tracked before the R2 write and remains pending until
+a post save attaches it in the same transaction. Unreferenced pending uploads older than
+24 hours are collected by hourly scheduled cleanup; R2 failures retain durable retry work.
+Failed post saves preserve pending uploads for retry within that grace period. A database
+transition guard prevents reattaching an asset cleanup has already claimed or deleted.
+See [pending media lifecycle](media-upload-lifecycle.md) for concurrency and retry behavior.
 
 Migration `0006_cover_cleanup` adds a small PostgreSQL outbox. The old cover URL
 is captured under a post row lock and inserted into `cover_cleanup` in the same
@@ -85,22 +102,24 @@ deploying code that saves or deletes posts.
 After commit, the Worker awaits `MEDIA_BUCKET.delete` and removes the queue row
 only after that succeeds. Failures are logged and retain the queue row; the
 committed post mutation still succeeds. Later successful post saves, deletions,
-or status changes retry pending work. There is no scheduled retry worker: if no
-one edits a post afterward, cleanup remains pending until the next mutation.
+or status changes retry pending work. Hourly scheduled cleanup also retries the outbox,
+so cleanup no longer requires another author edit. Production runs at minute 17 UTC and
+dev at minute 47; each invocation handles bounded batches of pending and detached work.
 
-Cleanup accepts only generated `covers/<UUIDv4>.(jpg|png|webp|avif)` keys from the
+Cleanup accepts only generated `covers/<UUIDv4>.(jpg|png|webp|avif)` or
+`content/<UUIDv4>.(jpg|png|webp|avif)` keys from the
 configured media origin and bucket. Valid local URLs can retain a previous
 loopback port. External, unknown-origin and non-managed keys remain untouched.
 Other posts' cover URLs and inline image content are checked for the object key
 before deletion, including references made through an older local port. Shared
 objects stay queued until their last post reference is removed.
 
-PostgreSQL and R2 cannot commit one transaction together. This application is a
-single-author editor; its reference check protects existing shared images, but
-manually reusing a URL concurrently with cleanup can race that check. A future
-multi-author media library should introduce asset retirement/ownership rather
-than rely on a query followed by object deletion. Deleting from R2 also does not
-purge browser or CDN caches of an already public, immutable image.
+PostgreSQL and R2 cannot commit one transaction together. Tracked uploads serialize
+attachment and retirement on their tracking row; the transition guard rejects stale
+saves after cleanup claims an asset. Older untracked images retain the existing
+reference-check cleanup behavior, which can race a concurrent manual URL reuse.
+Deleting from R2 does not purge browser or CDN caches of an already public,
+immutable image.
 
 R2 custom-domain reads go straight through Cloudflare rather than this Worker.
 One free Response Header Transform Rule, saved in

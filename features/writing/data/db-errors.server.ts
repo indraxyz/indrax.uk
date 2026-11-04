@@ -11,6 +11,18 @@
 /** The partial unique index enforcing one post per position in a series. */
 export const SERIES_ORDER_CONSTRAINT = "idx_posts_series_order_unique"
 
+/** Cleanup has already retired a tracked upload referenced by a stale editor. */
+export function isMediaUploadUnavailable(error: unknown): boolean {
+  const cause = ((error as { cause?: unknown })?.cause ?? error) as
+    { code?: unknown; constraint?: unknown; message?: unknown } | undefined
+  return (
+    String(cause?.code) === "23514" &&
+    (cause?.constraint === "media_uploads_attach_available" ||
+      (typeof cause?.message === "string" &&
+        cause.message.includes("media_uploads_attach_available")))
+  )
+}
+
 /**
  * Whether a write failed because two parts claimed the same position.
  *

@@ -1,8 +1,16 @@
 import { beforeEach, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ author: vi.fn(), storage: vi.fn(), put: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  author: vi.fn(),
+  storage: vi.fn(),
+  put: vi.fn(),
+  register: vi.fn(),
+}))
 vi.mock("@/lib/auth-guard.server", () => ({ requireAuthor: mocks.author }))
 vi.mock("@/lib/cover-storage.server", () => ({ getCoverStorageConfig: mocks.storage }))
+vi.mock("@/features/writing/data/media-uploads.server", () => ({
+  registerPendingUpload: mocks.register,
+}))
 
 import { POST } from "./upload.server"
 
@@ -34,15 +42,27 @@ beforeEach(() => {
     publicUrl: "https://media.example.test",
   })
   mocks.put.mockResolvedValue({ key: "stored" })
+  mocks.register.mockResolvedValue(true)
 })
 
-it("stores a verified image under a generated key with its verified type", async () => {
-  const result = await upload(PNG)
+it.each([
+  ["cover", "covers"],
+  ["content", "content"],
+])("stores a verified %s image under its generated prefix", async (purpose, prefix) => {
+  const result = await upload(PNG, { purpose })
   expect(result.status).toBe(201)
   const { publicUrl } = (await result.json()) as { publicUrl: string }
-  expect(publicUrl).toMatch(/^https:\/\/media\.example\.test\/covers\/[0-9a-f-]{36}\.png$/)
+  expect(new URL(publicUrl).origin).toBe("https://media.example.test")
+  expect(new URL(publicUrl).pathname).toMatch(new RegExp(`^/${prefix}/[0-9a-f-]{36}\\.png$`))
 
   expect(mocks.put).toHaveBeenCalledOnce()
+  expect(mocks.register).toHaveBeenCalledExactlyOnceWith(
+    new URL(publicUrl).pathname.slice(1),
+    publicUrl
+  )
+  expect(mocks.register.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.put.mock.invocationCallOrder[0]
+  )
   expect(mocks.put).toHaveBeenCalledWith(new URL(publicUrl).pathname.slice(1), PNG, {
     onlyIf: { etagDoesNotMatch: "*" },
     storageClass: "Standard",
@@ -58,6 +78,7 @@ it("refuses an unauthenticated caller before reading anything", async () => {
   mocks.author.mockRejectedValue(new Error("Not authorised."))
   expect((await upload(PNG)).status).toBe(401)
   expect(mocks.put).not.toHaveBeenCalled()
+  expect(mocks.register).not.toHaveBeenCalled()
 })
 
 it.each([
@@ -73,6 +94,7 @@ it.each([
   expect(result.status).toBe(status)
   expect(await result.json()).toHaveProperty("error")
   expect(mocks.put).not.toHaveBeenCalled()
+  expect(mocks.register).not.toHaveBeenCalled()
 })
 
 it("refuses a streamed body past the cap, drains a bounded amount, then cuts it off", async () => {
@@ -115,6 +137,7 @@ it("validates fully even when no storage is configured", async () => {
   expect((await upload(HTML)).status).toBe(415)
   expect((await upload(PNG)).status).toBe(501)
   expect(mocks.put).not.toHaveBeenCalled()
+  expect(mocks.register).not.toHaveBeenCalled()
 })
 
 it("reports a storage refusal instead of a public URL", async () => {
@@ -122,6 +145,37 @@ it("reports a storage refusal instead of a public URL", async () => {
   const result = await upload(PNG)
   expect(result.status).toBe(502)
   expect(await result.json()).not.toHaveProperty("publicUrl")
+  // Registration is not undone: the storage write might have succeeded before
+  // its acknowledgement failed, and scheduled cleanup must cover both outcomes.
+  expect(mocks.register).toHaveBeenCalledOnce()
+})
+
+it.each([false, new Error("Database unavailable")])(
+  "refuses to store an image when pending registration is unavailable: %s",
+  async (registration) => {
+    if (registration instanceof Error) mocks.register.mockRejectedValue(registration)
+    else mocks.register.mockResolvedValue(registration)
+    const result = await upload(PNG, { purpose: "content" })
+    expect(result.status).toBe(503)
+    expect(await result.json()).toEqual({
+      error: "Image uploads are temporarily unavailable. Please try again.",
+    })
+    expect(mocks.put).not.toHaveBeenCalled()
+  }
+)
+
+it("waits for durable pending registration before starting the storage write", async () => {
+  let complete!: (value: boolean) => void
+  const pending = new Promise<boolean>((resolve) => {
+    complete = resolve
+  })
+  mocks.register.mockReturnValue(pending)
+  const result = upload(PNG)
+  await vi.waitFor(() => expect(mocks.register).toHaveBeenCalledOnce())
+  expect(mocks.put).not.toHaveBeenCalled()
+  complete(true)
+  expect((await result).status).toBe(201)
+  expect(mocks.put).toHaveBeenCalledOnce()
 })
 
 it("refuses an existing key instead of overwriting it", async () => {

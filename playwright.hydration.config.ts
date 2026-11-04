@@ -16,12 +16,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npx vite --configLoader native --port ${E2E_PORT} --strictPort`,
+    command: "node scripts/hydration-e2e-server.mjs",
     url: E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      INDRAX_VITE_CACHE_DIR: process.env.INDRAX_VITE_CACHE_DIR ?? ".wrangler/hydration-vite-cache",
+      E2E_PORT: String(E2E_PORT),
     },
   },
 })

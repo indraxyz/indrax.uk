@@ -70,12 +70,13 @@ remain potentially expensive and must be measured in deployed CPU profiles.
 
 `components/query-provider.tsx` creates the QueryClient for each application.
 Browser route loaders and components share that cache; SSR requests each create
-their own. Public writing client loaders and admin data loaders prepare destination
-data before committing navigation. Both apps use `react-top-loading-bar` for
-in-app transitions, retaining the current page; hard loads show a centered spinner
-while initial data is pending. The admin HTML includes a spinner before its scripts
-load; it injects the same `loading-spinner.svg` at the same size and
-position as React's loader, so a hard refresh shows one continuous spinner. Background refreshes do not replace content or restart the indicator.
+their own. Home Writing, the public archive and admin dashboard/posts mount their
+Query consumers with accessible skeletons while initial data is pending. Admin loaders
+still verify the session before private page queries mount; edit routes may prefetch
+their record. Both apps use `react-top-loading-bar` for route transitions and observed
+queries awaiting first data. Local pending states announce API loading without a blocking
+public overlay. The admin HTML and access-verification phase retain their shared centered
+spinner. Cached/background refreshes retain content without restarting the indicator.
 Queries have a one-minute stale time, no automatic retry and no focus refetch;
 mutations are never retried. Session queries deliberately require freshness when
 admin access is checked. Save/status/delete invalidate the affected admin/public

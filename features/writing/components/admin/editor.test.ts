@@ -9,6 +9,7 @@ import { PostEditor } from "./editor"
 
 vi.mock("@tiptap/react", () => ({
   useEditor: () => ({
+    state: { selection: { getBookmark: () => ({}) } },
     isActive: () => false,
     can: () =>
       new Proxy(
@@ -40,6 +41,7 @@ describe("PostEditor toolbar", () => {
       "Clear formatting",
       "Undo",
       "Redo",
+      "Insert image",
     ]) {
       expect(html).toContain(`aria-label="${label}"`)
     }
@@ -81,6 +83,6 @@ describe("PostEditor toolbar", () => {
     expect(html).toContain("<u>Underlined</u>")
     expect(html).toContain("<br>")
     expect(html).toContain("<hr>")
-    expect(html).toContain('<h4 id="user-content-details">Details</h4>')
+    expect(html).toContain('<h4 id="user-content-details" tabindex="-1">Details</h4>')
   })
 })

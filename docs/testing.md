@@ -32,7 +32,17 @@ analytics, PDF/social images, writing search/filter/sort and series content, nav
 previews, authoring and session isolation. Database/auth/media prerequisites can
 cause skips; a passing subset does not verify skipped flows.
 
-Local cover uploads have a separate development-runtime suite:
+Content-loading coverage in `loading-skeletons.spec.ts` holds API responses to inspect
+public rails/grids and admin dashboard/cards/table pending states, then verifies loaded,
+empty, error/retry and cached results. `image-loading.spec.ts` checks real image load/decode,
+source replacement/error recovery, reserved dimensions, cached images and reduced motion
+on public preview and admin editor pages. `article-navigation.spec.ts` covers nested h2–h4
+contents, desktop/sidebar and mobile/disclosure layouts, upward/downward heading links,
+header clearance, keyboard access, axe and print. `toolbar-drag.spec.ts` covers mouse drag
+versus clicks, native touch, keyboard boundaries, cancelled gestures and overflow cues.
+The [content-loading specification](content-loading-article-navigation.md) records behavior.
+
+Local cover and inline content uploads have a separate development-runtime suite:
 
 ```bash
 E2E_HOST=localhost E2E_PORT=3351 npm run test:e2e:uploads
@@ -51,9 +61,43 @@ change `.env.local` or use live R2. The production suite excludes this spec, and
 CI runs the development upload suite separately. Set `DATABASE_URL` explicitly
 to another loopback database when needed; remote hosts are refused.
 
-Run this suite with the ordinary `npm run dev` watcher stopped: both build admin
-assets into `public/admin`, and simultaneous watchers can replace the test's
-media-origin configuration. Restart development afterward to restore local assets.
+The inline-image case inserts two uploaded images with independent alt text, resizes one,
+saves and reloads the document, checks dimensions in the signed preview, then verifies removal and post
+deletion clean up only detached generated objects. `editor-images.spec.ts` additionally
+uses intercepted private APIs to exercise URL insertion, image editing, upload retry,
+modal focus/accessibility and unavailable storage without database prerequisites. Resize
+coverage includes mouse dragging, keyboard steps, Undo/Redo and mobile proportions.
+`editor-media.spec.ts` checks YouTube insertion, editing/removal, alignment, saved
+attributes, responsive bounds, accessible dialogs and controlled iframe sources.
+Media renderer tests validate provider URLs, saved dimensions/alignment, malicious
+document attributes and the exact Worker frame policy without third-party network calls.
+The upload suite also inspects pending/attached/deleted tracking states and exercises
+removal before first save, Undo, failed saves and successful retries without another upload.
+Image-history regression tests fix browser transaction timestamps while leaving timers
+and animations running. This verifies that rapid insert/edit/remove actions remain
+separately undoable rather than relying on ProseMirror's default history grouping delay.
+SQL integration tests cover 24-hour expiry, shared references, failure retries, retired
+upload rejection and deterministic attachment/cleanup races. Run SQL integration before
+the browser write suites, so temporary SQL fixtures cannot interfere with authoring counts.
+`card-carousels.spec.ts` checks the shared Embla rails on mobile and desktop, including
+boundary arrows, keyboard navigation, dragging, print layout and no-JavaScript scrolling.
+It compares both resume rails with home Writing for responsive widths and hover/focus
+feedback. `scroll-navigation.spec.ts` verifies public/admin header direction changes,
+small-scroll jitter, keyboard focus recovery, open-menu pinning, route resets, reduced
+motion, printing and the public no-JavaScript fallback. The
+[navigation and carousel specification](navigation-carousel-ux.md) records the shared UX.
+Archive filter coverage checks that public/admin search bars attach to the visible header
+edge, including zero offset when navigation hides, upward reveal and responsive wrapping.
+`sticky-editor-toolbar.spec.ts` verifies the same offset for a long article, samples the
+reveal animation for gaps/overlap, and covers keyboard formatting, reduced motion and print.
+
+The upload suite copies public inputs into its private temporary directory, excluding
+the generated `admin` subtree. `INDRAX_DEV_PUBLIC_DIR` points both the watched admin
+build and Vite's development asset root there, and the temporary Worker asset binding
+uses the same directory. The override requires an absolute path and is ignored by
+production builds. Ordinary `npm run dev` can remain running on a different port:
+its `public/admin` output and media-origin configuration are not changed by this suite.
+Temporary test public/admin assets, R2 state and dependency caches are removed on exit.
 
 Inspect the current inventory without changing application data:
 
@@ -189,6 +233,14 @@ resume and writing pages for hydration warnings and consistent document nonces:
 ```bash
 E2E_PORT=3212 npx playwright test --config playwright.hydration.config.ts
 ```
+
+The server uses a temporary Wrangler config and `.dev.vars` that explicitly forwards
+only an exported, loopback `DATABASE_URL` into the development Worker. Shell variables
+alone do not otherwise become Worker bindings. A fresh private D1/KV state directory
+is initialized before Vite starts and removed afterward; developer secrets, caches and
+admin build output are unchanged. The article timezone regression needs the migrated,
+seeded database and checks its HTTP 200 response before waiting for hydration. Without
+`DATABASE_URL`, only that article case skips; the other hydration checks still run.
 
 It also reloads Writing after its filter trigger becomes enabled and verifies that
 the sheet still opens, closes, and restores focus without hydration warnings.

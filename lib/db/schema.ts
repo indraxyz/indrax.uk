@@ -7,6 +7,7 @@ import { POST_STATUSES, type PostDocument } from "@/features/writing/types"
 export * from "./auth-schema"
 import {
   customType,
+  check,
   index,
   integer,
   jsonb,
@@ -147,6 +148,30 @@ export const coverCleanup = pgTable(
     attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("idx_cover_cleanup_attempted").on(table.attemptedAt, table.url)]
+)
+
+/** Durable upload lifecycle; retired rows prevent stale editors reattaching deleted assets. */
+export const mediaUploads = pgTable(
+  "media_uploads",
+  {
+    key: text("key").primaryKey(),
+    url: text("url").notNull(),
+    state: text("state", { enum: ["pending", "attached", "deleting", "deleted"] })
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "media_uploads_state_valid",
+      sql`${table.state} in ('pending', 'attached', 'deleting', 'deleted')`
+    ),
+    index("idx_media_uploads_cleanup")
+      .on(table.attemptedAt, table.createdAt, table.key)
+      .where(sql`${table.state} in ('pending', 'deleting')`),
+  ]
 )
 
 export const postTags = pgTable(

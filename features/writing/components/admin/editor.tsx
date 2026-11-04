@@ -34,18 +34,24 @@ import {
   Underline,
   X,
 } from "lucide-react"
-import { useEffect, useRef, type ReactNode } from "react"
+import type { ReactNode } from "react"
 
 import { controlClassNames, focusControlClassNames } from "@/components/ui/variants"
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
+import { EditorImage } from "./editor-image"
+import { EditorVideo } from "./editor-video"
+import { EditorAlignment } from "./editor-alignment"
 import type { PostDocument } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
+import { stickyHeaderOffsetClassNames } from "@/components/scroll-header"
+import { DragScroll } from "@/components/ui/drag-scroll"
 
 const EMPTY_DOCUMENT: PostDocument = { type: "doc", content: [{ type: "paragraph" }] }
 
 interface EditorProps {
   value: PostDocument | null
   onChange: (document: PostDocument) => void
+  imageUploadsConfigured?: boolean
 }
 
 interface ToolProps {
@@ -91,20 +97,27 @@ const TABLE_ACTIONS = [
   ["deleteTable", "Delete table", TableIcon, X],
 ] as const
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({
+  editor,
+  imageUploadsConfigured,
+}: {
+  editor: Editor
+  imageUploadsConfigured: boolean
+}) {
   // Tiptap v3 does not rerender useEditor consumers on transactions by default.
   // Subscribe the controls so selection changes update active/available actions.
   useEditorState({ editor, selector: ({ transactionNumber }) => transactionNumber })
   const icon = "size-4"
 
   return (
-    <div className="sticky top-[var(--admin-header-height,0px)] z-40 border-b-2 border-border bg-[var(--color-muted)]">
-      <div
-        role="toolbar"
-        aria-label="Formatting"
-        aria-orientation="horizontal"
-        className="flex min-w-0 flex-nowrap gap-1 overflow-x-auto overscroll-x-contain p-2"
-      >
+    <div
+      data-editor-toolbar
+      className={cn(
+        "sticky z-40 border-b-2 border-border bg-[var(--color-muted)] print:static",
+        stickyHeaderOffsetClassNames
+      )}
+    >
+      <DragScroll role="toolbar" aria-label="Formatting" aria-orientation="horizontal">
         <Tool
           label="Undo"
           icon={<Undo2 className={icon} />}
@@ -188,6 +201,9 @@ function Toolbar({ editor }: { editor: Editor }) {
           onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
         />
 
+        <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
+
+        <EditorAlignment editor={editor} />
         <span className="mx-1 w-px shrink-0 bg-border" aria-hidden />
 
         <Tool
@@ -285,10 +301,12 @@ function Toolbar({ editor }: { editor: Editor }) {
           disabled={!editor.can().chain().unsetAllMarks().clearNodes().run()}
           onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         />
-      </div>
+        <EditorImage editor={editor} uploadsConfigured={imageUploadsConfigured} />
+        <EditorVideo editor={editor} />
+      </DragScroll>
       {editor.isActive("table") && (
         <div className="border-t-2 border-border">
-          <div role="toolbar" aria-label="Table editing" className="flex gap-1 overflow-x-auto p-2">
+          <DragScroll role="toolbar" aria-label="Table editing" aria-orientation="horizontal">
             {TABLE_ACTIONS.map(([command, label, Icon, Badge]) => (
               <Tool
                 key={command}
@@ -309,7 +327,7 @@ function Toolbar({ editor }: { editor: Editor }) {
                 onClick={() => editor.chain().focus()[command]().run()}
               />
             ))}
-          </div>
+          </DragScroll>
         </div>
       )}
     </div>
@@ -325,25 +343,7 @@ function Toolbar({ editor }: { editor: Editor }) {
  * The admin is browser-only. Delaying initialization until the first effect
  * keeps the editor lifecycle aligned with React mounting and its placeholder.
  */
-export function PostEditor({ value, onChange }: EditorProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const header = document.querySelector<HTMLElement>("[data-admin-header]")
-    if (!header) return
-
-    const updateOffset = () => {
-      containerRef.current?.style.setProperty(
-        "--admin-header-height",
-        `${header.getBoundingClientRect().height}px`
-      )
-    }
-    const observer = new ResizeObserver(updateOffset)
-    observer.observe(header)
-    updateOffset()
-    return () => observer.disconnect()
-  }, [])
-
+export function PostEditor({ value, onChange, imageUploadsConfigured = false }: EditorProps) {
   const editor = useEditor({
     extensions: WRITING_EXTENSIONS,
     content: value ?? EMPTY_DOCUMENT,
@@ -352,6 +352,7 @@ export function PostEditor({ value, onChange }: EditorProps) {
       attributes: {
         class: cn(
           "prose prose-lg max-w-none min-h-[24rem] px-4 py-4 focus:outline-none",
+          "[&_img.ProseMirror-selectednode]:outline-2 [&_img.ProseMirror-selectednode]:outline-offset-2 [&_img.ProseMirror-selectednode]:outline-ring",
           focusControlClassNames
         ),
         "aria-label": "Article body",
@@ -364,15 +365,15 @@ export function PostEditor({ value, onChange }: EditorProps) {
     // Reserves the same height the editor will occupy, so the form does not jump
     // when it mounts.
     return (
-      <div ref={containerRef} className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
+      <div className="min-h-[28rem] border-2 border-border bg-card" aria-busy>
         <span className="sr-only">Loading the editor</span>
       </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="min-w-0 border-2 border-border bg-card">
-      <Toolbar editor={editor} />
+    <div className="min-w-0 border-2 border-border bg-card">
+      <Toolbar editor={editor} imageUploadsConfigured={imageUploadsConfigured} />
       <EditorContent editor={editor} />
     </div>
   )

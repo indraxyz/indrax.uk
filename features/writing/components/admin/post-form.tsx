@@ -431,6 +431,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
           >
             <PostEditor
               value={body}
+              imageUploadsConfigured={coverUploadsConfigured}
               onChange={(value) => {
                 setBody(value)
               }}

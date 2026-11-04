@@ -118,7 +118,7 @@ Existing Playwright coverage includes:
 | `e2e/contact-links.spec.ts`                      | Contact targets, accessibility and print behavior                     |
 | `e2e/resume-pdf.spec.ts`                         | Actual PDF download and lazy renderer loading                         |
 | `e2e/analytics.spec.ts`                          | Consent, pageviews/events and unobstructed controls                   |
-| `e2e/navigation-progress.spec.ts`                | Initial spinner and navigation feedback in public/admin apps          |
+| `e2e/navigation-progress.spec.ts`                | Destination skeletons, admin access spinner and navigation feedback   |
 | `e2e/smoke.spec.ts`, `e2e/accessibility.spec.ts` | Page/theme behavior and accessibility                                 |
 
 Run the built Worker using the current scripts and fixtures in

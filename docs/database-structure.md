@@ -18,6 +18,14 @@ erDiagram
     text url PK
     timestamptz attempted_at
   }
+  media_uploads {
+    text key PK
+    text url
+    text state
+    timestamptz created_at
+    timestamptz attached_at
+    timestamptz attempted_at
+  }
 ```
 
 - Posts, series and tags use UUID primary keys and unique slugs. Posts store the
@@ -52,9 +60,12 @@ shared-reference handling and failure/retry behavior.
 
 The outbox intentionally has **no foreign key to posts**: its job must survive the
 post's deletion. It represents pending object deletion, not current asset ownership.
-A media registry would be a separate design if this site gains concurrent editors,
-asset browsing or reusable media ownership; it is not simulated by attaching a
-cascading cleanup relation to the deleted post.
+`media_uploads` tracks generated cover/content keys through pending, attached, deleting
+and deleted states. Registration precedes R2 writes; attachment joins the post transaction.
+A partial index serves pending/deleting cleanup candidates, and a transition trigger
+rejects attaching retiring/deleted files. Deleted rows remain tombstones for stale tabs.
+Neither media table cascades from a post: shared assets and cleanup work can outlive it.
+See [pending media lifecycle](media-upload-lifecycle.md).
 
 ## Migrations and verification
 

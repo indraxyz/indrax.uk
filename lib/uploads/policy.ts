@@ -25,6 +25,11 @@ export const UPLOAD_POLICIES = {
     maxBytes: 5 * 1024 * 1024,
     types: ["image/jpeg", "image/png", "image/webp", "image/avif"],
   },
+  content: {
+    prefix: "content",
+    maxBytes: 5 * 1024 * 1024,
+    types: ["image/jpeg", "image/png", "image/webp", "image/avif"],
+  },
 } as const satisfies Record<string, UploadPolicy>
 
 export type UploadPurpose = keyof typeof UPLOAD_POLICIES
@@ -43,10 +48,17 @@ export function describeTypes(policy: UploadPolicy): string {
     : labels.join("")
 }
 
-const COVER_KEY =
-  /^covers\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif)$/
+const IMAGE_KEY_PREFIXES = Object.values(UPLOAD_POLICIES)
+  .map((policy) => policy.prefix)
+  .join("|")
+/** Shared generated-key shape for local reads and transactional cleanup candidates. */
+export const GENERATED_IMAGE_KEY_PATTERN = `(${IMAGE_KEY_PREFIXES})/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|avif)`
+const GENERATED_IMAGE_KEY = new RegExp(`^${GENERATED_IMAGE_KEY_PATTERN}$`)
 
-/** One generated-key contract for local media serving and managed R2 cleanup. */
-export function isGeneratedCoverKey(value: string): boolean {
-  return COVER_KEY.test(value) && !/[\r\n]/.test(value)
+/** Resolve only server-generated keys for a declared upload purpose. */
+export function uploadPolicyForKey(value: string): UploadPolicy | null {
+  if (!GENERATED_IMAGE_KEY.test(value) || /[\r\n]/.test(value)) return null
+  return (
+    Object.values(UPLOAD_POLICIES).find((policy) => value.startsWith(`${policy.prefix}/`)) ?? null
+  )
 }

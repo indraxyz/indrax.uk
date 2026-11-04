@@ -26,7 +26,7 @@ export function PostCover({ post, className, priority = false }: PostCoverProps)
   if (!coverUrl) return null
 
   return (
-    <div data-print-clip className={cn("border-b-2 border-border", className)}>
+    <div data-print-clip className={cn("overflow-hidden border-b-2 border-border", className)}>
       <img
         src={coverUrl}
         // Empty alt is correct for a decorative cover, and the validator requires

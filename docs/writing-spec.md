@@ -25,10 +25,11 @@ components and export React Router loaders and metadata. `admin/routes.tsx`
 defines the independent admin application. `workers/app.ts` dispatches assets,
 APIs, resources and SSR before loading their implementations.
 
-Client loaders prepare destination data through the shared QueryClient before a
-navigation commits. Public and admin navigation show a design-token green top
-progress bar and retain the current page while waiting. Initial/hard loads show a
-centered spinner; background refreshes retain content without restarting the bar.
+Public and admin navigation show a design-token green top progress bar for route
+preparation and observed queries awaiting first data. Home Writing, the public archive,
+admin dashboard and admin posts use accessible skeletons in the destination layout.
+Background refreshes retain cached content. Admin boot/session verification retains its
+centered spinner; public API loading does not block reading or search controls.
 
 CSR moves list/editor rendering to the browser. Authentication, validation,
 mutations and article sanitization remain server responsibilities; this design
@@ -254,6 +255,58 @@ The editor is lazy-loaded only in admin authoring routes. The Better Auth browse
 client is loaded when a sign-in/sign-out action needs it. Server secrets and
 server-only dependencies must never enter either browser build.
 
+## Inline content images
+
+The editor's Insert image action adds independent image blocks between paragraphs or
+other content blocks. Each image has its own alt text, separate from the post cover.
+Select an image and use Edit image to change its URL or alt text, replace its file, or
+remove it. Insert, update and removal are separate Undo/Redo actions, even when they
+occur rapidly; typing beside an image does not merge into its history event. Empty
+alt text marks decoration.
+
+Select an image to reveal corner handles (one external handle for small images).
+Drag a handle to resize both dimensions
+while preserving the image's proportions. Handles also accept arrow keys (one pixel),
+or Shift + arrow keys (ten pixels). Width and height are saved in the image block and
+restored by Undo/Redo. Both the editor and published article scale images proportionally
+to fit narrower containers; resize controls appear only in the editor. This uses the
+installed Tiptap Image schema with pointer and keyboard controls. A cancelled touch or
+pointer drag restores the previous dimensions without changing the document.
+
+The dialog accepts HTTPS URLs (including third-party hosts, matching the renderer's
+existing authored-content policy) or verified uploads to the configured media storage.
+Uploads use the shared `/api/upload?purpose=content` pipeline and happen when the author
+confirms Insert/Update image. The selected file and alt text survive an upload failure;
+successful uploads remain in the document across failed post saves. Upload controls are
+disabled without storage, while HTTPS URL insertion remains available. Local development
+uploads render through the isolated local-media route; deployed builds reject HTTP sources.
+
+Saving a document without a previously saved image, replacing an image, or deleting its
+post queues detached managed assets in the existing transactional cleanup outbox. Shared
+cover/body references prevent deletion. Unsaved abandoned uploads are tracked as pending;
+hourly cleanup removes unreferenced uploads after a 24-hour grace period. Attachment is
+transactional, and a retired-upload guard prevents stale tabs from saving deleted assets.
+See [the feature plan and specification](inline-images-card-carousels.md) and
+[upload lifecycle](r2-uploads.md) for details.
+
+## Video embeds and block alignment
+
+Insert video accepts YouTube watch, share, Shorts and embed links. The editor stores
+a privacy-enhanced embed URL and player title, with optional supported start time.
+Select a video to edit or remove it. Video blocks support proportional mouse/touch
+resizing and keyboard controls, plus Full content width with automatic height.
+These dimensions and placement survive Save and reload. Players are selectable
+previews in the editor; readers can play them in the published article.
+
+Align left, Align center and Align right position text blocks, images and videos.
+Justify applies to text only and is disabled for a selected media block. Lists,
+quotes and table cells align their paragraphs; code blocks retain their formatting.
+Alignment uses validated document attributes and named CSS rules, and never floats
+text around media. The renderer validates saved video URLs and reconstructs trusted
+iframe permissions and dimensions. CSP admits only the exact YouTube privacy host;
+arbitrary iframe HTML and providers remain unsupported. See the
+[feature specification](video-embeds-alignment.md).
+
 ## Article rendering, discovery and design
 
 The server renders the shared Tiptap extensions to HTML, applies an explicit
@@ -264,7 +317,10 @@ loads only when code blocks require it and uses the configured language bundle.
 Copy-code controls enhance the already readable SSR article.
 
 Published articles expose title, description, canonical, Open Graph/Twitter
-metadata, `Article` and `BreadcrumbList` JSON-LD, dates and reading time. RSS and
+metadata, `Article` and `BreadcrumbList` JSON-LD, dates and reading time. Human-readable
+date labels use consistent UTC dates by default across server and
+browser rendering; calendar-only resume dates keep their authored day. The shared
+formatter also supports an explicit timezone for timestamp callers. RSS and
 sitemap contain published content only. Public detail reads return 404 for drafts,
 future publication and missing content. Signed draft previews are uncached and
 excluded from indexing. The view beacon is best-effort decoration, not a reliable
@@ -293,7 +349,7 @@ include correlation context and do not expose stack traces to visitors.
 
 Uploads go through `/api/upload?purpose=<name>`, never straight to R2. Each
 purpose is a policy in `lib/uploads/policy.ts` (key prefix, size cap, allowed
-types); covers allow JPEG, PNG, WebP and AVIF up to 5 MiB. The route requires the
+types); covers and content images allow JPEG, PNG, WebP and AVIF up to 5 MiB. The route requires the
 author session and a same-origin request, bounds the body while streaming, checks
 the file's leading bytes against the declared type (`lib/uploads/file-signature.ts`),
 then stores it under a server-generated key with the verified `Content-Type`. R2
@@ -330,8 +386,9 @@ separately from wall time before claiming free-tier compliance.
 Route loaders, the protected layout and login page use one TanStack Query
 `queryOptions` definition and browser cache. Session responses stay fresh for
 60 seconds, so normal navigation does not invalidate or refetch them. Route
-loaders use `fetchQuery` to revalidate stale access before prefetching private
-page data, including the new-post route. Stale sessions also refresh on window
+loaders use `fetchQuery` to revalidate stale access before entering private pages,
+including the new-post route. Dashboard/posts Query consumers then own their pending
+states; edit routes may prefetch the requested record. Stale sessions also refresh on window
 focus and reconnection; there is no background polling. This follows TanStack's
 [stale-time guidance](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults).
 The session query passes its abort signal to the transport. Sign-out and

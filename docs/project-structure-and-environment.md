@@ -83,7 +83,8 @@ admin/
     feedback/request-state.tsx
 ```
 
-`routes.tsx` declares URLs, lazy route modules and query prefetching. The protected
+`routes.tsx` declares URLs, lazy route modules, session verification and edit-record
+prefetching. Dashboard/posts queries mount their skeletons after verified access. The protected
 layout handles browser session refresh/expiry and provides the session context;
 server APIs still enforce authorization. The shared session hook lives in
 `auth/session.tsx`, while loading/error UI lives in `components/feedback/`.

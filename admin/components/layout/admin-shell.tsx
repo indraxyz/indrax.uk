@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router"
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
@@ -7,6 +7,7 @@ import { SITE_CONTAINER_CLASS } from "@/components/site-container"
 import { focusControlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 import { AdminNavigation } from "@/admin/components/layout/admin-navigation"
+import { ScrollHeader } from "@/components/scroll-header"
 
 interface AdminShellProps {
   title: string
@@ -28,6 +29,7 @@ export function AdminShell({
   signedIn = true,
 }: AdminShellProps) {
   const { pathname } = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
   const currentPage = signedIn
     ? pathname.startsWith("/admin/posts")
       ? "posts"
@@ -38,10 +40,7 @@ export function AdminShell({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header
-        data-admin-header
-        className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85"
-      >
+      <ScrollHeader data-admin-header pinned={menuOpen}>
         <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex items-center justify-between gap-4">
             <Link
@@ -54,10 +53,14 @@ export function AdminShell({
               Indra&apos;s Admin
             </Link>
 
-            <AdminNavigation activePage={currentPage} signedIn={signedIn} />
+            <AdminNavigation
+              activePage={currentPage}
+              signedIn={signedIn}
+              onMenuOpenChange={setMenuOpen}
+            />
           </div>
         </div>
-      </header>
+      </ScrollHeader>
 
       <main className={`${SITE_CONTAINER_CLASS} flex-1 space-y-8 py-10 lg:py-14`}>
         <div className="space-y-4">

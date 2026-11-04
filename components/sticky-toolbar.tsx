@@ -1,19 +1,17 @@
 import { useEffect, useRef, type ComponentProps } from "react"
 
 import { cn } from "@/lib/utils"
+import { stickyHeaderOffsetClassNames } from "@/components/scroll-header"
 
-/** Keep list actions below the site header, including when its navigation wraps. */
+/** Keep list actions below the visible header, with a full-width background. */
 export function StickyToolbar({ className, children, ...props }: ComponentProps<"div">) {
   const toolbar = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const header = document.querySelector("header")
-    if (!header) return
     const update = () => {
       const element = toolbar.current
       if (!element) return
       const bounds = element.getBoundingClientRect()
-      element.style.setProperty("--toolbar-top", `${header.getBoundingClientRect().height}px`)
       // Use the layout viewport to avoid scrollbar-width overflow from 100vw.
       element.style.setProperty("--toolbar-bleed-left", `${-bounds.left}px`)
       element.style.setProperty(
@@ -23,7 +21,6 @@ export function StickyToolbar({ className, children, ...props }: ComponentProps<
     }
     update()
     const observer = new ResizeObserver(update)
-    observer.observe(header)
     observer.observe(document.documentElement)
     return () => observer.disconnect()
   }, [])
@@ -32,7 +29,7 @@ export function StickyToolbar({ className, children, ...props }: ComponentProps<
     <div
       ref={toolbar}
       data-sticky-toolbar
-      className={cn("sticky top-[var(--toolbar-top,6rem)] z-30 py-3 print:static", className)}
+      className={cn("sticky z-30 py-3 print:static", stickyHeaderOffsetClassNames, className)}
       {...props}
     >
       <span

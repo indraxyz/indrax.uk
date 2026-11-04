@@ -38,7 +38,7 @@ export type PostStatus = (typeof POST_STATUSES)[number]
 export interface TocEntry {
   id: string
   text: string
-  level: 2 | 3
+  level: 2 | 3 | 4
 }
 
 export interface RenderedArticle {

@@ -6,7 +6,6 @@ import { AdminLoading, AdminError } from "@/admin/components/feedback/request-st
 import { ProtectedAdmin } from "@/admin/layouts/protected-admin"
 import { getBrowserQueryClient } from "@/components/query-provider"
 import { NavigationProgress } from "@/components/navigation-progress"
-import { parseAdminArchiveOptions } from "@/features/writing/utils/admin-archive-options"
 
 async function loadAdminPage<T>(queryKey?: QueryKey, queryFn?: () => Promise<T>) {
   const client = getBrowserQueryClient()
@@ -19,7 +18,7 @@ async function loadAdminPage<T>(queryKey?: QueryKey, queryFn?: () => Promise<T>)
 function AdminRoot() {
   return (
     <>
-      <NavigationProgress initialSpinner={false} />
+      <NavigationProgress />
       <Outlet />
     </>
   )
@@ -49,17 +48,13 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            loader: () => loadAdminPage(adminKeys.overview, adminApi.overview),
+            loader: () => loadAdminPage(),
             lazy: () => import("./routes/dashboard/overview"),
           },
           {
             path: "posts",
-            loader: ({ request }) => {
-              const options = parseAdminArchiveOptions(new URL(request.url).searchParams)
-              return loadAdminPage(adminKeys.archive(options), () =>
-                adminApi.archive(options, request.signal)
-              )
-            },
+            // Verify access first, then let the mounted Query consumer show its skeleton.
+            loader: () => loadAdminPage(),
             lazy: () => import("./routes/posts/list"),
           },
           { path: "new", loader: () => redirect("/admin/posts/new") },

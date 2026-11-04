@@ -1,0 +1,118 @@
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react"
+import { useLocation } from "react-router"
+
+import { cn } from "@/lib/utils"
+
+/** Sticky page controls follow the visible header with the same transition timing. */
+export const stickyHeaderOffsetClassNames = "top-[var(--site-header-offset,6rem)]"
+
+/** Shared public/admin header; remains in document flow and reachable by keyboard. */
+export function ScrollHeader({
+  children,
+  className,
+  pinned = false,
+  ...props
+}: ComponentProps<"header"> & { pinned?: boolean }) {
+  const headerRef = useRef<HTMLElement>(null)
+  const [hidden, setHidden] = useState(false)
+  const { key } = useLocation()
+  const isHidden = hidden && !pinned
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    const shell = header?.parentElement
+    if (!header || !shell) return
+    const updateOffset = () => {
+      const height = header.offsetHeight
+      const previousTransition = shell.style.transition
+      // Resizing snaps both elements together instead of animating toward an
+      // old header height. Initial measurement also happens before animation.
+      shell.style.transition = "none"
+      // Anchor targets reserve room for navigation that an upward jump reveals.
+      shell.style.setProperty("--site-header-height", `${height}px`)
+      shell.style.setProperty(
+        "--site-header-offset",
+        `${header.dataset.scrollHidden === "true" ? 0 : height}px`
+      )
+      getComputedStyle(shell).getPropertyValue("--site-header-offset")
+      shell.style.transition = previousTransition
+      shell.setAttribute("data-scroll-header-scope", "")
+    }
+    updateOffset()
+    const observer = new ResizeObserver(updateOffset)
+    observer.observe(header)
+    return () => {
+      observer.disconnect()
+      shell.style.removeProperty("--site-header-height")
+      shell.style.removeProperty("--site-header-offset")
+      shell.removeAttribute("data-scroll-header-scope")
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    header?.parentElement?.style.setProperty(
+      "--site-header-offset",
+      `${isHidden ? 0 : header.offsetHeight}px`
+    )
+  }, [isHidden])
+
+  useEffect(() => {
+    let previous = window.scrollY
+    let anchor = previous
+    let direction = 0
+    let frame = 0
+    setHidden(false)
+
+    const update = () => {
+      frame = 0
+      const header = headerRef.current
+      if (!header) return
+      // Clamp elastic overscroll so reaching either boundary cannot flip direction.
+      const maximum = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      const current = Math.max(0, Math.min(window.scrollY, maximum))
+      const nextDirection = Math.sign(current - previous)
+      if (current <= header.offsetHeight || pinned || header.querySelector(":focus-visible")) {
+        setHidden(false)
+        anchor = current
+        direction = 0
+      } else if (nextDirection) {
+        if (nextDirection !== direction) anchor = previous
+        direction = nextDirection
+        // Accumulate movement, ignoring small touchpad/touch direction changes.
+        if (Math.abs(current - anchor) >= 12) {
+          setHidden(direction > 0)
+          anchor = current
+        }
+      }
+      previous = current
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [key, pinned])
+
+  return (
+    <header
+      {...props}
+      ref={headerRef}
+      data-scroll-hidden={isHidden}
+      onFocusCapture={(event) => {
+        setHidden(false)
+        props.onFocusCapture?.(event)
+      }}
+      className={cn(
+        "sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85",
+        "motion-reduce:transition-none print:static print:bg-transparent print:backdrop-blur-none",
+        className
+      )}
+    >
+      {children}
+    </header>
+  )
+}

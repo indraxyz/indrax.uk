@@ -23,6 +23,61 @@
 }
 @plugin "@tailwindcss/typography";
 
+/* One animated value moves navigation and sticky controls on the same timeline. */
+@property --site-header-offset {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 96px;
+}
+
+[data-scroll-header-scope] {
+  transition: --site-header-offset 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-scroll-header-scope] > header[data-scroll-hidden] {
+  transform: translateY(calc(var(--site-header-offset) - var(--site-header-height)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-header-scope] {
+    transition: none;
+  }
+}
+
+@media print {
+  [data-scroll-header-scope] > header[data-scroll-hidden] {
+    transform: none;
+  }
+}
+
+/* Added only after hydration: native/no-JavaScript images stay fully readable. */
+img[data-image-state] {
+  transition:
+    filter 240ms ease,
+    opacity 240ms ease;
+}
+
+img[data-image-state="loading"] {
+  background: var(--color-muted);
+  filter: blur(8px);
+  opacity: 0.6;
+  clip-path: inset(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img[data-image-state] {
+    transition: none;
+  }
+}
+
+@media print {
+  img[data-image-state] {
+    filter: none;
+    opacity: 1;
+    clip-path: none;
+  }
+}
+
 @theme {
   /* Custom breakpoints */
   --breakpoint-sm: 600px;
@@ -535,6 +590,7 @@
      the mobile-only rail and forced it to print alongside the desktop layout. */
   [data-print-columns] {
     display: block !important;
+    transform: none !important;
     columns: 2;
     column-gap: 0.75rem;
   }
@@ -709,6 +765,107 @@
   outline: none;
 }
 
+/* Stored pixel dimensions remain proportional within narrower reading/editor columns. */
+.prose img {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.ProseMirror [data-resize-container] {
+  display: flex;
+  max-width: 100%;
+}
+
+.ProseMirror [data-resize-wrapper] {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ProseMirror [data-resize-wrapper] img {
+  margin: 0;
+}
+
+.ProseMirror [data-resize-handle] {
+  position: absolute;
+  /* Avoid covering the center of small images with overlapping corner targets. */
+  width: min(44px, 25%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  touch-action: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+}
+
+.ProseMirror [data-resize-handle]::after {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  border: 2px solid var(--color-border);
+  background: var(--color-accent);
+}
+
+.ProseMirror [data-resize-handle$="right"] {
+  left: auto;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+.ProseMirror [data-resize-handle^="bottom"] {
+  top: auto;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+}
+
+.ProseMirror [data-resize-handle="bottom-right"] {
+  transform: translate(50%, 50%);
+}
+
+/* A small image needs one external handle so it remains clickable itself. */
+.ProseMirror [data-resize-small] [data-resize-handle]:not([data-resize-handle="bottom-right"]) {
+  display: none;
+}
+
+.ProseMirror [data-resize-small] [data-resize-handle="bottom-right"] {
+  width: 44px;
+  left: max(0px, calc(100% - 44px));
+  right: auto;
+  transform: translateY(calc(100% + 2px));
+}
+
+.ProseMirror [data-resize-small] {
+  margin-bottom: 46px;
+}
+
+.ProseMirror :is([data-resize-handle="top-left"], [data-resize-handle="bottom-right"]) {
+  cursor: nwse-resize;
+}
+
+.ProseMirror :is([data-resize-handle="top-right"], [data-resize-handle="bottom-left"]) {
+  cursor: nesw-resize;
+}
+
+.ProseMirror
+  [data-resize-container]:is(.ProseMirror-selectednode, :focus-within)
+  [data-resize-handle],
+.ProseMirror [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ProseMirror [data-resize-container].ProseMirror-selectednode img {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.ProseMirror [data-resize-handle]:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .navigation-progress * {
     transition: none !important;
@@ -774,4 +931,75 @@
 
 .ProseMirror ul[data-type="taskList"] li > div > p {
   margin: 0;
+}
+
+/* Named editor alignments survive sanitization without allowing authored styles. */
+.prose [data-align="left"] {
+  text-align: left;
+}
+
+.prose [data-align="center"] {
+  text-align: center;
+}
+
+.prose [data-align="right"] {
+  text-align: right;
+}
+
+.prose [data-align="justify"] {
+  text-align: justify;
+}
+
+.prose img[data-align] {
+  display: block;
+}
+
+.prose :is(img, [data-youtube-video])[data-align="left"] {
+  margin-inline: 0 auto;
+}
+
+.prose :is(img, [data-youtube-video])[data-align="center"] {
+  margin-inline: auto;
+}
+
+.prose :is(img, [data-youtube-video])[data-align="right"] {
+  margin-inline: auto 0;
+}
+
+.ProseMirror [data-resize-container][data-align="left"] {
+  justify-content: flex-start;
+}
+
+.ProseMirror [data-resize-container][data-align="center"] {
+  justify-content: center;
+}
+
+.ProseMirror [data-resize-container][data-align="right"] {
+  justify-content: flex-end;
+}
+
+/* Videos stay proportionate on narrow screens and can be placed in wider prose. */
+.prose [data-youtube-video] {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-block: 1.5em;
+}
+
+.prose [data-youtube-video] iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.ProseMirror [data-resize-wrapper][data-youtube-video] {
+  margin: 0;
+}
+
+.ProseMirror
+  [data-resize-container][data-node="youtube"].ProseMirror-selectednode
+  [data-youtube-video] {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }

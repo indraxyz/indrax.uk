@@ -8,6 +8,8 @@ import { PostMeta } from "@/features/writing/components/post-meta"
 import { TableOfContents } from "@/features/writing/components/table-of-contents"
 import { TagPill } from "@/features/writing/components/tag-pill"
 import type { Post, RenderedArticle } from "@/features/writing/types"
+import { cn } from "@/lib/utils"
+import styles from "./article-navigation.module.css"
 
 interface ArticleCardProps {
   post: Omit<Post, "content">
@@ -28,8 +30,14 @@ interface ArticleCardProps {
  */
 export function ArticleCard({ post, article, meta }: ArticleCardProps) {
   return (
-    <article>
-      <Card variant="card" className="variant-primary variant-border">
+    <article
+      className={cn(
+        "grid min-w-0 items-start gap-6 print:block",
+        article.headings.length > 0 && "lg:grid-cols-[16rem_minmax(0,1fr)]"
+      )}
+    >
+      <TableOfContents entries={article.headings} />
+      <Card variant="card" className="variant-primary variant-border min-w-0">
         <PostCover post={post} priority />
 
         <CardHeader className="gap-4">
@@ -56,17 +64,16 @@ export function ArticleCard({ post, article, meta }: ArticleCardProps) {
 
         <CardContent className="pt-2">
           <div className="min-w-0">
-            {/* Above the contents list, because someone arriving at part four from a
-                search result needs to know there are three articles before it
-                before they read it, not after. */}
+            {/* Keep series context before the body so readers can find earlier parts. */}
             {post.seriesContext && (
               <div className="mb-8">
                 <SeriesNav context={post.seriesContext} />
               </div>
             )}
 
-            <TableOfContents entries={article.headings} className="mb-8 print:hidden" />
-            <PostContent html={article.html} />
+            <div className={styles.body}>
+              <PostContent html={article.html} />
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -6,7 +6,7 @@ import {
   localMediaOrigin,
   LOCAL_MEDIA_PREFIX,
 } from "./uploads/local-media"
-import { UPLOAD_POLICIES } from "./uploads/policy"
+import { uploadPolicyForKey } from "./uploads/policy"
 
 export function usesLocalMedia(): boolean {
   if (serverEnv("NODE_ENV") !== "development") return false
@@ -17,7 +17,7 @@ export function usesLocalMedia(): boolean {
   )
 }
 
-/** Local development only: stream covers from the simulated R2 binding. */
+/** Local development only: stream images from the simulated R2 binding. */
 export async function serveLocalMedia(request: Request): Promise<Response> {
   const headers = new Headers({
     "Cache-Control": "no-store",
@@ -44,12 +44,13 @@ export async function serveLocalMedia(request: Request): Promise<Response> {
     body = stored?.body ?? null
   }
   if (!object) return new Response(null, { status: 404, headers })
-  const type = UPLOAD_POLICIES.cover.types.find(
+  const policy = uploadPolicyForKey(key)
+  if (!policy) return new Response(null, { status: 404, headers })
+  const type = policy.types.find(
     (type) =>
       object.httpMetadata?.contentType === type && key.endsWith(`.${IMAGE_FORMATS[type].extension}`)
   )
-  if (!type || object.size > UPLOAD_POLICIES.cover.maxBytes)
-    return new Response(null, { status: 404, headers })
+  if (!type || object.size > policy.maxBytes) return new Response(null, { status: 404, headers })
   headers.set("Content-Type", type)
   headers.set("Content-Length", String(object.size))
   headers.set("Content-Disposition", "inline")

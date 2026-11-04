@@ -35,6 +35,98 @@ async function mockWriting(page: Page) {
 
 const rail = (page: Page) => page.getByRole("region", { name: "Writing", exact: true })
 
+for (const width of [390, 578, 768, 1440, 1920]) {
+  test(`aligns carousel columns with the container after navigating at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await mockWriting(page)
+    await page.goto("/writing")
+    const expectedLeft = (await page.locator("[data-post-grid] > *").first().boundingBox())!.x
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth)
+    await page.goto("/")
+    const region = rail(page)
+    const cards = region.locator("[data-print-columns] > *")
+    const next = page.getByRole("button", { name: "Next Writing cards" })
+    await expect(next).toBeEnabled()
+    for (const index of [1, 2]) {
+      await next.click()
+      await expect
+        .poll(async () => Math.abs((await cards.nth(index).boundingBox())!.x - expectedLeft))
+        .toBeLessThanOrEqual(1)
+      // The previous column can pass through the screen edge, without clipping
+      // the whole carousel at the content gutter.
+      expect((await region.boundingBox())!.x).toBeLessThanOrEqual(1)
+      expect((await cards.first().boundingBox())!.x).toBeLessThan(0)
+    }
+    if (width === 578) {
+      await region.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: "test-results/carousel-578-after-next.png" })
+    }
+    await region.focus()
+    await page.keyboard.press("End")
+    await expect(next).toBeDisabled()
+    await expect
+      .poll(async () => {
+        const last = (await cards.last().boundingBox())!
+        return Math.abs(last.x + last.width - (viewportWidth - expectedLeft))
+      })
+      .toBeLessThanOrEqual(1)
+    await region.focus()
+    await page.keyboard.press("Home")
+    await expect
+      .poll(async () => Math.abs((await cards.first().boundingBox())!.x - expectedLeft))
+      .toBeLessThanOrEqual(1)
+  })
+}
+
+for (const width of [1440, 1920]) {
+  for (const count of [1, 2, 3]) {
+    test(`aligns ${count} fitting writing cards with the page layout at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await mockWriting(page)
+      await page.goto("/writing")
+      const gridLeft = (await page.locator("[data-post-grid] > *").first().boundingBox())!.x
+      await page.route("**/api/writing/recent**", (route) =>
+        route.fulfill({ json: posts.slice(0, count) })
+      )
+      await page.goto("/")
+      const cards = rail(page).locator("[data-print-columns] > *")
+      await expect(cards).toHaveCount(count)
+      const next = page.getByRole("button", { name: "Next Writing cards" })
+      await expect(next).toBeDisabled()
+      await expect
+        .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridLeft))
+        .toBeLessThanOrEqual(1)
+      await expect(next).toHaveCSS("cursor", "default")
+      await expect(rail(page)).not.toHaveCSS("cursor", "grab")
+      if (count > 1) {
+        await page.setViewportSize({ width: 390, height: 900 })
+        await expect(next).toBeEnabled()
+        await page.setViewportSize({ width, height: 900 })
+        await expect(next).toBeDisabled()
+        await expect
+          .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridLeft))
+          .toBeLessThanOrEqual(1)
+      }
+    })
+  }
+}
+
+test("disables both writing carousel arrows when the cards fit", async ({ page }) => {
+  await mockWriting(page)
+  await page.route("**/api/writing/recent**", (route) => route.fulfill({ json: posts.slice(0, 1) }))
+  await page.goto("/")
+  await expect(rail(page).locator("[data-print-columns] > *")).toHaveCount(1)
+  const next = page.getByRole("button", { name: "Next Writing cards" })
+  await expect(next).toBeVisible()
+  await expect(next).toBeDisabled()
+  await expect(page.getByRole("button", { name: "Previous Writing cards" })).toBeDisabled()
+})
+
 for (const width of [390, 768, 1440])
   test(`keeps grid-width cards in a full-bleed, scrollable rail at ${width}px`, async ({
     page,
@@ -46,10 +138,11 @@ for (const width of [390, 768, 1440])
     const gridCard = page.locator("[data-post-grid] > *").first()
     await expect(gridCard).toBeVisible()
     const gridCardWidth = (await gridCard.boundingBox())!.width
+    const gridCardLeft = (await gridCard.boundingBox())!.x
 
     await page.goto("/")
     const region = rail(page)
-    const cards = region.locator(":scope > *")
+    const cards = region.locator("[data-print-columns] > *")
     await expect(cards).toHaveCount(9)
     expect(recentLimits).toContain("9")
 
@@ -61,11 +154,17 @@ for (const width of [390, 768, 1440])
         )
       ).toBeLessThanOrEqual(1)
 
-    // The rail reaches both page edges and scrolls inside itself, never the page.
+    // The first card starts at the page gutter; overflow reaches the right edge.
     const viewport = await page.evaluate(() => document.documentElement.clientWidth)
     const bounds = (await region.boundingBox())!
     expect(Math.abs(bounds.x)).toBeLessThanOrEqual(1)
-    expect(Math.abs(bounds.width - viewport)).toBeLessThanOrEqual(1)
+    expect(Math.abs(bounds.x + bounds.width - viewport)).toBeLessThanOrEqual(1)
+    expect(Math.abs((await cards.first().boundingBox())!.x - gridCardLeft)).toBeLessThanOrEqual(1)
+    await page.reload()
+    await expect(region.locator("[data-print-columns] > *")).toHaveCount(9)
+    await expect
+      .poll(async () => Math.abs((await cards.first().boundingBox())!.x - gridCardLeft))
+      .toBeLessThanOrEqual(1)
     expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport
@@ -77,16 +176,25 @@ test("lets the keyboard reach and scroll the rail and its articles", async ({ pa
   await mockWriting(page)
   await page.goto("/")
   const region = rail(page)
-  await expect(region.locator(":scope > *")).toHaveCount(9)
+  await expect(region.locator("[data-print-columns] > *")).toHaveCount(9)
   await expect(region).toHaveAttribute("tabindex", "0")
 
+  const firstCard = region.locator("[data-print-columns] > *").first()
+  const initialLeft = (await firstCard.boundingBox())!.x
   await region.focus()
   await page.keyboard.press("ArrowRight")
-  await expect.poll(() => region.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0)
+  await expect.poll(async () => (await firstCard.boundingBox())!.x).toBeLessThan(initialLeft)
 
   // Tabbing to an off-screen article brings it into view.
   const last = region.getByRole("link", { name: "Rail fixture 9", exact: true })
-  await last.focus()
+  await region.focus()
+  for (
+    let index = 0;
+    index < 30 && !(await last.evaluate((node) => node === document.activeElement));
+    index++
+  )
+    await page.keyboard.press("Tab")
+  await expect(last).toBeFocused()
   await expect(last).toBeInViewport()
   await expect(last).toHaveAttribute("href", "/writing/rail-fixture-8")
 })

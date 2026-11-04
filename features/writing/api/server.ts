@@ -152,7 +152,7 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
               author,
               authConfigured: auth.isAuthConfigured(),
               databaseConfigured: Boolean(database.getDb()),
-              coverUploadsConfigured: Boolean(storage.getCoverStorageConfig()),
+              coverUploadsConfigured: Boolean(database.getDb() && storage.getCoverStorageConfig()),
               previewConfigured: Boolean(serverEnv("BETTER_AUTH_SECRET")),
             }
           : { author: null, authConfigured: auth.isAuthConfigured() }

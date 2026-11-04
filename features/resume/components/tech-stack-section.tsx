@@ -1,8 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cardFeedbackClassNames,
+} from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { SECTION_COPY } from "@/features/resume/data/page"
 import { techStackGroups } from "@/features/resume/utils/groups"
-import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
+import { RAIL_CARD_WIDTH } from "@/components/ui/card-rail"
+import { cn } from "@/lib/utils"
 import { Code } from "lucide-react"
 
 export function TechStackSection() {
@@ -13,20 +20,21 @@ export function TechStackSection() {
       title="Tech Stack"
       subtitle={SECTION_COPY.techStack}
       carousel
+      carouselFullBleed
       className="w-full"
-      // The page container excludes the browser scrollbar from its width.
-      contentClassName="w-[100cqw] ms-[calc(50%_-_50cqw)] print:ms-0 print:w-auto"
     >
       {techStackGroups.map(([groupName, stacks]) => (
         <Card
           key={groupName}
           height="2xl"
-          className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
+          className={cn(
+            "variant-secondary variant-border bg-[var(--variant-soft)]",
+            RAIL_CARD_WIDTH,
+            cardFeedbackClassNames
+          )}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
-            <CardTitle className="text-base font-black uppercase tracking-tight">
-              {groupName}
-            </CardTitle>
+            <CardTitle className="text-lg leading-snug">{groupName}</CardTitle>
           </CardHeader>
           <CardContent
             scrollable

@@ -3,6 +3,12 @@ import { drizzle } from "drizzle-orm/neon-http"
 import { neon, neonConfig } from "@neondatabase/serverless"
 import { schema } from "./db/index.server"
 import { drainCoverCleanup } from "./cover-cleanup.server"
+import { claimTrackedUpload, markUploadDeleted } from "@/features/writing/data/media-uploads.server"
+
+vi.mock("@/features/writing/data/media-uploads.server", () => ({
+  claimTrackedUpload: vi.fn(async () => "untracked"),
+  markUploadDeleted: vi.fn(async () => undefined),
+}))
 
 const mocks = vi.hoisted(() => ({ storage: vi.fn() }))
 vi.mock("./cover-storage.server", async (original) => ({
@@ -52,7 +58,11 @@ function fixture(urls = [url], references: { id: string }[][] = []) {
 }
 
 const originalFetch = neonConfig.fetchFunction
-beforeEach(() => vi.restoreAllMocks())
+beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.mocked(claimTrackedUpload).mockReset().mockResolvedValue("untracked")
+  vi.mocked(markUploadDeleted).mockReset().mockResolvedValue(undefined)
+})
 afterEach(() => {
   neonConfig.fetchFunction = originalFetch
 })
@@ -66,6 +76,35 @@ it("awaits R2 deletion before removing the durable cleanup record", async () => 
     bucketDelete.mock.invocationCallOrder[0]
   )
   expect(limit).toHaveBeenCalledWith(expect.stringContaining("limit $1"))
+})
+
+it("retires tracked images before deleting and persists the tombstone before clearing work", async () => {
+  const { db, bucketDelete, remove } = fixture()
+  vi.mocked(claimTrackedUpload).mockResolvedValue("claimed")
+  await drainCoverCleanup(db)
+  expect(claimTrackedUpload).toHaveBeenCalledWith(db, key)
+  expect(markUploadDeleted).toHaveBeenCalledWith(db, key)
+  expect(vi.mocked(claimTrackedUpload).mock.invocationCallOrder.at(-1)).toBeLessThan(
+    bucketDelete.mock.invocationCallOrder[0]
+  )
+  expect(vi.mocked(markUploadDeleted).mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+    bucketDelete.mock.invocationCallOrder[0]
+  )
+  expect(remove.mock.invocationCallOrder[0]).toBeGreaterThan(
+    vi.mocked(markUploadDeleted).mock.invocationCallOrder.at(-1)!
+  )
+})
+
+it("keeps tracked references and acknowledges completed tracked deletions without another R2 write", async () => {
+  const { db, bucketDelete, remove } = fixture()
+  vi.mocked(claimTrackedUpload).mockResolvedValueOnce("referenced")
+  await drainCoverCleanup(db)
+  expect(bucketDelete).not.toHaveBeenCalled()
+  expect(remove).not.toHaveBeenCalled()
+  vi.mocked(claimTrackedUpload).mockResolvedValueOnce("deleted")
+  await drainCoverCleanup(db)
+  expect(bucketDelete).not.toHaveBeenCalled()
+  expect(remove).toHaveBeenCalledOnce()
 })
 
 it("retains shared cover or inline-image references without deleting their object", async () => {
@@ -100,4 +139,12 @@ it("retains work when the deployment has no storage configured", async () => {
   await drainCoverCleanup(db)
   expect(limit).not.toHaveBeenCalled()
   expect(bucketDelete).not.toHaveBeenCalled()
+})
+
+it("cleans an unreferenced generated content image through the same durable outbox", async () => {
+  const contentKey = "content/550e8400-e29b-41d4-a716-446655440000.webp"
+  const { db, bucketDelete, remove } = fixture([`https://media.example.com/${contentKey}`])
+  await drainCoverCleanup(db)
+  expect(bucketDelete).toHaveBeenCalledWith(contentKey)
+  expect(remove).toHaveBeenCalledOnce()
 })
