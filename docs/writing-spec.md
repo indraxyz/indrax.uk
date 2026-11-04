@@ -25,10 +25,11 @@ components and export React Router loaders and metadata. `admin/routes.tsx`
 defines the independent admin application. `workers/app.ts` dispatches assets,
 APIs, resources and SSR before loading their implementations.
 
-Client loaders prepare destination data through the shared QueryClient before a
-navigation commits. Public and admin navigation show a design-token green top
-progress bar and retain the current page while waiting. Initial/hard loads show a
-centered spinner; background refreshes retain content without restarting the bar.
+Public and admin navigation show a design-token green top progress bar for route
+preparation and observed queries awaiting first data. Home Writing, the public archive,
+admin dashboard and admin posts use accessible skeletons in the destination layout.
+Background refreshes retain cached content. Admin boot/session verification retains its
+centered spinner; public API loading does not block reading or search controls.
 
 CSR moves list/editor rendering to the browser. Authentication, validation,
 mutations and article sanitization remain server responsibilities; this design
@@ -385,8 +386,9 @@ separately from wall time before claiming free-tier compliance.
 Route loaders, the protected layout and login page use one TanStack Query
 `queryOptions` definition and browser cache. Session responses stay fresh for
 60 seconds, so normal navigation does not invalidate or refetch them. Route
-loaders use `fetchQuery` to revalidate stale access before prefetching private
-page data, including the new-post route. Stale sessions also refresh on window
+loaders use `fetchQuery` to revalidate stale access before entering private pages,
+including the new-post route. Dashboard/posts Query consumers then own their pending
+states; edit routes may prefetch the requested record. Stale sessions also refresh on window
 focus and reconnection; there is no background polling. This follows TanStack's
 [stale-time guidance](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults).
 The session query passes its abort signal to the transport. Sign-out and

@@ -174,6 +174,10 @@ request as well as the pageview before asserting that the token was never sent.
 
 ### Navigation feedback on public and admin
 
+Current loading UX is updated by the [content-loading follow-up](content-loading-article-navigation.md):
+destination skeletons replace blocking public API spinners and dashboard/posts prefetching.
+The notes below record the original migration behavior and its validation.
+
 Both applications share a `react-top-loading-bar` indicator driven by React
 Router's pending navigation state and observed queries awaiting their first data.
 Cached/background refreshes do not interrupt the page. Unobserved queries from a

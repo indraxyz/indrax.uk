@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test"
 
-test("public hard refresh uses a centered spinner until initial data is ready", async ({
+async function expectProgressStopped(page: import("@playwright/test").Page) {
+  await expect(page.locator(".navigation-progress > div")).toHaveCSS("width", "0px")
+}
+
+test("public hard refresh keeps skeletons and navigation available while initial data loads", async ({
   page,
 }) => {
   let release!: () => void
@@ -14,24 +18,36 @@ test("public hard refresh uses a centered spinner until initial data is ready", 
   await page.route("**/api/writing/tags", (route) => route.fulfill({ json: [] }))
   await page.goto("/writing")
   try {
-    const spinner = page.getByRole("status", { name: "Loading page" })
-    await expect(spinner).toBeVisible()
-    await expect(spinner.locator("svg")).toBeVisible()
-    await expect(page.locator(".navigation-progress > div")).toHaveCSS("width", "0px")
+    await expect(page.getByRole("status").filter({ hasText: "Loading articles…" })).toBeVisible()
+    await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0)
+    await page
+      .getByRole("navigation", { name: "Site", exact: true })
+      .getByRole("link", { name: "Resume", exact: true })
+      .click({ trial: true })
+    await expect
+      .poll(() =>
+        page
+          .locator(".navigation-progress > div")
+          .evaluate((node) => node.getBoundingClientRect().width)
+      )
+      .toBeGreaterThan(0)
   } finally {
     release()
   }
   await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0)
+  await expectProgressStopped(page)
   ready = new Promise<void>((resolve) => {
     release = resolve
   })
   await page.reload()
   try {
-    await expect(page.getByRole("status", { name: "Loading page" }).locator("svg")).toBeVisible()
+    await expect(page.getByRole("status").filter({ hasText: "Loading articles…" })).toBeVisible()
+    await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0)
   } finally {
     release()
   }
   await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0)
+  await expectProgressStopped(page)
 })
 
 test("admin hard refresh shows its spinner even before route code loads", async ({ page }) => {
@@ -105,16 +121,19 @@ test("a superseded public navigation cannot keep the bar running", async ({ page
   await page.goto("/")
   await page.getByRole("link", { name: "Writing", exact: true }).first().click()
   try {
-    await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toBeVisible()
+    await expect(page.getByRole("status").filter({ hasText: "Loading articles…" })).toBeVisible()
     await page.getByRole("link", { name: "Resume", exact: true }).first().click()
     await expect(page).toHaveURL(/\/resume$/)
     await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toHaveCount(0)
+    await expectProgressStopped(page)
   } finally {
     release()
   }
 })
 
-test("public navigation keeps the current page until writing data is ready", async ({ page }) => {
+test("public navigation mounts article skeletons immediately and reuses completed query data", async ({
+  page,
+}) => {
   let release!: () => void
   const ready = new Promise<void>((resolve) => {
     release = resolve
@@ -126,23 +145,34 @@ test("public navigation keeps the current page until writing data is ready", asy
     await route.fulfill({ json: { posts: [], page: 1, pageCount: 0, total: 0 } })
   })
   await page.route("**/api/writing/tags", (route) => route.fulfill({ json: [] }))
+  await page.route("**/api/writing/recent*", (route) => route.fulfill({ json: [] }))
   await page.goto("/")
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
   await page.getByRole("link", { name: "Writing", exact: true }).first().click()
   try {
-    await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toBeVisible()
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Engineer")
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByRole("status").filter({ hasText: "Loading articles…" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Writing")
+    await expect(page).toHaveURL(/\/writing$/)
+    await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toHaveCount(0)
   } finally {
     release()
   }
   await expect(page).toHaveURL(/\/writing$/)
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Writing")
+  await expect(page.locator("[data-loading-skeleton]")).toHaveCount(0)
   await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toHaveCount(0)
+  await expectProgressStopped(page)
+  await page.getByRole("link", { name: "Resume", exact: true }).first().click()
+  await expect(page).toHaveURL(/\/resume$/)
+  await page.getByRole("link", { name: "Writing", exact: true }).first().click()
+  await expect(page).toHaveURL(/\/writing$/)
+  await expect(page.locator("[data-loading-skeleton]")).toHaveCount(0)
   expect(requests).toBe(1)
 })
 
-test("admin navigation retains the workspace and reuses completed query data", async ({ page }) => {
+test("admin navigation keeps workspace controls usable around skeletons and reuses query data", async ({
+  page,
+}) => {
   await page.context().addCookies([
     {
       name: "better-auth.session_token",
@@ -187,19 +217,23 @@ test("admin navigation retains the workspace and reuses completed query data", a
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Overview")
   await page.getByRole("link", { name: "Manage posts" }).click()
   try {
-    await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toBeVisible()
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Overview")
+    await expect(page.getByRole("status").filter({ hasText: "Loading posts…" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Posts")
+    await expect(page).toHaveURL(/\/admin\/posts$/)
     await expect(page.getByText("Loading your workspace…")).toHaveCount(0)
     await expect(page.locator("[data-admin-header]")).toBeVisible()
+    await page.getByRole("link", { name: "Indra's Admin", exact: true }).click({ trial: true })
   } finally {
     release()
   }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Posts")
+  await expect(page.locator("[data-loading-skeleton]")).toHaveCount(0)
   await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toHaveCount(0)
   await page.getByRole("link", { name: "Indra's Admin" }).click()
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Overview")
   await page.getByRole("link", { name: "Manage posts" }).click()
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Posts")
+  await expect(page.locator("[data-loading-skeleton]")).toHaveCount(0)
   expect(requests).toBe(1)
 })
 
@@ -208,10 +242,12 @@ test("failed public data stops the bar and leaves a usable retry", async ({ page
     route.fulfill({ status: 503, json: { error: "Unavailable" } })
   )
   await page.route("**/api/writing/tags", (route) => route.fulfill({ json: [] }))
+  await page.route("**/api/writing/recent*", (route) => route.fulfill({ json: [] }))
   await page.goto("/")
   await page.getByRole("link", { name: "Writing", exact: true }).first().click()
   await expect(page.getByRole("alert")).toContainText("Unable to load writing")
   await expect(page.getByRole("status").filter({ hasText: "Loading page" })).toHaveCount(0)
+  await expectProgressStopped(page)
   await page.route("**/api/writing/posts*", (route) =>
     route.fulfill({ json: { posts: [], page: 1, pageCount: 0, total: 0 } })
   )

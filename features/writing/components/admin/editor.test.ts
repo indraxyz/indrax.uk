@@ -83,6 +83,6 @@ describe("PostEditor toolbar", () => {
     expect(html).toContain("<u>Underlined</u>")
     expect(html).toContain("<br>")
     expect(html).toContain("<hr>")
-    expect(html).toContain('<h4 id="user-content-details">Details</h4>')
+    expect(html).toContain('<h4 id="user-content-details" tabindex="-1">Details</h4>')
   })
 })

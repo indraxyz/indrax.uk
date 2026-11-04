@@ -228,8 +228,8 @@ function rehypeLabelTaskLists() {
  *
  * Done as a plugin rather than by re-parsing the finished HTML, because the tree
  * is already here and `rehype-slug` has already assigned the ids the links need.
- * Levels 2 and 3 only: level 4 is detail an author wants in the body, not a fourth
- * tier of navigation, and the editor offers nothing deeper.
+ * Collect the three heading levels offered by the editor. Focusable targets let
+ * disclosure links transfer keyboard focus into the article after navigation.
  */
 function rehypeCollectHeadings(into: TocEntry[]) {
   return (tree: HastRoot) => {
@@ -237,12 +237,22 @@ function rehypeCollectHeadings(into: TocEntry[]) {
       for (const child of node.children) {
         if (child.type !== "element") continue
 
-        const level = child.tagName === "h2" ? 2 : child.tagName === "h3" ? 3 : null
+        const level =
+          child.tagName === "h2"
+            ? 2
+            : child.tagName === "h3"
+              ? 3
+              : child.tagName === "h4"
+                ? 4
+                : null
         const id = child.properties.id
 
         if (level && typeof id === "string") {
           const text = textOf(child)
-          if (text) into.push({ id, text, level })
+          if (text) {
+            child.properties.tabIndex = -1
+            into.push({ id, text, level })
+          }
         }
 
         walk(child)

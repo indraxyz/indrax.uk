@@ -22,7 +22,7 @@ URL compatibility and verification.
 | Access           | Better Auth GitHub OAuth, immutable numeric allowlist, revocable DB sessions and private API guards                    |
 | Authoring        | Lazy Tiptap editor, create/update, status changes, explicit delete confirmation, cover upload and signed draft preview |
 | Cache            | Request memoization, revision-keyed KV/D1 public reads, rendered article cache and cached resource responses           |
-| Navigation       | Retain current content with top progress bar during route preparation; centered spinner for initial data loads         |
+| Navigation       | Top progress bar during route/data loading; destination skeletons for lists/dashboard; admin access spinner            |
 | Operations       | Worker resource dispatch, generated binding/route types, Vitest, real SQL tests, Playwright and CI                     |
 
 `app/routes.ts` and `app/routes/` define the public application;
@@ -71,7 +71,7 @@ layer when extending a route.
 | Real SQL integration | Minimal projections/query counts, transaction rollback, tag dedupe, draft isolation, ordered-series constraints and cascades                                             |
 | Browser public       | Article HTML/metadata, safe rich content, archive/tag/search/series navigation, empty/error states, responsive UI and keyboard access                                    |
 | Browser admin        | Session freshness/revocation, allowlist enforcement, authoring CRUD, failure feedback, signed previews and denied private reads                                          |
-| Shared UX            | Initial centered spinner, top progress bar during delayed navigation, retained current content, theme/print behavior, consent-safe analytics and lazy PDF/auth loading   |
+| Shared UX            | Accessible content skeletons, top progress bar, cached content, image loading, responsive contents, draggable toolbars, theme/print and consent-safe analytics           |
 | Deployment profiling | Cold/warm CPU and wall time, API/database spans, cache hit/miss paths and bundle limits                                                                                  |
 
 Use browser fixtures with deterministic API interception when testing UI states;

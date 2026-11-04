@@ -76,9 +76,11 @@ on Neon develop before CI can deploy Preview; production is outside this change.
   exact duration overridden by global reduced-motion CSS, and to await drawer trigger
   focus restoration. A shared-output collision affected four smoke traces in the initial
   run; the complete 103-case rerun used isolated output and passed.
-- Read-only Neon verification found develop migrated through `0006_cover_cleanup`, with
-  `0007_media_upload_lifecycle` still pending. The existing PRs remain unmerged until that
-  release prerequisite is approved/applied. No remote database changes were made.
+- Initial read-only Neon verification found develop migrated through `0006_cover_cleanup`,
+  with `0007_media_upload_lifecycle` pending. After operator approval on November 4, the
+  committed Drizzle migration was applied atomically to Neon develop and its ledger hash,
+  table, cleanup index and enabled attachment trigger were verified. PR #96 was then merged
+  before #97. Production was not changed.
 
 ## Sticky controls follow-up plan and specification
 

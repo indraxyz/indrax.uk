@@ -71,7 +71,7 @@ export const stackGroups = [
     title: "Data fetching & navigation",
     tools: "TanStack Query · TanStack Table · Ky · react-top-loading-bar",
     detail:
-      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress; loading, empty, and error states explain what is happening.",
+      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening.",
     reason:
       "Search and filters stay in the URL so links, pagination, and browser Back preserve your choices. Cached results reduce repeat requests. Requests are not automatically retried; failed reads offer a retry control. The admin also rechecks the session on focus or reconnect, and every private API request verifies author access.",
   },
@@ -82,7 +82,7 @@ export const stackGroups = [
     detail:
       "The author writes in Tiptap, with inline images, privacy-enhanced YouTube embeds, proportional media resizing and text or media alignment. Published articles are sanitized and rendered on the server, with Shiki highlighting code blocks and a restricted YouTube player host. React PDF builds the resume only when Download is selected; cf-workers-og creates images for shared links.",
     reason:
-      "The editor stays out of the reader’s article bundle. Loading the PDF tools on demand keeps them off the initial page load.",
+      "The editor stays out of the reader’s article bundle. Published and preview articles share nested h2–h4 contents navigation: a desktop sidebar and a sticky disclosure on smaller screens. Formatting toolbars support dragging, touch and keyboard scrolling with overflow cues. Images use a soft loading treatment until decoded, preserving native sources and alt text. Loading the PDF tools on demand keeps them off the initial page load.",
   },
   {
     icon: Database,
