@@ -99,3 +99,8 @@ landing, resized layouts and loaded images. Exactly one link per contents presen
 without opening automatically. Muted titles transition to the site primary token when active;
 reduced motion removes the color transition. A single SVG stroke follows visible row bounds with angular depth changes, so parent
 and child guides share exact joins and a constant stroke width.
+
+The guide segment beside the current heading uses the same primary color as its title.
+When the current heading is collapsed, the deepest visible ancestor and its guide share
+that highlight. The remaining continuous guide stays translucent. Browser checks compare
+the highlight color and row geometry after scrolling and disclosure changes.

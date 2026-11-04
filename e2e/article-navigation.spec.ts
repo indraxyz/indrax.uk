@@ -196,7 +196,7 @@ for (const width of [390, 1440]) {
     const expectContinuousGuide = async () => {
       await expect
         .poll(() =>
-          nav.locator("[data-toc-guide] path").evaluate((element) => {
+          nav.locator("[data-toc-guide] path:not([data-toc-active-guide])").evaluate((element) => {
             const path = element as SVGPathElement
             const length = path.getTotalLength()
             if (!length) return false
@@ -251,6 +251,31 @@ for (const width of [390, 1440]) {
     const nav = width < 1200 ? toc.locator("[data-toc-mobile] > nav") : toc.locator(":scope > nav")
     const first = nav.getByRole("link", { name: "First section", exact: true })
     await expect(first).toHaveAttribute("aria-current", "location")
+    const guide = nav.locator("[data-toc-active-guide]")
+    const expectMatchingGuide = async (link: typeof first) => {
+      await expect
+        .poll(async () => {
+          const guideColor = await guide.evaluate((node) => getComputedStyle(node).color)
+          return guideColor === (await link.evaluate((node) => getComputedStyle(node).color))
+        })
+        .toBe(true)
+      await expect.poll(() => guide.getAttribute("d")).toMatch(/^M[\d.]+,[\d.]+ V[\d.]+$/)
+      await expect
+        .poll(async () => {
+          // A vertical SVG path has zero width, so Playwright's boundingBox
+          // deliberately treats it as an empty box. Its DOM bounds retain y/height.
+          const line = await guide.evaluate((node) => {
+            const { y, height } = node.getBoundingClientRect()
+            return { y, height }
+          })
+          const title = await link.boundingBox()
+          return (
+            !!title && Math.abs(line.y - title.y) < 1 && Math.abs(line.height - title.height) < 1
+          )
+        })
+        .toBe(true)
+    }
+    await expectMatchingGuide(first)
     const firstBranch = nav
       .getByLabel("Child sections for First section", { exact: true })
       .locator("..")
@@ -263,6 +288,7 @@ for (const width of [390, 1440]) {
     await expect(first).not.toHaveAttribute("aria-current")
     await expect(first).toHaveAttribute("data-toc-ancestor", "true")
     await expect(firstBranch).not.toHaveAttribute("open")
+    await expectMatchingGuide(first)
     await page
       .locator("#user-content-last")
       .evaluate((node) => node.scrollIntoView({ behavior: "instant", block: "start" }))
@@ -270,6 +296,7 @@ for (const width of [390, 1440]) {
     await expect(last).toHaveAttribute("aria-current", "location")
     await expect(first).not.toHaveAttribute("data-toc-ancestor")
     await expect(nav.locator('[aria-current="location"]')).toHaveCount(1)
+    await expectMatchingGuide(last)
     const transition = await last.evaluate((node) => getComputedStyle(node).transitionProperty)
     expect(transition).toContain("color")
     await page.emulateMedia({ reducedMotion: "reduce" })

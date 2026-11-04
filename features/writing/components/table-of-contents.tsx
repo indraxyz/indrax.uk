@@ -74,7 +74,7 @@ function ContentsList({
                 current
                   ? "font-semibold text-primary"
                   : ancestor
-                    ? "text-foreground"
+                    ? "text-primary"
                     : "text-muted-foreground"
               )}
             >
@@ -108,6 +108,7 @@ function ContentsList({
 function ContentsTree({ entries, activeId }: { entries: ContentsNode[]; activeId: string | null }) {
   const treeRef = useRef<HTMLDivElement>(null)
   const [path, setPath] = useState("")
+  const [activePath, setActivePath] = useState("")
   useLayoutEffect(() => {
     const tree = treeRef.current
     if (!tree) return
@@ -121,16 +122,21 @@ function ContentsTree({ entries, activeId }: { entries: ContentsNode[]; activeId
         // Closed native details can retain descendant layout rectangles. Those
         // hidden rows must not contribute points to the visible guide.
         .filter((row) => !row.closest("details:not([open])"))
-        .map((row) => row.getBoundingClientRect())
-        .filter((row) => row.width > 0 && row.height > 0)
+        .map((element) => ({ element, bounds: element.getBoundingClientRect() }))
+        .filter(({ bounds: row }) => row.width > 0 && row.height > 0)
       const points: string[] = []
-      rows.forEach((row, index) => {
+      let highlight = ""
+      rows.forEach(({ element, bounds: row }, index) => {
         const x = row.left - bounds.left - gutter + 0.5
         const top = row.top - bounds.top
         const bottom = row.bottom - bounds.top
         points.push(`${index ? "L" : "M"}${x},${top}`, `V${bottom}`)
+        // The deepest visible ancestor represents a collapsed active heading.
+        if (element.hasAttribute("aria-current") || element.hasAttribute("data-toc-ancestor"))
+          highlight = `M${x},${top} V${bottom}`
       })
       setPath(points.join(" "))
+      setActivePath(highlight)
     }
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure)
@@ -146,7 +152,7 @@ function ContentsTree({ entries, activeId }: { entries: ContentsNode[]; activeId
       tree.removeEventListener("toggle", schedule, true)
       window.removeEventListener("resize", schedule)
     }
-  }, [entries])
+  }, [entries, activeId])
   return (
     <div ref={treeRef} className="relative">
       <svg
@@ -156,6 +162,14 @@ function ContentsTree({ entries, activeId }: { entries: ContentsNode[]; activeId
         className="pointer-events-none absolute inset-0 size-full overflow-visible text-border/20"
       >
         <path d={path} fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="miter" />
+        <path
+          data-toc-active-guide
+          d={activePath}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          className="text-primary transition-colors duration-200 motion-reduce:transition-none"
+        />
       </svg>
       <ContentsList entries={entries} activeId={activeId} />
     </div>
