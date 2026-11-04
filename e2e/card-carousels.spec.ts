@@ -21,20 +21,15 @@ for (const width of [390, 1440]) {
       const initialLeft = (await first.boundingBox())!.x
       const navigation = page.getByRole("group", { name: `${title} carousel navigation` })
       const containerLeft = await navigation.evaluate(
-        (node, fullBleed) =>
-          node.getBoundingClientRect().left +
-          (fullBleed ? parseFloat(getComputedStyle(node).paddingLeft) : 0),
-        title === "Tech Stack"
+        (node) => node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
       )
       expect(Math.abs(initialLeft - containerLeft)).toBeLessThanOrEqual(1)
 
       await next.click()
       await expect(previous).toBeEnabled()
       await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(initialLeft)
-      if (title === "Tech Stack") {
-        expect((await viewport.boundingBox())!.x).toBeLessThanOrEqual(1)
-        await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(0)
-      }
+      expect((await viewport.boundingBox())!.x).toBeLessThanOrEqual(1)
+      await expect.poll(async () => (await first.boundingBox())!.x).toBeLessThan(0)
       const bounds = (await viewport.boundingBox())!
       const arrow = (await next.boundingBox())!
       expect(arrow.y).toBeGreaterThanOrEqual(bounds.y + bounds.height)
@@ -140,10 +135,8 @@ for (const width of [390, 1920]) {
             .first()
           const controls = page.locator(`[aria-label="${title} carousel navigation"]`)
           const expectedLeft = await controls.evaluate(
-            (node, fullBleed) =>
-              node.getBoundingClientRect().left +
-              (fullBleed ? parseFloat(getComputedStyle(node).paddingLeft) : 0),
-            title === "Tech Stack"
+            (node) =>
+              node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
           )
           // No JavaScript is available to repair an edge-aligned initial render.
           expect(Math.abs((await first.boundingBox())!.x - expectedLeft)).toBeLessThanOrEqual(1)
@@ -151,6 +144,64 @@ for (const width of [390, 1920]) {
       }
     } finally {
       await context.close()
+    }
+  })
+}
+
+for (const width of [390, 768, 1440, 1920]) {
+  test(`matches home Writing card sizing and feedback on both resume rails at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await page.route("**/api/writing/recent**", (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: "carousel-consistency",
+            slug: "carousel-consistency",
+            title: "Carousel consistency",
+            excerpt: "A writing card for comparison with the resume rails.",
+            coverUrl: null,
+            coverAlt: null,
+            publishedAt: "2026-10-09T00:00:00Z",
+            updatedAt: "2026-10-09T00:00:00Z",
+            readingTime: 1,
+            tags: [],
+          },
+        ],
+      })
+    )
+    await page.goto("/")
+    const writingCard = page
+      .getByRole("region", { name: "Writing", exact: true })
+      .locator("[data-print-columns] > *")
+      .first()
+    await expect(writingCard).toBeVisible()
+    const writingBounds = (await writingCard.boundingBox())!
+    await writingCard.hover()
+    const hoverShadow = await writingCard.evaluate((node) => getComputedStyle(node).boxShadow)
+    expect(hoverShadow).not.toBe("none")
+
+    await page.goto("/resume")
+    for (const title of ["Tech Stack", "Portfolio"]) {
+      const viewport = page.getByRole("region", { name: title, exact: true })
+      const card = viewport.locator("[data-print-columns] > *").first()
+      const bounds = (await card.boundingBox())!
+      expect(Math.abs(bounds.width - writingBounds.width)).toBeLessThanOrEqual(1)
+      expect(Math.abs(bounds.x - writingBounds.x)).toBeLessThanOrEqual(1)
+      await card.hover()
+      await expect(card).toHaveCSS("box-shadow", hoverShadow)
+      await page.mouse.move(0, 0)
+      const details = card.getByRole("region")
+      await details.focus()
+      await expect(details).toBeFocused()
+      await expect(card).toHaveCSS("box-shadow", hoverShadow)
+      await expect(card).toHaveCSS("transition-property", "none")
+      // Detail panes keep their own scroll keys instead of moving the carousel.
+      const initialX = (await card.boundingBox())!.x
+      await page.keyboard.press("ArrowRight")
+      expect(Math.abs((await card.boundingBox())!.x - initialX)).toBeLessThanOrEqual(1)
     }
   })
 }

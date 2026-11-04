@@ -1,9 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cardFeedbackClassNames,
+} from "@/components/ui/card"
 import { SOCIAL_LINKS } from "@/config/site"
 import { SECTION_COPY } from "@/features/resume/data/page"
 import { SectionCard } from "@/components/ui/section-card"
 import { portfolioItems } from "@/features/resume/data/resume"
-import { RAIL_CARD_WIDTH } from "@/features/resume/components/rail-card-width"
+import { RAIL_CARD_WIDTH } from "@/components/ui/card-rail"
 import { GithubIcon } from "@/components/ui/github-icon"
 import { controlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
@@ -18,18 +24,21 @@ export function PortfolioSection() {
       subtitle={SECTION_COPY.portfolio}
       link={{ href: SOCIAL_LINKS.github, textLink: "Github" }}
       carousel
+      carouselFullBleed
     >
       {portfolioItems.map((item) => (
         <Card
           key={`${item.title}-${item.year}`}
           height="2xl"
-          className={`variant-secondary variant-border ${RAIL_CARD_WIDTH} bg-[var(--variant-soft)]`}
+          className={cn(
+            "variant-secondary variant-border bg-[var(--variant-soft)]",
+            RAIL_CARD_WIDTH,
+            cardFeedbackClassNames
+          )}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
             <div className="relative flex items-center justify-between gap-4 pe-14">
-              <CardTitle className="text-base font-black uppercase tracking-tight">
-                {item.title}
-              </CardTitle>
+              <CardTitle className="text-lg leading-snug">{item.title}</CardTitle>
               <a
                 href={item.link}
                 target="_blank"

@@ -2,6 +2,7 @@ import { Newspaper } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 
 import { SectionCard } from "@/components/ui/section-card"
+import { RAIL_CARD_WIDTH } from "@/components/ui/card-rail"
 import { PostCard } from "@/features/writing/components/post-card"
 import { WRITING_CONFIG, SECTION_COPY } from "@/features/writing/config"
 import { writingApi, writingKeys } from "@/features/writing/api/client"
@@ -9,14 +10,6 @@ import { writingApi, writingKeys } from "@/features/writing/api/client"
 // Enough to browse recent writing in the rail without turning the home page into
 // an archive. The recent endpoint accepts at most 10.
 const POSTS_ON_HOMEPAGE = 9
-
-/**
- * One column of the archive's `PostGrid` (1 / 2 / 3 columns, 1.5rem gaps) inside
- * the 90rem, 1rem-padded site container, so rail cards keep the grid's card width
- * at every breakpoint. `cqw` resolves against the home page's `@container` shell.
- */
-const RAIL_POST_CARD_WIDTH =
-  "w-[calc(min(100cqw,90rem)_-_2rem)] shrink-0 sm:w-[calc((min(100cqw,90rem)_-_3.5rem)_/_2)] lg:w-[calc((min(100cqw,90rem)_-_5rem)_/_3)]"
 
 /**
  * The home page's entry point into the writing.
@@ -49,12 +42,9 @@ export function WritingSection() {
       // The home page's print view focuses on the introduction; article cards
       // belong on screen, where their links can be followed.
       className="print:hidden"
-      // Bleeds the rail to the page edges like the resume's Tech Stack rail. The
-      // page container excludes the browser scrollbar from its width.
-      contentClassName="w-[100cqw] ms-[calc(50%_-_50cqw)]"
     >
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} headingLevel={3} className={RAIL_POST_CARD_WIDTH} />
+        <PostCard key={post.id} post={post} headingLevel={3} className={RAIL_CARD_WIDTH} />
       ))}
     </SectionCard>
   )

@@ -4,10 +4,11 @@ import { PublicNavigation, type PublicPage } from "@/components/public-navigatio
 import { focusControlClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 import { SITE_CONTAINER_CLASS } from "@/components/site-container"
+import { ScrollHeader } from "@/components/scroll-header"
 
 export function PublicHeader({ activePage }: { activePage?: PublicPage | null }) {
   return (
-    <header className="sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85 print:static print:bg-transparent print:backdrop-blur-none">
+    <ScrollHeader>
       <div className={`${SITE_CONTAINER_CLASS} py-4`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
@@ -25,6 +26,6 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
           </div>
         </div>
       </div>
-    </header>
+    </ScrollHeader>
   )
 }
