@@ -26,6 +26,7 @@ export function SkeletonContent({
 }) {
   return (
     <div data-loading-skeleton>
+      <noscript>Enable JavaScript to load this content.</noscript>
       <p role="status" className="sr-only">
         {label}
       </p>

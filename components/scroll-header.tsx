@@ -4,8 +4,7 @@ import { useLocation } from "react-router"
 import { cn } from "@/lib/utils"
 
 /** Sticky page controls follow the visible header with the same transition timing. */
-export const stickyHeaderOffsetClassNames =
-  "top-[var(--site-header-offset,6rem)] transition-[top] duration-200 motion-reduce:transition-none"
+export const stickyHeaderOffsetClassNames = "top-[var(--site-header-offset,6rem)]"
 
 /** Shared public/admin header; remains in document flow and reachable by keyboard. */
 export function ScrollHeader({
@@ -25,9 +24,19 @@ export function ScrollHeader({
     if (!header || !shell) return
     const updateOffset = () => {
       const height = header.offsetHeight
+      const previousTransition = shell.style.transition
+      // Resizing snaps both elements together instead of animating toward an
+      // old header height. Initial measurement also happens before animation.
+      shell.style.transition = "none"
       // Anchor targets reserve room for navigation that an upward jump reveals.
       shell.style.setProperty("--site-header-height", `${height}px`)
-      shell.style.setProperty("--site-header-offset", `${isHidden ? 0 : height}px`)
+      shell.style.setProperty(
+        "--site-header-offset",
+        `${header.dataset.scrollHidden === "true" ? 0 : height}px`
+      )
+      getComputedStyle(shell).getPropertyValue("--site-header-offset")
+      shell.style.transition = previousTransition
+      shell.setAttribute("data-scroll-header-scope", "")
     }
     updateOffset()
     const observer = new ResizeObserver(updateOffset)
@@ -36,7 +45,16 @@ export function ScrollHeader({
       observer.disconnect()
       shell.style.removeProperty("--site-header-height")
       shell.style.removeProperty("--site-header-offset")
+      shell.removeAttribute("data-scroll-header-scope")
     }
+  }, [])
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    header?.parentElement?.style.setProperty(
+      "--site-header-offset",
+      `${isHidden ? 0 : header.offsetHeight}px`
+    )
   }, [isHidden])
 
   useEffect(() => {
@@ -90,8 +108,7 @@ export function ScrollHeader({
       }}
       className={cn(
         "sticky top-0 z-50 border-b-2 border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/85",
-        "transition-transform duration-200 motion-reduce:transition-none has-[:focus-visible]:translate-y-0 print:static print:translate-y-0 print:bg-transparent print:backdrop-blur-none",
-        isHidden && "-translate-y-full",
+        "motion-reduce:transition-none print:static print:bg-transparent print:backdrop-blur-none",
         className
       )}
     >

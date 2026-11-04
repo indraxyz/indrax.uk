@@ -101,7 +101,11 @@ test.describe("search", () => {
 
     await expect(page).toHaveURL(/\/writing\?q=renderer/)
     await expect(page.getByRole("link", { name: /rendering an article/i })).toHaveCount(0)
-    await expect(page.getByRole("status")).toContainText("Loading writing")
+    await expect(page.getByRole("status")).toContainText("Loading articles")
+    // Playwright's text matcher intentionally excludes noscript nodes.
+    expect(await page.locator("noscript").textContent()).toContain(
+      "Enable JavaScript to load this content."
+    )
 
     await context.close()
   })

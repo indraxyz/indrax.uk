@@ -72,3 +72,30 @@ Validation:
 - Migration 0007's ledger hash matches the committed SQL. Its table, cleanup index and
   enabled attachment trigger were verified on Neon develop before merging #96 then #97.
   Local develop was synced to the remote merge revision; production was not modified.
+
+## CI and contents-accordion follow-up
+
+The seeded hosted suite exposed table sorting losing focus when its Query key changed,
+plus assertions for the old full-width article body and loading text. Retain table data
+through pending sorting with TanStack Query's existing placeholder-data mechanism and
+announce the pending result area as busy. Keep skeletons for first loads. Verify the
+requested article reading column alongside its contents sidebar and explicit no-JavaScript
+fallback. Animate one registered header-offset value for header and sticky controls so
+slow CI frames cannot desynchronize independent transitions.
+
+Contents branches with children gain native independent disclosures, closed initially.
+Heading links and disclosure controls stay separate; multiple branches can remain open.
+Use a single one-pixel translucent hierarchy path with angular depth transitions. The contents sidebar has no outer frame or shadow. Preserve
+native keyboard/no-JavaScript operation, mobile panel closing on heading navigation,
+responsive placement, focus visibility, long-title wrapping and reduced motion.
+
+Heading navigation uses native smooth scrolling on article pages when motion is allowed;
+reduced-motion preferences retain instant jumps. URL fragments and keyboard target focus
+remain native, with the same header/disclosure clearance during upward and downward moves.
+
+The active heading follows the article reading position, including native smooth anchor
+landing, resized layouts and loaded images. Exactly one link per contents presentation uses
+`aria-current="location"`; collapsed ancestors indicate they contain the current section
+without opening automatically. Muted titles transition to the site primary token when active;
+reduced motion removes the color transition. A single SVG stroke follows visible row bounds with angular depth changes, so parent
+and child guides share exact joins and a constant stroke width.

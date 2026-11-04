@@ -226,7 +226,7 @@ test.describe("a seeded writing archive", () => {
     // Every entry must point at a heading that exists, or the list is decoration
     // that lies.
     const targets = await toc
-      .getByRole("link")
+      .locator("a[href^='#']")
       .evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).getAttribute("href")))
     expect(targets.length).toBeGreaterThan(0)
 
@@ -370,7 +370,13 @@ test.describe("a seeded writing archive", () => {
       .locator("article .prose")
       .evaluate((body) => body.getBoundingClientRect().width)
     expect(Math.abs(articleWidth - homeWidth)).toBeLessThanOrEqual(1)
-    expect(bodyWidth).toBeGreaterThan(articleWidth * 0.8)
+    // The reading card shares the site container with the desktop contents sidebar.
+    // Its prose should fill the reading column while preserving the card's padding.
+    const readingCard = await page.locator("article > div").last().boundingBox()
+    const contents = await page.locator("[data-article-toc]").boundingBox()
+    expect(contents!.x + contents!.width).toBeLessThan(readingCard!.x)
+    expect(bodyWidth).toBeGreaterThan(readingCard!.width * 0.9)
+    expect(bodyWidth).toBeLessThan(readingCard!.width)
     const bodyFont = await page
       .locator("article .prose")
       .evaluate((body) => getComputedStyle(body).fontFamily)

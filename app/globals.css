@@ -23,6 +23,33 @@
 }
 @plugin "@tailwindcss/typography";
 
+/* One animated value moves navigation and sticky controls on the same timeline. */
+@property --site-header-offset {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 96px;
+}
+
+[data-scroll-header-scope] {
+  transition: --site-header-offset 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-scroll-header-scope] > header[data-scroll-hidden] {
+  transform: translateY(calc(var(--site-header-offset) - var(--site-header-height)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-header-scope] {
+    transition: none;
+  }
+}
+
+@media print {
+  [data-scroll-header-scope] > header[data-scroll-hidden] {
+    transform: none;
+  }
+}
+
 /* Added only after hydration: native/no-JavaScript images stay fully readable. */
 img[data-image-state] {
   transition:

@@ -1,3 +1,14 @@
+/* One indent of vertical space makes depth changes a continuous 45-degree bend. */
+.guideChildren {
+  padding-block: 0.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html:has([data-article-toc])) {
+    scroll-behavior: smooth;
+  }
+}
+
 .body :is(h2, h3, h4)[id] {
   scroll-margin-top: calc(var(--site-header-height, 6rem) + 5rem);
 }

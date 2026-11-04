@@ -62,4 +62,21 @@ describe("article contents hierarchy", () => {
   it("omits navigation when there are no headings", () => {
     expect(renderToStaticMarkup(createElement(TableOfContents, { entries: [] }))).toBe("")
   })
+
+  it("renders independent closed native branches with separate heading links", () => {
+    const html = renderToStaticMarkup(
+      createElement(TableOfContents, {
+        entries: [
+          { id: "main", text: "Main", level: 2 },
+          { id: "sub", text: "Sub", level: 3 },
+          { id: "detail", text: "Detail", level: 4 },
+        ],
+      })
+    )
+    expect(html).toContain('aria-label="Child sections for Main"')
+    expect(html).toContain('aria-label="Child sections for Sub"')
+    for (const id of ["main", "sub", "detail"]) expect(html).toContain(`href="#${id}"`)
+    expect(html).not.toMatch(/<details[^>]*\sopen(?:[=>\s])/)
+    expect(html).not.toMatch(/<details[^>]*\sname=/)
+  })
 })

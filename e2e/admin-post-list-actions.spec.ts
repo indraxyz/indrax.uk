@@ -207,7 +207,8 @@ test("archives a filtered draft and preserves the current query when refreshing"
   await expect(actions(page, "draft")).toHaveCount(0)
   expect(writes.at(-1)?.data).toEqual({ status: "archived" })
   expect(page.url()).toBe(originalUrl)
-  expect(archiveQueries.length).toBeGreaterThan(1)
+  // Optimistic removal can finish before invalidation starts its archive read.
+  await expect.poll(() => archiveQueries.length).toBeGreaterThan(1)
   expect(archiveQueries.at(-1)).toBe(archiveQueries[0])
 })
 
@@ -526,7 +527,21 @@ test("sorts the whole archive from table headers through the server", async ({ p
 
   const title = header("Title").getByRole("button")
   await expect(title).toHaveAccessibleName("Title: sort A to Z")
-  await title.click()
+  let release!: () => void
+  const ready = new Promise<void>((resolve) => (release = resolve))
+  await page.route("**/api/admin/posts/archive*", async (route) => {
+    if (new URL(route.request().url()).searchParams.get("sort") === "title-asc") await ready
+    await route.fallback()
+  })
+  try {
+    await title.click()
+    // Keep the actual header node, including focus, throughout the pending read.
+    await expect(page.locator("main > div[aria-busy]")).toHaveAttribute("aria-busy", "true")
+    await expect(title).toBeFocused()
+    await expect(page.locator("[data-loading-skeleton]")).toHaveCount(0)
+  } finally {
+    release()
+  }
   // Sorting starts again from the first page and keeps the other criteria.
   await expect
     .poll(() => Object.fromEntries(new URL(page.url()).searchParams))
