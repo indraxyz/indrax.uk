@@ -50,6 +50,13 @@
       "when": 1792051741393,
       "tag": "0006_cover_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793546361886,
+      "tag": "0007_media_upload_lifecycle",
+      "breakpoints": true
     }
   ]
 }

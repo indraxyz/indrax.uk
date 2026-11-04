@@ -45,6 +45,7 @@ export function WritingSection() {
       // A horizontal rail with the shared scroll-region semantics, like the
       // resume's Tech Stack.
       carousel
+      carouselFullBleed
       // The home page's print view focuses on the introduction; article cards
       // belong on screen, where their links can be followed.
       className="print:hidden"

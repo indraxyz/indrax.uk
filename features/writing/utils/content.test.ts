@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { PostDocument } from "@/features/writing/types"
 
@@ -24,6 +24,69 @@ const link = (value: string, href: string): PostDocument => ({
 })
 
 const render = (document: PostDocument) => renderDocument(document).then((result) => result.html)
+
+afterEach(() => vi.unstubAllEnvs())
+
+describe("renderDocument — content images", () => {
+  const path = "/local-media/content/51dad294-2e29-40c4-9c1f-2df003c48e57.png"
+
+  it("preserves saved image dimensions without editor resize controls", async () => {
+    const html = await render(
+      doc({
+        type: "image",
+        attrs: { src: "https://example.test/resized.png", alt: "Resized", width: 310, height: 155 },
+      })
+    )
+    expect(html).toContain('width="310"')
+    expect(html).toContain('height="155"')
+    expect(html).not.toContain("data-resize")
+    expect(html).not.toContain('style="')
+  })
+
+  it("preserves multiple independent images between paragraphs with their alt text", async () => {
+    const html = await render(
+      doc(
+        p(text("Before")),
+        { type: "image", attrs: { src: "https://example.test/first.png", alt: "First view" } },
+        p(text("Between")),
+        { type: "image", attrs: { src: "https://example.test/second.png", alt: "Second view" } },
+        p(text("After"))
+      )
+    )
+    expect(html).toMatch(/Before.*alt="First view".*Between.*alt="Second view".*After/)
+    expect(html.match(/<img /g)).toHaveLength(2)
+    expect(html.match(/loading="lazy"/g)).toHaveLength(2)
+    expect(html.match(/decoding="async"/g)).toHaveLength(2)
+  })
+
+  it("resolves generated development uploads after a local port change", async () => {
+    vi.stubEnv("DEV", true)
+    vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5173/local-media")
+    const html = await render(
+      doc({ type: "image", attrs: { src: `http://localhost:9999${path}`, alt: "Local" } })
+    )
+    expect(html).toContain(`src="${path}"`)
+    expect(html).not.toContain("localhost:9999")
+  })
+
+  it("keeps production from enabling local HTTP sources", async () => {
+    vi.stubEnv("DEV", false)
+    vi.stubEnv("MEDIA_ORIGIN", "https://media.indrax.uk")
+    const html = await render(
+      doc({ type: "image", attrs: { src: `http://localhost:5173${path}` } })
+    )
+    expect(html).not.toContain("src=")
+  })
+
+  it("does not allow arbitrary HTTP images when local media is enabled", async () => {
+    vi.stubEnv("DEV", true)
+    vi.stubEnv("MEDIA_ORIGIN", "http://localhost:5173/local-media")
+    const html = await render(
+      doc({ type: "image", attrs: { src: "http://evil.test/unverified.png" } })
+    )
+    expect(html).not.toContain("src=")
+  })
+})
 
 describe("renderDocument — sanitising", () => {
   it("strips a javascript: image source the renderer happily emits", async () => {

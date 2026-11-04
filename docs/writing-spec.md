@@ -254,6 +254,40 @@ The editor is lazy-loaded only in admin authoring routes. The Better Auth browse
 client is loaded when a sign-in/sign-out action needs it. Server secrets and
 server-only dependencies must never enter either browser build.
 
+## Inline content images
+
+The editor's Insert image action adds independent image blocks between paragraphs or
+other content blocks. Each image has its own alt text, separate from the post cover.
+Select an image and use Edit image to change its URL or alt text, replace its file, or
+remove it. Insert, update and removal are separate Undo/Redo actions, even when they
+occur rapidly; typing beside an image does not merge into its history event. Empty
+alt text marks decoration.
+
+Select an image to reveal corner handles (one external handle for small images).
+Drag a handle to resize both dimensions
+while preserving the image's proportions. Handles also accept arrow keys (one pixel),
+or Shift + arrow keys (ten pixels). Width and height are saved in the image block and
+restored by Undo/Redo. Both the editor and published article scale images proportionally
+to fit narrower containers; resize controls appear only in the editor. This uses the
+installed Tiptap Image schema with pointer and keyboard controls. A cancelled touch or
+pointer drag restores the previous dimensions without changing the document.
+
+The dialog accepts HTTPS URLs (including third-party hosts, matching the renderer's
+existing authored-content policy) or verified uploads to the configured media storage.
+Uploads use the shared `/api/upload?purpose=content` pipeline and happen when the author
+confirms Insert/Update image. The selected file and alt text survive an upload failure;
+successful uploads remain in the document across failed post saves. Upload controls are
+disabled without storage, while HTTPS URL insertion remains available. Local development
+uploads render through the isolated local-media route; deployed builds reject HTTP sources.
+
+Saving a document without a previously saved image, replacing an image, or deleting its
+post queues detached managed assets in the existing transactional cleanup outbox. Shared
+cover/body references prevent deletion. Unsaved abandoned uploads are tracked as pending;
+hourly cleanup removes unreferenced uploads after a 24-hour grace period. Attachment is
+transactional, and a retired-upload guard prevents stale tabs from saving deleted assets.
+See [the feature plan and specification](inline-images-card-carousels.md) and
+[upload lifecycle](r2-uploads.md) for details.
+
 ## Article rendering, discovery and design
 
 The server renders the shared Tiptap extensions to HTML, applies an explicit
@@ -293,7 +327,7 @@ include correlation context and do not expose stack traces to visitors.
 
 Uploads go through `/api/upload?purpose=<name>`, never straight to R2. Each
 purpose is a policy in `lib/uploads/policy.ts` (key prefix, size cap, allowed
-types); covers allow JPEG, PNG, WebP and AVIF up to 5 MiB. The route requires the
+types); covers and content images allow JPEG, PNG, WebP and AVIF up to 5 MiB. The route requires the
 author session and a same-origin request, bounds the body while streaming, checks
 the file's leading bytes against the declared type (`lib/uploads/file-signature.ts`),
 then stores it under a server-generated key with the verified `Content-Type`. R2

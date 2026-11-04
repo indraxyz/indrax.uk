@@ -1,9 +1,10 @@
 import { expect, it } from "vitest"
 import { IMAGE_FORMATS } from "./file-signature"
-import { describeTypes, getUploadPolicy, UPLOAD_POLICIES } from "./policy"
+import { describeTypes, getUploadPolicy, UPLOAD_POLICIES, uploadPolicyForKey } from "./policy"
 
 it("resolves only declared purposes", () => {
   expect(getUploadPolicy("cover")).toBe(UPLOAD_POLICIES.cover)
+  expect(getUploadPolicy("content")).toBe(UPLOAD_POLICIES.content)
   for (const purpose of [null, "", "avatar", "toString", "__proto__", "constructor"])
     expect(getUploadPolicy(purpose)).toBeNull()
 })
@@ -22,4 +23,18 @@ it("keeps every policy to scriptless image formats with a bounded size and a pla
 it("lists accepted formats for messages", () => {
   expect(describeTypes(UPLOAD_POLICIES.cover)).toBe("JPEG, PNG, WebP or AVIF")
   expect(describeTypes({ prefix: "x", maxBytes: 1, types: ["image/png"] })).toBe("PNG")
+})
+
+it("recognizes generated keys for both image purposes and rejects unsafe paths", () => {
+  const name = "550e8400-e29b-41d4-a716-446655440000.png"
+  expect(uploadPolicyForKey(`covers/${name}`)).toBe(UPLOAD_POLICIES.cover)
+  expect(uploadPolicyForKey(`content/${name}`)).toBe(UPLOAD_POLICIES.content)
+  for (const key of [
+    `avatars/${name}`,
+    `content/${name}\n`,
+    `content/../covers/${name}`,
+    "content/arbitrary.png",
+    `content/${name}.svg`,
+  ])
+    expect(uploadPolicyForKey(key)).toBeNull()
 })

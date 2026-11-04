@@ -87,3 +87,19 @@ it("never maps local URLs to a production bucket or production URLs to a local b
     managedCoverKey(`https://media.example.com/${key}`, "http://localhost:5174/local-media")
   ).toBeNull()
 })
+
+it("resolves generated content images at the configured media origin", () => {
+  const contentKey = "content/550e8400-e29b-41d4-a716-446655440000.webp"
+  expect(
+    managedCoverKey(`https://media.example.com/${contentKey}`, "https://media.example.com")
+  ).toBe(contentKey)
+  expect(
+    managedCoverKey(
+      `http://localhost:5173/local-media/${contentKey}`,
+      "http://127.0.0.1:5174/local-media"
+    )
+  ).toBe(contentKey)
+  expect(
+    managedCoverKey(`https://other.example.com/${contentKey}`, "https://media.example.com")
+  ).toBeNull()
+})

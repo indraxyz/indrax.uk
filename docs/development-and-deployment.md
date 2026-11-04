@@ -70,7 +70,9 @@ need the `revalidations` table as a reviewed operator step; see
 
 Apply pending PostgreSQL migrations to the matching environment before its Worker
 deployment, including before a develop merge that triggers Preview deployment.
-Cover removal/deletion requires `0006_cover_cleanup`. CI fixture migration prepares
+Cover removal/deletion requires `0006_cover_cleanup`; tracked uploads and scheduled expiry
+also require `0007_media_upload_lifecycle`, including its attachment-transition trigger.
+CI fixture migration prepares
 only the disposable test database; it does not migrate deployed Neon branches.
 
 `npm run deploy:dev` builds with `CLOUDFLARE_ENV=dev`; `npm run deploy` expects

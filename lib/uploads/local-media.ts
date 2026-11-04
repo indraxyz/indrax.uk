@@ -1,4 +1,4 @@
-import { isGeneratedCoverKey } from "./policy.ts"
+import { uploadPolicyForKey } from "./policy.ts"
 
 /** Same-origin URLs for isolated local R2 objects, never arbitrary relative URLs. */
 export const LOCAL_MEDIA_PREFIX = "/local-media/"
@@ -6,7 +6,7 @@ export const LOCAL_MEDIA_PREFIX = "/local-media/"
 export function isLocalMediaPath(value: string): boolean {
   return (
     value.startsWith(LOCAL_MEDIA_PREFIX) &&
-    isGeneratedCoverKey(value.slice(LOCAL_MEDIA_PREFIX.length))
+    Boolean(uploadPolicyForKey(value.slice(LOCAL_MEDIA_PREFIX.length)))
   )
 }
 
@@ -43,14 +43,14 @@ export function isLocalMediaUrl(value: string): boolean {
   }
 }
 
-/** Vite removes local cover acceptance from deployed public/admin builds. */
+/** Vite removes local image acceptance from deployed public/admin builds. */
 export function allowsLocalMediaUrl(value: string): boolean {
   if (import.meta.env?.DEV !== true || !isLocalMediaUrl(value)) return false
   const origin = localMediaOrigin(process.env.MEDIA_ORIGIN)
   return Boolean(origin && new URL(value).origin === origin.origin)
 }
 
-/** Stored development covers survive a change of the local server's host/port. */
+/** Stored development images survive a change of the local server's host/port. */
 export function currentLocalMediaUrl(value: string): string {
   if (import.meta.env?.DEV !== true || !isLocalMediaUrl(value)) return value
   const origin = localMediaOrigin(process.env.MEDIA_ORIGIN)

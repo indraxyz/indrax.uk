@@ -9,6 +9,7 @@ import { PostEditor } from "./editor"
 
 vi.mock("@tiptap/react", () => ({
   useEditor: () => ({
+    state: { selection: { getBookmark: () => ({}) } },
     isActive: () => false,
     can: () =>
       new Proxy(
@@ -40,6 +41,7 @@ describe("PostEditor toolbar", () => {
       "Clear formatting",
       "Undo",
       "Redo",
+      "Insert image",
     ]) {
       expect(html).toContain(`aria-label="${label}"`)
     }

@@ -11,12 +11,51 @@ import { SITE_URL } from "@/config/site"
 
 import { WRITING_EXTENSIONS } from "@/features/writing/editor/extensions"
 import type { PostDocument, RenderedArticle, TocEntry } from "@/features/writing/types"
+import { isLocalMediaUrl } from "@/lib/uploads/local-media"
+import { mediaUrl } from "@/lib/utils/media"
 
 export { deriveExcerpt, deriveExcerptText, plainText } from "./plain-text"
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
 
 const headingLevel = (tagName: string) => HEADING_LEVELS.find((level) => tagName === `h${level}`)
+
+/** Keep isolated local uploads renderable without allowing arbitrary HTTP sources. */
+function rehypeLocalImages() {
+  return (tree: HastRoot) => {
+    const walk = (node: HastRoot | Element) => {
+      for (const child of node.children) {
+        if (child.type !== "element") continue
+        const src = child.properties.src
+        if (child.tagName === "img" && typeof src === "string" && isLocalMediaUrl(src)) {
+          const resolved = mediaUrl(src)
+          // Only development media matching the configured local origin qualifies.
+          // Relative generated paths survive the HTTPS-only sanitizer below.
+          if (resolved) child.properties.src = new URL(resolved).pathname
+        }
+        walk(child)
+      }
+    }
+    walk(tree)
+  }
+}
+
+/** Defer off-screen body images and decode them without blocking article text. */
+function rehypeImageLoading() {
+  return (tree: HastRoot) => {
+    const walk = (node: HastRoot | Element) => {
+      for (const child of node.children) {
+        if (child.type !== "element") continue
+        if (child.tagName === "img") {
+          child.properties.loading = "lazy"
+          child.properties.decoding = "async"
+        }
+        walk(child)
+      }
+    }
+    walk(tree)
+  }
+}
 
 /**
  * Normalise headings so the shallowest one is an `<h2>`.
@@ -373,7 +412,9 @@ export async function renderDocument(document: PostDocument): Promise<RenderedAr
     // <body> should be invented around it.
     .use(rehypeParse, { fragment: true })
     .use(rehypeNormaliseHeadings)
+    .use(rehypeLocalImages)
     .use(rehypeSanitize, schema)
+    .use(rehypeImageLoading)
     // Namespaced for the same reason footnote ids are: a heading slugging to
     // `document`, `posthog` or `__app` is a DOM-clobbering surface, and the
     // sanitiser cannot help because it runs before this does.

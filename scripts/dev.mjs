@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process"
 import { loadEnv } from "vite"
 import { devAddress, hasAddressArgument } from "./dev-address.mjs"
+import { devPublicDirectory } from "./dev-public-assets.mjs"
 import { initializeLocalCache } from "./local-cache.mjs"
 import { createRequire } from "node:module"
+import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 const require = createRequire(import.meta.url)
 
@@ -47,7 +49,7 @@ const args = [
   "--mode",
   "development",
   "--outDir",
-  "../public/admin",
+  join(devPublicDirectory(process.env.INDRAX_DEV_PUBLIC_DIR), "admin"),
 ]
 await new Promise((resolve, reject) => {
   const initial = spawn(process.execPath, args, { stdio: "inherit" })

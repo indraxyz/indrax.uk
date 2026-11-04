@@ -2,6 +2,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest"
 vi.mock("./auth-guard.server", () => ({
   requireAuthor: vi.fn().mockResolvedValue({ id: "author" }),
 }))
+vi.mock("@/features/writing/data/media-uploads.server", () => ({
+  registerPendingUpload: vi.fn().mockResolvedValue(true),
+}))
 import { getCoverStorageConfig } from "./cover-storage.server"
 import { serveLocalMedia } from "./local-media.server"
 import { runWithRequest } from "./runtime.server"
@@ -55,33 +58,36 @@ it.each([
   }
 )
 
-it("enables local uploads with an explicit matching media origin and renders their stored bytes", async () => {
-  let storedKey = ""
-  bucket.put.mockImplementation(async (key) => {
-    storedKey = key
-    return { key }
-  })
-  bucket.get.mockImplementation(async (key) => (key === storedKey ? object() : null))
-  const request = new Request("http://127.0.0.1:5173/api/upload?purpose=cover", {
-    method: "POST",
-    headers: { Origin: "http://127.0.0.1:5173", "Content-Type": "image/png" },
-    body: png,
-  })
-  expect(context(request, getCoverStorageConfig)?.publicUrl).toBe(
-    "http://127.0.0.1:5173/local-media"
-  )
-  const uploaded = await context(request, () => POST(request))
-  expect(uploaded.status).toBe(201)
-  const { publicUrl } = (await uploaded.json()) as { publicUrl: string }
-  expect(isAllowedMediaUrl(publicUrl)).toBe(true)
-  const read = new Request(new URL(publicUrl, request.url))
-  const response = await context(read, () => serveLocalMedia(read))
-  expect(response.status).toBe(200)
-  expect(new Uint8Array(await response.arrayBuffer())).toEqual(png)
-  expect(response.headers.get("Content-Type")).toBe("image/png")
-  expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff")
-  expect(response.headers.get("Content-Security-Policy")).toContain("sandbox")
-})
+it.each(["cover", "content"])(
+  "enables local %s uploads and renders their stored bytes",
+  async (purpose) => {
+    let storedKey = ""
+    bucket.put.mockImplementation(async (key) => {
+      storedKey = key
+      return { key }
+    })
+    bucket.get.mockImplementation(async (key) => (key === storedKey ? object() : null))
+    const request = new Request(`http://127.0.0.1:5173/api/upload?purpose=${purpose}`, {
+      method: "POST",
+      headers: { Origin: "http://127.0.0.1:5173", "Content-Type": "image/png" },
+      body: png,
+    })
+    expect(context(request, getCoverStorageConfig)?.publicUrl).toBe(
+      "http://127.0.0.1:5173/local-media"
+    )
+    const uploaded = await context(request, () => POST(request))
+    expect(uploaded.status).toBe(201)
+    const { publicUrl } = (await uploaded.json()) as { publicUrl: string }
+    expect(isAllowedMediaUrl(publicUrl)).toBe(true)
+    const read = new Request(new URL(publicUrl, request.url))
+    const response = await context(read, () => serveLocalMedia(read))
+    expect(response.status).toBe(200)
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(png)
+    expect(response.headers.get("Content-Type")).toBe("image/png")
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff")
+    expect(response.headers.get("Content-Security-Policy")).toContain("sandbox")
+  }
+)
 
 it.each([
   ["http://127.0.0.1:5173", "production"],

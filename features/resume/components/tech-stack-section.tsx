@@ -13,6 +13,7 @@ export function TechStackSection() {
       title="Tech Stack"
       subtitle={SECTION_COPY.techStack}
       carousel
+      carouselFullBleed
       className="w-full"
       // The page container excludes the browser scrollbar from its width.
       contentClassName="w-[100cqw] ms-[calc(50%_-_50cqw)] print:ms-0 print:w-auto"

@@ -23,6 +23,17 @@ function getPublicRuntime() {
 }
 const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/
 export default {
+  async scheduled(_controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext) {
+    return runWithRequest(
+      new Request(new URL("/__scheduled", env.SITE_URL)),
+      { ...env, NODE_ENV: import.meta.env.PROD ? "production" : "development" },
+      ctx,
+      async () => {
+        const { runScheduledMediaCleanup } = await import("../lib/media-cleanup.server")
+        await runScheduledMediaCleanup()
+      }
+    )
+  },
   async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     return runWithRequest(
       request,

@@ -8,6 +8,7 @@ const target = {
   name: "worker",
   workers_dev: false,
   preview_urls: false,
+  triggers: { crons: ["17 * * * *"] },
   r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-prod" }],
   routes: [{ pattern: "example.test", custom_domain: true }],
   vars: {
@@ -33,6 +34,8 @@ it.each([
   { workers_dev: undefined },
   { preview_urls: true },
   { preview_urls: undefined },
+  { triggers: { crons: [] } },
+  { triggers: { crons: ["47 * * * *"] } },
   { r2_buckets: [] },
   { r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-dev" }] },
   { vars: { ...target.vars, MEDIA_ORIGIN: "https://dev-media.example.test" } },

@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext } from "@playwright/test"
+import { neon } from "@neondatabase/serverless"
 import { E2E_BASE_URL } from "./support/constants"
 import { mintAuthorSession, revokeAuthorSession, SESSION_COOKIE_SECURE } from "./support/session"
 import { isLocalMediaUrl, LOCAL_MEDIA_PREFIX } from "../lib/uploads/local-media"
@@ -12,6 +13,30 @@ let authorId = ""
 let bucketName = ""
 const posts: string[] = []
 const covers: string[] = []
+const uploadedKeys = new Set<string>()
+
+function localUploadKey(url: string): string {
+  expect(isLocalMediaUrl(url)).toBe(true)
+  return new URL(url).pathname.slice(LOCAL_MEDIA_PREFIX.length)
+}
+
+function rememberUpload(url: string) {
+  uploadedKeys.add(localUploadKey(url))
+  covers.push(url)
+}
+
+function uploadDatabase() {
+  const url = process.env.DATABASE_URL!
+  expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(url).hostname)
+  return neon(url)
+}
+
+async function expectUploadState(url: string, expected: "pending" | "attached" | "deleted") {
+  const sql = uploadDatabase()
+  const key = localUploadKey(url)
+  const rows = await sql`SELECT state FROM media_uploads WHERE key = ${key} AND url = ${url}`
+  expect(rows).toEqual([{ state: expected }])
+}
 
 test.beforeAll(async ({ browser, request }) => {
   // Match the throwaway fixtures used by the isolated dev server, not .env.local.
@@ -60,6 +85,10 @@ test.afterAll(async ({ request }) => {
       }),
     ])
     for (const result of cleanup) if (result.status === "rejected") throw result.reason
+    if (uploadedKeys.size > 0) {
+      const sql = uploadDatabase()
+      await sql`DELETE FROM media_uploads WHERE key = ANY(${[...uploadedKeys]}::text[])`
+    }
   } finally {
     await Promise.all([
       author?.close(),
@@ -145,10 +174,11 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   const response = await uploaded
   expect(response.status()).toBe(201)
   const { publicUrl } = await response.json()
-  covers.push(publicUrl)
+  rememberUpload(publicUrl)
   const outcome = await (await saved).json()
   expect(outcome.ok).toBe(true)
   posts.push(outcome.postId)
+  await expectUploadState(publicUrl, "attached")
   expect(writes).toEqual(["/api/upload", "/api/admin/posts"])
   await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/posts/edit/${outcome.postId}`)
   await expect(cover.getByLabel("Cover image URL")).toHaveValue(publicUrl)
@@ -194,6 +224,7 @@ test("enables configured local cover uploads, saves a draft and displays the ima
   expect((await afterSave.json()).coverUrl).toBeNull()
   expect(writes).toEqual(["/api/upload", "/api/admin/posts", "/api/admin/posts"])
   expect((await request.get(publicUrl)).status()).toBe(404)
+  await expectUploadState(publicUrl, "deleted")
   covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
 })
@@ -239,9 +270,10 @@ test("retains a selected cover after failures and deletes its stored image with 
   )
   await saveButton.click()
   const { publicUrl } = await (await uploaded).json()
-  covers.push(publicUrl)
+  rememberUpload(publicUrl)
   await expect(page.getByRole("alert")).toContainText("Save temporarily unavailable")
   await expect(cover.locator("img")).toHaveAttribute("src", publicUrl)
+  await expectUploadState(publicUrl, "pending")
   expect(uploads).toBe(2)
   const saved = page.waitForResponse(
     (response) =>
@@ -251,6 +283,7 @@ test("retains a selected cover after failures and deletes its stored image with 
   const outcome = await (await saved).json()
   expect(outcome.ok).toBe(true)
   posts.push(outcome.postId)
+  await expectUploadState(publicUrl, "attached")
   expect(uploads).toBe(2)
   expect(saves).toBe(2)
   expect((await request.get(publicUrl)).status()).toBe(200)
@@ -260,6 +293,7 @@ test("retains a selected cover after failures and deletes its stored image with 
   })
   expect((await deleted.json()).ok).toBe(true)
   expect((await request.get(publicUrl)).status()).toBe(404)
+  await expectUploadState(publicUrl, "deleted")
   posts.splice(posts.indexOf(outcome.postId), 1)
   covers.splice(covers.indexOf(publicUrl), 1)
   await page.close()
@@ -316,4 +350,246 @@ test("refuses unauthorized, cross-origin, malformed and oversized uploads", asyn
       await author.request.post(endpoint, { headers, data: Buffer.alloc(5 * 1024 * 1024 + 1) })
     ).status()
   ).toBe(413)
+})
+
+test("uploads multiple inline images, persists their alt text and sizes and renders them independently of the cover", async ({
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000)
+  const page = await author.newPage()
+  await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
+  await page.getByLabel("Title", { exact: true }).fill(`Inline images ${crypto.randomUUID()}`)
+  const body = page.locator(".ProseMirror")
+  await body.fill("Before the first illustration")
+  await page.keyboard.press("Enter")
+  const images: string[] = []
+  for (const [index, alt] of [
+    "First inline illustration",
+    "Second inline illustration",
+  ].entries()) {
+    await page
+      .getByRole("toolbar", { name: "Formatting", exact: true })
+      .getByRole("button", { name: "Insert image", exact: true })
+      .click()
+    const dialog = page.getByRole("dialog", { name: "Insert image", exact: true })
+    await dialog.locator('input[type="file"]').setInputFiles({
+      name: `inline-${index}.png`,
+      mimeType: "image/png",
+      buffer: png,
+    })
+    await dialog.getByLabel("Image alt text", { exact: true }).fill(alt)
+    const uploaded = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/upload" &&
+        new URL(response.url()).searchParams.get("purpose") === "content"
+    )
+    await dialog.getByRole("button", { name: "Insert image", exact: true }).click()
+    const response = await uploaded
+    expect(response.status()).toBe(201)
+    const { publicUrl } = await response.json()
+    expect(new URL(publicUrl).pathname).toMatch(/^\/local-media\/content\/[0-9a-f-]+\.png$/)
+    images.push(publicUrl)
+    rememberUpload(publicUrl)
+    await expectUploadState(publicUrl, "pending")
+    await expect(dialog).not.toBeVisible()
+    await expect(body.locator("img").nth(index)).toHaveAttribute("src", publicUrl)
+    await page.keyboard.type(index === 0 ? "Between the illustrations" : "After the illustrations")
+    if (index === 0) await page.keyboard.press("Enter")
+  }
+  await body.locator("img").first().click()
+  await body.locator('[data-resize-handle="bottom-right"]').first().focus()
+  await page.keyboard.press("Shift+ArrowRight")
+  await expect(body.locator("img").first()).toHaveCSS("width", "32px")
+  await expect(body.locator("img").first()).toHaveCSS("height", "32px")
+  const saved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/posts" &&
+      response.request().method() === "POST"
+  )
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  const outcome = await (await saved).json()
+  expect(outcome.ok).toBe(true)
+  posts.push(outcome.postId)
+  for (const image of images) await expectUploadState(image, "attached")
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/admin/posts/edit/${outcome.postId}`)
+  await page.reload()
+  await expect(body.locator("img")).toHaveCount(2)
+  await expect(body.locator("img").first()).toHaveAttribute("alt", "First inline illustration")
+  await expect(body.locator("img").first()).toHaveCSS("width", "32px")
+  await expect(body.locator("img").first()).toHaveCSS("height", "32px")
+  await expect(body.locator("img").nth(1)).toHaveAttribute("alt", "Second inline illustration")
+  await expect(page.getByLabel("Cover image URL", { exact: true })).toHaveValue("")
+  const preview = await author.request.post(
+    `${E2E_BASE_URL}/api/admin/posts/${outcome.postId}/preview`,
+    {
+      data: {},
+      headers: { Origin: E2E_BASE_URL },
+    }
+  )
+  const { url } = await preview.json()
+  const reader = await browser.newPage()
+  await reader.setViewportSize({ width: 390, height: 844 })
+  await reader.goto(url)
+  for (const alt of ["First inline illustration", "Second inline illustration"]) {
+    const image = reader.getByRole("img", { name: alt, exact: true })
+    await expect(image).toBeVisible()
+    await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1)
+    if (alt === "First inline illustration") {
+      await expect(image).toHaveAttribute("width", "32")
+      await expect(image).toHaveAttribute("height", "32")
+      await expect(image).toHaveCSS("width", "32px")
+      await expect(image).toHaveCSS("height", "32px")
+    }
+    const box = await image.boundingBox()
+    expect(box!.width).toBeLessThanOrEqual(390)
+  }
+  await reader.close()
+  await body.locator("img").first().click()
+  await page.getByRole("button", { name: "Edit image", exact: true }).click()
+  await page
+    .getByRole("dialog", { name: "Edit image", exact: true })
+    .getByRole("button", { name: "Remove image", exact: true })
+    .click()
+  const updated = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/posts" &&
+      response.request().method() === "POST"
+  )
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  expect((await (await updated).json()).ok).toBe(true)
+  expect((await request.get(images[0])).status()).toBe(404)
+  expect((await request.get(images[1])).status()).toBe(200)
+  await expectUploadState(images[0], "deleted")
+  await expectUploadState(images[1], "attached")
+  covers.splice(covers.indexOf(images[0]), 1)
+  const deleted = await author.request.delete(`${E2E_BASE_URL}/api/admin/posts/${outcome.postId}`, {
+    data: {},
+    headers: { Origin: E2E_BASE_URL },
+  })
+  expect((await deleted.json()).ok).toBe(true)
+  expect((await request.get(images[1])).status()).toBe(404)
+  await expectUploadState(images[1], "deleted")
+  covers.splice(covers.indexOf(images[1]), 1)
+  posts.splice(posts.indexOf(outcome.postId), 1)
+  await page.close()
+})
+
+test("keeps an unsaved removed image pending and attaches it only after a successful save", async ({
+  request,
+}) => {
+  test.setTimeout(90_000)
+  const page = await author.newPage()
+  await page.clock.setFixedTime(new Date())
+  await page.goto(`${E2E_BASE_URL}/admin/posts/new`)
+  await page
+    .getByLabel("Title", { exact: true })
+    .fill(`Pending inline image ${crypto.randomUUID()}`)
+  const body = page.locator(".ProseMirror")
+  await body.fill("An image can be removed and restored before saving this post.")
+  await page.keyboard.press("Enter")
+  await page
+    .getByRole("toolbar", { name: "Formatting", exact: true })
+    .getByRole("button", { name: "Insert image", exact: true })
+    .click()
+  const dialog = page.getByRole("dialog", { name: "Insert image", exact: true })
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: "pending-inline.png",
+    mimeType: "image/png",
+    buffer: png,
+  })
+  await dialog.getByLabel("Image alt text", { exact: true }).fill("Pending inline illustration")
+  let uploads = 0
+  page.on("request", (sent) => {
+    if (new URL(sent.url()).pathname === "/api/upload") uploads++
+  })
+  const uploaded = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/upload" && response.status() === 201
+  )
+  await dialog.getByRole("button", { name: "Insert image", exact: true }).click()
+  const { publicUrl } = await (await uploaded).json()
+  rememberUpload(publicUrl)
+  await expect(dialog).not.toBeVisible()
+  await expectUploadState(publicUrl, "pending")
+
+  await body.locator("img").click()
+  await page.getByRole("button", { name: "Edit image", exact: true }).click()
+  await page
+    .getByRole("dialog", { name: "Edit image", exact: true })
+    .getByRole("button", { name: "Remove image", exact: true })
+    .click()
+  await expect(body.locator("img")).toHaveCount(0)
+  await expectUploadState(publicUrl, "pending")
+  expect((await request.get(publicUrl)).status()).toBe(200)
+  await page.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(body.locator("img")).toHaveAttribute("src", publicUrl)
+
+  let attempts = 0
+  await page.route("**/api/admin/posts", async (route) => {
+    if (route.request().method() !== "POST") return route.continue()
+    attempts++
+    if (attempts === 1)
+      await route.fulfill({
+        status: 400,
+        json: { ok: false, message: "Post save temporarily unavailable" },
+      })
+    else await route.continue()
+  })
+  const save = page.getByRole("button", { name: "Save", exact: true })
+  await save.click()
+  await expect(page.getByRole("alert")).toContainText("Post save temporarily unavailable")
+  await expect(body.locator("img")).toHaveAttribute("src", publicUrl)
+  await expectUploadState(publicUrl, "pending")
+  expect((await request.get(publicUrl)).status()).toBe(200)
+  expect(uploads).toBe(1)
+
+  const saved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/posts" && response.status() === 200
+  )
+  await save.click()
+  const outcome = await (await saved).json()
+  expect(outcome.ok).toBe(true)
+  posts.push(outcome.postId)
+  await expectUploadState(publicUrl, "attached")
+  expect(uploads).toBe(1)
+  expect(attempts).toBe(2)
+  await page.close()
+})
+
+test("scheduled cleanup deletes expired pending uploads and preserves fresh uploads", async ({
+  request,
+}) => {
+  test.setTimeout(60_000)
+  const images: string[] = []
+  for (let index = 0; index < 2; index++) {
+    const uploaded = await author.request.post(`${E2E_BASE_URL}/api/upload?purpose=content`, {
+      headers: { Origin: E2E_BASE_URL, "Content-Type": "image/png" },
+      data: png,
+    })
+    expect(uploaded.status()).toBe(201)
+    const { publicUrl } = await uploaded.json()
+    rememberUpload(publicUrl)
+    images.push(publicUrl)
+    await expectUploadState(publicUrl, "pending")
+    expect((await request.get(publicUrl)).status()).toBe(200)
+  }
+  const [expired, fresh] = images
+  const sql = uploadDatabase()
+  const key = localUploadKey(expired)
+  await sql`UPDATE media_uploads SET created_at = now() - interval '25 hours'
+    WHERE key = ${key} AND url = ${expired}`
+
+  // Vite/Miniflare's built-in local trigger invokes the real exported scheduled
+  // handler and its runtime bindings, without adding an application test endpoint.
+  const triggered = await request.get("/cdn-cgi/local/scheduled", {
+    params: { cron: "17 * * * *", format: "json" },
+  })
+  expect(triggered.status()).toBe(200)
+  expect(await triggered.json()).toMatchObject({ outcome: "ok" })
+  await expectUploadState(expired, "deleted")
+  expect((await request.get(expired)).status()).toBe(404)
+  await expectUploadState(fresh, "pending")
+  expect((await request.get(fresh)).status()).toBe(200)
+  covers.splice(covers.indexOf(expired), 1)
 })
