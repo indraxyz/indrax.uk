@@ -27,6 +27,26 @@ it("allowlists public deployment identity from Wrangler's versioned output", () 
   expect(JSON.stringify(result)).not.toContain("private-value")
 })
 
+it("accepts the live API's short deployment-ID hostname", () => {
+  const actual = {
+    ...entry,
+    deployment_id: "d8ca8140-a587-47e0-8615-e64ceafc46a1",
+    deployment_urls: ["https://d8ca8140.previews.indrax.uk"],
+  }
+  expect(stagingDeploymentRecord(JSON.stringify(actual), sha).deploymentUrl).toBe(
+    actual.deployment_urls[0]
+  )
+  expect(() =>
+    stagingDeploymentRecord(
+      JSON.stringify({
+        ...actual,
+        deployment_urls: ["https://deadbeef.previews.indrax.uk"],
+      }),
+      sha
+    )
+  ).toThrow("valid unique staging")
+})
+
 it.each([
   { version: 2 },
   { worker_name: "indrax-dev" },

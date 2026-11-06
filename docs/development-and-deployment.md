@@ -134,19 +134,41 @@ live version and failure before retrying or choosing rollback.
 
 The Preview base domain `previews.indrax.uk` is a top-level custom-domain entry
 with `previews_enabled: true` and `enabled: false`. Its stable staging URL is
-`https://develop.previews.indrax.uk`. Domain registration requires an authorized
-Wrangler-managed deployment, and the extra hostname label needs verified
-certificate coverage. Do not enable the CI cutover gate until HTTPS works. Keep
+`https://develop.previews.indrax.uk`. Bootstrap the domain through an authorized
+trigger-only update after reviewing all routes and the production Cron:
+
+```bash
+npx wrangler triggers deploy --config wrangler.jsonc --env '' --env-file /dev/null
+```
+
+This updates trigger configuration without deploying application code. Verify the
+active production version and Cron afterward. The extra hostname label still
+needs verified certificate coverage. Do not enable the CI cutover gate until HTTPS works. Keep
 `workers_dev: false` and `preview_urls: false`; this setup uses custom Preview
 hostnames rather than an additional `workers.dev` origin.
 
-Set staging `SITE_URL` and `BETTER_AUTH_URL` to the stable origin. Use a dedicated
-staging GitHub OAuth App with callback
-`https://develop.previews.indrax.uk/api/auth/callback/github` while the old staging
-site remains available. Retain its existing callback and credentials for rollback.
+Set staging `SITE_URL` and `BETTER_AUTH_URL` to the stable origin. Add
+`https://develop.previews.indrax.uk/api/auth/callback/github` as an exact callback
+on the existing staging GitHub OAuth App while retaining
+`https://dev.indrax.uk/api/auth/callback/github`, or use a separate Preview OAuth
+App. GitHub's current [redirect URL rules](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)
+allow configured callbacks with individual wildcard controls; leave wildcard
+matching disabled for the new exact callback. Preserve the old callback and
+credentials during rollback observation.
 Configure Preview-specific database/auth secrets, numeric author ID and optional
 analytics token. Bind the Preview to the existing dev Neon branch, KV, D1 and R2;
 no production data is copied or reset.
+
+The 2026-11-06 authorized bootstrap registered the Preview base domain, verified
+its active wildcard certificate and created a reachable `develop` Preview with
+working develop database reads and maintenance. Production code and Cron were
+preserved; no paid upgrade was made. Fresh auth/maintenance secrets are configured,
+but the available local OAuth client does not match the existing dev app, so
+correct staging OAuth credentials are still needed before admin acceptance and CI
+cutover. Analytics remain disabled until a staging token is explicitly supplied.
+See the [dated rollout status](workers-previews-migration-spec.md#live-rollout-status--2026-11-06)
+for the verified candidate and remaining work. A reachable candidate is not proof
+of complete OAuth, authoring or pipeline acceptance.
 
 Production keeps its hourly Cron Trigger. Cloudflare does not invoke a Preview's
 `scheduled()` handler. Staging calls the same shared cleanup function through

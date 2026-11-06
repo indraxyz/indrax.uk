@@ -33,11 +33,18 @@ export function stagingDeploymentRecord(output, sha) {
     throw new Error("The configured stable staging URL is not active.")
   assertTargetOrigin("staging", target.siteUrl)
   const stable = new URL(target.siteUrl)
+  const baseHostname = stable.hostname.slice(target.previewName.length + 1)
+  const shortId = entry.deployment_id.slice(0, 8)
+  // The live Preview API also returns <short-id>.<base-domain>. Accept only
+  // hostnames derived from this deployment, including the documented form.
+  const deploymentHosts = new Set([
+    `${shortId}.${baseHostname}`,
+    `${shortId}-${stable.hostname}`,
+    `${entry.deployment_id}-${stable.hostname}`,
+  ])
   const deploymentUrl = entry.deployment_urls?.find((value) => {
     try {
       const url = new URL(value)
-      // Cloudflare's custom-domain unique URL prefixes the stable Preview hostname.
-      const prefix = url.hostname.slice(0, -(stable.hostname.length + 1))
       return (
         url.protocol === "https:" &&
         !url.username &&
@@ -46,8 +53,7 @@ export function stagingDeploymentRecord(output, sha) {
         url.pathname === "/" &&
         !url.search &&
         !url.hash &&
-        url.hostname.endsWith(`-${stable.hostname}`) &&
-        identifier.test(prefix)
+        deploymentHosts.has(url.hostname)
       )
     } catch {
       return false

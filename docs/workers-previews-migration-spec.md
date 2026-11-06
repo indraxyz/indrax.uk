@@ -1,9 +1,11 @@
 # One Worker with production and staging Previews
 
-Status: local implementation verified; live acceptance and rollout pending. Prepared 2026-11-06.
+Status: local implementation verified; authorized live bootstrap in progress, cutover pending. Updated 2026-11-06.
 
-This document plans the migration; it does not authorize a deployment, domain
-change, secret write, data migration or deletion of the existing dev Worker.
+This document records the implementation and rollout. The user subsequently
+authorized live bootstrap; the dated status below distinguishes applied changes
+from remaining acceptance work. Retirement of the existing dev Worker remains a
+separate operation after acceptance.
 
 ## Outcome and scope
 
@@ -147,8 +149,11 @@ OAuth App callback as `<staging-origin>/api/auth/callback/github`.
 Use the existing develop database; do not reset it, copy production sessions into
 it or merge database data as part of this change. A new hostname requires signing
 in again. Keep the old staging OAuth App working during parallel validation by
-using a temporary dedicated OAuth App for the Preview, or explicitly schedule a
-callback cutover; one callback must not be assumed to serve both origins.
+adding the exact Preview callback to the existing staging OAuth App while
+retaining its exact legacy callback, or by using a dedicated Preview OAuth App.
+GitHub's current [redirect URL documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#redirect-urls)
+supports configured callback URLs with per-callback wildcard controls. Use exact
+callbacks; do not broaden matching to cover the new hostname.
 
 Populate Preview Base secrets for future creation and explicitly populate/update
 the existing `develop` Preview when rotating secrets. Inventory required names,
@@ -347,8 +352,12 @@ Required acceptance evidence:
 3. Prepare the concrete live-change set: Preview hostname/certificate, secret-name
    inventory, OAuth callback, CI credential scopes, and rollback commands verified
    against installed help. Obtain deployment authorization before applying it.
-   Registering a Wrangler-managed Preview base domain may require a production
-   deployment; isolate that change from unrelated unreleased application code.
+   Register the Preview base domain through the trigger-only deployment command
+   verified against the installed Wrangler, preserving the active production code:
+   `npx wrangler triggers deploy --config wrangler.jsonc --env '' --env-file /dev/null`.
+   Review all source routes and Cron settings first because this updates trigger
+   configuration. Verify the active production version and schedule afterward;
+   do not deploy unrelated unreleased application code to bootstrap the domain.
 4. Provision the approved Preview configuration and publish the candidate. Keep
    old and new staging cleanup invocations coordinated while they share dev data.
    Do not let two active cleanup paths race without verified overlap safety.
@@ -402,7 +411,78 @@ Verified on 2026-11-06, before any live rollout:
 - A fixture maintenance secret was absent from the built browser assets. Production
   output contained no generated non-production `_headers` rule.
 
-Live DNS/certificates, real GitHub OAuth, deployed Preview secrets and permissions,
-remote analytics/media behavior and retirement of `indrax-dev` remain rollout
-acceptance steps. No remote deployment or resource mutation was performed during
-implementation.
+This evidence covers local implementation only. The original implementation did
+not mutate remote resources; authorized bootstrap began afterward and is recorded
+below. Live OAuth, Preview activation, remote analytics/media behavior and old dev
+retirement are not established by these local results.
+
+## Live rollout status — 2026-11-06
+
+The user authorized bootstrap after the implementation PR was opened. This is a
+bootstrap checkpoint, not evidence that CI cutover or the complete migration is
+finished.
+
+- Registered `previews.indrax.uk` with `enabled: false` and
+  `previews_enabled: true` through Wrangler's trigger-only deployment. The active
+  production version remained `bbc306f1-c96f-4524-94f2-afc8e04e0967`, and its
+  minute-17 hourly Cron remained unchanged. No production application code was
+  deployed for domain registration.
+- Cloudflare issued an active certificate covering `*.previews.indrax.uk`.
+  HTTPS verification succeeded. No paid certificate upgrade was made.
+- Configured a fresh auth secret and maintenance token in Preview Base and the
+  matching maintenance credential in GitHub's `Preview` environment. Copied only
+  the develop runtime database connection from the authorized protected file;
+  its username, database and pooler matched the develop contract. A local SQL
+  probe timed out on the network, but successful cleanup from Cloudflare proved
+  the connection works in the Preview runtime. Values were not displayed or
+  committed.
+- The owner approved the narrow local credential-file exception and confirmed
+  adding the new callback while retaining the old dev callback. However, the
+  OAuth client in `.env.local` belongs to the local `indrax.uk.test` app and does
+  not match the live dev OAuth client. No matching staging OAuth credentials
+  were found in the available protected files, so those credentials were not
+  copied. Correct staging client credentials and the numeric allowlist are still
+  required, for example through the ignored `.env.preview-bootstrap` file.
+- Created the named `develop` Preview under `indrax`, with Preview ID
+  `cf6b02157ccb4fc7890a9423c374ff0a`. The validated candidate deployment is
+  `19f93cb3-5bd5-4e05-ae0d-ff9212b02d5c`, tagged with revision
+  `a7fce2fd58077f805ef1548d3796a2f3ffeb3e58`.
+  Its stable URL is `https://develop.previews.indrax.uk`; its unique URL is
+  `https://19f93cb3.previews.indrax.uk`.
+- The first upload succeeded but the wrapper rejected the live API's short-ID
+  hostname format. The validator now supports that observed format as well as
+  the documented format, binding accepted hostnames to the deployment ID.
+  Thirteen focused wrapper tests, ESLint and TypeScript passed; a subsequent
+  upload completed and emitted the validated public metadata record.
+- Live checks passed for the homepage and public posts API, staging canonical
+  URLs, disallow-all robots response, RSS and sitemap without production-origin
+  links, actual static JavaScript noindex headers, and anonymous private API and
+  upload refusal. Authenticated maintenance returned 200 with no-store/noindex.
+  Anonymous session inspection reports `authConfigured: false`; this is an
+  intentionally closed, incomplete admin configuration, not completed auth
+  acceptance.
+- Preview analytics are disabled pending an explicitly supplied staging token.
+  GitHub's `Preview` build variables match this choice and the dev media origin.
+- PR revision `a7fce2f` passed both GitHub jobs after the clean-type fixture fix.
+  Its main browser run reported 396 passed, one flaky case and three skips;
+  additional direct analytics, Chromium hydration, Firefox hydration and upload
+  suites passed 2, 3, 3 and 7 cases respectively. SQL integration passed 83 cases.
+
+`WORKERS_PREVIEWS_ENABLED` remains disabled and `indrax-dev` remains intact. The
+candidate is reachable, but the legacy Worker remains CI's active staging target.
+
+Remaining work, in order:
+
+1. Supply the correct existing staging OAuth client ID/secret and numeric author
+   allowlist through an authorized protected local file. Verify the client ID
+   against the live dev app before copying it. Supply a staging PostHog token
+   only if analytics should be enabled.
+2. Update both Preview Base and the existing named Preview explicitly; Base
+   updates do not retroactively update an existing Preview. Verify session
+   configuration, the real GitHub authorization callback and authenticated
+   authoring/upload behavior.
+3. Verify the final PR checks and merge/release prerequisites. Enable CI cutover
+   only after acceptance, then follow the develop pipeline through its actual
+   Preview deployment and post-deploy checks, including maintenance.
+4. Observe the required release cycle and explicitly retire the old dev Worker
+   later, preserving the dev data resources used by the Preview.
