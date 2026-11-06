@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url"
+import { getDeploymentTarget, assertTargetOrigin } from "../config/deployment-targets.mjs"
 import { createRequire } from "node:module"
 
 const sdkVersion = createRequire(import.meta.url)("posthog-js/package.json").version
@@ -48,9 +49,9 @@ async function readAnalytics(url, fetcher, verify) {
 }
 
 // Exercise the deployed Worker and real upstream without creating synthetic events.
-export async function verifyAnalytics(target, fetcher = fetch) {
-  if (!["dev", "production"].includes(target)) throw new Error("Choose dev or production.")
-  const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
+export async function verifyAnalytics(target, fetcher = fetch, explicitOrigin) {
+  const origin = explicitOrigin ?? getDeploymentTarget(target).siteUrl
+  assertTargetOrigin(target, origin)
   for (const suffix of ["", ".js"]) {
     await readAnalytics(
       `${origin}/analytics/array/phc_indrax_gateway/config${suffix}`,
@@ -94,4 +95,4 @@ export async function verifyAnalytics(target, fetcher = fetch) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await verifyAnalytics(process.argv[2])
+  await verifyAnalytics(process.argv[2], fetch, process.argv[3])

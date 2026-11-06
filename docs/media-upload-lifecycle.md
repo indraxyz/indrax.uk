@@ -1,6 +1,11 @@
 # Pending media upload lifecycle
 
 This extends the inline-image work on `feat/inline-images-card-carousels` (PR #96).
+The original verification record below describes that change. The subsequent
+Workers Previews migration retains hourly production cleanup, but invokes staging
+cleanup after deployment or manual maintenance through a protected test route;
+Previews do not receive Cron Triggers. See
+[Preview maintenance](development-and-deployment.md#preview-bootstrap-and-cleanup).
 
 ## Plan
 
@@ -28,7 +33,7 @@ Matching uses generated keys, allowing valid development media URLs to change po
 Legacy uploads and third-party HTTPS images remain usable; this does not list or delete
 historical objects without a tracking record.
 
-An hourly scheduled Worker processes at most 20 pending/deleting uploads per invocation.
+The shared cleanup function processes at most 20 pending/deleting uploads per invocation.
 Pending uploads become eligible after 24 hours. The cleanup worker verifies the stored
 URL against the current environment's media configuration and rechecks all saved posts,
 including drafts, archived posts, covers and inline images. Referenced assets are kept.
@@ -46,8 +51,9 @@ The grace period protects ordinary editing and Undo. An unsaved editor left open
 the grace period may need to reupload an expired image; there is no indefinite browser
 lease. No image is deleted merely because a dialog closes or a block is removed locally.
 
-The migration must run before deploying the new code. Cron configuration is included for
-production and dev. Apply the migration through the existing reviewed release procedure
+The migration must run before deploying the new code. Production retains Cron configuration; the legacy dev schedule remains only during
+Preview rollout. The staging Preview calls the same function through its protected
+maintenance route and has no hourly schedule. Apply the migration through the existing reviewed release procedure
 before merging to a deployment branch. CI migrates its disposable database only; it does
 not apply migrations to deployed Neon branches. CI continues to own Worker deployments.
 

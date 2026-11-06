@@ -98,7 +98,10 @@ live gateway verification for direct deployments.
 | `POSTHOG_MONTHLY_*_LIMIT` | Optional Worker runtime variable          | Lower a category's hard ceiling, including zero to stop it  |
 
 Set build variables separately in GitHub `Preview` and `Production`. Set runtime
-secrets separately on `indrax-dev` and `indrax`. Runtime host defaults to US Cloud;
+secrets separately on production `indrax` and the named staging Preview; retain
+legacy `indrax-dev` secrets until cutover is accepted. Updating Preview Base secrets
+does not update the existing `develop` Preview. Use a staging PostHog project or
+disable staging analytics. Runtime host defaults to US Cloud;
 select `https://eu.i.posthog.com` for an EU project in both relevant Wrangler environments.
 Worker browser builds use only the placeholder and same-origin endpoint. The explicit
 allowlist excludes runtime secrets and `POSTHOG_HOST` from all browser definitions.

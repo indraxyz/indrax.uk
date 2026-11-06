@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { verifyAnalytics } from "./verify-analytics.mjs"
 
-it.each(["dev", "production"])("checks live config transports in %s", async (target) => {
+it.each(["dev", "production", "staging"])("checks live config transports in %s", async (target) => {
   const fetcher = vi
     .fn<typeof fetch>()
     .mockImplementation(
@@ -15,7 +15,12 @@ it.each(["dev", "production"])("checks live config transports in %s", async (tar
       })
     )
   await verifyAnalytics(target, fetcher)
-  const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
+  const origin =
+    target === "staging"
+      ? "https://develop.previews.indrax.uk"
+      : target === "dev"
+        ? "https://dev.indrax.uk"
+        : "https://indrax.uk"
   expect(fetcher).toHaveBeenCalledTimes(5)
   expect(fetcher).toHaveBeenCalledWith(
     `${origin}/analytics/array/phc_indrax_gateway/config`,
@@ -52,7 +57,9 @@ it("rejects a JSON error served as the SDK script", async () => {
 
 it("refuses unknown targets before making a network request", async () => {
   const fetcher = vi.fn<typeof fetch>()
-  await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("Choose dev or production")
+  await expect(verifyAnalytics("unknown", fetcher)).rejects.toThrow(
+    "Choose production, staging or dev"
+  )
   expect(fetcher).not.toHaveBeenCalled()
 })
 
@@ -190,4 +197,10 @@ describe("transport failures", () => {
     expect(fetcher).toHaveBeenCalledTimes(1)
     expect(console.warn).not.toHaveBeenCalled()
   })
+})
+
+it("rejects an untrusted analytics origin before making a request", async () => {
+  const fetcher = vi.fn<typeof fetch>()
+  await expect(verifyAnalytics("staging", fetcher, "https://other.test")).rejects.toThrow("origin")
+  expect(fetcher).not.toHaveBeenCalled()
 })

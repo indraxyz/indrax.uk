@@ -5,10 +5,16 @@ uses production as its default root branch and develop as a long-lived child.
 This follows Neon's [production/staging workflow](https://neon.com/branching/production-staging-workflows).
 Git branches and Neon branches are separate: merging Git code never merges database data.
 
-| Environment           | Git branch | Neon branch                                 | Database | Runtime role     | Worker       |
-| --------------------- | ---------- | ------------------------------------------- | -------- | ---------------- | ------------ |
-| Production            | `main`     | `production` (`br-sparkling-moon-ahxrfmpy`) | `indrax` | `indrax_app`     | `indrax`     |
-| Development / staging | `develop`  | `develop` (`br-cool-meadow-ahq7py8f`)       | `indrax` | `indrax_dev_app` | `indrax-dev` |
+| Environment           | Git branch | Neon branch                                 | Database | Runtime role     | Worker                                                                                   |
+| --------------------- | ---------- | ------------------------------------------- | -------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| Production            | `main`     | `production` (`br-sparkling-moon-ahxrfmpy`) | `indrax` | `indrax_app`     | `indrax`                                                                                 |
+| Development / staging | `develop`  | `develop` (`br-cool-meadow-ahq7py8f`)       | `indrax` | `indrax_dev_app` | Named `develop` Preview under `indrax` after cutover; legacy `indrax-dev` during rollout |
+
+The Workers Previews migration reuses the existing develop branch and runtime
+role. It does not create/reset branches, copy sessions or merge authored data.
+Configure the named Preview's `DATABASE_URL` separately from production and retain
+the legacy dev secret during rollback observation. Historical staged version IDs
+below describe earlier preparation, not the current active deployment.
 
 Each environment has its own compute endpoint and independent application password.
 Runtime connections use the transaction pooler; migrations use the direct endpoint

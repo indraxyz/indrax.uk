@@ -284,7 +284,9 @@ uploads render through the isolated local-media route; deployed builds reject HT
 Saving a document without a previously saved image, replacing an image, or deleting its
 post queues detached managed assets in the existing transactional cleanup outbox. Shared
 cover/body references prevent deletion. Unsaved abandoned uploads are tracked as pending;
-hourly cleanup removes unreferenced uploads after a 24-hour grace period. Attachment is
+production's hourly cleanup removes unreferenced uploads after a 24-hour grace
+period. Named staging Previews invoke the same cleanup function after deployment
+or manual maintenance, without an hourly Cron Trigger. Attachment is
 transactional, and a retired-upload guard prevents stale tabs from saving deleted assets.
 See [the feature plan and specification](inline-images-card-carousels.md) and
 [upload lifecycle](r2-uploads.md) for details.

@@ -83,7 +83,9 @@ are reused for detached-image cleanup. Pending uploads additionally require migr
 remain supported as authored content, but never authorize storage deletion.
 Each new cover/content upload is tracked before the R2 write and remains pending until
 a post save attaches it in the same transaction. Unreferenced pending uploads older than
-24 hours are collected by hourly scheduled cleanup; R2 failures retain durable retry work.
+24 hours are collected by cleanup; production invokes it hourly, while a staging
+Preview invokes it after deployment or manual maintenance. R2 failures retain
+durable retry work.
 Failed post saves preserve pending uploads for retry within that grace period. A database
 transition guard prevents reattaching an asset cleanup has already claimed or deleted.
 See [pending media lifecycle](media-upload-lifecycle.md) for concurrency and retry behavior.
@@ -102,9 +104,14 @@ deploying code that saves or deletes posts.
 After commit, the Worker awaits `MEDIA_BUCKET.delete` and removes the queue row
 only after that succeeds. Failures are logged and retain the queue row; the
 committed post mutation still succeeds. Later successful post saves, deletions,
-or status changes retry pending work. Hourly scheduled cleanup also retries the outbox,
-so cleanup no longer requires another author edit. Production runs at minute 17 UTC and
-dev at minute 47; each invocation handles bounded batches of pending and detached work.
+or status changes retry pending work. The shared cleanup function also retries the
+outbox, so production cleanup no longer requires another author edit. Production
+runs at minute 17 UTC. The named staging Preview has no Cloudflare Cron Trigger:
+its protected test route runs cleanup after deployment or manual maintenance.
+The legacy dev Worker retains its minute-47 schedule until explicitly disabled
+during cutover; coordinate overlapping invocations against shared dev resources.
+Each invocation handles bounded batches of pending and detached work. See
+[Preview maintenance](development-and-deployment.md#preview-bootstrap-and-cleanup).
 
 Cleanup accepts only generated `covers/<UUIDv4>.(jpg|png|webp|avif)` or
 `content/<UUIDv4>.(jpg|png|webp|avif)` keys from the

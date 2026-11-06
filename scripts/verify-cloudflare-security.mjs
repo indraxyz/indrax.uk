@@ -1,9 +1,11 @@
 import { pathToFileURL } from "node:url"
+import { getDeploymentTarget, assertTargetOrigin } from "../config/deployment-targets.mjs"
 
-export async function verifyCloudflareSecurity(target, fetcher = fetch) {
-  if (!["dev", "production"].includes(target)) throw new Error("Choose dev or production.")
-  const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
-  const mediaOrigin = target === "dev" ? "https://dev-media.indrax.uk" : "https://media.indrax.uk"
+export async function verifyCloudflareSecurity(target, fetcher = fetch, explicitOrigin) {
+  const settings = getDeploymentTarget(target)
+  const origin = explicitOrigin ?? settings.siteUrl
+  assertTargetOrigin(target, origin)
+  const mediaOrigin = settings.mediaOrigin
   const read = (url, options = {}) =>
     fetcher(url, {
       redirect: "manual",
@@ -24,17 +26,17 @@ export async function verifyCloudflareSecurity(target, fetcher = fetch) {
     )
       throw new Error(`${target} ${path} is not publicly reachable with a strict script policy.`)
     if (
-      (target === "dev" || path === "/admin/login") &&
+      (target !== "production" || path === "/admin/login") &&
       !page.headers.get("x-robots-tag")?.includes("noindex")
     )
       throw new Error(`${target} ${path} must remain noindex.`)
     await page.body?.cancel()
   }
 
-  if (target === "dev") {
+  if (target !== "production") {
     const robots = await read(`${origin}/robots.txt`)
     if (robots.status !== 200 || !/^Disallow:\s*\/\s*$/m.test(await robots.text()))
-      throw new Error("Dev robots.txt must disallow indexing.")
+      throw new Error("Staging/dev robots.txt must disallow indexing.")
   }
 
   const admin = await read(`${origin}/admin`)
@@ -46,6 +48,23 @@ export async function verifyCloudflareSecurity(target, fetcher = fetch) {
   )
     throw new Error(`${target} must redirect signed-out admin visitors to the app login.`)
   await admin.body?.cancel()
+
+  if (target !== "dev") {
+    const maintenance = await read(`${origin}/api/internal/preview/media-cleanup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    })
+    const expected = target === "production" ? 404 : 401
+    if (
+      maintenance.status !== expected ||
+      !maintenance.headers.get("cache-control")?.includes("no-store")
+    )
+      throw new Error(
+        `${target} maintenance route must refuse anonymous calls with HTTP ${expected}.`
+      )
+    await maintenance.body?.cancel()
+  }
 
   const session = await read(`${origin}/api/admin/session`)
   if (
@@ -97,4 +116,4 @@ export async function verifyCloudflareSecurity(target, fetcher = fetch) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await verifyCloudflareSecurity(process.argv[2])
+  await verifyCloudflareSecurity(process.argv[2], fetch, process.argv[3])
