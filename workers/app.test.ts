@@ -24,7 +24,10 @@ const token = "worker-fixture-maintenance-token-0123456789"
 // Only request context and the limiter are exercised here; other platform
 // bindings deliberately remain absent so accidental access fails the test.
 const context: Partial<ExecutionContext> = { waitUntil: vi.fn() }
-function environment(): Partial<CloudflareEnv> {
+// Wrangler generates SITE_URL from production and named environments, excluding
+// Preview vars. The fixture also exercises that separate Preview configuration.
+type TestEnv = Partial<Omit<CloudflareEnv, "SITE_URL">> & { SITE_URL: string }
+function environment(): TestEnv {
   const bindings = {
     SITE_URL: origin,
     DATABASE_URL: "postgres://fixture.invalid/test",
