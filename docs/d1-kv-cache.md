@@ -13,8 +13,9 @@ and [release preparation](public-site-release.md) for the surrounding applicatio
 | KV: `CACHE_KV` | Cached public query results and rendered published articles | [cache implementation](../lib/cache.server.ts) |
 | D1: `APP_D1`   | Cache-tag revision values in `revalidations`                | The same cache implementation                  |
 
-Both `indrax` and `indrax-dev` use binding aliases `CACHE_KV` and `APP_D1`, with
-separate existing resource IDs for each Worker. Physical resource names and stored
+Production `indrax`, the staging `develop` Preview and legacy `indrax-dev` use
+binding aliases `CACHE_KV` and `APP_D1`. Production has distinct resource IDs;
+the Preview reuses the existing dev resources during migration. Physical resource names and stored
 data are unchanged. `APP_D1` also holds analytics quota counters and the replay
 session registry. These aliases are accessed through Worker bindings and the request context, not through Next.js
 or a database connection string in `.env.local`. The source configuration is
@@ -155,12 +156,17 @@ On Cloudflare, KV and D1 are managed remote resources accessed through the Worke
 bindings. Their data is not stored in the application's deployed asset files or
 uploaded from local SQLite/blobs.
 
-| Branch    | Worker / domain                         | D1 database            | KV selection                               |
-| --------- | --------------------------------------- | ---------------------- | ------------------------------------------ |
-| `develop` | `indrax-dev` / `dev.indrax.uk`          | `indrax-dev-next-tags` | `env.dev.kv_namespaces` in source config   |
-| `main`    | `indrax` / `indrax.uk`, `www.indrax.uk` | `indrax-next-tags`     | Top-level `kv_namespaces` in source config |
+| Branch             | Worker / domain                                                 | D1 database            | KV selection                               |
+| ------------------ | --------------------------------------------------------------- | ---------------------- | ------------------------------------------ |
+| `develop`, legacy  | `indrax-dev` / `dev.indrax.uk`                                  | `indrax-dev-next-tags` | `env.dev.kv_namespaces`                    |
+| `develop`, Preview | `develop` Preview under `indrax` / `develop.previews.indrax.uk` | `indrax-dev-next-tags` | `previews.kv_namespaces`                   |
+| `main`             | `indrax` / `indrax.uk`, `www.indrax.uk`                         | `indrax-next-tags`     | Top-level `kv_namespaces` in source config |
 
-Both Workers use the same binding names but distinct configured resource IDs.
+Production and staging use the same binding names but distinct configured
+resource IDs. The old dev Worker and new Preview share the dev IDs during rollout;
+they do not provide isolation from each other. Keep those resources when retiring
+`indrax-dev`. The `WORKERS_PREVIEWS_ENABLED` repository switch chooses the develop
+deployment path only after Preview bootstrap acceptance.
 The IDs in `wrangler.jsonc` are authoritative; no IDs need to be copied into
 `.env.local`. Deployment validates the generated config's Worker, domains, site
 URL and KV/D1 bindings before upload. Worker code deployment does not seed D1 or

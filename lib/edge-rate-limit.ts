@@ -27,6 +27,8 @@ interface RateLimitBucket {
  * public archive, whose search and filters issue a request per change.
  */
 export function rateLimitBucket(path: string): RateLimitBucket | null {
+  if (path === "/api/internal/preview/media-cleanup")
+    return { binding: "RATE_LIMIT_STRICT", bucket: "preview-maintenance" }
   if (path.startsWith("/api/auth/")) return { binding: "RATE_LIMIT_STRICT", bucket: "auth" }
   if (path.startsWith("/api/views/")) return { binding: "RATE_LIMIT_STRICT", bucket: "views" }
   if (path.startsWith("/api/admin/") || path === "/api/upload")

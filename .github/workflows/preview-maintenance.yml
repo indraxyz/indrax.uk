@@ -1,0 +1,41 @@
+name: Preview maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full commit SHA of the current successful develop Preview deployment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  deployments: read
+
+jobs:
+  cleanup:
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' && vars.WORKERS_PREVIEWS_ENABLED == 'true'
+    concurrency:
+      group: cloudflare-indrax
+      cancel-in-progress: false
+    environment:
+      name: Preview
+      # Maintenance uses the protected secret without replacing release evidence.
+      # Incompatible with custom deployment protection rule apps; see rollout docs.
+      deployment: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The caller uses Node built-ins only; it needs neither npm install nor Cloudflare credentials.
+      - name: Verify successful staging revision and invoke cleanup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_STAGING_SHA: ${{ inputs.expected_sha }}
+          PREVIEW_MAINTENANCE_TOKEN: ${{ secrets.PREVIEW_MAINTENANCE_TOKEN }}
+        run: node scripts/preview-maintenance.mjs --verify-revision

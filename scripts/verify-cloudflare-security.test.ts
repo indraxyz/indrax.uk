@@ -18,6 +18,14 @@ function responses(overrides: Record<string, () => Response> = {}) {
     if (url.pathname === "/robots.txt") return new Response("User-agent: *\nDisallow: /\n")
     if (url.pathname === "/admin")
       return new Response(null, { status: 302, headers: { location: `${url.origin}/admin/login` } })
+    if (url.pathname === "/api/internal/preview/media-cleanup")
+      return Response.json(
+        { error: "Unauthorized" },
+        {
+          status: url.origin === "https://indrax.uk" ? 404 : 401,
+          headers: privateHeaders,
+        }
+      )
     if (url.pathname === "/api/admin/session")
       return Response.json({ author: null, authConfigured: true }, { headers: privateHeaders })
     if (url.pathname.startsWith("/api/"))
@@ -34,13 +42,19 @@ function responses(overrides: Record<string, () => Response> = {}) {
   })
 }
 
-it.each(["dev", "production"])(
+it.each(["dev", "production", "staging"])(
   "verifies public pages and private admin boundaries in %s",
   async (target) => {
     const fetcher = responses()
     await expect(verifyCloudflareSecurity(target, fetcher)).resolves.toBeUndefined()
-    const origin = target === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"
-    const media = target === "dev" ? "https://dev-media.indrax.uk" : "https://media.indrax.uk"
+    const origin =
+      target === "staging"
+        ? "https://develop.previews.indrax.uk"
+        : target === "dev"
+          ? "https://dev.indrax.uk"
+          : "https://indrax.uk"
+    const media =
+      target !== "production" ? "https://dev-media.indrax.uk" : "https://media.indrax.uk"
     expect(fetcher).toHaveBeenCalledWith(`${media}/covers/security-smoke.png`, expect.anything())
     expect(fetcher).toHaveBeenCalledWith(
       `${origin}/api/upload?purpose=cover`,
@@ -62,7 +76,7 @@ it.each(["dev", "production"])(
   }
 )
 
-it.each(["dev", "production"])(
+it.each(["dev", "production", "staging"])(
   "rejects invalid public/admin/media boundaries in %s",
   async (target) => {
     const failures: [string, () => Response, string][] = [
@@ -172,7 +186,27 @@ it("requires a non-indexable public dev site", async () => {
 it("rejects unknown deployment targets before making a request", async () => {
   const fetcher = responses()
   await expect(verifyCloudflareSecurity("other", fetcher)).rejects.toThrow(
-    "Choose dev or production"
+    "Choose production, staging or dev"
   )
   expect(fetcher).not.toHaveBeenCalled()
+})
+
+it("rejects a mismatched explicit staging origin before making a request", async () => {
+  const fetcher = responses()
+  await expect(verifyCloudflareSecurity("staging", fetcher, "https://indrax.uk")).rejects.toThrow(
+    "origin"
+  )
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+it.each(["production", "staging"])("rejects an exposed maintenance route in %s", async (target) => {
+  await expect(
+    verifyCloudflareSecurity(
+      target,
+      responses({
+        "/api/internal/preview/media-cleanup": () =>
+          Response.json({ ok: true }, { headers: privateHeaders }),
+      })
+    )
+  ).rejects.toThrow("maintenance route")
 })

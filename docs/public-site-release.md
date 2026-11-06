@@ -84,7 +84,9 @@ optimizations later in this document are follow-ups, not release requirements.
 
 1. Base the release on current remote develop and all merged follow-ups. Require
    check/e2e jobs and Preview deployment to pass for that revision.
-2. Exercise dev.indrax.uk after its develop push deployment: archive paging,
+2. Exercise the active staging origin after its develop push deployment:
+   `develop.previews.indrax.uk` after Workers Previews cutover, otherwise
+   `dev.indrax.uk`. Check archive paging,
    combined public/admin search/filters/sort and status paging, article SSR, draft isolation, OAuth, author save/publish, resume
    PDF, media uploads when configured, RSS, sitemap, and legacy redirects.
    Confirm the deployed revision rather than inferring it from a merged PR.
@@ -112,12 +114,15 @@ optimizations later in this document are follow-ups, not release requirements.
    matching `APP_D1`, preserving existing counters. Before upload,
    `scripts/assert-deploy-target.mjs` resolves source configuration
    through Wrangler and verifies generated Worker name, routes, site URL and
-   KV/D1 bindings. CI validates both production and develop builds; the seeded
+   KV/D1 bindings. CI validates production, staging Preview and legacy dev targets; the seeded
    browser suite keeps its production-config/local-fixture coverage. Quality jobs
    cancel superseded runs independently; active deployments finish and deployment
-   jobs serialize per branch.
-   The dev build selects its environment with `CLOUDFLARE_ENV=dev`; use the
-   project's npm scripts to keep build and deployment configuration aligned.
+   jobs serialize deployment and maintenance against the shared parent Worker.
+   Production and named staging Preview builds use `build:production` and
+   `build:staging`; legacy dev retains `CLOUDFLARE_ENV=dev` during rollback
+   observation. Use the project's npm scripts to keep configuration aligned.
+   The repository `WORKERS_PREVIEWS_ENABLED` cutover gate requires verified
+   Preview TLS, secrets, OAuth and the protected cleanup route before enabling.
 7. Verify production journeys, metadata/canonical origins and cold/warm request
    duration and CPU in Workers observability. Record the deployed version and
    previous known-good version. A Worker rollback does not undo database or

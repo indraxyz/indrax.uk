@@ -99,6 +99,22 @@ test.describe("the content security policy", () => {
 })
 
 test.describe("what a scanner can learn", () => {
+  test("the production bundle never exposes the Preview cleanup capability", async ({
+    request,
+  }) => {
+    for (const method of ["GET", "POST"]) {
+      const response = await request.fetch("/api/internal/preview/media-cleanup", {
+        method,
+        headers: { authorization: `Bearer ${"fixture-only-".repeat(4)}` },
+        ...(method === "POST" ? { data: {} } : {}),
+      })
+      expect(response.status()).toBe(404)
+      expect(response.headers()["cache-control"]).toContain("no-store")
+      expect(response.headers()["x-robots-tag"]).toContain("noindex")
+      expect(await response.json()).toEqual({ error: "Not found." })
+    }
+  })
+
   test("production does not serve simulated local covers", async ({ request }) => {
     const response = await request.get(
       "/local-media/covers/51dad294-2e29-40c4-9c1f-2df003c48e57.png"

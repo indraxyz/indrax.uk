@@ -462,3 +462,26 @@ are in `test-results-analytics-direct/`. Run the suites sequentially: both build
 the same application output. Rebuild for your intended transport after testing.
 Unit tests cover configuration validation, secret exclusion, both SDK transports,
 nested replay redaction and CSP host restrictions, including disabled mode.
+
+## Workers Previews deployment coverage
+
+`npm run build:production` and `npm run build:staging` compile explicit target
+origins into both frontends. Validate each generated configuration with
+`scripts/assert-deploy-target.mjs` for the matching target. These builds and local
+Workerd preview do not deploy a remote Cloudflare Preview. Tests for the staging
+maintenance handler must cover production/disabled 404, incorrect credentials,
+method/JSON/body/Origin constraints, absent database/media, cleanup failure and
+successful awaited execution. Use disposable SQL/R2 fixtures for eligibility and
+attachment preservation; never invoke production cleanup as a test.
+
+Live staging acceptance is a separate rollout step: verify HTTPS and canonical
+origins, a real staging OAuth round trip, authoring/upload flows, data isolation,
+noindex and authenticated cleanup on `develop.previews.indrax.uk`. Production Cron
+continues to run hourly; Preview cleanup runs after deploy or manual dispatch.
+The repository `WORKERS_PREVIEWS_ENABLED` gate remains off until that bootstrap is
+ready. Manual maintenance uses `preview-maintenance.yml` with the full current
+successful develop SHA in `expected_sha`; its `deployment: false` environment
+access preserves the release deployment history. A 200 cleanup response proves
+one bounded invocation completed, not that every pending record was drained. Record skipped live checks explicitly; a green local suite does not prove
+Preview TLS, OAuth credentials or the remote Neon secret's target. See the
+[migration specification](workers-previews-migration-spec.md) for acceptance.

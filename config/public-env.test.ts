@@ -11,6 +11,22 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
+it("embeds the same explicit staging origin and dev media origin in either bundle", () => {
+  vi.stubEnv("DEPLOYMENT_TARGET", "staging")
+  const definitions = publicEnvDefinitions("production")
+  expect(definitions["process.env.SITE_URL"]).toBe('"https://develop.previews.indrax.uk"')
+  expect(definitions["process.env.MEDIA_ORIGIN"]).toBe('"https://dev-media.indrax.uk"')
+})
+
+it.each([{ SITE_URL: "https://indrax.uk" }, { MEDIA_ORIGIN: "https://media.indrax.uk" }])(
+  "rejects mismatched public settings for an explicit staging build: %j",
+  (override) => {
+    vi.stubEnv("DEPLOYMENT_TARGET", "staging")
+    Object.assign(environment, override)
+    expect(() => publicEnvDefinitions("production")).toThrow("conflicts")
+  }
+)
+
 it("never exposes project tokens or arbitrary environment variables", () => {
   Object.assign(environment, {
     POSTHOG_KEY: "phc_previously_exposed",

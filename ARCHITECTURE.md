@@ -48,6 +48,25 @@ explicitly to Wrangler and puts exported overrides in a protected temporary dote
 file outside the build. Deployed secrets and resource bindings remain configured
 through Cloudflare and Wrangler.
 
+## Deployment targets and Preview maintenance
+
+`config/deployment-targets.mjs` defines production, named staging Preview and
+legacy dev boundaries. Explicit production/staging builds compile matching public
+origins into the SSR and admin bundles. The generated deployment guard checks
+parent Worker, domains/Preview flags, data bindings, rate-limit namespaces and
+maintenance capability before upload.
+
+The target staging deployment is the named `develop` Preview under `indrax`, at
+`develop.previews.indrax.uk`, with existing dev Neon/KV/D1/R2 resources and separate
+secrets. A repository CI switch retains the legacy dev Worker until live setup and
+acceptance are complete; see [deployment workflow](docs/development-and-deployment.md).
+
+Production `scheduled()` and the staging-only authenticated maintenance route call
+the same `runScheduledMediaCleanup()` function. The route dispatches before public
+SSR, requires explicit staging capability plus a machine credential, and is absent
+on production. Cloudflare Cron does not target Previews; staging cleanup runs after
+deployment or manual dispatch, with no independent hourly schedule.
+
 ## Rendering policy
 
 | Route/content                   | Policy                      | Reason                                                                        |
