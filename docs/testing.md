@@ -478,8 +478,8 @@ Live staging acceptance is a separate rollout step: verify HTTPS and canonical
 origins, a real staging OAuth round trip, authoring/upload flows, data isolation,
 noindex and authenticated cleanup on `develop.previews.indrax.uk`. Production Cron
 continues to run hourly; Preview cleanup runs after deploy or manual dispatch.
-The repository `WORKERS_PREVIEWS_ENABLED` gate remains off until that bootstrap is
-ready. Manual maintenance uses `preview-maintenance.yml` with the full current
+CI always selects the named Preview for develop; there is no legacy fallback.
+Manual maintenance uses `preview-maintenance.yml` with the full current
 successful develop SHA in `expected_sha`; its `deployment: false` environment
 access preserves the release deployment history. A 200 cleanup response proves
 one bounded invocation completed, not that every pending record was drained. Record skipped live checks explicitly; a green local suite does not prove

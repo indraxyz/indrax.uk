@@ -86,7 +86,7 @@ export function assertStagingIsolation(production, staging) {
 
 export function assertBuildManifest(manifest, target) {
   const expected = { target, ...getDeploymentTarget(target) }
-  // JSON omits undefined previewName in production/dev manifests.
+  // JSON omits undefined previewName in production manifests.
   if (!isDeepStrictEqual(manifest, JSON.parse(JSON.stringify(expected))))
     throw new Error("Build manifest does not match the intended deployment target. Rebuild first.")
 }
@@ -96,7 +96,7 @@ export async function verifyDeploymentTarget(target) {
   const { unstable_readConfig } = await import("wrangler")
   const expected = unstable_readConfig({
     config: "wrangler.jsonc",
-    env: target === "dev" ? "dev" : "",
+    env: "",
   })
   const actual = unstable_readConfig({ config: "build/server/wrangler.json", env: "" })
   assertDeploymentTarget(actual, expected)

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { verifyAnalytics } from "./verify-analytics.mjs"
 
-it.each(["dev", "production", "staging"])("checks live config transports in %s", async (target) => {
+it.each(["production", "staging"])("checks live config transports in %s", async (target) => {
   const fetcher = vi
     .fn<typeof fetch>()
     .mockImplementation(
@@ -15,12 +15,7 @@ it.each(["dev", "production", "staging"])("checks live config transports in %s",
       })
     )
   await verifyAnalytics(target, fetcher)
-  const origin =
-    target === "staging"
-      ? "https://develop.previews.indrax.uk"
-      : target === "dev"
-        ? "https://dev.indrax.uk"
-        : "https://indrax.uk"
+  const origin = target === "staging" ? "https://develop.previews.indrax.uk" : "https://indrax.uk"
   expect(fetcher).toHaveBeenCalledTimes(5)
   expect(fetcher).toHaveBeenCalledWith(
     `${origin}/analytics/array/phc_indrax_gateway/config`,
@@ -38,7 +33,9 @@ it("fails if a deployed SDK asset returns JSON", async () => {
       })
     )
     .mockResolvedValueOnce(Response.json({ ok: false }, { status: 404 }))
-  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("web-vitals.js failed: HTTP 404")
+  await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow(
+    "web-vitals.js failed: HTTP 404"
+  )
 })
 
 it.each([502, 503, 429, 302])("fails the smoke check on HTTP %s", async (status) => {
@@ -52,20 +49,18 @@ it("rejects a JSON error served as the SDK script", async () => {
     .fn<typeof fetch>()
     .mockResolvedValueOnce(Response.json({}))
     .mockResolvedValueOnce(Response.json({ ok: false }))
-  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("config.js failed")
+  await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("config.js failed")
 })
 
 it("refuses unknown targets before making a network request", async () => {
   const fetcher = vi.fn<typeof fetch>()
-  await expect(verifyAnalytics("unknown", fetcher)).rejects.toThrow(
-    "Choose production, staging or dev"
-  )
+  await expect(verifyAnalytics("unknown", fetcher)).rejects.toThrow("Choose production or staging")
   expect(fetcher).not.toHaveBeenCalled()
 })
 
 it.each([null, [], "invalid"])("rejects a non-object configuration: %j", async (config) => {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json(config))
-  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("must be an object")
+  await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("must be an object")
 })
 
 it("rejects JavaScript without the SDK configuration wrapper", async () => {
@@ -75,7 +70,7 @@ it("rejects JavaScript without the SDK configuration wrapper", async () => {
     .mockResolvedValueOnce(
       new Response("/* unavailable */", { headers: { "content-type": "text/javascript" } })
     )
-  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("missing SDK configuration")
+  await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("missing SDK configuration")
 })
 
 describe("transport failures", () => {
@@ -150,7 +145,7 @@ describe("transport failures", () => {
       { status: 429, headers: { "content-type": "application/json" } }
     )
     const fetcher = setup().mockResolvedValueOnce(response)
-    await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("HTTP 429")
+    await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("HTTP 429")
     expect(fetcher).toHaveBeenCalledTimes(1)
     expect(console.warn).not.toHaveBeenCalled()
   })
@@ -166,7 +161,7 @@ describe("transport failures", () => {
         { headers: { "content-type": "application/json" } }
       )
     )
-    const result = verifyAnalytics("dev", fetcher)
+    const result = verifyAnalytics("staging", fetcher)
     await vi.runAllTimersAsync()
     await result
     expect(fetcher).toHaveBeenCalledTimes(6)
@@ -180,7 +175,7 @@ describe("transport failures", () => {
         throw new TypeError("fetch failed", { cause: { code: "UND_ERR_SOCKET" } })
       return successful(url, options)
     })
-    const result = verifyAnalytics("dev", fetcher)
+    const result = verifyAnalytics("staging", fetcher)
     await vi.runAllTimersAsync()
     await result
     expect(fetcher).toHaveBeenCalledTimes(6)
@@ -193,7 +188,7 @@ describe("transport failures", () => {
     new TypeError("fetch failed", { cause: { code: "CERT_HAS_EXPIRED" } }),
   ])("does not retry unknown errors or invalid TLS: %s", async (error) => {
     const fetcher = setup().mockRejectedValue(error)
-    await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("failed on attempt 1")
+    await expect(verifyAnalytics("staging", fetcher)).rejects.toThrow("failed on attempt 1")
     expect(fetcher).toHaveBeenCalledTimes(1)
     expect(console.warn).not.toHaveBeenCalled()
   })
@@ -202,5 +197,11 @@ describe("transport failures", () => {
 it("rejects an untrusted analytics origin before making a request", async () => {
   const fetcher = vi.fn<typeof fetch>()
   await expect(verifyAnalytics("staging", fetcher, "https://other.test")).rejects.toThrow("origin")
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+it("rejects the retired dev target before networking", async () => {
+  const fetcher = vi.fn<typeof fetch>()
+  await expect(verifyAnalytics("dev", fetcher)).rejects.toThrow("Choose production or staging")
   expect(fetcher).not.toHaveBeenCalled()
 })

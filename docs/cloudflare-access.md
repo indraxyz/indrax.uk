@@ -21,14 +21,14 @@ post mutations. OAuth callbacks remain reachable so GitHub can complete sign-in.
 Keep `DATABASE_URL`, `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`,
 `GITHUB_CLIENT_SECRET` and `ALLOWED_GITHUB_ID` configured separately for production and staging. The named `develop` Preview uses
 `https://develop.previews.indrax.uk/api/auth/callback/github`; production uses
-`https://indrax.uk/api/auth/callback/github`. During rollout, preserve the legacy
-dev OAuth App callback `https://dev.indrax.uk/api/auth/callback/github` and use a
-separate Preview OAuth App so both origins remain testable. `BETTER_AUTH_URL` must match the
+`https://indrax.uk/api/auth/callback/github`. The staging OAuth App has the Preview callback configured. Its old callback may
+remain for retained rollback access; CI does not use that hostname.
+`BETTER_AUTH_URL` must match the
 respective site origin. Missing configuration keeps author operations closed.
 
 ## Domains and indexing
 
-Production, the legacy dev Worker and custom-domain Preview hosting retain
+Production and custom-domain Preview hosting use
 `workers_dev: false` and `preview_urls: false`. The Preview base domain
 `previews.indrax.uk` has `previews_enabled: true` and `enabled: false`, producing
 `develop.previews.indrax.uk` without routing the base hostname to production.

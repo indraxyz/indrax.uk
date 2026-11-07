@@ -43,10 +43,10 @@ it("never exposes project tokens or arbitrary environment variables", () => {
 })
 
 it("keeps analytics disabled by default and preserves explicit site origins", () => {
-  environment.SITE_URL = "https://dev.indrax.uk"
+  environment.SITE_URL = "https://local.example.test"
   const definitions = publicEnvDefinitions("production")
   expect(definitions["process.env.ANALYTICS_ENABLED"]).toBe('"false"')
-  expect(definitions["process.env.SITE_URL"]).toBe('"https://dev.indrax.uk"')
+  expect(definitions["process.env.SITE_URL"]).toBe('"https://local.example.test"')
 })
 
 it("normalizes the public enable flag rather than embedding an accidental credential", () => {
@@ -56,14 +56,10 @@ it("normalizes the public enable flag rather than embedding an accidental creden
   expect(JSON.stringify(definitions)).not.toContain("phc_wrong_setting")
 })
 
-it.each([
-  ["", "https://media.indrax.uk"],
-  ["dev", "https://dev-media.indrax.uk"],
-])("uses the matching R2 origin when CI's media setting is empty: %s", (env, origin) => {
-  vi.stubEnv("CLOUDFLARE_ENV", env)
+it("uses the production R2 origin when CI's media setting is empty", () => {
   environment.MEDIA_ORIGIN = ""
   expect(publicEnvDefinitions("production")["process.env.MEDIA_ORIGIN"]).toBe(
-    JSON.stringify(origin)
+    JSON.stringify("https://media.indrax.uk")
   )
 })
 
@@ -74,14 +70,10 @@ it("preserves an explicit media-origin override", () => {
   )
 })
 
-it.each([
-  ["", "https://media.indrax.uk"],
-  ["dev", "https://dev-media.indrax.uk"],
-])("does not embed the local media route in production builds: %s", (env, origin) => {
-  vi.stubEnv("CLOUDFLARE_ENV", env)
+it("does not embed the local media route in production builds", () => {
   environment.MEDIA_ORIGIN = "http://localhost:5173/local-media"
   expect(publicEnvDefinitions("production")["process.env.MEDIA_ORIGIN"]).toBe(
-    JSON.stringify(origin)
+    JSON.stringify("https://media.indrax.uk")
   )
   expect(publicEnvDefinitions("development")["process.env.MEDIA_ORIGIN"]).toBe(
     JSON.stringify("http://localhost:5173/local-media")
