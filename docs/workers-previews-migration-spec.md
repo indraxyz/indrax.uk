@@ -486,3 +486,42 @@ Remaining work, in order:
    Preview deployment and post-deploy checks, including maintenance.
 4. Observe the required release cycle and explicitly retire the old dev Worker
    later, preserving the dev data resources used by the Preview.
+
+## Staging cutover completed — 2026-11-07
+
+- The owner supplied the correct staging OAuth credentials in the ignored
+  `.env.preview-bootstrap` file. Its client ID matched the live dev OAuth App.
+  Only the client ID, client secret and numeric allowlist were transferred to
+  Preview Base and the existing named Preview; file access was restricted to the
+  owner. No credential values were displayed or committed.
+- Live security smoke checks passed with authentication configured. OAuth start
+  returned GitHub with the exact Preview callback, and the owner confirmed a real
+  GitHub sign-in reached the admin dashboard.
+- PR #102 was merged into develop at
+  `79fcc100af9fd25d26b426102fa944c26237d5e6`, and
+  `WORKERS_PREVIEWS_ENABLED=true` enabled the CI staging path. All jobs in
+  [CI run 42315388075](https://github.com/indraxyz/indrax.uk/actions/runs/42315388075)
+  succeeded, including the actual named Preview upload, security verification,
+  authenticated cleanup invocation and public deployment artifact retention.
+  Production and legacy dev deployment steps were skipped.
+- CI recorded Preview deployment `66f104f2-6a35-4431-ab53-74139c5b26ea` under
+  parent Worker `indrax`, Preview `develop`, for that exact commit. The stable URL
+  is `https://develop.previews.indrax.uk`; the unique URL is
+  `https://66f104f2.previews.indrax.uk`.
+- The main browser suite reported 397 passed and three skips. Direct analytics,
+  Chromium hydration, Firefox hydration and isolated uploads additionally passed
+  2, 3, 3 and 7 cases respectively. Analytics remain disabled in the deployed
+  staging build because no staging PostHog token was supplied.
+- The maintenance revision preflight passed against current develop and its
+  successful GitHub Preview deployment. The new manual workflow itself is not
+  registered until its file reaches default branch `main` through the normal
+  release PR. Post-deploy cleanup is active now; no hourly Preview Cron exists.
+- The old dev Worker's Cron was paused through a trigger-only update. Its Worker,
+  domain, secrets and dev data resources are retained for rollback. Production's
+  active version remains `bbc306f1-c96f-4524-94f2-afc8e04e0967`, with the
+  `17 * * * *` Cron preserved.
+
+Staging cutover is complete. Full retirement remains a later explicit operation
+after the planned staging/production release observation cycle. A normal release
+to main also makes the manual maintenance workflow discoverable; no production
+application release was performed as part of this staging cutover.
