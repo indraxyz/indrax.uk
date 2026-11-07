@@ -58,9 +58,16 @@ The repository/organization variable `WORKERS_PREVIEWS_ENABLED=true` opts develo
 pushes into the new Workers Previews deployment path. Leave it unset until the
 hostname/TLS, runtime secrets, staging OAuth callback and maintenance token are
 configured and verified. Before that switch, the legacy dev deployment remains
-available. The implementation PR itself does not provision a Preview or change
-live domains. See the [migration specification](workers-previews-migration-spec.md)
-for acceptance, recovery and retirement steps.
+available. Configuration changes alone do not register live domains or provision
+secrets; an enabled develop deployment creates or updates the named Preview. See
+the [migration specification](workers-previews-migration-spec.md) for acceptance,
+recovery and retirement steps.
+
+Cutover was completed on 2026-11-07: the variable is enabled, and develop CI
+deploys the named Preview at `develop.previews.indrax.uk`. The legacy dev Worker
+is retained for rollback with its Cron paused; the source `env.dev` schedule is
+retained so a deliberate legacy rollback deployment can restore it. Production
+continues to use its existing deployment and hourly Cron.
 
 Deployment runs only after `check` and `e2e` pass and the repository/organization
 variable `CLOUDFLARE_DEPLOY_ENABLED` equals `true`. An environment-scoped copy
@@ -159,16 +166,14 @@ Configure Preview-specific database/auth secrets, numeric author ID and optional
 analytics token. Bind the Preview to the existing dev Neon branch, KV, D1 and R2;
 no production data is copied or reset.
 
-The 2026-11-06 authorized bootstrap registered the Preview base domain, verified
-its active wildcard certificate and created a reachable `develop` Preview with
-working develop database reads and maintenance. Production code and Cron were
-preserved; no paid upgrade was made. Fresh auth/maintenance secrets are configured,
-but the available local OAuth client does not match the existing dev app, so
-correct staging OAuth credentials are still needed before admin acceptance and CI
-cutover. Analytics remain disabled until a staging token is explicitly supplied.
-See the [dated rollout status](workers-previews-migration-spec.md#live-rollout-status--2026-11-06)
-for the verified candidate and remaining work. A reachable candidate is not proof
-of complete OAuth, authoring or pipeline acceptance.
+The 2026-11-06 bootstrap registered the Preview base domain and verified its
+wildcard certificate. On 2026-11-07 the correct staging OAuth credentials were
+configured, the owner confirmed real GitHub sign-in, and the develop pipeline
+successfully deployed and verified the Preview, including its cleanup call.
+Production code and Cron were preserved; no paid upgrade was made. Analytics
+remain disabled until a staging token is explicitly supplied. See the
+[cutover record](workers-previews-migration-spec.md#staging-cutover-completed--2026-11-07)
+for the deployed revision, CI evidence and deferred retirement steps.
 
 Production keeps its hourly Cron Trigger. Cloudflare does not invoke a Preview's
 `scheduled()` handler. Staging calls the same shared cleanup function through
@@ -196,6 +201,14 @@ successful develop deployment. The caller verifies the SHA against current
 and exact stable origin, before sending the maintenance credential. An unfinished,
 failed or mismatched latest deployment is rejected rather than skipped for an
 older successful deployment.
+
+GitHub must first discover this workflow on the default branch, `main`, before
+manual dispatch is available. Until the normal develop-to-main release publishes
+it there, the Actions UI/API cannot dispatch this new workflow; cleanup still runs
+after each successful develop deployment. This is a
+[GitHub event requirement](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch),
+not a reason to push directly to main. The caller's revision preflight has been
+verified against the successful develop Preview deployment.
 Both repository gates must be enabled. This protects the same target as the
 post-deploy job; it does not deploy code or run cleanup on a historical revision.
 
