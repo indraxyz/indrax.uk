@@ -55,11 +55,6 @@ jobs:
           npm run build:staging
           node scripts/assert-deploy-target.mjs staging
 
-      - name: Validate legacy dev rollback build
-        run: |
-          CLOUDFLARE_ENV=dev DEPLOYMENT_TARGET=dev npm run build
-          node scripts/assert-deploy-target.mjs dev
-
       # Advisories appear between commits, not because of them, so this reports
       # rather than blocks - a high finding in a transitive dependency should not
       # stop an unrelated fix from merging. `npm audit` exits non-zero on any
@@ -197,7 +192,7 @@ jobs:
       contents: read
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}
-      url: ${{ github.ref == 'refs/heads/main' && 'https://indrax.uk' || (vars.WORKERS_PREVIEWS_ENABLED == 'true' && steps.staging.outputs.url || 'https://dev.indrax.uk') }}
+      url: ${{ github.ref == 'refs/heads/main' && 'https://indrax.uk' || steps.staging.outputs.url }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -206,7 +201,6 @@ jobs:
       POSTHOG_PUBLIC_KEY: ${{ vars.POSTHOG_PUBLIC_KEY }}
       POSTHOG_PUBLIC_HOST: ${{ vars.POSTHOG_PUBLIC_HOST }}
       MEDIA_ORIGIN: ${{ vars.MEDIA_ORIGIN }}
-      WORKERS_PREVIEWS_ENABLED: ${{ vars.WORKERS_PREVIEWS_ENABLED }}
     steps:
       - uses: actions/checkout@v7
 
@@ -233,13 +227,13 @@ jobs:
         if: env.ANALYTICS_TRANSPORT != 'direct'
         run: |
           if [ "$GITHUB_REF_NAME" = main ]; then
-            npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env '' --remote --file config/analytics-quota.sql
+            node scripts/prepare-deployment-d1.mjs production
           else
-            npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --file config/analytics-quota.sql
+            node scripts/prepare-deployment-d1.mjs staging
           fi
 
       - name: Check Preview maintenance configuration
-        if: github.ref == 'refs/heads/develop' && vars.WORKERS_PREVIEWS_ENABLED == 'true'
+        if: github.ref == 'refs/heads/develop'
         env:
           PREVIEW_MAINTENANCE_TOKEN: ${{ secrets.PREVIEW_MAINTENANCE_TOKEN }}
         run: node -e 'const t = process.env.PREVIEW_MAINTENANCE_TOKEN; if (!t || t.length < 32 || t.length > 512 || /\s/.test(t)) throw new Error("Configure PREVIEW_MAINTENANCE_TOKEN before Preview cutover")'
@@ -248,23 +242,17 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: npm run deploy
 
-      - name: Deploy legacy dev during Preview bootstrap
-        if: github.ref == 'refs/heads/develop' && vars.WORKERS_PREVIEWS_ENABLED != 'true'
-        run: npm run deploy:dev
-
       - name: Deploy named staging Preview
         id: staging
-        if: github.ref == 'refs/heads/develop' && vars.WORKERS_PREVIEWS_ENABLED == 'true'
+        if: github.ref == 'refs/heads/develop'
         run: npm run deploy:staging
 
       - name: Verify public and private security boundaries
         run: |
           if [ "$GITHUB_REF_NAME" = main ]; then
             npm run security:smoke -- production
-          elif [ "$WORKERS_PREVIEWS_ENABLED" = true ]; then
-            npm run security:smoke -- staging https://develop.previews.indrax.uk
           else
-            npm run security:smoke -- dev
+            npm run security:smoke -- staging https://develop.previews.indrax.uk
           fi
 
       - name: Verify deployed analytics configuration and SDK assets
@@ -272,14 +260,12 @@ jobs:
         run: |
           if [ "$GITHUB_REF_NAME" = main ]; then
             node scripts/verify-analytics.mjs production
-          elif [ "$WORKERS_PREVIEWS_ENABLED" = true ]; then
-            node scripts/verify-analytics.mjs staging https://develop.previews.indrax.uk
           else
-            node scripts/verify-analytics.mjs dev
+            node scripts/verify-analytics.mjs staging https://develop.previews.indrax.uk
           fi
 
       - name: Invoke staging media cleanup
-        if: github.ref == 'refs/heads/develop' && vars.WORKERS_PREVIEWS_ENABLED == 'true'
+        if: github.ref == 'refs/heads/develop'
         env:
           PREVIEW_MAINTENANCE_TOKEN: ${{ secrets.PREVIEW_MAINTENANCE_TOKEN }}
         run: node scripts/preview-maintenance.mjs

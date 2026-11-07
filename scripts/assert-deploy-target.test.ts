@@ -120,21 +120,15 @@ it("resolves production and generated configs explicitly despite an inherited en
   }
 })
 
-it("resolves development source explicitly and rejects a production artifact", async () => {
+it("rejects the retired dev target before loading configuration", async () => {
   readConfig.mockReset()
-  readConfig.mockReturnValueOnce({ ...target, name: "worker-dev" }).mockReturnValueOnce(target)
-  await expect(verifyDeploymentTarget("dev")).rejects.toThrow("Deployment target mismatch: name")
-  expect(readConfig.mock.calls).toEqual([
-    [{ config: "wrangler.jsonc", env: "dev" }],
-    [{ config: "build/server/wrangler.json", env: "" }],
-  ])
+  await expect(verifyDeploymentTarget("dev")).rejects.toThrow("Choose production or staging")
+  expect(readConfig).not.toHaveBeenCalled()
 })
 
 it("rejects unknown deployment targets before loading config", async () => {
   readConfig.mockReset()
-  await expect(verifyDeploymentTarget("preview")).rejects.toThrow(
-    "Choose production, staging or dev"
-  )
+  await expect(verifyDeploymentTarget("preview")).rejects.toThrow("Choose production or staging")
   expect(readConfig).not.toHaveBeenCalled()
 })
 
@@ -198,7 +192,7 @@ it("requires the explicit target in the artifact manifest", () => {
   ).toThrow("Build manifest")
 })
 
-it.each(["production", "dev"])(
+it.each(["production"])(
   "rejects source and generated identity drift against the fixed %s build contract",
   async (name) => {
     const identity = getDeploymentTarget(name)

@@ -112,7 +112,6 @@ builds both public SSR and the independent admin and runs them in Workerd:
 
 ```bash
 npm run preview
-npm run preview:dev
 ```
 
 During development, a Vite middleware reads generated admin assets directly from
@@ -124,8 +123,7 @@ Use `.env.local` as the shared local configuration for Vite, Worker bindings,
 database tooling and preview. Copy `.env.example` and fill in the settings you need.
 Cloudflare loads this file natively during development; remove legacy `.dev.vars`
 files after migrating their values because they take precedence over dotenv files.
-The same `.env.local` is used when selecting `CLOUDFLARE_ENV=dev`; additional
-environment-specific local configuration is not required. Local preview uses local
+Local preview uses local
 KV/D1 and does not provision remote resources. Public environment variables are
 compiled by Vite; changing them requires rebuilding both bundles.
 
@@ -241,33 +239,28 @@ feature PRs, staging promotion, required release review and production verificat
 
 GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
 runs only on enabled pushes to `develop`/`main`. Keep Workers dashboard Git Builds
-disconnected. The Workers Previews migration is opt-in until live prerequisites
-are ready:
+disconnected. Deployments have two targets:
 
-| Branch                    | GitHub environment | Target                                 | Domain                       |
-| ------------------------- | ------------------ | -------------------------------------- | ---------------------------- |
-| `develop`, before cutover | Preview            | Legacy `indrax-dev` Worker             | `dev.indrax.uk`              |
-| `develop`, after cutover  | Preview            | Named `develop` Preview under `indrax` | `develop.previews.indrax.uk` |
-| `main`                    | Production         | `indrax` Worker                        | `indrax.uk`, `www.indrax.uk` |
+| Branch    | GitHub environment | Target                                 | Domain                       |
+| --------- | ------------------ | -------------------------------------- | ---------------------------- |
+| `develop` | Preview            | Named `develop` Preview under `indrax` | `develop.previews.indrax.uk` |
+| `main`    | Production         | `indrax` Worker                        | `indrax.uk`, `www.indrax.uk` |
 
-`CLOUDFLARE_DEPLOY_ENABLED=true` enables deployment. The additional repository or
-organization variable `WORKERS_PREVIEWS_ENABLED=true` selects the new develop
-Preview path. Leave it unset until Preview DNS/TLS, runtime secrets, staging OAuth
-and the maintenance token are configured. These job gates must not be set only as
-GitHub environment variables. The implementation does not provision live resources.
+`CLOUDFLARE_DEPLOY_ENABLED=true` enables deployment. Develop always targets the
+named Preview; there is no legacy Worker fallback or cutover variable. Prepare
+Preview DNS/TLS, runtime secrets, staging OAuth and the maintenance token before
+enabling deployments. This job gate must be a repository or organization variable.
 See the [complete migration specification](docs/workers-previews-migration-spec.md).
 
 `npm run build:production` and `npm run build:staging` build both frontends with
 explicit target origins. Deployment uses the generated Worker configuration and
 assembled assets, with assertions for parent Worker, routes/Preview flags, origins,
-KV/D1/R2, rate-limit namespaces and cleanup capability. `npm run preview` and
-`npm run preview:dev` still run locally in Workerd.
+KV/D1/R2, rate-limit namespaces and cleanup capability. `npm run preview` runs locally in Workerd.
 
 Deploy commands change remote traffic and require a release decision:
 
 ```bash
 npm run deploy:staging # named develop Preview under indrax
-npm run deploy:dev     # legacy dev Worker; retained for rollout recovery
 npm run deploy         # production
 ```
 

@@ -36,10 +36,7 @@ export function publicEnvDefinitions(mode: string) {
   if (target && mediaOverride && mediaOverride !== target.mediaOrigin)
     throw new Error("MEDIA_ORIGIN conflicts with the explicit deployment target.")
   const values = {
-    SITE_URL:
-      target?.siteUrl ||
-      env.SITE_URL ||
-      (process.env.CLOUDFLARE_ENV === "dev" ? "https://dev.indrax.uk" : "https://indrax.uk"),
+    SITE_URL: target?.siteUrl || env.SITE_URL || "https://indrax.uk",
     ANALYTICS_ENABLED: env.ANALYTICS_ENABLED === "true" ? "true" : "false",
     ANALYTICS_TRANSPORT: transport,
     POSTHOG_PUBLIC_KEY: publicKey,
@@ -48,9 +45,7 @@ export function publicEnvDefinitions(mode: string) {
     MEDIA_ORIGIN:
       target?.mediaOrigin ||
       (mode !== "production" || !localOverride ? mediaOverride : undefined) ||
-      (process.env.CLOUDFLARE_ENV === "dev"
-        ? "https://dev-media.indrax.uk"
-        : "https://media.indrax.uk"),
+      "https://media.indrax.uk",
     SITE_UPDATED_AT: resolveSiteUpdatedAt(env.SITE_UPDATED_AT),
   }
   return Object.fromEntries(

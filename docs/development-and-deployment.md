@@ -20,15 +20,14 @@ Create a feature branch from current `develop`, keep docs and tests beside the
 changed behavior, and open a PR into `develop`. Run `npm run check` and relevant
 integration/browser coverage before review. Use the disposable loopback database
 and fixture sessions described in [testing](testing.md); local tests never need
-production OAuth, database or ingestion credentials. `npm run preview` and
-`npm run preview:dev` build and run through Workerd without deploying remotely.
+production OAuth, database or ingestion credentials. `npm run preview` builds and runs through Workerd without deploying remotely.
 
 GitHub Actions runs these jobs on PRs and pushes to `develop`/`main`:
 
-| Job     | Required coverage                                                                                                                                            |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `check` | Formatting, lint, generated binding/route types, TypeScript, unit tests, production, staging Preview and legacy dev builds with deployment-target validation |
-| `e2e`   | Disposable migrated/seeded SQL integration, Chromium browser/HTTP tests, development hydration and isolated local R2 upload coverage                         |
+| Job     | Required coverage                                                                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `check` | Formatting, lint, generated binding/route types, TypeScript, unit tests, production and staging Preview builds with deployment-target validation |
+| `e2e`   | Disposable migrated/seeded SQL integration, Chromium browser/HTTP tests, development hydration and isolated local R2 upload coverage             |
 
 Audit reports findings without blocking the job. Quality jobs cancel superseded
 runs. Test output, skips and retries determine what was verified; a green local
@@ -48,26 +47,18 @@ promote through the develop-to-main release PR. Recheck the diff after retargeti
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) owns deployment. Cloudflare
 Workers dashboard Git Builds must remain disconnected to avoid a second pipeline.
 
-| Push branch               | GitHub environment | Target                                 | Domain                       |
-| ------------------------- | ------------------ | -------------------------------------- | ---------------------------- |
-| `develop`, before cutover | `Preview`          | Legacy Worker `indrax-dev`             | `dev.indrax.uk`              |
-| `develop`, after cutover  | `Preview`          | Named `develop` Preview under `indrax` | `develop.previews.indrax.uk` |
-| `main`                    | `Production`       | Worker `indrax`                        | `indrax.uk`, `www.indrax.uk` |
+| Push branch | GitHub environment | Target                                 | Domain                       |
+| ----------- | ------------------ | -------------------------------------- | ---------------------------- |
+| `develop`   | `Preview`          | Named `develop` Preview under `indrax` | `develop.previews.indrax.uk` |
+| `main`      | `Production`       | Worker `indrax`                        | `indrax.uk`, `www.indrax.uk` |
 
-The repository/organization variable `WORKERS_PREVIEWS_ENABLED=true` opts develop
-pushes into the new Workers Previews deployment path. Leave it unset until the
-hostname/TLS, runtime secrets, staging OAuth callback and maintenance token are
-configured and verified. Before that switch, the legacy dev deployment remains
-available. Configuration changes alone do not register live domains or provision
-secrets; an enabled develop deployment creates or updates the named Preview. See
-the [migration specification](workers-previews-migration-spec.md) for acceptance,
-recovery and retirement steps.
-
-Cutover was completed on 2026-11-07: the variable is enabled, and develop CI
-deploys the named Preview at `develop.previews.indrax.uk`. The legacy dev Worker
-is retained for rollback with its Cron paused; the source `env.dev` schedule is
-retained so a deliberate legacy rollback deployment can restore it. Production
-continues to use its existing deployment and hourly Cron.
+Develop always deploys the named Preview. There is no legacy Worker fallback or
+cutover variable. The cutover was verified on 2026-11-07, including real GitHub
+OAuth login. The retained old Worker has its Cron paused and is outside this
+repository's deployment configuration. Production keeps its hourly Cron.
+Staging retains its existing isolated Neon, KV, D1 and R2 resources; their legacy
+resource names do not select or deploy a Worker. See the
+[migration specification](workers-previews-migration-spec.md).
 
 Deployment runs only after `check` and `e2e` pass and the repository/organization
 variable `CLOUDFLARE_DEPLOY_ENABLED` equals `true`. An environment-scoped copy
@@ -81,7 +72,8 @@ Preview Base secrets seed newly created Previews. Updating a Base secret does no
 update the existing `develop` Preview: rotate its secret explicitly as well.
 
 In Worker mode, the deploy job initializes `analytics_quota` and `analytics_replay_sessions` in
-the matching `APP_D1` using `config/analytics-quota.sql` before building and
+the matching `APP_D1` using `scripts/prepare-deployment-d1.mjs` and
+`config/analytics-quota.sql` before building and
 deploying. Existing counters are preserved. Its token needs D1 write permission
 alongside Worker/route and KV permissions. Newly provisioned D1 databases also
 need the `revalidations` table as a reviewed operator step; see
@@ -102,13 +94,11 @@ validates generated parent Worker, domains and Preview flags, bindings, rate-lim
 namespaces and cleanup capability before upload.
 
 `npm run deploy:staging` builds and publishes the named `develop` Preview under
-`indrax`; it must not pass `--env dev`, which would create a Preview under the old
-Worker. `npm run deploy` builds and publishes production. `npm run deploy:dev`
-remains the legacy staging rollback path during migration. All three change remote
-traffic. `npm run preview` and `npm run preview:dev` remain local Workerd commands;
-they do not create Cloudflare Previews.
+`indrax`. `npm run deploy` builds and publishes production. Both change remote
+traffic. `npm run preview` runs locally in Workerd and does not create Cloudflare
+Previews. Named Wrangler environments and the retired `dev` target are rejected.
 
-Production, legacy dev, Preview deployment and manual maintenance jobs share the
+Production, Preview deployment and manual maintenance jobs share the
 non-cancelling `cloudflare-indrax` concurrency group. Before deployment, CI refuses
 a revision that no longer matches its branch head. Post-deployment
 security checks use the actual validated target origin. A successful staging job
@@ -150,7 +140,7 @@ npx wrangler triggers deploy --config wrangler.jsonc --env '' --env-file /dev/nu
 
 This updates trigger configuration without deploying application code. Verify the
 active production version and Cron afterward. The extra hostname label still
-needs verified certificate coverage. Do not enable the CI cutover gate until HTTPS works. Keep
+needs verified certificate coverage. Do not enable deployments until HTTPS works. Keep
 `workers_dev: false` and `preview_urls: false`; this setup uses custom Preview
 hostnames rather than an additional `workers.dev` origin.
 
@@ -225,17 +215,15 @@ batch limits or retryable storage failures can leave tracked work for another ru
 
 There is no hourly staging cleanup. Expired unattached uploads remain until the
 next staging deploy or manual invocation. Check cleanup during upload tests and
-before release. During parallel validation, coordinate the old dev Cron and the
-new route because they use the same dev data. After acceptance, disable the old
-dev deployment/Cron, retain a recorded rollback target, and retire `indrax-dev`
-only through an explicit later operation. Preserve its KV, D1, R2 and Neon
-resources because the Preview uses them.
+before release. The old Worker Cron is paused and CI no longer targets it. Retire
+that retained Worker only through an explicit later operation. Preserve its KV,
+D1, R2 and Neon resources because the Preview uses them.
 
 ## Promoting develop to production
 
 Open a release PR with head `develop` and base `main`. Review the complete release
 diff and verify the current develop revision on the active staging origin (the
-`develop` Preview after cutover, otherwise `dev.indrax.uk`), including GitHub
+`develop` Preview), including GitHub
 sign-in/out, save, publish/unpublish, uploads, public discovery, metadata and feeds.
 Keep release readiness evidence in the PR so it stays tied to the revision.
 

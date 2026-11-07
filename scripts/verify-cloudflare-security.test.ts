@@ -42,17 +42,12 @@ function responses(overrides: Record<string, () => Response> = {}) {
   })
 }
 
-it.each(["dev", "production", "staging"])(
+it.each(["production", "staging"])(
   "verifies public pages and private admin boundaries in %s",
   async (target) => {
     const fetcher = responses()
     await expect(verifyCloudflareSecurity(target, fetcher)).resolves.toBeUndefined()
-    const origin =
-      target === "staging"
-        ? "https://develop.previews.indrax.uk"
-        : target === "dev"
-          ? "https://dev.indrax.uk"
-          : "https://indrax.uk"
+    const origin = target === "staging" ? "https://develop.previews.indrax.uk" : "https://indrax.uk"
     const media =
       target !== "production" ? "https://dev-media.indrax.uk" : "https://media.indrax.uk"
     expect(fetcher).toHaveBeenCalledWith(`${media}/covers/security-smoke.png`, expect.anything())
@@ -76,7 +71,7 @@ it.each(["dev", "production", "staging"])(
   }
 )
 
-it.each(["dev", "production", "staging"])(
+it.each(["production", "staging"])(
   "rejects invalid public/admin/media boundaries in %s",
   async (target) => {
     const failures: [string, () => Response, string][] = [
@@ -164,10 +159,10 @@ it.each(["dev", "production", "staging"])(
   }
 )
 
-it("requires a non-indexable public dev site", async () => {
+it("requires a non-indexable public staging site", async () => {
   await expect(
     verifyCloudflareSecurity(
-      "dev",
+      "staging",
       responses({
         "/": () => new Response(null, { headers: { "content-security-policy": policy } }),
       })
@@ -175,7 +170,7 @@ it("requires a non-indexable public dev site", async () => {
   ).rejects.toThrow("noindex")
   await expect(
     verifyCloudflareSecurity(
-      "dev",
+      "staging",
       responses({
         "/robots.txt": () => new Response("User-agent: *\nAllow: /\n"),
       })
@@ -186,7 +181,7 @@ it("requires a non-indexable public dev site", async () => {
 it("rejects unknown deployment targets before making a request", async () => {
   const fetcher = responses()
   await expect(verifyCloudflareSecurity("other", fetcher)).rejects.toThrow(
-    "Choose production, staging or dev"
+    "Choose production or staging"
   )
   expect(fetcher).not.toHaveBeenCalled()
 })
@@ -209,4 +204,12 @@ it.each(["production", "staging"])("rejects an exposed maintenance route in %s",
       })
     )
   ).rejects.toThrow("maintenance route")
+})
+
+it("rejects the retired dev target before networking", async () => {
+  const fetcher = vi.fn<typeof fetch>()
+  await expect(verifyCloudflareSecurity("dev", fetcher)).rejects.toThrow(
+    "Choose production or staging"
+  )
+  expect(fetcher).not.toHaveBeenCalled()
 })
