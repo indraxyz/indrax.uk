@@ -49,8 +49,9 @@ PostForm save lifecycle, Drizzle and the Worker request boundaries.
 - Browser reaction identity is functional storage created on first interaction;
   no fingerprinting, IP storage or analytics consent coupling. Browser storage
   removal permits a new identity; this is a lightweight engagement count.
-- Admin status displays use readable text with a 3px theme-aware underline: green
-  for published, orange for draft, slate grey for archived. Cards and table share one
+- Admin status displays use readable text with a 3px design-token underline: light
+  green (`brand-500`) for published, orange for draft, dark green (`brand-800`) for
+  archived. Cards and table share one
   status component; color is supplementary to the text.
 - Admin list refresh sits immediately right of Filter in its button group,
   requests only current post results and preserves filters, sorting and page.

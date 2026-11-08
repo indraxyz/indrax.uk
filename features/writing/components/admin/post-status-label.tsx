@@ -2,7 +2,7 @@ import type { PostStatus } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 import { STATUS_UNDERLINE } from "./post-display"
 
-/** The word conveys status independently of the decorative, theme-aware underline. */
+/** The word conveys status independently of the decorative, token-based underline. */
 export function PostStatusLabel({ status }: { status: PostStatus }) {
   return (
     <span

@@ -4,8 +4,8 @@ import type { PostStatus } from "@/features/writing/types"
 
 export const STATUS_UNDERLINE: Record<PostStatus, string> = {
   draft: "decoration-[var(--semantic-status-warning)]",
-  published: "decoration-[var(--semantic-action-secondary)]",
-  archived: "decoration-[var(--semantic-status-neutral)]",
+  published: "decoration-[var(--component-post-status-published)]",
+  archived: "decoration-[var(--component-post-status-archived)]",
 }
 
 export const ADMIN_DATE_FORMAT: Intl.DateTimeFormatOptions = {

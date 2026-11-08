@@ -57,8 +57,8 @@ for (const theme of ["light", "dark"]) {
       const colors: string[] = []
       const expectedColors: Record<string, string> = {
         draft: "rgb(234, 88, 12)",
-        published: theme === "dark" ? "rgb(144, 184, 0)" : "rgb(38, 98, 16)",
-        archived: theme === "dark" ? "rgb(148, 163, 184)" : "rgb(100, 116, 139)",
+        published: "rgb(144, 184, 0)",
+        archived: "rgb(38, 98, 16)",
       }
       for (const status of ["draft", "published", "archived"]) {
         const label = page.locator(`[data-post-status="${status}"]`)
