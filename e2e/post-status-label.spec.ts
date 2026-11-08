@@ -55,12 +55,18 @@ for (const theme of ["light", "dark"]) {
       if (view === "table") await expect(page.getByRole("table")).toBeVisible()
       else await expect(page.getByRole("table")).toHaveCount(0)
       const colors: string[] = []
+      const expectedColors: Record<string, string> = {
+        draft: "rgb(234, 88, 12)",
+        published: theme === "dark" ? "rgb(144, 184, 0)" : "rgb(38, 98, 16)",
+        archived: theme === "dark" ? "rgb(148, 163, 184)" : "rgb(100, 116, 139)",
+      }
       for (const status of ["draft", "published", "archived"]) {
         const label = page.locator(`[data-post-status="${status}"]`)
         await expect(label).toHaveText(status)
         await expect(label).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
         await expect(label).toHaveCSS("text-decoration-line", "underline")
         await expect(label).toHaveCSS("text-decoration-thickness", "3px")
+        await expect(label).toHaveCSS("text-decoration-color", expectedColors[status])
         colors.push(await label.evaluate((el) => getComputedStyle(el).textDecorationColor))
       }
       expect(new Set(colors).size).toBe(3)

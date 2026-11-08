@@ -152,6 +152,7 @@ img[data-image-state="loading"] {
     --semantic-status-danger: var(--primitive-danger-700);
     --semantic-status-danger-text: var(--primitive-neutral-0);
     --semantic-status-warning: var(--primitive-warning-600);
+    --semantic-status-neutral: #64748b;
     --component-status-unsaved: var(--semantic-status-warning);
     --component-navigation-progress: var(--primitive-brand-500);
 
@@ -268,6 +269,7 @@ img[data-image-state="loading"] {
     --semantic-action-tertiary-text: var(--primitive-neutral-0);
     --semantic-status-danger: #ff8a7d;
     --semantic-status-danger-text: #320300;
+    --semantic-status-neutral: #94a3b8;
 
     --component-avatar-halo-inner: color-mix(in oklab, var(--primitive-brand-300) 20%, transparent);
     --component-avatar-halo-middle: color-mix(
