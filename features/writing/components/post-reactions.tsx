@@ -145,7 +145,8 @@ export function PostReactions({
               <Button
                 key={reaction}
                 type="button"
-                variant={results.data?.selected.includes(reaction) ? "secondary" : "ghost"}
+                variant="ghost"
+                className="aria-pressed:border-border aria-pressed:bg-[var(--variant-hover)]"
                 appearance="flat"
                 size="icon"
                 aria-label={REACTION_OPTIONS[reaction].label}

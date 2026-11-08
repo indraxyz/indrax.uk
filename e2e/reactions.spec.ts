@@ -76,6 +76,14 @@ test.describe("public reader reactions", () => {
       summary(page).getByRole("button", { name: "Rocket: 1 reaction", exact: true })
     ).toHaveAttribute("aria-pressed", "true")
     await expect(summary(page).getByRole("button")).toHaveCount(2)
+    await trigger.click()
+    const selectedLove = picker(page).getByRole("button", { name: "Love", exact: true })
+    await expect(selectedLove).toHaveAttribute("aria-pressed", "true")
+    const selectedBackground = await selectedLove.evaluate(
+      (element) => getComputedStyle(element).backgroundColor
+    )
+    await expect(trigger).toHaveCSS("background-color", selectedBackground)
+    await page.keyboard.press("Escape")
     expect(writes).toHaveLength(2)
     expect(requests).toHaveLength(1)
     await page.reload()
