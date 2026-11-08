@@ -19,7 +19,7 @@ export async function writeAssetIndexingHeaders(directory, target) {
     source = ""
   }
   const authored = source.replaceAll(GENERATED_RULE, "")
-  const result = ["staging", "dev"].includes(target) ? GENERATED_RULE + authored : authored
+  const result = target === "staging" ? GENERATED_RULE + authored : authored
   if (result === source) return
   if (result) await writeFile(path, result)
   else await rm(path, { force: true })

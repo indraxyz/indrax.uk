@@ -10,8 +10,6 @@
     "start": "node scripts/preview.mjs",
     "preview": "npm run build && npm run start",
     "deploy": "npm run build:production && node scripts/assert-deploy-target.mjs production && CLOUDFLARE_ENV= wrangler deploy --config build/server/wrangler.json",
-    "preview:dev": "CLOUDFLARE_ENV=dev npm run build && npm run start",
-    "deploy:dev": "CLOUDFLARE_ENV=dev DEPLOYMENT_TARGET=dev npm run build && node scripts/assert-deploy-target.mjs dev && CLOUDFLARE_ENV= wrangler deploy --config build/server/wrangler.json",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "check": "npm run format:check && npm run lint && npm run type-check && npm run test && echo 'All checks passed!'",
     "lint": "eslint .",

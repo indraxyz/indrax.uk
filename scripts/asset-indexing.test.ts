@@ -12,7 +12,7 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true })
 })
 
-it.each(["staging", "dev"])(
+it.each(["staging"])(
   "covers static responses in %s without changing cache policy",
   async (target) => {
     await writeAssetIndexingHeaders(directory, target)

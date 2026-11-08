@@ -13,7 +13,7 @@ and [release preparation](public-site-release.md) for the surrounding applicatio
 | KV: `CACHE_KV` | Cached public query results and rendered published articles | [cache implementation](../lib/cache.server.ts) |
 | D1: `APP_D1`   | Cache-tag revision values in `revalidations`                | The same cache implementation                  |
 
-Production `indrax`, the staging `develop` Preview and legacy `indrax-dev` use
+Production `indrax` and the staging `develop` Preview use
 binding aliases `CACHE_KV` and `APP_D1`. Production has distinct resource IDs;
 the Preview reuses the existing dev resources during migration. Physical resource names and stored
 data are unchanged. `APP_D1` also holds analytics quota counters and the replay
@@ -120,12 +120,10 @@ the preview runner passes existing local files only, then creates a protected
 temporary dotenv file for allowlisted shell fixtures and the preview auth origin.
 It removes that temporary file after exit. This does not create a remote resource.
 
-The default source configuration uses the production resource identities for
-**local simulation**, without contacting those remote resources. Running
-`CLOUDFLARE_ENV=dev npm run dev` selects development identities in local state.
-Match the inspection command's environment to the running application. The
-generated preview config already contains its selected environment; do not add
-`--env dev` to that flattened config.
+The default source configuration uses production resource identities for local
+simulation without contacting remote resources. Local commands use the base
+configuration with an empty Wrangler environment. Generated preview configuration
+already contains the selected bindings; named Wrangler environments are unsupported.
 
 ### Inspect development state
 
@@ -137,9 +135,7 @@ npx wrangler kv key list --binding CACHE_KV --config wrangler.jsonc --env "" --l
 npx wrangler kv key get '<key-from-list>' --binding CACHE_KV --config wrangler.jsonc --env "" --local --persist-to .wrangler/state --text
 ```
 
-For a dev-environment local server, replace `--env ""` with `--env dev` in these
-source-config commands. An empty tag table before mutations or an empty KV before
-cacheable visits is expected.
+An empty tag table before mutations or an empty KV before cacheable visits is expected.
 
 ### Inspect preview state
 
@@ -158,15 +154,13 @@ uploaded from local SQLite/blobs.
 
 | Branch             | Worker / domain                                                 | D1 database            | KV selection                               |
 | ------------------ | --------------------------------------------------------------- | ---------------------- | ------------------------------------------ |
-| `develop`, legacy  | `indrax-dev` / `dev.indrax.uk`                                  | `indrax-dev-next-tags` | `env.dev.kv_namespaces`                    |
 | `develop`, Preview | `develop` Preview under `indrax` / `develop.previews.indrax.uk` | `indrax-dev-next-tags` | `previews.kv_namespaces`                   |
 | `main`             | `indrax` / `indrax.uk`, `www.indrax.uk`                         | `indrax-next-tags`     | Top-level `kv_namespaces` in source config |
 
 Production and staging use the same binding names but distinct configured
-resource IDs. The old dev Worker and new Preview share the dev IDs during rollout;
-they do not provide isolation from each other. Keep those resources when retiring
-`indrax-dev`. The `WORKERS_PREVIEWS_ENABLED` repository switch chooses the develop
-deployment path only after Preview bootstrap acceptance.
+resource IDs. Staging retains the existing dev resources independently of the old
+Worker. Do not delete those resources when retiring that Worker. CI always selects
+the named Preview for develop.
 The IDs in `wrangler.jsonc` are authoritative; no IDs need to be copied into
 `.env.local`. Deployment validates the generated config's Worker, domains, site
 URL and KV/D1 bindings before upload. Worker code deployment does not seed D1 or
@@ -179,8 +173,8 @@ read-only commands with an authenticated account that can access the resources:
 
 ```bash
 # Develop
-npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
-npx wrangler kv key list --binding CACHE_KV --config wrangler.jsonc --env dev --remote --prefix react-router:v1:
+npx wrangler d1 execute indrax-dev-next-tags --config wrangler.jsonc --env "" --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
+npx wrangler kv key list --namespace-id 55163065696741c397d875991d3eb8d6 --config wrangler.jsonc --env "" --remote --prefix react-router:v1:
 
 # Production
 npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env "" --remote --command "SELECT tag, revalidatedAt FROM revalidations ORDER BY tag;"
@@ -198,7 +192,7 @@ script does not prepare remote D1. Apply the SQL above as a reviewed release ste
 using the intended environment and `--remote`; for example, for develop:
 
 ```bash
-npx wrangler d1 execute APP_D1 --config wrangler.jsonc --env dev --remote --command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER NOT NULL);"
+npx wrangler d1 execute indrax-dev-next-tags --config wrangler.jsonc --env "" --remote --command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER NOT NULL);"
 ```
 
 For production, use `--env ""` with the production database/account explicitly
@@ -206,7 +200,10 @@ verified. This command changes remote schema; it is an operator action, not part
 of local startup or CI fixtures. KV needs its namespace binding but no schema or
 seed. The deploy workflow separately initializes `analytics_quota` and
 `analytics_replay_sessions` from `config/analytics-quota.sql` in the matching
-remote database before deployment, preserving counters. Local initialization
+remote database before deployment, preserving counters.
+`scripts/prepare-deployment-d1.mjs` resolves the target bindings from source config
+and writes a temporary D1-only config with its exact database ID. It rejects
+staging bindings that share the production database and never selects a Worker. Local initialization
 prepares all three tables locally. Neither resource replaces PostgreSQL
 migrations, credentials or isolation.
 

@@ -12,19 +12,12 @@ export const DEPLOYMENT_TARGETS = Object.freeze({
     siteUrl: "https://develop.previews.indrax.uk",
     mediaOrigin: "https://dev-media.indrax.uk",
   }),
-  // Temporary rollback target and local Workerd build, not a Worker Preview.
-  dev: Object.freeze({
-    workerName: "indrax-dev",
-    previewName: undefined,
-    siteUrl: "https://dev.indrax.uk",
-    mediaOrigin: "https://dev-media.indrax.uk",
-  }),
 })
 
 /** @param {string} name */
 export function getDeploymentTarget(name) {
   if (!Object.hasOwn(DEPLOYMENT_TARGETS, name))
-    throw new Error("Choose production, staging or dev as the deployment target.")
+    throw new Error("Choose production or staging as the deployment target.")
   return DEPLOYMENT_TARGETS[/** @type {keyof typeof DEPLOYMENT_TARGETS} */ (name)]
 }
 
@@ -40,9 +33,7 @@ export function assertTargetOrigin(target, origin) {
 
 /** @param {Record<string, string | undefined>} env */
 export function buildTarget(env = process.env) {
-  if (!env.DEPLOYMENT_TARGET) return undefined
-  const target = getDeploymentTarget(env.DEPLOYMENT_TARGET)
-  if (env.CLOUDFLARE_ENV && env.CLOUDFLARE_ENV !== (env.DEPLOYMENT_TARGET === "dev" ? "dev" : ""))
-    throw new Error("CLOUDFLARE_ENV conflicts with DEPLOYMENT_TARGET.")
-  return target
+  if (env.CLOUDFLARE_ENV)
+    throw new Error("Named Wrangler environments are unsupported; use DEPLOYMENT_TARGET.")
+  return env.DEPLOYMENT_TARGET ? getDeploymentTarget(env.DEPLOYMENT_TARGET) : undefined
 }

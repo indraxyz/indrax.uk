@@ -25,7 +25,7 @@ npm run check          # prettier --check, eslint, cf-typegen + route typegen + 
 npm run build          # SSR Worker + admin bundle, assembled into build/
 npm run build:production # explicit production build
 npm run build:staging  # explicit named-Preview staging build
-npm run preview        # build, then run in Workerd (local KV/D1); preview:dev uses CLOUDFLARE_ENV=dev
+npm run preview        # build, then run in Workerd (local KV/D1)
 npm run format         # prettier --write
 npm run lint:fix
 ```
@@ -50,7 +50,7 @@ TEST_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4444/indrax?sslmode=requir
 Integration tests refuse any non-loopback `TEST_DATABASE_URL` and never fall back to
 `.env.local`. Full disposable-database and fixture setup is in `docs/testing.md`.
 
-`npm run deploy`, `npm run deploy:staging` and legacy `npm run deploy:dev` change
+`npm run deploy` and `npm run deploy:staging` change
 live Cloudflare deployments. They are
 release operations, not validation; never run them unless explicitly asked.
 
@@ -127,10 +127,9 @@ policies in `lib/uploads/`.
 
 ## Workflow
 
-Branch from `develop`, PR into `develop`. GitHub `Preview` deployments target the
-legacy `indrax-dev` / `dev.indrax.uk` path until repository variable
-`WORKERS_PREVIEWS_ENABLED=true` selects the named `develop` Preview under `indrax`
-at `develop.previews.indrax.uk`. Keep live DNS/TLS, secrets and OAuth preparation
+Branch from `develop`, PR into `develop`. GitHub `Preview` deployments always target the named `develop` Preview under
+`indrax` at `develop.previews.indrax.uk`. There is no legacy Worker fallback or
+named Wrangler environment. Keep live DNS/TLS, secrets and OAuth preparation
 separate from code validation; see `docs/workers-previews-migration-spec.md`.
 Production Cron remains; Previews use the protected cleanup test route after
 deployment or manual dispatch and have no hourly schedule.

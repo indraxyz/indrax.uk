@@ -1,11 +1,35 @@
 # One Worker with production and staging Previews
 
-Status: local implementation verified; authorized live bootstrap in progress, cutover pending. Updated 2026-11-06.
+Status: cutover verified on 2026-11-07; repository legacy deployment paths removed.
 
-This document records the implementation and rollout. The user subsequently
-authorized live bootstrap; the dated status below distinguishes applied changes
-from remaining acceptance work. Retirement of the existing dev Worker remains a
-separate operation after acceptance.
+## Current deployment contract
+
+- `develop` always deploys the named `develop` Preview under `indrax` at
+  `develop.previews.indrax.uk`; `main` deploys production on `indrax.uk`.
+- CI has no legacy Worker fallback or `WORKERS_PREVIEWS_ENABLED` dependency.
+  `CLOUDFLARE_DEPLOY_ENABLED` remains the deployment master switch.
+- The `dev` deployment target, named Wrangler environment, legacy deploy/local
+  preview scripts and rollback build validation are removed. Unsupported targets
+  and nonempty `CLOUDFLARE_ENV` fail before building or uploading.
+- Staging quota preparation selects `previews.d1_databases` through a temporary
+  D1-only configuration with the exact database ID. It rejects production database
+  reuse and does not depend on any Worker environment.
+- Staging retains its Neon, KV, D1 and R2 resources, including their existing dev
+  names. Production Cron remains; Preview cleanup runs after deploy or manually.
+- The old live Worker remains retained with Cron paused. This change does not
+  delete it, its hostname or its resources. Recovering that retired deployment
+  requires an explicit operator action using historical configuration; current
+  CI and scripts cannot select it.
+
+Validation covers retired-target rejection, production/staging target assertions,
+D1 identity isolation and temporary-config cleanup on success/failure, workflow
+syntax, unit checks and both builds. The 2026-11-07 cutover record below includes
+successful real OAuth login and deployed cleanup verification.
+
+The original migration design and dated rollout records below are historical.
+References to the cutover gate, `env.dev`, legacy deployment scripts or fallback
+behavior describe the migration period and are superseded by this contract.
+Live deletion of the retained old Worker is a separate operation.
 
 ## Outcome and scope
 
@@ -486,3 +510,42 @@ Remaining work, in order:
    Preview deployment and post-deploy checks, including maintenance.
 4. Observe the required release cycle and explicitly retire the old dev Worker
    later, preserving the dev data resources used by the Preview.
+
+## Staging cutover completed — 2026-11-07
+
+- The owner supplied the correct staging OAuth credentials in the ignored
+  `.env.preview-bootstrap` file. Its client ID matched the live dev OAuth App.
+  Only the client ID, client secret and numeric allowlist were transferred to
+  Preview Base and the existing named Preview; file access was restricted to the
+  owner. No credential values were displayed or committed.
+- Live security smoke checks passed with authentication configured. OAuth start
+  returned GitHub with the exact Preview callback, and the owner confirmed a real
+  GitHub sign-in reached the admin dashboard.
+- PR #102 was merged into develop at
+  `79fcc100af9fd25d26b426102fa944c26237d5e6`, and
+  `WORKERS_PREVIEWS_ENABLED=true` enabled the CI staging path. All jobs in
+  [CI run 42315388075](https://github.com/indraxyz/indrax.uk/actions/runs/42315388075)
+  succeeded, including the actual named Preview upload, security verification,
+  authenticated cleanup invocation and public deployment artifact retention.
+  Production and legacy dev deployment steps were skipped.
+- CI recorded Preview deployment `66f104f2-6a35-4431-ab53-74139c5b26ea` under
+  parent Worker `indrax`, Preview `develop`, for that exact commit. The stable URL
+  is `https://develop.previews.indrax.uk`; the unique URL is
+  `https://66f104f2.previews.indrax.uk`.
+- The main browser suite reported 397 passed and three skips. Direct analytics,
+  Chromium hydration, Firefox hydration and isolated uploads additionally passed
+  2, 3, 3 and 7 cases respectively. Analytics remain disabled in the deployed
+  staging build because no staging PostHog token was supplied.
+- The maintenance revision preflight passed against current develop and its
+  successful GitHub Preview deployment. The new manual workflow itself is not
+  registered until its file reaches default branch `main` through the normal
+  release PR. Post-deploy cleanup is active now; no hourly Preview Cron exists.
+- The old dev Worker's Cron was paused through a trigger-only update. Its Worker,
+  domain, secrets and dev data resources are retained for rollback. Production's
+  active version remains `bbc306f1-c96f-4524-94f2-afc8e04e0967`, with the
+  `17 * * * *` Cron preserved.
+
+Staging cutover is complete. Full retirement remains a later explicit operation
+after the planned staging/production release observation cycle. A normal release
+to main also makes the manual maintenance workflow discoverable; no production
+application release was performed as part of this staging cutover.
