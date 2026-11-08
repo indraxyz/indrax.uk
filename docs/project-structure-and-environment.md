@@ -158,12 +158,12 @@ and optional port, without `/admin` or `/api/auth`. Auth and the site share an
 origin. Better Auth uses its base URL for authentication URLs; see
 [Better Auth configuration](https://better-auth.com/docs/reference/options).
 
-| Environment                | `BETTER_AUTH_URL`       | GitHub OAuth callback                            |
-| -------------------------- | ----------------------- | ------------------------------------------------ |
-| Local Vite using localhost | `http://localhost:5173` | `http://localhost:5173/api/auth/callback/github` |
-| Local preview on port 3000 | `http://127.0.0.1:3000` | `http://127.0.0.1:3000/api/auth/callback/github` |
-| Production                 | `https://indrax.uk`     | `https://indrax.uk/api/auth/callback/github`     |
-| Deployed development site  | `https://dev.indrax.uk` | `https://dev.indrax.uk/api/auth/callback/github` |
+| Environment                | `BETTER_AUTH_URL`                    | GitHub OAuth callback                                         |
+| -------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| Local Vite using localhost | `http://localhost:5173`              | `http://localhost:5173/api/auth/callback/github`              |
+| Local preview on port 3000 | `http://127.0.0.1:3000`              | `http://127.0.0.1:3000/api/auth/callback/github`              |
+| Production                 | `https://indrax.uk`                  | `https://indrax.uk/api/auth/callback/github`                  |
+| Named staging Preview      | `https://develop.previews.indrax.uk` | `https://develop.previews.indrax.uk/api/auth/callback/github` |
 
 Use the actual browser host and port if they differ from these examples. Configure
 the corresponding callback in the GitHub OAuth App for that environment.
@@ -207,8 +207,14 @@ described in [testing](testing.md) for tests that write records.
 
 ## How do development and production releases connect?
 
-Feature PRs target `develop`; enabled pushes deploy its matching GitHub `Preview`
-environment to `indrax-dev`. An owner-approved `develop` → `main` PR promotes the
+Feature PRs target `develop`; enabled pushes deploy its GitHub `Preview`
+environment to the named `develop` Preview under `indrax`. The Preview uses
+`develop.previews.indrax.uk` and existing isolated dev resources. There is no
+legacy Worker fallback. Prepare TLS, Preview runtime secrets and its dedicated
+OAuth callback before enabling deployments.
+`npm run build:production` and `npm run build:staging` select explicit build origins;
+local Workerd preview commands remain separate from remote Preview deployment.
+An owner-approved `develop` → `main` PR promotes the
 release; enabled main pushes use `Production` and `indrax`. GitHub Actions owns
 deployment, and Cloudflare Git Builds stays disconnected. See the
 [development and deployment workflow](development-and-deployment.md) for CI,

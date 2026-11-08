@@ -9,9 +9,7 @@
     "build": "react-router build && vite build --config vite.admin.config.ts && node scripts/assemble-build.mjs",
     "start": "node scripts/preview.mjs",
     "preview": "npm run build && npm run start",
-    "deploy": "npm run build && node scripts/assert-deploy-target.mjs production && CLOUDFLARE_ENV= wrangler deploy --config build/server/wrangler.json",
-    "preview:dev": "CLOUDFLARE_ENV=dev npm run build && npm run start",
-    "deploy:dev": "CLOUDFLARE_ENV=dev npm run build && node scripts/assert-deploy-target.mjs dev && CLOUDFLARE_ENV= wrangler deploy --config build/server/wrangler.json",
+    "deploy": "npm run build:production && node scripts/assert-deploy-target.mjs production && CLOUDFLARE_ENV= wrangler deploy --config build/server/wrangler.json",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "check": "npm run format:check && npm run lint && npm run type-check && npm run test && echo 'All checks passed!'",
     "lint": "eslint .",
@@ -32,7 +30,10 @@
     "test:e2e": "playwright test",
     "test:e2e:analytics-direct": "playwright test --config playwright.analytics-direct.config.ts",
     "test:e2e:uploads": "playwright test --config playwright.uploads.config.ts",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "build:production": "CLOUDFLARE_ENV= DEPLOYMENT_TARGET=production npm run build",
+    "build:staging": "CLOUDFLARE_ENV= DEPLOYMENT_TARGET=staging npm run build",
+    "deploy:staging": "npm run build:staging && node scripts/assert-deploy-target.mjs staging && node scripts/deploy-staging.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

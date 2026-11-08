@@ -13,6 +13,13 @@
   "routes": [
     { "pattern": "indrax.uk", "custom_domain": true },
     { "pattern": "www.indrax.uk", "custom_domain": true },
+    // Bootstrap this Preview-only hostname during the reviewed rollout.
+    {
+      "pattern": "previews.indrax.uk",
+      "custom_domain": true,
+      "previews_enabled": true,
+      "enabled": false,
+    },
   ],
   "vars": {
     "SITE_URL": "https://indrax.uk",
@@ -85,48 +92,36 @@
       "enabled": true,
     },
   },
-  "env": {
-    "dev": {
-      "routes": [{ "pattern": "dev.indrax.uk", "custom_domain": true }],
-      "workers_dev": false,
-      "preview_urls": false,
-      "vars": {
-        "SITE_URL": "https://dev.indrax.uk",
-        "MEDIA_ORIGIN": "https://dev-media.indrax.uk",
-        "POSTHOG_HOST": "https://us.i.posthog.com",
-      },
-      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
-      "triggers": { "crons": ["47 * * * *"] },
-      "assets": {
-        "directory": "build/client",
-        "binding": "ASSETS",
-        "run_worker_first": ["/admin", "/admin/*", "/api/*", "/analytics", "/analytics/*"],
-      },
-      "kv_namespaces": [
-        {
-          "binding": "CACHE_KV",
-          "id": "55163065696741c397d875991d3eb8d6",
-        },
-      ],
-      "ratelimits": [
-        {
-          "name": "RATE_LIMIT_STRICT",
-          "namespace_id": "2001",
-          "simple": { "limit": 30, "period": 60 },
-        },
-        {
-          "name": "RATE_LIMIT_API",
-          "namespace_id": "2002",
-          "simple": { "limit": 120, "period": 60 },
-        },
-      ],
-      "d1_databases": [
-        {
-          "binding": "APP_D1",
-          "database_name": "indrax-dev-next-tags",
-          "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
-        },
-      ],
+  // One long-lived develop Preview under indrax; these resources remain isolated
+  // from production. Secrets must be provisioned separately for the Preview.
+  "previews": {
+    "vars": {
+      "SITE_URL": "https://develop.previews.indrax.uk",
+      "BETTER_AUTH_URL": "https://develop.previews.indrax.uk",
+      "MEDIA_ORIGIN": "https://dev-media.indrax.uk",
+      "POSTHOG_HOST": "https://us.i.posthog.com",
+      "PREVIEW_MAINTENANCE_ENABLED": "true",
     },
+    "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "indrax-dev-media" }],
+    "kv_namespaces": [{ "binding": "CACHE_KV", "id": "55163065696741c397d875991d3eb8d6" }],
+    "d1_databases": [
+      {
+        "binding": "APP_D1",
+        "database_name": "indrax-dev-next-tags",
+        "database_id": "090d17c4-739d-4e61-ae9a-2678fe379a9b",
+      },
+    ],
+    "ratelimits": [
+      {
+        "name": "RATE_LIMIT_STRICT",
+        "namespace_id": "2001",
+        "simple": { "limit": 30, "period": 60 },
+      },
+      {
+        "name": "RATE_LIMIT_API",
+        "namespace_id": "2002",
+        "simple": { "limit": 120, "period": 60 },
+      },
+    ],
   },
 }

@@ -43,8 +43,14 @@ export default {
         const url = new URL(request.url)
         const path = url.pathname
         let response: Response
-        const limited = await enforceRateLimit(request, path, env)
-        if (limited) response = limited
+        const maintenance = path === "/api/internal/preview/media-cleanup"
+        // Maintenance checks its capability before rate limiting so production
+        // always hides the route, including when a client has spent its limit.
+        const limited = maintenance ? null : await enforceRateLimit(request, path, env)
+        if (maintenance) {
+          const { handlePreviewMediaCleanup } = await import("../lib/preview-maintenance.server")
+          response = await handlePreviewMediaCleanup(request)
+        } else if (limited) response = limited
         else if (path.startsWith("/local-media/")) {
           if (import.meta.env.DEV) {
             const { serveLocalMedia } = await import("../lib/local-media.server")

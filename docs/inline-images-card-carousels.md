@@ -31,7 +31,9 @@ used for covers also controls content upload availability; URL insertion remains
 Uploads happen on the explicit image insertion action. Failed uploads retain dialog
 input for retry. A successful upload followed by a failed post save remains in the
 editor for retry without another upload. Abandoned uploads remain pending for a 24-hour
-grace period, then scheduled cleanup removes them after checking saved references.
+grace period, then shared cleanup removes them after checking saved references.
+Production invokes cleanup hourly; the staging Preview uses the protected post-deploy
+or manual maintenance route. See [deployment workflow](development-and-deployment.md).
 
 Removed or replaced saved inline images and images belonging to deleted posts enter the
 existing cleanup outbox in the same database transaction as the post mutation. Cleanup

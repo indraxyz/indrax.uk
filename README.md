@@ -112,7 +112,6 @@ builds both public SSR and the independent admin and runs them in Workerd:
 
 ```bash
 npm run preview
-npm run preview:dev
 ```
 
 During development, a Vite middleware reads generated admin assets directly from
@@ -124,8 +123,7 @@ Use `.env.local` as the shared local configuration for Vite, Worker bindings,
 database tooling and preview. Copy `.env.example` and fill in the settings you need.
 Cloudflare loads this file natively during development; remove legacy `.dev.vars`
 files after migrating their values because they take precedence over dotenv files.
-The same `.env.local` is used when selecting `CLOUDFLARE_ENV=dev`; additional
-environment-specific local configuration is not required. Local preview uses local
+Local preview uses local
 KV/D1 and does not provision remote resources. Public environment variables are
 compiled by Vite; changing them requires rebuilding both bundles.
 
@@ -240,46 +238,47 @@ See [development and deployment workflow](docs/development-and-deployment.md) fo
 feature PRs, staging promotion, required release review and production verification.
 
 GitHub Actions is the deployment owner. Both quality jobs must pass; deployment
-runs only on enabled pushes to `develop`/`main`, using separate GitHub environments
-and Cloudflare resources. Superseded quality jobs are canceled; deploy jobs
-serialize by branch and let an active upload/activation finish. Keep Workers
-dashboard Git Builds disconnected to avoid a second release pipeline.
+runs only on enabled pushes to `develop`/`main`. Keep Workers dashboard Git Builds
+disconnected. Deployments have two targets:
 
-| Branch    | GitHub environment | Worker       | Domain                       |
-| --------- | ------------------ | ------------ | ---------------------------- |
-| `develop` | Preview            | `indrax-dev` | `dev.indrax.uk`              |
-| `main`    | Production         | `indrax`     | `indrax.uk`, `www.indrax.uk` |
+| Branch    | GitHub environment | Target                                 | Domain                       |
+| --------- | ------------------ | -------------------------------------- | ---------------------------- |
+| `develop` | Preview            | Named `develop` Preview under `indrax` | `develop.previews.indrax.uk` |
+| `main`    | Production         | `indrax` Worker                        | `indrax.uk`, `www.indrax.uk` |
 
-The build emits `build/server/wrangler.json`; deployment uses that generated
-configuration so the matching environment and bundled assets stay together.
-`CLOUDFLARE_ENV=dev` selects the development build. CI builds and validates both
-production and develop targets, then runs browser tests against the production
-build with isolated local fixtures. Before uploading, each deploy command compares
-the generated Worker name, routes, site URL and KV/D1 bindings with the source
-Wrangler configuration resolved for its intended environment. A mismatched
-build fails before upload; for example, an inherited `CLOUDFLARE_ENV=dev` cannot
-make `npm run deploy` upload the development Worker.
+`CLOUDFLARE_DEPLOY_ENABLED=true` enables deployment. Develop always targets the
+named Preview; there is no legacy Worker fallback or cutover variable. Prepare
+Preview DNS/TLS, runtime secrets, staging OAuth and the maintenance token before
+enabling deployments. This job gate must be a repository or organization variable.
+See the [complete migration specification](docs/workers-previews-migration-spec.md).
 
-Deploy commands are release operations, not validation commands:
+`npm run build:production` and `npm run build:staging` build both frontends with
+explicit target origins. Deployment uses the generated Worker configuration and
+assembled assets, with assertions for parent Worker, routes/Preview flags, origins,
+KV/D1/R2, rate-limit namespaces and cleanup capability. `npm run preview` runs locally in Workerd.
+
+Deploy commands change remote traffic and require a release decision:
 
 ```bash
-npm run deploy:dev
-npm run deploy
+npm run deploy:staging # named develop Preview under indrax
+npm run deploy         # production
 ```
 
-CI needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in each GitHub environment;
-the **repository or organization variable** `CLOUDFLARE_DEPLOY_ENABLED=true`
-enables the deployment job. Do not set that gate only as a Preview/Production
-environment variable: GitHub evaluates the job condition before environment
-variables are available. Use environment-scoped credentials and public build
-variables for Preview and Production. Its token needs the
-existing Worker/route permissions plus KV/D1 write access. Store runtime secrets
-separately on each Worker, for example `npx wrangler secret put DATABASE_URL --env dev`.
-Configure public analytics/media variables in each GitHub environment as needed.
-Both site and media hostnames are public. Admin routes and private APIs use the
-application's GitHub OAuth session and numeric author allowlist; Cloudflare Access
-is not required. Dev remains non-indexable. See
-[public dev access and admin authentication](docs/cloudflare-access.md).
+Each GitHub environment supplies `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and
+public build variables. Runtime secrets belong separately to production and the
+named Preview. Base secrets initialize new Previews; rotate the existing Preview's
+secrets explicitly. No local environment files or fixture credentials are uploaded.
+Staging continues to use existing dev Neon, KV, D1 and R2 resources. Both site and
+media are public, with application GitHub authentication for author operations and
+noindex on staging. See [authentication](docs/cloudflare-access.md).
+
+Production keeps its hourly cleanup Cron. Previews use the same cleanup function
+through a protected test route invoked after deployment or by manual maintenance;
+there is no hourly Preview schedule. Deployment and maintenance share the `cloudflare-indrax`
+concurrency group. The [manual maintenance workflow](.github/workflows/preview-maintenance.yml)
+requires the full current successful develop SHA and verifies GitHub deployment
+evidence before calling cleanup; it creates no replacement deployment record. Retire the old dev Worker only after acceptance and a
+successful release cycle, preserving the resources now used by the Preview.
 
 The deploy job prepares `analytics_quota` and `analytics_replay_sessions` in the
 matching `APP_D1` before deploying, preserving existing counters. New environments

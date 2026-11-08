@@ -6,6 +6,7 @@ const request = (path: string, headers: Record<string, string> = {}) =>
   new Request("https://example.test" + path, { headers })
 
 it.each([
+  ["/api/internal/preview/media-cleanup", "RATE_LIMIT_STRICT", "preview-maintenance"],
   ["/api/auth/sign-in/social", "RATE_LIMIT_STRICT", "auth"],
   ["/api/views/article", "RATE_LIMIT_STRICT", "views"],
   ["/api/admin/session", "RATE_LIMIT_API", "admin"],

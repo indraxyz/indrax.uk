@@ -32,7 +32,9 @@ to wall time separately from JavaScript CPU work.
 | Development | `55163065696741c397d875991d3eb8d6` | `indrax-dev-next-tags` | `090d17c4-739d-4e61-ae9a-2678fe379a9b` |
 | Production  | `3b3a56d04aed4aca8492ab4d46002923` | `indrax-next-tags`     | `768e0a3c-8014-4b32-9a7f-39f2b7ee2a58` |
 
-Both Workers use application binding aliases `CACHE_KV` and `APP_D1`. Each
+Production and staging use application binding aliases `CACHE_KV` and `APP_D1`.
+The named `develop` Preview reuses the development resource row above after cutover;
+the legacy dev Worker remains available during rollout. Each
 alias points to the existing resource IDs listed above; physical resource names
 are unchanged. Do not recreate or share these resources across environments.
 Neon remains the content/auth database; D1 contains invalidation revisions and

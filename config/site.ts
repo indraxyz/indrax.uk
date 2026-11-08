@@ -6,7 +6,7 @@ export const SITE_URL = process.env.SITE_URL ?? PRODUCTION_SITE_URL
 /**
  * Whether search engines may index this deployment.
  *
- * Only production. dev.indrax.uk and local previews are copies of the site: they
+ * Only production. Staging and local previews are copies of the site: they
  * get a robots.txt that disallows everything and a site-wide `X-Robots-Tag`, so
  * they are neither indexed as duplicates nor a map of paths for crawlers.
  */
