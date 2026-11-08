@@ -12,16 +12,24 @@ export function Component() {
   const session = useAdminSession()
   const query = useQuery({ queryKey: adminKeys.post(id), queryFn: () => adminApi.post(id) })
   if (query.isPending) return <AdminLoading />
-  if (query.error instanceof HTTPError && query.error.response.status === 404)
+  if (!query.data && query.error instanceof HTTPError && query.error.response.status === 404)
     return (
       <AdminShell title="Not found">
         <p>This post does not exist.</p>
       </AdminShell>
     )
-  if (query.isError) return <AdminError retry={() => void query.refetch()} />
+  if (!query.data) return <AdminError retry={() => void query.refetch()} />
   return (
     <PostForm key={id} post={query.data} coverUploadsConfigured={session.coverUploadsConfigured}>
-      {({ form, saveButton, onDeleted, hasUnsavedChanges, isSaving }) => (
+      {({
+        form,
+        saveButton,
+        onDeleted,
+        hasUnsavedChanges,
+        isSaving,
+        onRefresh,
+        onActionsBusyChange,
+      }) => (
         <AdminShell
           title="Edit post"
           backLink={{ href: "/admin/posts", label: "Posts" }}
@@ -31,11 +39,19 @@ export function Component() {
               onDeleted={onDeleted}
               hasUnsavedChanges={hasUnsavedChanges}
               saving={isSaving}
+              onRefresh={onRefresh}
+              onBusyChange={onActionsBusyChange}
             >
               {saveButton}
             </PostActions>
           }
         >
+          {query.isError && (
+            <p role="alert" className="mb-4 text-sm text-destructive">
+              The saved post could not be rechecked. Your editor changes are still here. Use Refresh
+              post to try again.
+            </p>
+          )}
           {form}
         </AdminShell>
       )}

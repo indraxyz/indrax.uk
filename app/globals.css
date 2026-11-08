@@ -152,6 +152,8 @@ img[data-image-state="loading"] {
     --semantic-status-danger: var(--primitive-danger-700);
     --semantic-status-danger-text: var(--primitive-neutral-0);
     --semantic-status-warning: var(--primitive-warning-600);
+    --component-post-status-published: var(--primitive-brand-500);
+    --component-post-status-archived: var(--primitive-brand-800);
     --component-status-unsaved: var(--semantic-status-warning);
     --component-navigation-progress: var(--primitive-brand-500);
 

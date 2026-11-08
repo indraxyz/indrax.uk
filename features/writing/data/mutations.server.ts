@@ -4,7 +4,13 @@ import { drainCoverCleanup } from "@/lib/cover-cleanup.server"
 
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { CACHE_TAGS } from "@/features/writing/data/queries.server"
-import type { ActionResult, PostDocument, PostStatus } from "@/features/writing/types"
+import type {
+  ActionResult,
+  AdminPost,
+  PostDocument,
+  PostStatus,
+  Tag,
+} from "@/features/writing/types"
 import { deriveExcerptText, plainText } from "@/features/writing/utils/plain-text"
 import { computeReadingTime } from "@/features/writing/utils/reading-time"
 import { createPreviewToken } from "@/features/writing/utils/preview-token.server"
@@ -14,6 +20,7 @@ import {
   isMediaUploadUnavailable,
   isSeriesOrderClash,
 } from "@/features/writing/data/db-errors.server"
+import { postTagsProjection } from "./post-tags-query.server"
 import { attachmentQuery, collectManagedUploadKeys } from "./media-uploads.server"
 import { getDb, schema, type Database } from "@/lib/db/index.server"
 import { GENERATED_IMAGE_KEY_PATTERN } from "@/lib/uploads/policy"
@@ -296,6 +303,7 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
         .returning({ id: schema.posts.id, slug: schema.posts.slug })
 
   let saved: { id: string; slug: string }
+  let relations: { tags: Tag[]; seriesTitle: string | null; seriesDescription: string | null }
 
   try {
     // Synchronize tags in the post transaction: comparing a prior read could
@@ -358,10 +366,23 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
               .onConflictDoNothing(),
           ]
         : []),
+      // Read only canonical relations inside the existing transaction/request.
+      // The validated document and written scalar fields need not be downloaded again.
+      db
+        .select({
+          tags: postTagsProjection,
+          seriesTitle: schema.series.title,
+          seriesDescription: schema.series.description,
+        })
+        .from(schema.posts)
+        .leftJoin(schema.series, eq(schema.series.id, schema.posts.seriesId))
+        .where(eq(schema.posts.id, postId)),
     ])
     const written = results[lockAndQueue.length] as { id: string; slug: string }[]
     if (!written[0]) return failure("That post no longer exists.")
     saved = written[0]
+    const rows = results[results.length - 1] as (typeof relations)[]
+    relations = rows[0]
   } catch (error) {
     if (isMediaUploadUnavailable(error))
       return failure("That uploaded image has expired. Insert it again before saving.")
@@ -377,7 +398,23 @@ export async function savePost(payload: SavePayload): Promise<ActionResult> {
   await revalidatePost(saved.slug, current?.slug)
   await drainCoverCleanup(db)
 
-  return { ok: true, postId: saved.id }
+  const post: AdminPost = {
+    id: saved.id,
+    slug: saved.slug,
+    title: row.title,
+    excerpt: row.excerpt,
+    content: document,
+    coverUrl: row.coverUrl,
+    coverAlt: row.coverAlt,
+    status: row.status,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    updatedAt: row.updatedAt.toISOString(),
+    tags: relations.tags.sort((a, b) => a.name.localeCompare(b.name)),
+    seriesTitle: relations.seriesTitle,
+    seriesDescription: relations.seriesDescription,
+    seriesOrder: row.seriesOrder,
+  }
+  return { ok: true, postId: saved.id, post }
 }
 
 export async function setPostStatus(id: string, status: string): Promise<ActionResult> {
@@ -414,7 +451,7 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
     return failure("The cover image needs alt text before this can be published.")
   }
 
-  await db
+  const [updated] = await db
     .update(schema.posts)
     .set({
       status: parsed.data,
@@ -423,11 +460,26 @@ export async function setPostStatus(id: string, status: string): Promise<ActionR
       updatedAt: new Date(),
     })
     .where(eq(schema.posts.id, id))
+    .returning({
+      id: schema.posts.id,
+      status: schema.posts.status,
+      publishedAt: schema.posts.publishedAt,
+      updatedAt: schema.posts.updatedAt,
+    })
+  if (!updated) return failure("That post no longer exists.")
 
   await revalidatePost(current.slug)
   await drainCoverCleanup(db)
 
-  return { ok: true, postId: id }
+  return {
+    ok: true,
+    postId: id,
+    postState: {
+      ...updated,
+      publishedAt: updated.publishedAt?.toISOString() ?? null,
+      updatedAt: updated.updatedAt.toISOString(),
+    },
+  }
 }
 
 export async function deletePost(id: string): Promise<ActionResult> {

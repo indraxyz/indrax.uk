@@ -66,7 +66,7 @@ it("clears a saved cover and awaits deletion of its generated R2 key", async () 
       tags: [],
       content,
     })
-  ).toEqual({ ok: true, postId: post.id })
+  ).toMatchObject({ ok: true, postId: post.id, post: { id: post.id, coverUrl: null } })
   const [saved] = await db.select().from(schema.posts).where(eq(schema.posts.id, post.id))
   expect(saved.coverUrl).toBeNull()
   expect(mocks.remove).toHaveBeenCalledWith(new URL(post.coverUrl!).pathname.slice(1))

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { PostCover } from "@/features/writing/components/post-cover"
 import { PostMeta } from "@/features/writing/components/post-meta"
-import { TagPill } from "@/features/writing/components/tag-pill"
+import { PostTags } from "@/features/writing/components/post-tags"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { PostSummary } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
@@ -69,14 +69,7 @@ export const PostCard = memo(function PostCard({
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          {post.tags.map((tag) => (
-            // Above the title's stretched hit area, so a tag link stays clickable.
-            <span key={tag.id} className="relative z-10">
-              <TagPill tag={tag} />
-            </span>
-          ))}
-        </div>
+        <PostTags tags={post.tags} label={`Tags for ${post.title}`} />
       </CardContent>
     </Card>
   )

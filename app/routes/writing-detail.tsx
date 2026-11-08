@@ -6,6 +6,8 @@ import { ArticleCard } from "@/features/writing/components/article-card"
 import { WritingShell } from "@/features/writing/components/writing-shell"
 import { CopyCode } from "@/features/writing/components/copy-code"
 import { RelatedPosts } from "@/features/writing/components/related-posts"
+import { PostReactions } from "@/features/writing/components/post-reactions"
+import { ShareLink } from "@/features/writing/components/share-link"
 import { ViewBeacon } from "@/features/writing/components/view-beacon"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { getPostBySlug, getRelatedPosts } from "@/features/writing/data/queries.server"
@@ -68,25 +70,35 @@ export default function ArticlePage() {
         />
       ))}
 
-      <ArticleCard
-        post={post}
-        article={article}
-        meta={
-          post.viewCount > 0 && (
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" aria-hidden />
-              {post.viewCount.toLocaleString("en-US")} views
-            </span>
-          )
-        }
-      />
+      <PostReactions key={post.slug} slug={post.slug}>
+        {({ trigger, summary }) => (
+          <ArticleCard
+            post={post}
+            article={article}
+            actions={
+              <div className="flex items-center gap-1">
+                {trigger}
+                <ShareLink slug={post.slug} />
+              </div>
+            }
+            reactions={summary}
+            meta={
+              post.viewCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" aria-hidden />
+                  {post.viewCount.toLocaleString("en-US")} views
+                </span>
+              )
+            }
+          />
+        )}
+      </PostReactions>
 
       <RelatedPosts posts={related} />
 
-      {/* Both are decoration, and both are additive: the article above is complete
-          without either. The counter is an image so it works with JavaScript off;
-          the copy buttons are the one thing on this page that needs a script, and
-          they are attached only after the page has already rendered. */}
+      {/* The article body remains readable without these enhancements. The view
+          counter is an image and works with JavaScript off; code-copy controls
+          attach after the article renders. */}
       <ViewBeacon slug={post.slug} />
       <CopyCode />
     </WritingShell>

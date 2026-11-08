@@ -138,20 +138,25 @@ LCP element, loads eagerly with high fetch priority.
 API functions in `features/writing/api/client.ts` return typed DTOs. The backend
 handler is `features/writing/api/server.ts`; SQL stays in the data layer.
 
-| Endpoint                                                                 | Access                                           |
-| ------------------------------------------------------------------------ | ------------------------------------------------ |
-| `GET /api/writing/posts`, `/recent`, `/tags`, `/search`, `/series/:slug` | Published-only query layer                       |
-| `GET /api/writing/preview/:slug?token=...`                               | Valid signed, expiring token for this exact slug |
-| `GET /api/admin/session`                                                 | Session state only; anonymous author is null     |
-| `GET /api/admin/overview`, `/posts`, `/posts/:id`                        | Author session required                          |
-| `POST /api/admin/posts`                                                  | Author, same Origin, JSON, validated save        |
-| `PATCH /api/admin/posts/:id/status`                                      | Author, same Origin, validated status            |
-| `DELETE /api/admin/posts/:id`, `POST /api/admin/posts/:id/preview`       | Author, same Origin, JSON                        |
+| Endpoint                                                                 | Access                                                     |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `GET /api/writing/posts`, `/recent`, `/tags`, `/search`, `/series/:slug` | Published-only query layer                                 |
+| `GET /api/writing/posts/:slug/reactions`                                 | Published-only counts and optional browser selections      |
+| `PUT /api/writing/posts/:slug/reactions`                                 | Published-only, same Origin, 1 KiB JSON, strict edge limit |
+| `GET /api/writing/preview/:slug?token=...`                               | Valid signed, expiring token for this exact slug           |
+| `GET /api/admin/session`                                                 | Session state only; anonymous author is null               |
+| `GET /api/admin/overview`, `/posts`, `/posts/:id`                        | Author session required                                    |
+| `POST /api/admin/posts`                                                  | Author, same Origin, JSON, validated save                  |
+| `PATCH /api/admin/posts/:id/status`                                      | Author, same Origin, validated status                      |
+| `DELETE /api/admin/posts/:id`, `POST /api/admin/posts/:id/preview`       | Author, same Origin, JSON                                  |
 
 Mutation bodies are streamed with a 512 KiB ceiling before JSON parsing, including
 requests without Content-Length. Untrusted IDs, tags, limits and page numbers are
 validated/bounded before SQL/cache access. Document validation occurs once in the
 mutation; the server computes reading time, derived excerpt and timestamps.
+Successful save responses include the canonical AdminPost snapshot. Relations are
+read inside the write batch and the validated document is reused, avoiding a
+subsequent detail API request. Status responses return lightweight metadata.
 Responses use structured safe errors and `no-store`. A 401 never returns private
 post data. Preview tokens are bounded and verified before the database; the API
 returns sanitized HTML/headings and metadata without raw document duplication.
@@ -168,6 +173,13 @@ related tags are aggregated within SQL. Count/page pairs and post/tag writes use
 Drizzle's existing Neon HTTP batch API. A failed post/tag write rolls back that
 batch; series metadata resolution remains outside the batch, matching the existing
 save behavior.
+
+Reader reactions live in `post_reactions`, with a post/browser/emoji primary key
+and cascading post deletion. Desired-state inserts ignore duplicate additions;
+deletes remove only the requested browser's emoji. Both writes enforce public
+visibility in SQL. Aggregates use one uncached query and stay outside article SSR
+and rendered-content invalidation. Browser identity is random functional storage,
+created on first reaction rather than on page load.
 
 `lib/cache.server.ts` memoizes public reads within one Request, even without storage.
 Persistent cache keys include D1 invalidation revisions and use a new namespace

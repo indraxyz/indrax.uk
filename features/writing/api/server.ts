@@ -19,6 +19,7 @@ import { logServerError } from "@/lib/observability"
 import { serverEnv } from "@/lib/runtime.server"
 
 import { RequestError as ApiError, readJson } from "@/lib/request-body.server"
+import { isReactionVisitor, parseReactionInput } from "@/features/writing/reactions"
 
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
@@ -72,6 +73,23 @@ export async function handleWritingApi(request: Request): Promise<Response | nul
   if (!isPublic && !isAdmin) return null
   try {
     if (isPublic) {
+      const reactions = /^\/api\/writing\/posts\/([a-z0-9]+(?:-[a-z0-9]+)*)\/reactions$/.exec(path)
+      if (path.endsWith("/reactions")) {
+        if (!reactions || reactions[1].length > 120) throw new ApiError(404, "Post not found.")
+        if (request.method !== "GET" && request.method !== "PUT")
+          throw new ApiError(405, "This request method is not supported.")
+        const { getReactions, setReaction } =
+          await import("@/features/writing/data/reactions.server")
+        if (request.method === "GET") {
+          const visitorId = request.headers.get("x-reaction-visitor")
+          if (visitorId !== null && !isReactionVisitor(visitorId))
+            throw new ApiError(400, "Invalid reaction visitor.")
+          return json(await getReactions(reactions[1], visitorId ?? undefined))
+        }
+        const input = parseReactionInput(await readJson(request, 1024))
+        if (!input) throw new ApiError(422, "Send a valid reaction and desired state.")
+        return json(await setReaction(reactions[1], input))
+      }
       if (request.method !== "GET") throw new ApiError(405, "This endpoint only accepts GET.")
       const preview = /^\/api\/writing\/preview\/([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(path)
       if (path.startsWith("/api/writing/preview/")) {

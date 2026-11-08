@@ -47,15 +47,23 @@ function database(selectResults: unknown[][]) {
   const onConflictDoNothing = vi.fn().mockReturnValue({ returning })
   const values = vi.fn().mockReturnValue({ returning, onConflictDoNothing, onConflictDoUpdate })
   const insertSelect = vi.fn().mockReturnValue({ onConflictDoNothing })
+  const relations = { tags: [], seriesTitle: null, seriesDescription: null }
   const batch = vi
     .fn()
-    .mockResolvedValue(Array.from({ length: 3 }, () => [{ id: ID, slug: payload.slug }]))
+    .mockImplementation((queries: unknown[]) =>
+      Promise.resolve(
+        queries.map((_, index) =>
+          index === queries.length - 1 ? [relations] : [{ id: ID, slug: payload.slug }]
+        )
+      )
+    )
   const select = vi.fn().mockImplementation((projection) => {
     if (
       projection?.id === schema.tags.id ||
       projection?.tagId === schema.tags.id ||
       projection?.lockedPostId ||
-      projection?.url
+      projection?.url ||
+      projection?.tags
     ) {
       return drizzle.mock().select(projection)
     }
@@ -96,7 +104,7 @@ describe("savePost", () => {
 
   it("creates a published post with an excerpt and reading time derived from the submitted body", async () => {
     const db = database([[]])
-    expect(await savePost(payload)).toEqual({ ok: true, postId: ID })
+    expect(await savePost(payload)).toMatchObject({ ok: true, postId: ID })
     expect(db.values).toHaveBeenCalledWith(
       expect.objectContaining({
         contentJson: payload.content,
@@ -112,7 +120,9 @@ describe("savePost", () => {
   it("updates without selecting the old body and preserves publication time and both slug invalidations", async () => {
     const publishedAt = new Date("2026-01-01T00:00:00Z")
     const db = database([[{ id: ID, slug: "old-title", publishedAt }], []])
-    expect(await savePost({ ...payload, id: ID, excerpt: "An author-written excerpt." })).toEqual({
+    expect(
+      await savePost({ ...payload, id: ID, excerpt: "An author-written excerpt." })
+    ).toMatchObject({
       ok: true,
       postId: ID,
     })
@@ -154,11 +164,13 @@ describe("savePost", () => {
 describe("savePost database round trips", () => {
   it("synchronizes submitted tags atomically while retaining existing desired joins", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
-    expect(await savePost({ ...payload, id: ID, tags: ["REACT", "Vue.js", "vue js"] })).toEqual({
+    expect(
+      await savePost({ ...payload, id: ID, tags: ["REACT", "Vue.js", "vue js"] })
+    ).toMatchObject({
       ok: true,
       postId: ID,
     })
-    expect(db.batch.mock.calls[0][0]).toHaveLength(6)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(7)
     expect(db.values).toHaveBeenCalledWith([
       { slug: "react", name: "REACT" },
       { slug: "vue-js", name: "Vue.js" },
@@ -171,12 +183,12 @@ describe("savePost database round trips", () => {
 
   it("atomically batches changed tag joins with the post and preserves the first display spelling", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
-    expect(await savePost({ ...payload, id: ID, tags: ["Vue.js", "VUE JS"] })).toEqual({
+    expect(await savePost({ ...payload, id: ID, tags: ["Vue.js", "VUE JS"] })).toMatchObject({
       ok: true,
       postId: ID,
     })
     expect(db.batch).toHaveBeenCalledTimes(1)
-    expect(db.batch.mock.calls[0][0]).toHaveLength(6)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(7)
     expect(db.values).toHaveBeenCalledWith([{ slug: "vue-js", name: "Vue.js" }])
     expect(db.insertSelect).toHaveBeenCalledTimes(2)
     expect(db.delete).toHaveBeenCalledWith(schema.postTags)
@@ -185,8 +197,8 @@ describe("savePost database round trips", () => {
   it("clears removed tags in the same batch without creating or reading tag rows", async () => {
     const db = database([[{ id: ID, slug: payload.slug, publishedAt: null }]])
     expect(await savePost({ ...payload, id: ID })).toMatchObject({ ok: true })
-    expect(db.batch.mock.calls[0][0]).toHaveLength(4)
-    expect(db.select).toHaveBeenCalledTimes(3)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(5)
+    expect(db.select).toHaveBeenCalledTimes(4)
     expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
   })
 
@@ -196,7 +208,7 @@ describe("savePost database round trips", () => {
     expect(db.values).toHaveBeenCalledWith(
       expect.objectContaining({ id: expect.stringMatching(/^[a-f0-9-]{36}$/) })
     )
-    expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+    expect(db.batch.mock.calls[0][0]).toHaveLength(5)
   })
 
   it("resolves a series in one returning upsert and preserves its description when empty", async () => {
@@ -210,7 +222,7 @@ describe("savePost database round trips", () => {
         seriesDescription: "",
       })
     ).toMatchObject({ ok: true })
-    expect(db.select).toHaveBeenCalledTimes(3)
+    expect(db.select).toHaveBeenCalledTimes(4)
     expect(db.onConflictDoUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         target: schema.series.slug,
@@ -322,7 +334,7 @@ describe("cover cleanup transactions", () => {
       ).toMatchObject({ ok: true })
       expect(db.insert).toHaveBeenCalledWith(schema.coverCleanup)
       expect(db.insertSelect).toHaveBeenCalledOnce()
-      expect(db.batch.mock.calls[0][0]).toHaveLength(4)
+      expect(db.batch.mock.calls[0][0]).toHaveLength(5)
       expect(mocks.drainCoverCleanup).toHaveBeenCalledWith(
         expect.objectContaining({ batch: db.batch })
       )

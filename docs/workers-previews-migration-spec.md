@@ -549,3 +549,21 @@ Staging cutover is complete. Full retirement remains a later explicit operation
 after the planned staging/production release observation cycle. A normal release
 to main also makes the manual maintenance workflow discoverable; no production
 application release was performed as part of this staging cutover.
+
+## Production promotion verified — 2026-11-08
+
+PR #104 removed the repository legacy deployment paths and its develop CI completed
+successfully, including named Preview deployment and maintenance. Release
+[PR #105](https://github.com/indraxyz/indrax.uk/pull/105) promoted develop to main at
+`e1dc9a9516da136c680df571b40138eab8162823`.
+[Production CI run 42449224440](https://github.com/indraxyz/indrax.uk/actions/runs/42449224440)
+passed check, e2e and deploy, activating Worker version
+`4481d70b-6b51-41b7-aa7f-62df87f0f46b`. The main browser suite reported 397 passed
+and three skips; direct analytics, Chromium hydration, Firefox hydration and
+isolated uploads passed 2, 3, 3 and 7 cases respectively. Fresh public/private
+security smoke checks passed against production and the named develop Preview.
+There were no new PostgreSQL migrations in this release.
+
+The retained `indrax-dev` Worker and its shared staging resources remain untouched.
+Retirement is still a separate explicit operation; the named Preview continues
+to need the dev Neon, KV, D1 and R2 resources.

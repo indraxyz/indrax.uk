@@ -1,8 +1,9 @@
 import { useId, useState, useSyncExternalStore, type FormEvent } from "react"
-import { SlidersHorizontal } from "lucide-react"
+import { RefreshCw, SlidersHorizontal } from "lucide-react"
 import { useSearchParams } from "react-router"
 
 import { badgeVariants } from "@/components/ui/badge"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Button } from "@/components/ui/button"
 import { controlClassNames, fieldClassNames } from "@/components/ui/variants"
 import {
@@ -48,6 +49,9 @@ interface ArchiveControlsProps {
   tags?: TagWithCount[]
   tagsError: boolean
   retryTags: () => void
+  onRefresh?: () => void
+  refreshing?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /** The URL owns applied settings; the sheet owns drafts until Apply. */
@@ -57,6 +61,9 @@ export function ArchiveControls({
   tags,
   tagsError,
   retryTags,
+  onRefresh,
+  refreshing = false,
+  onOpenChange,
 }: ArchiveControlsProps) {
   const [, setParams] = useSearchParams()
   const hydrated = useSyncExternalStore(subscribeToHydration, hydratedSnapshot, serverSnapshot)
@@ -75,6 +82,15 @@ export function ArchiveControls({
   // Keep URL-selected tags removable even if they have since lost their last public article.
   const unavailable = draft.tags.filter((slug) => !knownTags.some((tag) => tag.slug === slug))
 
+  function changeOpen(next: boolean) {
+    if (next) {
+      setDraft({ ...options, tags: [...options.tags] })
+      setError("")
+    }
+    setOpen(next)
+    onOpenChange?.(next)
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault()
     if (
@@ -88,7 +104,7 @@ export function ArchiveControls({
       return
     }
     setParams(serialize({ ...draft, q: options.q, page: 1 }))
-    setOpen(false)
+    changeOpen(false)
   }
 
   function toggleTag(slug: string) {
@@ -109,41 +125,54 @@ export function ArchiveControls({
         action={admin ? "/admin/posts" : "/writing"}
         label={admin ? "Search posts" : "Search articles"}
       />
-      <Sheet
-        open={open}
-        onOpenChange={(next) => {
-          if (next) {
-            setDraft({ ...options, tags: [...options.tags] })
-            setError("")
-          }
-          setOpen(next)
-        }}
-      >
-        <SheetTrigger
-          aria-label="Filters and sort"
-          // Firefox otherwise restores the enabled state from the previous page
-          // load before React hydrates this initially disabled trigger.
-          // Its button-specific autocomplete extension is absent from React's types.
-          render={<button type="button" {...{ autoComplete: "off" }} />}
-          disabled={!hydrated}
-          aria-describedby={filterStatusId}
-          className={cn(
-            controlClassNames,
-            "relative min-h-11 min-w-11 shrink-0 justify-center px-3"
+      <Sheet open={open} onOpenChange={changeOpen}>
+        <ButtonGroup aria-label="Archive controls">
+          <SheetTrigger
+            data-slot="button"
+            aria-label="Filters and sort"
+            // Firefox otherwise restores the enabled state from the previous page
+            // load before React hydrates this initially disabled trigger.
+            // Its button-specific autocomplete extension is absent from React's types.
+            render={<button type="button" {...{ autoComplete: "off" }} />}
+            disabled={!hydrated}
+            aria-describedby={filterStatusId}
+            className={cn(
+              controlClassNames,
+              "relative min-h-11 min-w-11 shrink-0 justify-center px-3"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
+            {active && (
+              <span
+                data-active-filters
+                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[var(--primitive-brand-500)]"
+                aria-hidden
+              />
+            )}
+            <span id={filterStatusId} className="sr-only">
+              {active ? "Active filters" : "No active filters"}
+            </span>
+          </SheetTrigger>
+          {onRefresh && (
+            <button
+              type="button"
+              data-slot="button"
+              aria-label="Refresh posts"
+              title="Refresh posts"
+              disabled={refreshing}
+              onClick={onRefresh}
+              className={cn(
+                controlClassNames,
+                "min-h-11 min-w-11 justify-center px-3 disabled:opacity-60"
+              )}
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", refreshing && "motion-safe:animate-spin")}
+                aria-hidden
+              />
+            </button>
           )}
-        >
-          <SlidersHorizontal className="h-4 w-4" aria-hidden />
-          {active && (
-            <span
-              data-active-filters
-              className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[var(--primitive-brand-500)]"
-              aria-hidden
-            />
-          )}
-          <span id={filterStatusId} className="sr-only">
-            {active ? "Active filters" : "No active filters"}
-          </span>
-        </SheetTrigger>
+        </ButtonGroup>
         <SheetContent
           side="right"
           className="gap-0 rounded-none border-border bg-background data-[side=right]:w-full data-[side=right]:border-l-2 data-[side=right]:sm:max-w-md"
@@ -357,7 +386,7 @@ export function ArchiveControls({
                       q: options.q,
                     })
                   )
-                  setOpen(false)
+                  changeOpen(false)
                 }}
                 className={cn(controlClassNames, "min-h-11 justify-center px-4 py-3")}
               >

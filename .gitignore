@@ -1,30 +1,23 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
+/node_modules/
 
 # testing
-/coverage
+/coverage/
 
 # framework-generated types
 /.react-router/
 
 # production
-/build
+/build/
 
 # misc
 .DS_Store
 *.pem
-.pnpm-store
 
 # debug
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
 # env files - every variant, so a future .env.production cannot be committed
 .env*
@@ -34,7 +27,7 @@ pnpm-debug.log*
 .wrangler/
 .dev.vars
 .dev.vars.*
-cloudflare-env.d.ts
+/cloudflare-env.d.ts
 
 # typescript
 *.tsbuildinfo
@@ -55,9 +48,6 @@ Thumbs.db
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-
-# Generated resume export
-*.pdf
 
 # Generated admin assets for Vite development
 /public/admin/

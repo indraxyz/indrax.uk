@@ -1,5 +1,10 @@
 import { expect, it } from "vitest"
-import { createPostFormFields, postFormSnapshot, reconcilePostStatus } from "./post-form-state"
+import {
+  createPostFormFields,
+  postFormSnapshot,
+  reconcilePostStatus,
+  reconcileSavedFields,
+} from "./post-form-state"
 
 it.each([
   ["draft", "published"],
@@ -24,4 +29,29 @@ it("keeps an independently chosen status while updating the saved baseline for c
   const result = reconcilePostStatus(current, saved, "published")
   expect(result.current.status).toBe("archived")
   expect(result.saved.status).toBe("published")
+})
+
+it("applies saved normalization without overwriting edits typed during a save", () => {
+  const submitted = { ...createPostFormFields(null), title: " Submitted ", tags: "react" }
+  const saved = {
+    ...submitted,
+    title: "Submitted",
+    tags: "React",
+    slug: "submitted",
+    excerpt: "Derived",
+  }
+  const current = {
+    ...submitted,
+    title: "Later typing",
+    body: { type: "doc", content: [{ type: "paragraph" }] },
+  }
+  const reconciled = reconcileSavedFields(current, submitted, saved)
+  expect(reconciled).toMatchObject({
+    title: "Later typing",
+    tags: "React",
+    slug: "submitted",
+    excerpt: "Derived",
+  })
+  expect(reconciled.body).toEqual(current.body)
+  expect(postFormSnapshot(reconciled)).not.toBe(postFormSnapshot(saved))
 })

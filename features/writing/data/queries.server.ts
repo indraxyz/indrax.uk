@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
+import { postTagsProjection } from "./post-tags-query.server"
 import { buildArchiveQuery } from "./archive-query.server"
 import { cachedRead } from "@/lib/cache.server"
 
@@ -21,11 +22,9 @@ import type {
   SeriesContext,
   SeriesPart,
   SeriesWithParts,
-  Tag,
   TagWithCount,
 } from "@/features/writing/types"
 import { getDb, schema } from "@/lib/db/index.server"
-import { qualified } from "@/lib/db/qualified-column"
 import { logServerError } from "@/lib/observability"
 
 /**
@@ -78,18 +77,7 @@ const seriesColumns = {
 // therefore its limit/offset) without a second HTTP trip to fetch those tags.
 const summaryWithTags = {
   ...summaryColumns,
-  tags: sql<Tag[]>`coalesce((
-    select jsonb_agg(jsonb_build_object(
-      'id', ${qualified(schema.tags.id)},
-      'name', ${qualified(schema.tags.name)},
-      'slug', ${qualified(schema.tags.slug)}
-    ) order by ${qualified(schema.tags.name)})
-    from ${schema.postTags}
-    inner join ${schema.tags} on ${qualified(schema.tags.id)} = ${qualified(schema.postTags.tagId)}
-    where ${qualified(schema.postTags.postId)} = ${qualified(schema.posts.id)}
-  ), '[]'::jsonb)`.mapWith((value: Tag[] | string) =>
-    typeof value === "string" ? (JSON.parse(value) as Tag[]) : value
-  ),
+  tags: postTagsProjection,
 } as const
 
 type SummaryRow = Omit<PostSummary, "publishedAt" | "updatedAt"> & {

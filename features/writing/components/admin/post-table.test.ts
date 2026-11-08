@@ -74,7 +74,9 @@ describe("PostTable", () => {
 
   it("shows status, tags and dates, with readable empty values", () => {
     const html = render()
-    expect(html).toContain("TypeScript, React")
+    expect(html).toContain("TypeScript")
+    expect(html).toContain("React")
+    expect(html).not.toContain('href="/writing?tag=')
     expect(html).toContain('<span class="sr-only">No tags</span>')
     expect(html).toContain('<time dateTime="2026-10-01T12:00:00Z">Oct 1, 2026</time>')
     expect(html).toContain("Not published")
