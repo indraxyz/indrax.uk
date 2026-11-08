@@ -17,6 +17,7 @@ interface ArticleCardProps {
   /** Anything extra to sit beside the date and reading time - the view count. */
   meta?: ReactNode
   actions?: ReactNode
+  reactions?: ReactNode
 }
 
 /**
@@ -29,7 +30,7 @@ interface ArticleCardProps {
  * Written twice at first, and the second copy was already one heading class out of
  * step. Article typography should be changed in one place.
  */
-export function ArticleCard({ post, article, meta, actions }: ArticleCardProps) {
+export function ArticleCard({ post, article, meta, actions, reactions }: ArticleCardProps) {
   return (
     <article
       className={cn(
@@ -41,7 +42,7 @@ export function ArticleCard({ post, article, meta, actions }: ArticleCardProps) 
       <Card variant="card" className="variant-primary variant-border min-w-0">
         <PostCover post={post} priority />
 
-        <CardHeader className="gap-4">
+        <CardHeader className="gap-3 space-y-0">
           {/* The page's only h1. The render pipeline shifts body headings so the
               shallowest becomes an h2, which keeps this true whatever a post
               contains and without skipping a level. */}
@@ -54,6 +55,8 @@ export function ArticleCard({ post, article, meta, actions }: ArticleCardProps) 
             {meta}
             {actions && <div className="ml-auto">{actions}</div>}
           </div>
+
+          {reactions}
 
           <PostTags tags={post.tags} label="Article tags" />
         </CardHeader>

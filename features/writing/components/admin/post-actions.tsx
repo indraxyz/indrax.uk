@@ -35,9 +35,10 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group"
 import { controlClassNames } from "@/components/ui/variants"
 import { PostStatusDialog } from "./post-status-dialog"
-import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
+import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { cachePostMutation, invalidatePostCollections } from "@/features/writing/api/mutation-cache"
 import { apiErrorMessage } from "@/lib/api-client"
-import type { AdminPost, PostStatus } from "@/features/writing/types"
+import type { ActionResult, AdminPost, PostStatus } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
 type Action = "view" | "status" | "delete"
@@ -96,7 +97,7 @@ export function PostActions({
 
   const run = (
     kind: Action,
-    action: () => Promise<{ ok: boolean; message?: string }>,
+    action: () => Promise<ActionResult>,
     then?: () => void,
     reportError = setError
   ) => {
@@ -111,14 +112,20 @@ export function PostActions({
           reportError(result.message ?? "That did not work.")
           return
         }
-        if (kind !== "view")
+        if (kind !== "view") {
+          cachePostMutation(queryClient, result)
           await Promise.all([
-            queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
-            queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+            invalidatePostCollections(queryClient),
+            ...(!result.post && !result.postState
+              ? [
+                  queryClient.invalidateQueries({
+                    queryKey: adminKeys.post(post.id),
+                    refetchType: kind === "delete" ? "none" : "active",
+                  }),
+                ]
+              : []),
           ])
+        }
         then?.()
       } catch (error) {
         reportError(apiErrorMessage(error))
@@ -206,7 +213,7 @@ export function PostActions({
                 {onRefresh && savedPost && (
                   <Menu.Item disabled={busy} onClick={onRefresh} className={menuItemClass}>
                     <RefreshCw className="h-4 w-4" aria-hidden />
-                    Refresh post
+                    Refresh
                   </Menu.Item>
                 )}
                 <Menu.Item

@@ -47,3 +47,17 @@ export function reconcilePostStatus(
     saved: { ...saved, status },
   }
 }
+
+/** Apply server normalization only to fields the author has not edited since submission. */
+export function reconcileSavedFields(
+  current: PostFormFields,
+  submitted: PostFormFields,
+  saved: PostFormFields
+): PostFormFields {
+  const next = { ...current }
+  function acknowledge<K extends keyof PostFormFields>(key: K) {
+    if (JSON.stringify(current[key]) === JSON.stringify(submitted[key])) next[key] = saved[key]
+  }
+  for (const key of Object.keys(saved) as (keyof PostFormFields)[]) acknowledge(key)
+  return next
+}

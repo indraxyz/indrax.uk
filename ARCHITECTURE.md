@@ -154,6 +154,9 @@ Mutation bodies are streamed with a 512 KiB ceiling before JSON parsing, includi
 requests without Content-Length. Untrusted IDs, tags, limits and page numbers are
 validated/bounded before SQL/cache access. Document validation occurs once in the
 mutation; the server computes reading time, derived excerpt and timestamps.
+Successful save responses include the canonical AdminPost snapshot. Relations are
+read inside the write batch and the validated document is reused, avoiding a
+subsequent detail API request. Status responses return lightweight metadata.
 Responses use structured safe errors and `no-store`. A 401 never returns private
 post data. Preview tokens are bounded and verified before the database; the API
 returns sanitized HTML/headings and metadata without raw document duplication.

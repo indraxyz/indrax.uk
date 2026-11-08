@@ -86,7 +86,7 @@ for (const status of ["draft", "archived", "published"]) {
     await more(page)
     await expect(page.getByRole("menuitem")).toHaveText([
       status === "published" ? "Visit" : "Preview",
-      "Refresh post",
+      "Refresh",
       status === "published" ? "Unpublish" : "Publish",
       ...(status === "archived" ? [] : ["Archive"]),
       "Delete",
@@ -239,12 +239,7 @@ test("archives a saved post with confirmation and retry, then offers Publish aga
   await expect(dialog).toHaveCount(0)
   expect(writes.at(-1)?.data.status).toBe("archived")
   await more(page)
-  await expect(page.getByRole("menuitem")).toHaveText([
-    "Preview",
-    "Refresh post",
-    "Publish",
-    "Delete",
-  ])
+  await expect(page.getByRole("menuitem")).toHaveText(["Preview", "Refresh", "Publish", "Delete"])
   await page.getByRole("menuitem", { name: "Publish", exact: true }).click()
   const publish = page.getByRole("alertdialog", { name: "Publish post?", exact: true })
   await publish.getByRole("button", { name: "Publish post", exact: true }).click()

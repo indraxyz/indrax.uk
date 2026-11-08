@@ -30,43 +30,81 @@ async function mockReactions(page: Page, beforeWrite?: () => Promise<void>) {
   return writes
 }
 
+const controls = (page: Page) => page.getByRole("group", { name: "Reaction controls", exact: true })
+const summary = (page: Page) => page.getByRole("region", { name: "Reader reactions", exact: true })
+const picker = (page: Page) => page.getByRole("dialog", { name: "Choose a reaction", exact: true })
+
+async function chooseReaction(page: Page, label: string) {
+  await controls(page).getByRole("button", { name: "Add reaction", exact: true }).click()
+  await picker(page).getByRole("button", { name: label, exact: true }).click()
+  await expect(picker(page)).toHaveCount(0)
+}
+
 test.describe("public reader reactions", () => {
   test.skip(
     !process.env.DATABASE_URL,
     "needs seeded public article HTML; reaction APIs are isolated browser fixtures"
   )
 
-  test("creates identity on first keyboard reaction and persists independent emoji across reload", async ({
+  test("hides empty counts and adds independent emoji through a keyboard picker without refetching", async ({
+    page,
+  }) => {
+    const requests: string[] = []
+    page.on("request", (request) => {
+      if (request.method() === "GET" && request.url().endsWith("/reactions"))
+        requests.push(request.url())
+    })
+    const writes = await mockReactions(page)
+    await page.goto(`/writing/${SEEDED_POST_SLUG}`)
+    const trigger = controls(page).getByRole("button", { name: "Add reaction", exact: true })
+    await expect(trigger).toBeEnabled()
+    await expect(summary(page)).toHaveCount(0)
+    expect(await page.evaluate((key) => localStorage.getItem(key), REACTION_VISITOR_KEY)).toBeNull()
+    await trigger.focus()
+    await page.keyboard.press("Space")
+    await expect(picker(page).getByRole("button")).toHaveCount(5)
+    const love = picker(page).getByRole("button", { name: "Love", exact: true })
+    await love.focus()
+    await page.keyboard.press("Space")
+    await expect(picker(page)).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    await expect(
+      summary(page).getByRole("button", { name: "Love: 1 reaction", exact: true })
+    ).toHaveAttribute("aria-pressed", "true")
+    await chooseReaction(page, "Rocket")
+    await expect(
+      summary(page).getByRole("button", { name: "Rocket: 1 reaction", exact: true })
+    ).toHaveAttribute("aria-pressed", "true")
+    await expect(summary(page).getByRole("button")).toHaveCount(2)
+    expect(writes).toHaveLength(2)
+    expect(requests).toHaveLength(1)
+    await page.reload()
+    await expect(
+      summary(page).getByRole("button", { name: "Love: 1 reaction", exact: true })
+    ).toHaveAttribute("aria-pressed", "true")
+    await expect(
+      summary(page).getByRole("button", { name: "Rocket: 1 reaction", exact: true })
+    ).toHaveAttribute("aria-pressed", "true")
+    await summary(page).getByRole("button", { name: "Love: 1 reaction", exact: true }).click()
+    await expect(summary(page).getByRole("button", { name: /Love:/ })).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    await expect(controls(page).getByRole("status")).toHaveText("Love reaction removed.")
+  })
+
+  test("dismisses the picker with Escape without creating identity or writing", async ({
     page,
   }) => {
     const writes = await mockReactions(page)
     await page.goto(`/writing/${SEEDED_POST_SLUG}`)
-    const bar = page.getByRole("region", { name: "Reader reactions" })
-    const love = bar.getByRole("button", { name: "Love: 0 reactions", exact: true })
-    await expect(love).toBeEnabled()
+    const trigger = controls(page).getByRole("button", { name: "Add reaction", exact: true })
+    await expect(trigger).toBeEnabled()
+    await trigger.click()
+    await expect(picker(page)).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(picker(page)).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+    expect(writes).toHaveLength(0)
     expect(await page.evaluate((key) => localStorage.getItem(key), REACTION_VISITOR_KEY)).toBeNull()
-    await love.focus()
-    await page.keyboard.press("Space")
-    await expect(
-      bar.getByRole("button", { name: "Love: 1 reactions", exact: true })
-    ).toHaveAttribute("aria-pressed", "true")
-    await bar.getByRole("button", { name: "Rocket: 0 reactions", exact: true }).click()
-    await expect(
-      bar.getByRole("button", { name: "Rocket: 1 reactions", exact: true })
-    ).toHaveAttribute("aria-pressed", "true")
-    expect(writes).toHaveLength(2)
-    await page.reload()
-    await expect(
-      bar.getByRole("button", { name: "Love: 1 reactions", exact: true })
-    ).toHaveAttribute("aria-pressed", "true")
-    await expect(
-      bar.getByRole("button", { name: "Rocket: 1 reactions", exact: true })
-    ).toHaveAttribute("aria-pressed", "true")
-    await bar.getByRole("button", { name: "Love: 1 reactions", exact: true }).click()
-    await expect(
-      bar.getByRole("button", { name: "Love: 0 reactions", exact: true })
-    ).toHaveAttribute("aria-pressed", "false")
-    await expect(bar.getByRole("status")).toHaveText("Love reaction removed.")
   })
 
   for (const replacement of [null, "550e8400-e29b-41d4-a716-446655440000"]) {
@@ -79,11 +117,10 @@ test.describe("public reader reactions", () => {
       })
       await mockReactions(page, () => waiting)
       await page.goto(`/writing/${SEEDED_POST_SLUG}`)
-      const bar = page.getByRole("region", { name: "Reader reactions" })
       const put = page.waitForRequest(
         (request) => request.method() === "PUT" && request.url().endsWith("/reactions")
       )
-      await bar.getByRole("button", { name: "Love: 0 reactions", exact: true }).click()
+      await chooseReaction(page, "Love")
       await put
       await page.evaluate(
         ({ key, replacement }) => {
@@ -95,7 +132,7 @@ test.describe("public reader reactions", () => {
       )
       release()
       await expect(
-        bar.getByRole("button", { name: "Love: 1 reactions", exact: true })
+        summary(page).getByRole("button", { name: "Love: 1 reaction", exact: true })
       ).toHaveAttribute("aria-pressed", "false")
       expect(await page.evaluate((key) => localStorage.getItem(key), REACTION_VISITOR_KEY)).toBe(
         replacement
@@ -103,7 +140,7 @@ test.describe("public reader reactions", () => {
     })
   }
 
-  test("recovers a failed load without invented counts and retains counts after a failed mutation", async ({
+  test("recovers a failed load and announces failed mutations without invented counts", async ({
     page,
   }) => {
     await mockReactions(page)
@@ -113,26 +150,32 @@ test.describe("public reader reactions", () => {
       { times: 1 }
     )
     await page.goto(`/writing/${SEEDED_POST_SLUG}`)
-    const bar = page.getByRole("region", { name: "Reader reactions" })
-    await expect(bar.getByRole("status")).toHaveText("Reactions could not be loaded.")
-    await expect(bar.getByRole("button", { name: "Love: count unavailable" })).toBeDisabled()
-    await bar.getByRole("button", { name: "Try loading reactions again" }).click()
-    const love = bar.getByRole("button", { name: "Love: 0 reactions", exact: true })
-    await expect(love).toBeEnabled()
+    await expect(controls(page).getByRole("status")).toHaveText("Reactions could not be loaded.")
+    await expect(
+      controls(page).getByRole("button", { name: "Add reaction", exact: true })
+    ).toBeDisabled()
+    await expect(summary(page).getByRole("button", { name: /Love/ })).toHaveCount(0)
+    await summary(page).getByRole("button", { name: "Try loading reactions again" }).click()
+    await expect(
+      controls(page).getByRole("button", { name: "Add reaction", exact: true })
+    ).toBeEnabled()
+    await expect(summary(page)).toHaveCount(0)
     await page.route("**/api/writing/posts/*/reactions", (route) =>
       route.request().method() === "PUT"
         ? route.fulfill({ status: 429, json: { message: "Too many requests" } })
         : route.fallback()
     )
-    await love.click()
-    await expect(bar.getByRole("status")).toHaveText(
+    await chooseReaction(page, "Love")
+    await expect(controls(page).getByRole("status")).toHaveText(
       "Your reaction could not be saved. Please try again."
     )
-    await expect(love).toHaveAttribute("aria-pressed", "false")
-    await expect(love).toBeEnabled()
+    await expect(summary(page).getByRole("button", { name: /Love/ })).toHaveCount(0)
+    await expect(
+      controls(page).getByRole("button", { name: "Add reaction", exact: true })
+    ).toBeEnabled()
   })
 
-  test("announces blocked functional storage and does not submit a write", async ({ page }) => {
+  test("announces blocked functional storage without submitting a write", async ({ page }) => {
     const writes = await mockReactions(page)
     await page.addInitScript((key) => {
       const original = Storage.prototype.setItem
@@ -142,24 +185,54 @@ test.describe("public reader reactions", () => {
       }
     }, REACTION_VISITOR_KEY)
     await page.goto(`/writing/${SEEDED_POST_SLUG}`)
-    const bar = page.getByRole("region", { name: "Reader reactions" })
-    await bar.getByRole("button", { name: "Love: 0 reactions", exact: true }).click()
-    await expect(bar.getByRole("status")).toHaveText(
+    await chooseReaction(page, "Love")
+    await expect(controls(page).getByRole("status")).toHaveText(
       "Allow site storage to save your reaction, then try again."
     )
     expect(writes).toHaveLength(0)
+    await expect(summary(page).getByRole("button")).toHaveCount(0)
   })
 
-  test("wraps on mobile with accessible names and pressed states", async ({ page }) => {
+  test("places counted reactions between metadata and tags with a balanced accessible mobile picker", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await mockReactions(page)
     await page.goto(`/writing/${SEEDED_POST_SLUG}`)
-    const bar = page.getByRole("region", { name: "Reader reactions" })
-    await expect(bar.getByRole("button", { name: "Love: 0 reactions", exact: true })).toBeEnabled()
+    await chooseReaction(page, "Love")
+    const chip = summary(page).getByRole("button", { name: "Love: 1 reaction", exact: true })
+    await expect(chip).toBeVisible()
+    const tags = page.getByRole("navigation", { name: "Article tags", exact: true })
+    const add = await controls(page)
+      .getByRole("button", { name: "Add reaction", exact: true })
+      .boundingBox()
+    const share = await page
+      .getByRole("button", { name: "Copy article link", exact: true })
+      .boundingBox()
+    await expect(chip).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    await expect(chip).toHaveCSS("border-top-width", "0px")
+    await expect(chip.locator("span").last()).toHaveCSS("font-size", "12px")
+    const gaps = await page.locator("article h1").evaluate((heading) => {
+      const rows = [...heading.parentElement!.children]
+        .map((row) => row.getBoundingClientRect())
+        .filter((row) => row.height > 0)
+      return rows.slice(1).map((row, index) => row.top - rows[index].bottom)
+    })
+    for (const gap of gaps) expect(gap).toBeCloseTo(12, 0)
+    const reactionBounds = await summary(page).boundingBox()
+    const tagBounds = await tags.boundingBox()
+    expect(add!.x).toBeLessThan(share!.x)
+    expect(reactionBounds!.y).toBeGreaterThanOrEqual(add!.y + add!.height)
+    expect(reactionBounds!.y + reactionBounds!.height).toBeLessThanOrEqual(tagBounds!.y)
+    expect(
+      await chip
+        .locator("span")
+        .first()
+        .evaluate((node) => getComputedStyle(node).fontSize)
+    ).toBe("14px")
+    await controls(page).getByRole("button", { name: "Add reaction", exact: true }).click()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
-    const results = await new AxeBuilder({ page })
-      .include('section[aria-label="Reader reactions"]')
-      .analyze()
+    const results = await new AxeBuilder({ page }).include('div[role="dialog"]').analyze()
     expect(results.violations).toEqual([])
   })
 })
@@ -190,6 +263,7 @@ test("signed previews expose no reaction controls or requests", async ({ page })
   await page.goto("/writing/reaction-fixture/preview?token=browser-fixture")
   await expect(page.getByRole("heading", { name: "Private reaction fixture" })).toBeVisible()
   await expect(page.getByRole("region", { name: "Reader reactions" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Add reaction", exact: true })).toHaveCount(0)
   expect(requests).toEqual([])
 })
 

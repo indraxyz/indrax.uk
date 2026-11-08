@@ -334,7 +334,18 @@ test.describe("a seeded writing archive", () => {
         `/writing?tag=${SEEDED_TAG_SLUG}`,
         `/writing/${SEEDED_POST_SLUG}`,
       ]) {
+        const archive = [
+          "/writing",
+          "/writing?q=renderer",
+          `/writing?tag=${SEEDED_TAG_SLUG}`,
+        ].includes(path)
+        const response = archive
+          ? page.waitForResponse(
+              (response) => new URL(response.url()).pathname === "/api/writing/posts"
+            )
+          : null
         await page.goto(path)
+        if (response) expect((await response).ok()).toBe(true)
         // Home shows recent writing as a rail; e2e/home-writing.spec.ts checks that
         // its cards keep this grid's column width.
         if (["/writing", "/writing?q=renderer", `/writing?tag=${SEEDED_TAG_SLUG}`].includes(path)) {

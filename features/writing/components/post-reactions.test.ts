@@ -7,19 +7,23 @@ import { REACTION_VISITOR_KEY } from "../reactions"
 
 afterEach(() => vi.unstubAllGlobals())
 
-it("renders accessible reaction buttons without invented counts or a server-side fetch", () => {
+it("renders only the accessible picker trigger without invented counts or a server-side fetch", () => {
   const fetch = vi.fn()
   vi.stubGlobal("fetch", fetch)
   const html = renderToStaticMarkup(
     createElement(
       QueryClientProvider,
       { client: new QueryClient() },
-      createElement(PostReactions, { slug: "article" })
+      createElement(PostReactions, {
+        slug: "article",
+        children: ({ trigger, summary }) => createElement("div", null, trigger, summary),
+      })
     )
   )
-  expect(html.match(/aria-pressed="false"/g)).toHaveLength(5)
-  expect(html.match(/count unavailable/g)).toHaveLength(5)
-  expect(html).toContain('aria-label="Reader reactions"')
+  expect(html).toContain('aria-label="Add reaction"')
+  expect(html).not.toContain('aria-label="Reader reactions"')
+  expect(html).not.toContain("aria-pressed")
+  expect(html).not.toContain("count unavailable")
   expect(html).toContain('role="status"')
   expect(fetch).not.toHaveBeenCalled()
 })
@@ -35,4 +39,28 @@ it("does not create identity while reading, including blocked storage", () => {
     throw new Error("blocked")
   })
   expect(readReactionVisitor()).toBeNull()
+})
+
+it("shows only positive reaction counts from the shared query cache", () => {
+  const client = new QueryClient()
+  client.setQueryData(["writing", "reactions", "article", null], {
+    counts: { love: 2, noted: 0, thumbsup: 0, fire: 0, rocket: 1 },
+    selected: ["love"],
+  })
+  const html = renderToStaticMarkup(
+    createElement(
+      QueryClientProvider,
+      { client },
+      createElement(PostReactions, {
+        slug: "article",
+        children: ({ trigger, summary }) => createElement("div", null, trigger, summary),
+      })
+    )
+  )
+  expect(html).toContain('aria-label="Love: 2 reactions"')
+  expect(html).toContain('aria-label="Rocket: 1 reaction"')
+  expect(html).not.toContain("📝")
+  expect(html).not.toContain("👍")
+  expect(html).not.toContain("🔥")
+  expect(html.match(/aria-pressed=/g)).toHaveLength(2)
 })

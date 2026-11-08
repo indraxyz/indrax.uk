@@ -62,7 +62,7 @@ async function setup(page: Page) {
           json: { ok: false, message: "Temporary save failure." },
         })
       stored = { ...stored, ...input, id: ID, content: input.content, tags: [] }
-      return route.fulfill({ json: { ok: true, postId: ID } })
+      return route.fulfill({ json: { ok: true, postId: ID, post: stored } })
     }
     if (path === "/api/admin/tags") return route.fulfill({ json: [] })
     return route.fulfill({ json: {} })
@@ -83,7 +83,7 @@ async function setup(page: Page) {
 
 async function refresh(page: Page) {
   await page.getByRole("button", { name: "More post actions" }).click()
-  await page.getByRole("menuitem", { name: "Refresh post" }).click()
+  await page.getByRole("menuitem", { name: "Refresh", exact: true }).click()
 }
 
 test("refreshes only the filtered post results and retains rows on failure", async ({ page }) => {
@@ -221,6 +221,7 @@ test("creates a valid changed draft once and reuses its ID on subsequent autosav
   await page.clock.fastForward(60_000)
   await expect.poll(() => state.writes.length).toBe(2)
   expect(state.writes[1]).toMatchObject({ id: ID, status: "draft", excerpt: "Second save" })
+  expect(state.reads).toBe(0)
 })
 
 test("failed autosave retains work and retries only on the next minute", async ({ page }) => {
@@ -292,17 +293,56 @@ for (const status of ["published", "archived"] as const) {
   })
 }
 
-test("retains the editor when the post recheck after autosave fails", async ({ page }) => {
-  await setup(page)
+test("uses the save response without refetching detail even when detail reads are unavailable", async ({
+  page,
+}) => {
+  const state = await setup(page)
   await page.clock.install()
   await page.goto(`/admin/posts/edit/${ID}`)
   await expect(page.locator(".tiptap")).toBeVisible()
-  await page.route(`**/api/admin/posts/${ID}`, (route) =>
-    route.fulfill({ status: 503, json: { error: "Unavailable" } })
-  )
+  let extraReads = 0
+  await page.route(`**/api/admin/posts/${ID}`, (route) => {
+    extraReads++
+    return route.fulfill({ status: 503, json: { error: "Unavailable" } })
+  })
   await page.getByLabel("Excerpt", { exact: true }).fill("Keep the editor open")
   await page.clock.fastForward(60_000)
-  await expect(page.getByRole("alert")).toContainText("editor changes are still here")
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible()
+  expect(state.writes).toHaveLength(1)
+  expect(extraReads).toBe(0)
+  expect(state.reads).toBe(1)
+  await expect(page.getByRole("alert")).toHaveCount(0)
   await expect(page.getByLabel("Excerpt", { exact: true })).toHaveValue("Keep the editor open")
   await expect(page.locator(".tiptap")).toContainText("Saved body")
+})
+
+test("updates publication state from the mutation response without rereading the article", async ({
+  page,
+}) => {
+  const state = await setup(page)
+  await page.route(`**/api/admin/posts/${ID}/status`, (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        postId: ID,
+        postState: {
+          id: ID,
+          status: route.request().postDataJSON().status,
+          publishedAt: "2026-11-08T00:00:00Z",
+          updatedAt: "2026-11-08T01:00:00Z",
+        },
+      },
+    })
+  )
+  await page.goto(`/admin/posts/edit/${ID}`)
+  await expect(page.locator(".tiptap")).toBeVisible()
+  await page.getByRole("button", { name: "More post actions" }).click()
+  await page.getByRole("menuitem", { name: "Publish", exact: true }).click()
+  const dialog = page.getByRole("alertdialog", { name: "Publish post?", exact: true })
+  await dialog.getByRole("button", { name: "Publish post", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByLabel("Status", { exact: true })).toHaveValue("published")
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeDisabled()
+  await expect(page.locator(".tiptap")).toContainText("Saved body")
+  expect(state.reads).toBe(1)
 })

@@ -70,21 +70,30 @@ export default function ArticlePage() {
         />
       ))}
 
-      <ArticleCard
-        post={post}
-        article={article}
-        actions={<ShareLink slug={post.slug} />}
-        meta={
-          post.viewCount > 0 && (
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" aria-hidden />
-              {post.viewCount.toLocaleString("en-US")} views
-            </span>
-          )
-        }
-      />
+      <PostReactions key={post.slug} slug={post.slug}>
+        {({ trigger, summary }) => (
+          <ArticleCard
+            post={post}
+            article={article}
+            actions={
+              <div className="flex items-center gap-1">
+                {trigger}
+                <ShareLink slug={post.slug} />
+              </div>
+            }
+            reactions={summary}
+            meta={
+              post.viewCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" aria-hidden />
+                  {post.viewCount.toLocaleString("en-US")} views
+                </span>
+              )
+            }
+          />
+        )}
+      </PostReactions>
 
-      <PostReactions key={post.slug} slug={post.slug} />
       <RelatedPosts posts={related} />
 
       {/* The article body remains readable without these enhancements. The view

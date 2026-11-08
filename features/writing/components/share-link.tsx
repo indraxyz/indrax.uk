@@ -1,7 +1,8 @@
-import { useState } from "react"
-import { Check, Share2 } from "lucide-react"
+import { useRef, useState } from "react"
+import { Share2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ToastProvider, useToast } from "@/components/ui/toast"
 import { absoluteUrl } from "@/config/site"
 import { WRITING_CONFIG } from "@/features/writing/config"
 
@@ -14,42 +15,49 @@ export async function copyWritingLink(slug: string, clipboard: Pick<Clipboard, "
 
 /** Public articles only: the URL is constructed without location's query or hash. */
 export function ShareLink({ slug }: { slug: string }) {
-  const [result, setResult] = useState<"copied" | "error" | null>(null)
+  return (
+    <ToastProvider>
+      <ShareButton slug={slug} />
+    </ToastProvider>
+  )
+}
+
+function ShareButton({ slug }: { slug: string }) {
+  const toast = useToast()
   const [copying, setCopying] = useState(false)
+  const inFlight = useRef(false)
 
   async function copy() {
+    if (inFlight.current) return
+    inFlight.current = true
     setCopying(true)
-    setResult(null)
     try {
       await copyWritingLink(slug, navigator.clipboard)
-      setResult("copied")
+      toast.add({ id: "article-link-copy", title: "Link copied" })
     } catch {
-      setResult("error")
+      toast.add({
+        id: "article-link-copy",
+        title: "Could not copy. Copy the address from your browser.",
+      })
     } finally {
+      inFlight.current = false
       setCopying(false)
     }
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Copy article link"
-        title="Copy article link"
-        disabled={copying}
-        onClick={copy}
-      >
-        {result === "copied" ? <Check aria-hidden /> : <Share2 aria-hidden />}
-      </Button>
-      <span role="status" className="text-xs text-muted-foreground">
-        {result === "copied"
-          ? "Link copied"
-          : result === "error"
-            ? "Could not copy. Copy the address from your browser."
-            : ""}
-      </span>
-    </div>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Copy article link"
+      title="Copy article link"
+      aria-disabled={copying}
+      aria-busy={copying}
+      onClick={copy}
+      className="print:hidden"
+    >
+      <Share2 aria-hidden />
+    </Button>
   )
 }

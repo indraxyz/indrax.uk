@@ -205,4 +205,8 @@ export interface ActionResult {
   errors?: Record<string, string[]>
   message?: string
   postId?: string
+  /** Canonical saved editor data, returned without a second detail request. */
+  post?: AdminPost
+  /** Status-only writes never return or fetch the article document. */
+  postState?: Pick<AdminPost, "id" | "status" | "publishedAt" | "updatedAt">
 }

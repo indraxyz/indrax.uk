@@ -51,6 +51,7 @@ interface ArchiveControlsProps {
   retryTags: () => void
   onRefresh?: () => void
   refreshing?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /** The URL owns applied settings; the sheet owns drafts until Apply. */
@@ -62,6 +63,7 @@ export function ArchiveControls({
   retryTags,
   onRefresh,
   refreshing = false,
+  onOpenChange,
 }: ArchiveControlsProps) {
   const [, setParams] = useSearchParams()
   const hydrated = useSyncExternalStore(subscribeToHydration, hydratedSnapshot, serverSnapshot)
@@ -80,6 +82,15 @@ export function ArchiveControls({
   // Keep URL-selected tags removable even if they have since lost their last public article.
   const unavailable = draft.tags.filter((slug) => !knownTags.some((tag) => tag.slug === slug))
 
+  function changeOpen(next: boolean) {
+    if (next) {
+      setDraft({ ...options, tags: [...options.tags] })
+      setError("")
+    }
+    setOpen(next)
+    onOpenChange?.(next)
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault()
     if (
@@ -93,7 +104,7 @@ export function ArchiveControls({
       return
     }
     setParams(serialize({ ...draft, q: options.q, page: 1 }))
-    setOpen(false)
+    changeOpen(false)
   }
 
   function toggleTag(slug: string) {
@@ -114,16 +125,7 @@ export function ArchiveControls({
         action={admin ? "/admin/posts" : "/writing"}
         label={admin ? "Search posts" : "Search articles"}
       />
-      <Sheet
-        open={open}
-        onOpenChange={(next) => {
-          if (next) {
-            setDraft({ ...options, tags: [...options.tags] })
-            setError("")
-          }
-          setOpen(next)
-        }}
-      >
+      <Sheet open={open} onOpenChange={changeOpen}>
         <ButtonGroup aria-label="Archive controls">
           <SheetTrigger
             data-slot="button"
@@ -384,7 +386,7 @@ export function ArchiveControls({
                       q: options.q,
                     })
                   )
-                  setOpen(false)
+                  changeOpen(false)
                 }}
                 className={cn(controlClassNames, "min-h-11 justify-center px-4 py-3")}
               >

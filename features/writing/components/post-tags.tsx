@@ -1,4 +1,5 @@
 import { useId, useState } from "react"
+import { Minus } from "lucide-react"
 
 import { Badge, badgeVariants } from "@/components/ui/badge"
 import { TagPill } from "@/features/writing/components/tag-pill"
@@ -31,7 +32,10 @@ export function PostTags({ tags, label = "Post tags", linkTags = true }: PostTag
     <Container
       role={linkTags ? undefined : "group"}
       aria-label={label}
-      className={cn("flex flex-wrap items-center gap-2", linkTags && "relative z-10")}
+      className={cn(
+        "flex flex-wrap items-center gap-2 leading-normal",
+        linkTags && "relative z-10"
+      )}
     >
       {tags.slice(0, 2).map(tagContent)}
       {remaining > 0 && (
@@ -44,13 +48,14 @@ export function PostTags({ tags, label = "Post tags", linkTags = true }: PostTag
             aria-expanded={expanded}
             aria-controls={id}
             aria-label={expanded ? "Show fewer tags" : `Show ${remaining} more tags`}
+            title={expanded ? "Show fewer tags" : `Show ${remaining} more tags`}
             onClick={() => setExpanded((value) => !value)}
             className={badgeVariants({
               variant: "tertiary",
-              className: "min-h-9 cursor-pointer hover:opacity-85",
+              className: "cursor-pointer leading-normal hover:opacity-85",
             })}
           >
-            {expanded ? "Show fewer" : `+${remaining}`}
+            {expanded ? <Minus className="h-[1lh] w-3" aria-hidden /> : `+${remaining}`}
           </button>
         </>
       )}

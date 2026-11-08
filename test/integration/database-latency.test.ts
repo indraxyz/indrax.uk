@@ -19,7 +19,7 @@ import {
   getPostForEdit,
   listAllPosts,
 } from "@/features/writing/data/admin-queries.server"
-import { savePost } from "@/features/writing/data/mutations.server"
+import { savePost, setPostStatus } from "@/features/writing/data/mutations.server"
 import {
   getPostBySlug,
   getPostsByTag,
@@ -186,15 +186,15 @@ it("saves unchanged tag membership with two requests and preserves the original 
       .where(eq(schema.postTags.postId, postIds[2]))
   const before = await tuple()
   calls = 0
-  expect(await savePost({ ...savePayload, tags: [tagName.toUpperCase(), tagName] })).toMatchObject({
-    ok: true,
-  })
+  const result = await savePost({ ...savePayload, tags: [tagName.toUpperCase(), tagName] })
+  expect(result).toMatchObject({ ok: true })
   expect(calls).toBe(2)
   expect(batches).toBe(1)
   expect(await tuple()).toEqual(before)
   const saved = await getPostForEdit(postIds[2])
   expect(saved?.excerpt).toBe("Updated excerpt")
   expect(saved?.tags).toEqual([{ id: tagId, name: tagName, slug: tagName }])
+  expect(result.post).toEqual(saved)
 })
 
 it("synchronizes the final submitted tags after another save changes them between read and write", async () => {
@@ -283,7 +283,29 @@ it("creates a post and its new tag joins in one write batch", async () => {
   if (result.postId) postIds.push(result.postId)
   expect(calls).toBe(2)
   expect(batches).toBe(1)
-  expect((await getPostForEdit(result.postId!))?.tags).toMatchObject([
-    { slug: `${prefix}-new-tag` },
-  ])
+  const saved = await getPostForEdit(result.postId!)
+  expect(saved?.tags).toMatchObject([{ slug: `${prefix}-new-tag` }])
+  expect(result.post).toEqual(saved)
+})
+
+it("returns status metadata in the update response without downloading the article body", async () => {
+  const result = await setPostStatus(postIds[2], "draft")
+  expect(result).toMatchObject({
+    ok: true,
+    postId: postIds[2],
+    postState: {
+      id: postIds[2],
+      status: "draft",
+      updatedAt: expect.any(String),
+      publishedAt: expect.any(String),
+    },
+  })
+  expect(calls).toBe(2)
+  expect(result.post).toBeUndefined()
+  const saved = await getPostForEdit(postIds[2])
+  expect(result.postState).toMatchObject({
+    status: saved?.status,
+    updatedAt: saved?.updatedAt,
+    publishedAt: saved?.publishedAt,
+  })
 })

@@ -19,8 +19,9 @@ it("does not report denied clipboard access as success", async () => {
   ).rejects.toThrow("Denied")
 })
 
-it("names the icon action and exposes an announcement region", () => {
+it("names the icon action without inline copy feedback", () => {
   const html = renderToStaticMarkup(createElement(ShareLink, { slug: "article-slug" }))
   expect(html).toContain('aria-label="Copy article link"')
-  expect(html).toContain('role="status"')
+  expect(html).not.toContain("Link copied")
+  expect(html).not.toContain("lucide-check")
 })

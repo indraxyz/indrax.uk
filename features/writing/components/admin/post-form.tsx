@@ -29,7 +29,8 @@ import { PostStatusDialog } from "./post-status-dialog"
 import { controlClassNames, fieldClassNames } from "@/components/ui/variants"
 import { ImageUpload } from "@/features/writing/components/admin/image-upload"
 import { WRITING_CONFIG } from "@/features/writing/config"
-import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
+import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { cachePostMutation, invalidatePostCollections } from "@/features/writing/api/mutation-cache"
 import { api, apiErrorMessage } from "@/lib/api-client"
 import type { ActionResult } from "@/features/writing/types"
 import {
@@ -42,6 +43,7 @@ import {
   createPostFormFields,
   postFormSnapshot,
   reconcilePostStatus,
+  reconcileSavedFields,
   type PostFormFields,
 } from "@/features/writing/utils/post-form-state"
 import {
@@ -279,20 +281,23 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
         setResult(outcome)
         if (!outcome.ok) return
         setStatusConfirmationOpen(false)
-        savedFieldsRef.current = submitted
-        setSavedFields(submitted)
+        const canonical = outcome.post ? createPostFormFields(outcome.post) : submitted
+        currentFields.current = reconcileSavedFields(currentFields.current, submitted, canonical)
+        savedFieldsRef.current = canonical
+        if (outcome.post) syncedStatus.current = canonical.status
+        setFields(currentFields.current)
+        setSavedFields(canonical)
+        cachePostMutation(queryClient, outcome)
         if (outcome.postId) {
           savedId.current = outcome.postId
           setPersistedId(outcome.postId)
         }
         await Promise.all([
-          ...(savedId.current
+          // Older deployed responses may not carry the snapshot yet.
+          ...(!outcome.post && savedId.current
             ? [queryClient.invalidateQueries({ queryKey: adminKeys.post(savedId.current) })]
             : []),
-          queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
-          queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
-          queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
-          queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+          invalidatePostCollections(queryClient),
         ])
         // An author can keep editing while a request runs. Retain those fields
         // and the created ID; the next save updates that post without losing edits.
