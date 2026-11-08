@@ -54,7 +54,15 @@ export function Component() {
           tags={tags.data}
           tagsError={tags.isError}
           retryTags={() => void tags.refetch()}
+          onRefresh={() => void query.refetch()}
+          refreshing={query.isFetching}
         />
+        {query.isError && query.data && (
+          <p role="alert" className="text-sm text-destructive">
+            Posts could not be refreshed. Your current results are still shown. Try refreshing
+            again.
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
             {query.data && (

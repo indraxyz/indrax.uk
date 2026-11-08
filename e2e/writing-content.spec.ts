@@ -23,7 +23,7 @@ test.describe("a seeded writing archive", () => {
   test("keeps archive tags inside the filter sheet", async ({ page }) => {
     await page.goto("/writing")
     await expect(page.locator("[data-post-grid]")).toBeVisible()
-    await expect(page.getByRole("navigation", { name: "Tags" })).toHaveCount(0)
+    await expect(page.getByRole("navigation", { name: "Tags", exact: true })).toHaveCount(0)
     await page.getByRole("button", { name: "Filters and sort" }).click()
     const dialog = page.getByRole("dialog", { name: "Filters and sort" })
     await expect(dialog.getByRole("button", { name: /typescript/i })).toBeVisible()
@@ -139,7 +139,9 @@ test.describe("a seeded writing archive", () => {
     await expect(page.locator('a[href^="/writing/tags/"], a[href^="/writing/search"]')).toHaveCount(
       0
     )
-    const tag = page.locator("article").getByRole("link", { name: "TypeScript", exact: true })
+    const articleTags = page.getByRole("navigation", { name: "Article tags", exact: true })
+    await articleTags.getByRole("button", { name: /Show \d+ more tags/ }).click()
+    const tag = articleTags.getByRole("link", { name: "TypeScript", exact: true })
     await expect(tag).toHaveAttribute("href", `/writing?tag=${SEEDED_TAG_SLUG}`)
     await tag.click()
 

@@ -7,6 +7,15 @@ than editing framework-owned tables by hand.
 
 ## Content relationships
 
+Reader reactions are stored separately from post content in `post_reactions`.
+Each row is one allowed emoji for a random browser UUID and post; the composite
+primary key prevents duplicate additions. Deleting a post cascades its reactions.
+Reads and desired-state writes enforce the same published, nonfuture, nonempty
+content predicate as public writing. They never expose draft reaction counts.
+No IP address or user-agent fingerprint is stored. Apply the reactions migration
+before deploying code that enables these endpoints; Worker deployment does not
+run PostgreSQL migrations.
+
 ```mermaid
 erDiagram
   series o|--o{ posts : groups

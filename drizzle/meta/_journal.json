@@ -57,6 +57,13 @@
       "when": 1793546361886,
       "tag": "0007_media_upload_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794112854680,
+      "tag": "0008_post_reactions",
+      "breakpoints": true
     }
   ]
 }

@@ -6,12 +6,12 @@ export function Component() {
   const session = useAdminSession()
   return (
     <PostForm post={null} coverUploadsConfigured={session.coverUploadsConfigured}>
-      {({ form, saveButton, isSaving }) => (
+      {({ form, saveButton, isSaving, onActionsBusyChange }) => (
         <AdminShell
           title="New post"
           backLink={{ href: "/admin/posts", label: "Posts" }}
           actions={
-            <PostActions post={null} saving={isSaving}>
+            <PostActions post={null} saving={isSaving} onBusyChange={onActionsBusyChange}>
               {saveButton}
             </PostActions>
           }

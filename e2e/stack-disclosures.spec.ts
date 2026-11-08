@@ -102,6 +102,8 @@ test("stack explains the current development and protected release workflow", as
   const content = page.getByRole("region", { name: "Content", exact: true })
   await expect(content).toContainText("privacy-enhanced YouTube embeds")
   await expect(content).toContainText("proportional media resizing")
+  await expect(content).toContainText("valid drafts save every minute")
+  await expect(content).toContainText("published and archived edits use manual Save")
 
   const ci = page.getByRole("region", { name: "CI/CD", exact: true })
   await expect(ci).toContainText("two checks for pull requests")
@@ -118,13 +120,17 @@ test("stack explains the current development and protected release workflow", as
 
   const deployment = page.getByRole("region", { name: "Deployment", exact: true })
   await expect(deployment).toContainText("only explicitly allowed public settings")
+  await expect(deployment).toContainText("named develop Preview under indrax")
   await deployment.getByRole("button", { name: "Why Deployment", exact: true }).click()
-  await expect(deployment).toContainText("matching D1 analytics quota tables")
-  await expect(deployment).toContainText("security smoke check")
+  await expect(deployment).toContainText(
+    "D1 analytics quota tables when the Worker gateway is selected"
+  )
+  await expect(deployment).toContainText("public access, private boundaries and staging cleanup")
 
   const monitoring = page.getByRole("region", { name: "Measurement & monitoring", exact: true })
   await expect(monitoring).toContainText("same-origin Worker gateway")
-  await expect(monitoring).toContainText("shared monthly quotas in D1")
+  await expect(monitoring).toContainText("direct ingestion with a public project key")
+  await expect(monitoring).toContainText("monthly quotas in D1")
   await monitoring
     .getByRole("button", { name: "Why Measurement & monitoring", exact: true })
     .click()

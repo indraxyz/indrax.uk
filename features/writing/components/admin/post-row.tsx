@@ -5,6 +5,7 @@ import { Link } from "react-router"
 import { Badge } from "@/components/ui/badge"
 import { PostActions } from "./post-actions"
 import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS, STATUS_TONE } from "./post-display"
+import { PostTags } from "@/features/writing/components/post-tags"
 import { PostCover } from "@/features/writing/components/post-cover"
 import type { AdminPostSummary } from "@/features/writing/types"
 import { mediaUrl, formatDate } from "@/lib/utils"
@@ -56,8 +57,8 @@ export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary 
               : "Never published"}
             {" · "}
             Edited {formatDate(post.updatedAt, ADMIN_DATE_FORMAT)}
-            {post.tags.length > 0 && ` · ${post.tags.map((tag) => tag.name).join(", ")}`}
           </p>
+          <PostTags tags={post.tags} label={`Tags for ${post.title}`} linkTags={false} />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link

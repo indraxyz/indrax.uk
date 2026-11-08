@@ -279,7 +279,7 @@ test.describe("the public pages", () => {
       .filter({ has: page.getByRole("heading", { name: "Deployment", exact: true }) })
     await expect(data.getByText(/Cloudflare KV \/ D1 \/ R2/)).toBeVisible()
     await expect(data.getByText(/R2 stores uploaded images/)).toBeVisible()
-    await expect(deployment).toContainText("separate KV, D1, and R2 resources")
+    await expect(deployment).toContainText("separate database, KV, D1, and R2 resources")
     const auth = page.getByRole("region", { name: "Author access", exact: true })
     await expect(auth).toContainText("Better Auth handles GitHub sign-in")
     await expect(auth).toContainText("database-backed sessions")

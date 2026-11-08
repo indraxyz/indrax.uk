@@ -6,6 +6,13 @@ current totals rather than treating historical counts as current results.
 
 ## Test layers
 
+Writing interaction coverage includes expandable tags, canonical copying, reaction
+request validation and idempotency, filtered admin refresh, editor reload and
+dirty-only 60-second autosave. `e2e/admin-sync.spec.ts` and `e2e/reactions.spec.ts`
+belong to the serial writes project with the other authoring tests. Clock-driven
+autosave cases must not wait a real minute. Reaction integration cases use the
+explicit loopback-only `TEST_DATABASE_URL` and remove their own fixture rows.
+
 | Layer                 | Command                    | Boundary                                                           |
 | --------------------- | -------------------------- | ------------------------------------------------------------------ |
 | Formatting/lint/types | `npm run check`            | Formatting, ESLint, route type generation and TypeScript           |

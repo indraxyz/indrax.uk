@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 
+import { PostTags } from "@/features/writing/components/post-tags"
 import { Badge } from "@/components/ui/badge"
 import { PostActions } from "./post-actions"
 import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS, STATUS_TONE } from "./post-display"
@@ -82,8 +83,14 @@ const columns = column.columns([
     header: "Tags",
     enableSorting: false,
     meta: { className: "min-w-[10rem]" },
-    cell: ({ getValue }) =>
-      getValue() || (
+    cell: ({ row }) =>
+      row.original.tags.length > 0 ? (
+        <PostTags
+          tags={row.original.tags}
+          label={`Tags for ${row.original.title}`}
+          linkTags={false}
+        />
+      ) : (
         <>
           <span aria-hidden="true" className="text-muted-foreground">
             —
