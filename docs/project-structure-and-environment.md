@@ -123,6 +123,18 @@ The [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plug
 provides the runtime integration. Project scripts use the locally installed
 packages so development and CI follow the versions in the lockfile.
 
+## Which generated files stay out of Git?
+
+`.gitignore` covers npm dependencies, `build/`, `public/admin/`, React Router and
+Cloudflare generated types/state, coverage and each configured Playwright output
+directory. `.prettierignore` excludes generated browser artifacts as well. Commit
+`package-lock.json`, Drizzle migrations, source assets and `.env.example`; all
+other `.env*` variants and Wrangler `.dev.vars*` files remain ignored.
+
+Resume PDFs are generated in the browser, so there is no repository PDF build
+output to ignore. PDF source assets can be committed when needed. Personal scratch
+files belong in `.git/info/exclude` or the developer's global Git ignore file.
+
 ## Which local environment file do we use?
 
 D1 and KV bindings come from Wrangler configuration. Their local state files,

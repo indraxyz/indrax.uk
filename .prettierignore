@@ -12,6 +12,10 @@ coverage
 .wrangler
 playwright-report
 test-results
+test-results-uploads
+test-results-analytics-direct
+blob-report
+playwright/.cache
 cloudflare-env.d.ts
 
 public/admin
