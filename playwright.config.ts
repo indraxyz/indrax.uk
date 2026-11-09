@@ -54,6 +54,8 @@ export default defineConfig({
       testIgnore: [
         /admin-authoring\.spec\.ts/,
         /admin-session\.spec\.ts/,
+        /admin-sync\.spec\.ts/,
+        /reactions\.spec\.ts/,
         /local-uploads\.spec\.ts/,
         /analytics-direct\.spec\.ts/,
       ],
@@ -61,7 +63,12 @@ export default defineConfig({
     {
       name: "writes",
       use: browser,
-      testMatch: [/admin-authoring\.spec\.ts/, /admin-session\.spec\.ts/],
+      testMatch: [
+        /admin-authoring\.spec\.ts/,
+        /admin-session\.spec\.ts/,
+        /admin-sync\.spec\.ts/,
+        /reactions\.spec\.ts/,
+      ],
       fullyParallel: false,
       dependencies: ["reads"],
     },

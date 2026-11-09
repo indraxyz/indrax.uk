@@ -4,7 +4,6 @@ import type {
   AdminPost,
   AdminPostSummary,
   AdminArchiveResults,
-  Tag,
   TagWithCount,
 } from "@/features/writing/types"
 import { archivePageLimit } from "@/features/writing/utils/archive-options"
@@ -15,7 +14,7 @@ import {
   parseAdminArchiveOptions,
   type AdminArchiveOptions,
 } from "@/features/writing/utils/admin-archive-options"
-import { qualified } from "@/lib/db/qualified-column"
+import { postTagsProjection } from "./post-tags-query.server"
 import { buildArchiveQuery } from "./archive-query.server"
 import { iso } from "@/features/writing/data/queries.server"
 import { requireAuthor } from "@/lib/auth-guard.server"
@@ -183,14 +182,7 @@ export async function getAdminArchivePosts(
         status: schema.posts.status,
         publishedAt: schema.posts.publishedAt,
         updatedAt: schema.posts.updatedAt,
-        tags: sql<Tag[]>`coalesce((
-      select jsonb_agg(jsonb_build_object('id', ${qualified(schema.tags.id)}, 'name', ${qualified(schema.tags.name)}, 'slug', ${qualified(schema.tags.slug)}) order by ${qualified(schema.tags.name)})
-      from ${schema.postTags}
-      inner join ${schema.tags} on ${qualified(schema.tags.id)} = ${qualified(schema.postTags.tagId)}
-      where ${qualified(schema.postTags.postId)} = ${qualified(schema.posts.id)}
-    ), '[]'::jsonb)`.mapWith((value: Tag[] | string) =>
-          typeof value === "string" ? (JSON.parse(value) as Tag[]) : value
-        ),
+        tags: postTagsProjection,
       })
       .from(schema.posts)
       .where(filter)

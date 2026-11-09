@@ -8,6 +8,55 @@ current implementation. See [architecture](../ARCHITECTURE.md),
 [the implementation plan](writing-implementation-plan.md) and
 [testing](testing.md) for setup and verification.
 
+## Reader interactions and authoring sync
+
+Content tag displays show two tags initially; +N expands the remaining tags and
+A same-height minus-icon control collapses them. Public tag links still navigate to the writing archive.
+Filter selections remain visible rather than being collapsed as content metadata.
+Published articles offer canonical-link copying with accessible toast feedback and
+an unchanged share icon; signed
+previews never copy their token-bearing URL.
+
+Published articles support love, noted, thumbs up, fire and rocket reactions with
+public counts. Only positive counts appear as plain compact emoji/count controls
+between metadata and tags. The icon left of Share opens the emoji picker, which
+closes after selection and restores focus. A random browser identifier is stored only after a reader reacts,
+as functional storage independent of PostHog consent. Each emoji can be added or
+removed once per browser identity. Clearing storage permits a new identity; this
+does not identify unique people. Reactions use a separate uncached API and do not
+add database work to article SSR or invalidate rendered article caches. Signed
+previews and nonpublic posts do not expose reaction data or writes.
+
+Admin cards and table use text status labels with a moderately bold colored
+underline, keeping the status readable independently of its color.
+
+Admin list refresh refetches the active post query while preserving committed
+filters, sorting, page and view. Editor refresh replaces the saved form and editor
+document from the database; unsaved edits require discard confirmation. Errors
+retain the current document. These actions do not reload the browser document.
+
+Valid changed draft forms autosave every 60 seconds through the existing save pipeline.
+Clean or incomplete forms do not write. Published and archived edits require manual Save; status transitions remain manual
+and require their existing confirmation.
+Autosave and refresh serialize with manual saves. New-post creation keeps its ID
+for subsequent saves, and edits typed during a save remain unsaved until the next
+save. Cross-tab authoring retains the existing last-write-wins behavior.
+
+Save responses contain the canonical saved AdminPost; the editor seeds its detail
+cache from the response instead of refetching the same document. Canonical relation
+metadata is included in the existing atomic SQL batch and the written document is
+reused. Status responses patch only returned metadata and preserve body freshness.
+Collection invalidation still refreshes mounted results where ordering/filtering
+can change. Archive tag options load on demand when Filters opens.
+
+Pagination links move focus and smoothly scroll to the destination result list
+once data is ready, reserving room for sticky navigation and filters. Reduced
+motion uses instant scrolling. This applies only to pagination pushes; ordinary
+refreshes, filters and Back/Forward do not trigger this focus change.
+
+Acceptance criteria and verification details are recorded in
+[the implementation spec](specs/writing-interactions-and-authoring.md).
+
 ## Rendering and route boundaries
 
 | Surface                             | Rendering and data                                                                |

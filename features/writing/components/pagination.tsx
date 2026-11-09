@@ -21,6 +21,7 @@ interface PaginationProps {
    */
   previousLabel?: string
   nextLabel?: string
+  scrollTargetId?: string
 }
 
 /**
@@ -45,6 +46,7 @@ export function Pagination({
   label,
   previousLabel = "Newer",
   nextLabel = "Older",
+  scrollTargetId,
 }: PaginationProps) {
   if (pageCount <= 1) return null
 
@@ -52,7 +54,11 @@ export function Pagination({
   const next = page < pageCount ? hrefFor(basePath, page + 1) : null
 
   return (
-    <nav aria-label={label} className="flex items-center justify-between gap-4 pt-2">
+    <nav
+      data-pagination-controls
+      aria-label={label}
+      className="flex items-center justify-between gap-4 pt-2"
+    >
       <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
         Page {page} of {pageCount}
       </p>
@@ -62,6 +68,8 @@ export function Pagination({
           <Link
             prefetch="none"
             to={previous}
+            preventScrollReset={Boolean(scrollTargetId)}
+            state={scrollTargetId ? { paginationScrollTarget: scrollTargetId } : undefined}
             rel="prev"
             aria-label={previousLabel}
             title={previousLabel}
@@ -85,6 +93,8 @@ export function Pagination({
           <Link
             prefetch="none"
             to={next}
+            preventScrollReset={Boolean(scrollTargetId)}
+            state={scrollTargetId ? { paginationScrollTarget: scrollTargetId } : undefined}
             rel="next"
             aria-label={nextLabel}
             title={nextLabel}

@@ -30,7 +30,7 @@ export const stackPageContent = {
   overview: {
     title: "Architecture overview",
     description:
-      "This site has two interfaces: public pages for readers and a private dashboard for publishing. Both run on Cloudflare Workers, use the same backend APIs, and share a PostgreSQL database. Uploaded images live in Cloudflare R2.",
+      "This site has two interfaces: public pages for readers and a private dashboard for publishing. One Cloudflare Worker serves both interfaces, which use the same backend APIs and PostgreSQL database. Uploaded images live in Cloudflare R2.",
     flows: [
       {
         title: "Reading",
@@ -45,7 +45,7 @@ export const stackPageContent = {
       {
         title: "Delivery",
         description:
-          "GitHub Actions checks each change. Develop deploys to Preview; a reviewed release pull request promotes it to main, which deploys to Production when deployment is enabled.",
+          "GitHub Actions checks each change. Develop deploys to a named staging Preview under the same Worker; a reviewed release pull request promotes it to main, which deploys to Production when deployment is enabled.",
       },
     ],
   },
@@ -71,7 +71,7 @@ export const stackGroups = [
     title: "Data fetching & navigation",
     tools: "TanStack Query · TanStack Table · Ky · react-top-loading-bar",
     detail:
-      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening.",
+      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening. Refresh controls re-fetch the current filtered list or saved post without reloading the page.",
     reason:
       "Search and filters stay in the URL so links, pagination, and browser Back preserve your choices. Cached results reduce repeat requests. Requests are not automatically retried; failed reads offer a retry control. The admin also rechecks the session on focus or reconnect, and every private API request verifies author access.",
   },
@@ -80,7 +80,7 @@ export const stackGroups = [
     title: "Content",
     tools: "Tiptap · Shiki · rehype · React PDF · cf-workers-og",
     detail:
-      "The author writes in Tiptap, with inline images, privacy-enhanced YouTube embeds, proportional media resizing and text or media alignment. Published articles are sanitized and rendered on the server, with Shiki highlighting code blocks and a restricted YouTube player host. React PDF builds the resume only when Download is selected; cf-workers-og creates images for shared links.",
+      "The author writes in Tiptap, with inline images, privacy-enhanced YouTube embeds, proportional media resizing and text or media alignment. Published articles are sanitized and rendered on the server, with Shiki highlighting code blocks and a restricted YouTube player host. Changed, valid drafts save every minute; published and archived edits use manual Save. Readers can expand article tags, copy a published link and leave emoji reactions. React PDF builds the resume only when Download is selected; cf-workers-og creates images for shared links.",
     reason:
       "The editor stays out of the reader’s article bundle. Published and preview articles share nested h2–h4 contents navigation: a desktop sidebar and a sticky disclosure on smaller screens. Formatting toolbars support dragging, touch and keyboard scrolling with overflow cues. Images use a soft loading treatment until decoded, preserving native sources and alt text. Loading the PDF tools on demand keeps them off the initial page load.",
   },
@@ -89,9 +89,9 @@ export const stackGroups = [
     title: "Data",
     tools: "PostgreSQL · Drizzle ORM · Neon HTTP · Cloudflare KV / D1 / R2",
     detail:
-      "PostgreSQL stores posts, tags, series, and sign-in sessions. Drizzle defines typed queries and migrations; the Neon HTTP driver connects the Worker to the database. Cloudflare KV caches public content, D1 tracks cache revisions and analytics quotas, and R2 stores uploaded images. Draft previews and private API responses are not cached.",
+      "PostgreSQL stores posts, tags, series, reader reactions and sign-in sessions. Drizzle defines typed queries and migrations; the Neon HTTP driver connects the Worker to the database. Cloudflare KV caches public content, D1 tracks cache revisions and analytics quotas, and R2 stores uploaded images. Draft previews and private API responses are not cached.",
     reason:
-      "Posts, tags, and series benefit from relational storage and PostgreSQL full-text search. Public caching reduces database work. Covers upload on Save; inline images upload when inserted, with file-type and size checks. Replacing a cover or deleting its post queues cleanup, as does removing a saved inline image. Hourly cleanup expires abandoned uploads after a 24-hour grace period and retains images still referenced by saved posts.",
+      "Posts, tags, and series benefit from relational storage and PostgreSQL full-text search. Public caching reduces database work. Covers upload on Save; inline images upload when inserted, with file-type and size checks. Replacing a cover or deleting its post queues cleanup, as does removing a saved inline image. Cleanup expires abandoned uploads after a 24-hour grace period and retains images still referenced by saved posts. Production runs it hourly; staging runs it after deployments or through protected manual maintenance.",
   },
   {
     icon: LockKeyhole,
@@ -134,18 +134,18 @@ export const stackGroups = [
     title: "Deployment",
     tools: "Cloudflare Workers · React Router",
     detail:
-      "Vite builds the public server-rendered app and static admin assets into one Cloudflare Worker deployment. Wrangler defines the domains and service bindings. Production and develop use separate KV, D1, and R2 resources; only explicitly allowed public settings reach browser bundles.",
+      "Vite builds the public server-rendered app and static admin assets into one Cloudflare Worker deployment. Wrangler defines the domains and service bindings. Production and the named develop Preview under indrax use separate database, KV, D1, and R2 resources; only explicitly allowed public settings reach browser bundles.",
     reason:
-      "CI checks the generated deployment target and prepares the matching D1 analytics quota tables before release. Production uses indrax.uk and www.indrax.uk; develop uses dev.indrax.uk. A post-deploy security smoke check verifies public access and private boundaries. Alternate workers.dev and preview URLs are disabled.",
+      "CI checks the generated deployment target and prepares D1 analytics quota tables when the Worker gateway is selected. Production uses indrax.uk and www.indrax.uk; staging uses develop.previews.indrax.uk. There is no legacy dev Worker deployment fallback. Post-deploy checks verify public access, private boundaries and staging cleanup. workers.dev and production version URLs are disabled.",
   },
   {
     icon: Radar,
     title: "Measurement & monitoring",
     tools: "PostHog · Workers logs · structured server logs",
     detail:
-      "After consent, PostHog measures site use through a same-origin Worker gateway at /analytics with shared monthly quotas in D1. Withdrawing consent stops capture and clears stored identifiers. Structured server errors and Cloudflare Workers logs help investigate failures.",
+      "After consent, PostHog measures site use using the configured transport: direct ingestion with a public project key, or a same-origin Worker gateway at /analytics with monthly quotas in D1. Withdrawing consent stops capture and clears stored identifiers. Structured server errors and Cloudflare Workers logs help investigate failures.",
     reason:
-      "The gateway validates analytics traffic and redacts sensitive URLs before forwarding. Worker logs redact query strings, and automatic fetch traces are disabled to avoid recording credentials in upstream paths. Production and Preview have separate analytics budgets.",
+      "Both transports redact sensitive URLs in browser events. Direct ingestion avoids Worker forwarding requests; the optional gateway validates traffic and bounds forwarding with quotas. Worker logs redact query strings, and automatic fetch traces are disabled to avoid recording credentials in upstream paths. Production and Preview keep their analytics configuration separate.",
   },
 ] as const satisfies readonly StackGroup[]
 

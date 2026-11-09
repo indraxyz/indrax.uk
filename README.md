@@ -52,6 +52,12 @@ and defaults to Recently updated; all private filtering, sorting and pagination 
 the authenticated backend. Posts can be shown as cards or as a sortable table; the
 choice is remembered per browser. Profile/article social cards and structured data remain server-generated.
 
+Writing tags expand from two badges, published articles offer link copying and
+anonymous emoji reactions, and admin refresh controls sync data without a page
+reload. Valid changed drafts autosave every minute; published and archived edits
+require manual Save. Reactions require the `0008_post_reactions` migration before
+deployment. See [the interaction specification](docs/specs/writing-interactions-and-authoring.md).
+
 ## Structure
 
 ```text

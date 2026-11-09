@@ -248,12 +248,13 @@ it("retains a query-variant body image shared with the cover until its final sav
       coverUrl,
       coverAlt: "Shared variant cover",
     })
-  ).toEqual({ ok: true, postId: id })
+  ).toMatchObject({ ok: true, postId: id, post: { id } })
   expect(mocks.remove).not.toHaveBeenCalled()
   expect((await uploadState(upload.key)).state).toBe("attached")
-  expect(await savePost({ id, title, status: "draft", tags: [], content })).toEqual({
+  expect(await savePost({ id, title, status: "draft", tags: [], content })).toMatchObject({
     ok: true,
     postId: id,
+    post: { id, content, coverUrl: null },
   })
   expect(mocks.remove).toHaveBeenCalledExactlyOnceWith(upload.key)
   expect((await uploadState(upload.key)).state).toBe("deleted")

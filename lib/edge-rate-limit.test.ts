@@ -9,6 +9,8 @@ it.each([
   ["/api/internal/preview/media-cleanup", "RATE_LIMIT_STRICT", "preview-maintenance"],
   ["/api/auth/sign-in/social", "RATE_LIMIT_STRICT", "auth"],
   ["/api/views/article", "RATE_LIMIT_STRICT", "views"],
+  ["/api/writing/posts/article/reactions", "RATE_LIMIT_STRICT", "reactions"],
+  ["/api/writing/posts/article/reactions/", "RATE_LIMIT_STRICT", "reactions"],
   ["/api/admin/session", "RATE_LIMIT_API", "admin"],
   ["/api/admin/posts/archive", "RATE_LIMIT_API", "admin"],
   ["/api/upload", "RATE_LIMIT_API", "admin"],

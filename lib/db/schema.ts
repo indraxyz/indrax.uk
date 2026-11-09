@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm"
 
 import { POST_STATUSES, type PostDocument } from "@/features/writing/types"
+import { REACTIONS } from "@/features/writing/reactions"
 
 // Better Auth owns these; the Drizzle adapter is handed the whole schema object,
 // so they have to be reachable from here.
@@ -138,6 +139,25 @@ export const tags = pgTable("tags", {
   // "Vue.js" and "vue.js" resolve to one row rather than two.
   slug: text("slug").notNull().unique(),
 })
+
+/** Functional browser identity, created only when a reader first reacts. */
+export const postReactions = pgTable(
+  "post_reactions",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    visitorId: uuid("visitor_id").notNull(),
+    reaction: text("reaction", { enum: REACTIONS }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.postId, table.visitorId, table.reaction] }),
+    check(
+      "post_reactions_reaction_valid",
+      sql`${table.reaction} in ('love', 'noted', 'thumbsup', 'fire', 'rocket')`
+    ),
+  ]
+)
 
 /** Persisted in the post transaction; failed R2 cleanup survives the response. */
 export const coverCleanup = pgTable(

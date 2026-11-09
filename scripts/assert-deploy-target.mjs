@@ -12,6 +12,7 @@ export function deploymentTarget(config) {
     name: config.name,
     workersDev: config.workers_dev,
     previewUrls: config.preview_urls,
+    observability: config.observability,
     routes: sort(
       (config.routes ?? []).map((route) =>
         typeof route === "string"

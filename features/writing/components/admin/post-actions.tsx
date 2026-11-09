@@ -1,10 +1,20 @@
 import { LoadingIndicator } from "@/components/ui/loading-indicator"
 import { Menu } from "@base-ui/react/menu"
-import { Archive, ExternalLink, Eye, EyeOff, MoreHorizontal, Send, Trash2 } from "lucide-react"
+import {
+  Archive,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+  RefreshCw,
+  Send,
+  Trash2,
+} from "lucide-react"
 import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   cloneElement,
+  useEffect,
   isValidElement,
   useRef,
   useState,
@@ -25,9 +35,10 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group"
 import { controlClassNames } from "@/components/ui/variants"
 import { PostStatusDialog } from "./post-status-dialog"
-import { adminApi, adminKeys, writingKeys } from "@/features/writing/api/client"
+import { adminApi, adminKeys } from "@/features/writing/api/client"
+import { cachePostMutation, invalidatePostCollections } from "@/features/writing/api/mutation-cache"
 import { apiErrorMessage } from "@/lib/api-client"
-import type { AdminPost, PostStatus } from "@/features/writing/types"
+import type { ActionResult, AdminPost, PostStatus } from "@/features/writing/types"
 import { cn } from "@/lib/utils"
 
 type Action = "view" | "status" | "delete"
@@ -42,6 +53,8 @@ export function PostActions({
   hasUnsavedChanges = false,
   saving = false,
   context = "editor",
+  onRefresh,
+  onBusyChange,
 }: {
   post: Pick<AdminPost, "id" | "slug" | "title" | "status"> | null
   children?: ReactNode
@@ -49,6 +62,8 @@ export function PostActions({
   hasUnsavedChanges?: boolean
   saving?: boolean
   context?: "editor" | "list"
+  onRefresh?: () => void
+  onBusyChange?: (busy: boolean) => void
 }) {
   const post = savedPost ?? { id: "", slug: "", title: "Untitled post", status: "draft" as const }
   const savedHint = !savedPost
@@ -75,10 +90,14 @@ export function PostActions({
   const published = post.status === "published"
   const busy = pending || saving
   const requiresSaved = !savedPost || busy || hasUnsavedChanges
+  useEffect(() => {
+    onBusyChange?.(pending || menuOpen || deleteOpen || statusOpen)
+    return () => onBusyChange?.(false)
+  }, [pending, menuOpen, deleteOpen, statusOpen, onBusyChange])
 
   const run = (
     kind: Action,
-    action: () => Promise<{ ok: boolean; message?: string }>,
+    action: () => Promise<ActionResult>,
     then?: () => void,
     reportError = setError
   ) => {
@@ -93,14 +112,20 @@ export function PostActions({
           reportError(result.message ?? "That did not work.")
           return
         }
-        if (kind !== "view")
+        if (kind !== "view") {
+          cachePostMutation(queryClient, result)
           await Promise.all([
-            queryClient.invalidateQueries({ queryKey: adminKeys.posts }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.tags() }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.post(post.id) }),
-            queryClient.invalidateQueries({ queryKey: adminKeys.overview }),
-            queryClient.invalidateQueries({ queryKey: writingKeys.all }),
+            invalidatePostCollections(queryClient),
+            ...(!result.post && !result.postState
+              ? [
+                  queryClient.invalidateQueries({
+                    queryKey: adminKeys.post(post.id),
+                    refetchType: kind === "delete" ? "none" : "active",
+                  }),
+                ]
+              : []),
           ])
+        }
         then?.()
       } catch (error) {
         reportError(apiErrorMessage(error))
@@ -185,6 +210,12 @@ export function PostActions({
                   )}
                   {activeAction === "view" ? "Opening…" : published ? "Visit" : "Preview"}
                 </Menu.Item>
+                {onRefresh && savedPost && (
+                  <Menu.Item disabled={busy} onClick={onRefresh} className={menuItemClass}>
+                    <RefreshCw className="h-4 w-4" aria-hidden />
+                    Refresh
+                  </Menu.Item>
+                )}
                 <Menu.Item
                   disabled={requiresSaved}
                   onClick={() => {

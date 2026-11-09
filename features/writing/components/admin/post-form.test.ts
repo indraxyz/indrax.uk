@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   invalidate: vi.fn().mockResolvedValue(undefined),
   savePost: vi.fn(),
+  setQueryData: vi.fn(),
   transition: undefined as Promise<void> | undefined,
 }))
 // These tests exercise the form's submit handler without a DOM or the editor.
@@ -26,7 +27,7 @@ vi.mock("react-router", () => ({
   useBeforeUnload: vi.fn(),
 }))
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate, setQueryData: mocks.setQueryData }),
   useMutation: ({ mutationFn }: { mutationFn: unknown }) => ({ mutateAsync: mutationFn }),
 }))
 vi.mock("@/features/writing/components/admin/image-upload", () => ({ ImageUpload: () => null }))
@@ -132,4 +133,12 @@ it("keeps the form and its caches unchanged after a failed save request", async 
 it("normalizes a slug at submit even when its blur handler has not run", async () => {
   await submit({ ...post, slug: "  Café React & API!!!  " }, { ok: true, postId: ID })
   expect(mocks.savePost).toHaveBeenCalledWith(expect.objectContaining({ slug: "cafe-react-api" }))
+})
+
+it("uses the returned detail snapshot and never invalidates its detail query after save", async () => {
+  const saved = { ...post, title: "Canonical saved title" }
+  await submit(post, { ok: true, postId: ID, post: saved })
+  expect(mocks.setQueryData).toHaveBeenCalledWith(["admin", "post", ID], saved)
+  expect(mocks.invalidate).not.toHaveBeenCalledWith({ queryKey: ["admin", "post", ID] })
+  expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "posts"] })
 })

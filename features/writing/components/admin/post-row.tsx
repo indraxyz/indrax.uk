@@ -2,9 +2,10 @@ import { PencilLine } from "lucide-react"
 import { memo } from "react"
 import { Link } from "react-router"
 
-import { Badge } from "@/components/ui/badge"
 import { PostActions } from "./post-actions"
-import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS, STATUS_TONE } from "./post-display"
+import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
+import { PostStatusLabel } from "./post-status-label"
+import { PostTags } from "@/features/writing/components/post-tags"
 import { PostCover } from "@/features/writing/components/post-cover"
 import type { AdminPostSummary } from "@/features/writing/types"
 import { mediaUrl, formatDate } from "@/lib/utils"
@@ -33,7 +34,7 @@ export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary 
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
         <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">
           <div className="space-y-2">
-            <Badge variant={STATUS_TONE[post.status]}>{post.status}</Badge>
+            <PostStatusLabel status={post.status} />
             <div>
               <Link
                 to={`/admin/posts/edit/${post.id}`}
@@ -56,8 +57,8 @@ export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary 
               : "Never published"}
             {" · "}
             Edited {formatDate(post.updatedAt, ADMIN_DATE_FORMAT)}
-            {post.tags.length > 0 && ` · ${post.tags.map((tag) => tag.name).join(", ")}`}
           </p>
+          <PostTags tags={post.tags} label={`Tags for ${post.title}`} linkTags={false} />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link

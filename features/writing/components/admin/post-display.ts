@@ -1,13 +1,11 @@
-import type { VisualVariant } from "@/components/ui/variants"
 import type { PostStatus } from "@/features/writing/types"
 
 /** Presentation shared by the admin post cards and table. */
 
-// Published is the loud one, because it is the state where a mistake is public.
-export const STATUS_TONE: Record<PostStatus, VisualVariant> = {
-  draft: "ghost",
-  published: "tertiary",
-  archived: "secondary",
+export const STATUS_UNDERLINE: Record<PostStatus, string> = {
+  draft: "decoration-[var(--semantic-status-warning)]",
+  published: "decoration-[var(--component-post-status-published)]",
+  archived: "decoration-[var(--component-post-status-archived)]",
 }
 
 export const ADMIN_DATE_FORMAT: Intl.DateTimeFormatOptions = {

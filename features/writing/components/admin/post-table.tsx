@@ -10,9 +10,10 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 
-import { Badge } from "@/components/ui/badge"
+import { PostTags } from "@/features/writing/components/post-tags"
 import { PostActions } from "./post-actions"
-import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS, STATUS_TONE } from "./post-display"
+import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
+import { PostStatusLabel } from "./post-status-label"
 import type { AdminPostSummary } from "@/features/writing/types"
 import {
   adminArchiveSearchParams,
@@ -75,15 +76,21 @@ const columns = column.columns([
   column.accessor("status", {
     header: "Status",
     enableSorting: false,
-    cell: ({ getValue }) => <Badge variant={STATUS_TONE[getValue()]}>{getValue()}</Badge>,
+    cell: ({ getValue }) => <PostStatusLabel status={getValue()} />,
   }),
   column.accessor((post) => post.tags.map((tag) => tag.name).join(", "), {
     id: "tags",
     header: "Tags",
     enableSorting: false,
     meta: { className: "min-w-[10rem]" },
-    cell: ({ getValue }) =>
-      getValue() || (
+    cell: ({ row }) =>
+      row.original.tags.length > 0 ? (
+        <PostTags
+          tags={row.original.tags}
+          label={`Tags for ${row.original.title}`}
+          linkTags={false}
+        />
+      ) : (
         <>
           <span aria-hidden="true" className="text-muted-foreground">
             —

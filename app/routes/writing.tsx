@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/config/site"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams, type MetaFunction } from "react-router"
 
@@ -35,12 +36,17 @@ export const meta: MetaFunction = ({ location }) => {
 
 export default function WritingPage() {
   const [params] = useSearchParams()
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const options = parseArchiveOptions(params)
   const posts = useQuery({
     queryKey: writingKeys.archive(options),
     queryFn: ({ signal }) => writingApi.archive(options, signal),
   })
-  const tags = useQuery({ queryKey: writingKeys.tags(), queryFn: writingApi.tags })
+  const tags = useQuery({
+    queryKey: writingKeys.tags(),
+    queryFn: writingApi.tags,
+    enabled: filtersOpen,
+  })
   const query = archiveSearchParams(options, { includePage: false }).toString()
   const results = posts.data ?? { posts: [], page: options.page, pageCount: 0 }
   const empty = options.q
@@ -55,6 +61,7 @@ export default function WritingPage() {
         title={WRITING_CONFIG.title}
         subtitle={SECTION_COPY.writing}
         results={results}
+        resultsReady={Boolean(posts.data) || posts.isError}
         basePath={query ? `/writing?${query}` : "/writing"}
         previousLabel="Previous"
         nextLabel="Next"
@@ -74,6 +81,7 @@ export default function WritingPage() {
             tags={tags.data}
             tagsError={tags.isError}
             retryTags={() => void tags.refetch()}
+            onOpenChange={setFiltersOpen}
           />
           {posts.data && (
             <p role="status" aria-live="polite" className="text-sm text-muted-foreground">

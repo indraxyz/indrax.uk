@@ -1,10 +1,11 @@
 import { Newspaper } from "lucide-react"
-import type { ReactNode } from "react"
+import { useId, type ReactNode } from "react"
 
 import { SectionCard } from "@/components/ui/section-card"
 import { Pagination } from "@/features/writing/components/pagination"
 import { PostCard } from "@/features/writing/components/post-card"
 import { PostGrid } from "@/features/writing/components/post-grid"
+import { PaginationResults } from "@/features/writing/components/pagination-results"
 import type { PaginatedPosts } from "@/features/writing/types"
 
 interface PostListSectionProps {
@@ -18,6 +19,7 @@ interface PostListSectionProps {
   nextLabel?: string
   /** Rendered above the list, for the search box. */
   children?: ReactNode
+  resultsReady?: boolean
 }
 
 /**
@@ -36,7 +38,9 @@ export function PostListSection({
   previousLabel,
   nextLabel,
   children,
+  resultsReady = true,
 }: PostListSectionProps) {
+  const resultsId = useId()
   return (
     <SectionCard
       variant="ghost"
@@ -51,28 +55,35 @@ export function PostListSection({
     >
       {children}
 
-      {results.posts.length === 0 ? (
-        emptyState
-      ) : (
-        <div className="space-y-8">
-          <PostGrid>
-            {results.posts.map((post, index) => (
-              // The first card is the largest thing above the fold on this page,
-              // so its cover - when there is one - is what LCP is measured on.
-              <PostCard key={post.id} post={post} priority={index === 0} />
-            ))}
-          </PostGrid>
+      <PaginationResults
+        id={resultsId}
+        label={`${title} results, page ${results.page}`}
+        ready={resultsReady}
+      >
+        {results.posts.length === 0 ? (
+          emptyState
+        ) : (
+          <div className="space-y-8">
+            <PostGrid>
+              {results.posts.map((post, index) => (
+                // The first card is the largest thing above the fold on this page,
+                // so its cover - when there is one - is what LCP is measured on.
+                <PostCard key={post.id} post={post} priority={index === 0} />
+              ))}
+            </PostGrid>
 
-          <Pagination
-            page={results.page}
-            pageCount={results.pageCount}
-            basePath={basePath}
-            label={`${title} pages`}
-            previousLabel={previousLabel}
-            nextLabel={nextLabel}
-          />
-        </div>
-      )}
+            <Pagination
+              page={results.page}
+              pageCount={results.pageCount}
+              basePath={basePath}
+              label={`${title} pages`}
+              previousLabel={previousLabel}
+              nextLabel={nextLabel}
+              scrollTargetId={resultsId}
+            />
+          </div>
+        )}
+      </PaginationResults>
     </SectionCard>
   )
 }
