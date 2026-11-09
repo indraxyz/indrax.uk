@@ -78,14 +78,16 @@
     "redact_query_string": true,
     "logs": {
       "enabled": true,
+      "head_sampling_rate": 1,
       "invocation_logs": true,
       "persist": true,
     },
     "traces": {
-      // PostHog config URLs contain the server token in the path. Automatic fetch
-      // spans record that path; query redaction cannot protect it. Keep logs and
-      // invocation monitoring, but do not collect credential-bearing HTTP spans.
-      "enabled": false,
+      // Match the dashboard: sample all traces without storing them. PostHog
+      // config URLs contain a token in the path, so do not add persistence or an
+      // export destination without verified span redaction.
+      "enabled": true,
+      "head_sampling_rate": 1,
       "persist": false,
     },
     "issues": {

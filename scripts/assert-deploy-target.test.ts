@@ -16,6 +16,12 @@ const target = {
   name: "worker",
   workers_dev: false,
   preview_urls: false,
+  observability: {
+    enabled: true,
+    redact_query_string: true,
+    logs: { enabled: true, head_sampling_rate: 1, invocation_logs: true, persist: true },
+    traces: { enabled: true, head_sampling_rate: 1, persist: false },
+  },
   triggers: { crons: ["17 * * * *"] },
   r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "media-prod" }],
   routes: [{ pattern: "example.test", custom_domain: true }],
@@ -55,6 +61,14 @@ it.each([
   { workers_dev: undefined },
   { preview_urls: true },
   { preview_urls: undefined },
+  { observability: undefined },
+  { observability: { ...target.observability, redact_query_string: false } },
+  {
+    observability: {
+      ...target.observability,
+      traces: { ...target.observability.traces, persist: true },
+    },
+  },
   { routes: [{ pattern: "example.test", custom_domain: true, enabled: false }] },
   { routes: [{ pattern: "example.test", custom_domain: true, previews_enabled: true }] },
   {
