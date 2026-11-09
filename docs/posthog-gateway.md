@@ -213,11 +213,13 @@ They detect runtime, credential, configuration and quota failures; they do not p
 event ingestion or dashboard visibility, which still need a consented browser visit
 and inspection of the matching PostHog project.
 
-Automatic Worker traces are disabled in the reviewed configuration because PostHog's
-configuration-fetch URL contains the server token in its path. Cloudflare fetch spans
-record that URL; query-string redaction does not redact path segments. Redacted
-invocation logs and issues remain enabled. Re-enable tracing only after adding a
-verified way to suppress/redact those credential-bearing spans.
+Automatic Worker traces are enabled with full sampling and `persist: false`, matching
+the dashboard configuration. No trace export destination is configured, so traces
+are not stored in Cloudflare or exported. Redacted invocation logs and issues remain
+enabled. PostHog's configuration-fetch URL contains the server token in its path;
+query-string redaction does not redact path segments. Enable trace persistence or
+an export destination only after adding verified suppression or redaction of those
+credential-bearing spans.
 See [Cloudflare's recorded HTTP span attributes](https://developers.cloudflare.com/workers/observability/traces/spans-and-attributes/).
 
 ## Initialization and historical preparation

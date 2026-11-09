@@ -71,6 +71,14 @@ Preview; CI does not upload local environment files or test fixture secrets.
 Preview Base secrets seed newly created Previews. Updating a Base secret does not
 update the existing `develop` Preview: rotate its secret explicitly as well.
 
+The dashboard's **Previews Base** tab is a template, not the deployed `develop`
+Preview's complete configuration. Its empty bindings list does not mean the named
+Preview lacks bindings: Wrangler supplies preview variables and isolated KV, D1,
+R2 and rate-limit bindings from the `previews` block. Inspect the individual
+`develop` Preview and its deployment evidence when checking active configuration.
+Production-only analytics secrets and Preview-only maintenance secrets may differ;
+database and OAuth credentials must belong to their matching environment.
+
 In Worker mode, the deploy job initializes `analytics_quota` and `analytics_replay_sessions` in
 the matching `APP_D1` using `scripts/prepare-deployment-d1.mjs` and
 `config/analytics-quota.sql` before building and
