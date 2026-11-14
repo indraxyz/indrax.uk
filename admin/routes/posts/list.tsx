@@ -1,3 +1,5 @@
+import { BulkPostActions } from "@/features/writing/components/admin/bulk-post-actions"
+import { PostSelectionProvider } from "@/features/writing/components/admin/post-selection"
 import { Plus } from "lucide-react"
 import { useId, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router"
@@ -22,6 +24,15 @@ import {
   parseAdminArchiveOptions,
 } from "@/features/writing/utils/admin-archive-options"
 export function Component() {
+  const [params] = useSearchParams()
+  return (
+    <PostSelectionProvider scope={params.toString()}>
+      <PostsList />
+    </PostSelectionProvider>
+  )
+}
+
+function PostsList() {
   const resultsId = useId()
   const [params] = useSearchParams()
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -65,6 +76,11 @@ export function Component() {
           onRefresh={() => void query.refetch()}
           refreshing={query.isFetching}
         />
+        <BulkPostActions
+          posts={query.data?.posts ?? []}
+          refreshVersion={query.dataUpdatedAt}
+          ready={Boolean(query.data) && !query.isPlaceholderData && !query.isError}
+        />
         {query.isError && query.data && (
           <p role="alert" className="text-sm text-destructive">
             Posts could not be refreshed. Your current results are still shown. Try refreshing
@@ -94,11 +110,21 @@ export function Component() {
             <QueryState error retry={() => void query.refetch()} label="posts" />
           ) : query.data.posts.length ? (
             view === "table" ? (
-              <PostTable posts={query.data.posts} options={options} />
+              <PostTable
+                posts={query.data.posts}
+                options={options}
+                selectable
+                selectionDisabled={query.isPlaceholderData || query.isError}
+              />
             ) : (
               <ul className="space-y-3">
                 {query.data.posts.map((post) => (
-                  <PostRow key={post.id} post={post} />
+                  <PostRow
+                    key={post.id}
+                    post={post}
+                    selectable
+                    selectionDisabled={query.isPlaceholderData || query.isError}
+                  />
                 ))}
               </ul>
             )

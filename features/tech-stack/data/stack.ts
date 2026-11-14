@@ -69,9 +69,9 @@ export const stackGroups = [
   {
     icon: Route,
     title: "Data fetching & navigation",
-    tools: "TanStack Query · TanStack Table · Ky · react-top-loading-bar",
+    tools: "TanStack Query · TanStack Table · Zustand · Ky · react-top-loading-bar",
     detail:
-      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening. Refresh controls re-fetch the current filtered list or saved post without reloading the page.",
+      "TanStack Query keeps API results fresh for one minute and refreshes affected data after a save. Ky handles API requests. In the admin, posts show as cards or as a TanStack Table, and the browser remembers the choice; selecting a column header asks the server to sort every post, not just the current page. Zustand coordinates admin display preferences, navigation menus and current-page post selection for confirmed bulk status changes. A top progress bar shows navigation in progress. Shape-matched skeletons cover initial writing lists, dashboard metrics and admin cards or tables; cached results remain visible during refreshes. Empty and error states explain what is happening. Refresh controls re-fetch the current filtered list or saved post without reloading the page.",
     reason:
       "Search and filters stay in the URL so links, pagination, and browser Back preserve your choices. Cached results reduce repeat requests. Requests are not automatically retried; failed reads offer a retry control. The admin also rechecks the session on focus or reconnect, and every private API request verifies author access.",
   },
@@ -172,6 +172,7 @@ export const stackResources = [
     label: "TanStack Table",
     href: "https://tanstack.com/table/latest/docs/introduction",
   },
+  { label: "Zustand client state", href: "https://zustand.docs.pmnd.rs/" },
   { label: "Ky HTTP client", href: "https://github.com/sindresorhus/ky" },
   { label: "Navigation progress bar", href: "https://github.com/klendi/react-top-loading-bar" },
   {

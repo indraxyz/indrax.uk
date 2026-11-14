@@ -166,7 +166,9 @@ returns sanitized HTML/headings and metadata without raw document duplication.
 The [D1 and KV cache guide](docs/d1-kv-cache.md) documents the implementation,
 local persistence roots, environment selection and remote initialization/inspection.
 
-Public reads enforce published status, publication date and content presence.
+Public reads enforce published status, content presence and a publication date no later
+than the current read. The shared predicate is built per call so long-lived Workers
+do not freeze the cutoff.
 There is no boolean flag that can make a public query include drafts. Admin reads
 live separately and never persist in KV. Minimal list projections omit bodies;
 related tags are aggregated within SQL. Count/page pairs and post/tag writes use
@@ -177,18 +179,27 @@ save behavior.
 Reader reactions live in `post_reactions`, with a post/browser/emoji primary key
 and cascading post deletion. Desired-state inserts ignore duplicate additions;
 deletes remove only the requested browser's emoji. Both writes enforce public
-visibility in SQL. Aggregates use one uncached query and stay outside article SSR
+visibility in SQL. PUT executes its desired-state write and following aggregate in
+one ordered Neon HTTP batch; GET remains one uncached aggregate. Results stay outside article SSR
 and rendered-content invalidation. Browser identity is random functional storage,
 created on first reaction rather than on page load.
 
 `lib/cache.server.ts` memoizes public reads within one Request, even without storage.
 Persistent cache keys include D1 invalidation revisions and use a new namespace
-prefix that isolates the application cache format. KV entries expire after one hour;
-D1 stores tag revisions in the existing `revalidations` table. Mutations await
+prefix (`react-router:v2:`) that isolates the application cache format. Publication-
+dependent results use versioned logical keys and retain a one-hour lifetime, shortened
+to the next stored publication date. A cold miss runs the indexed deadline lookup
+alongside its loader; warm hits add no PostgreSQL work. Rendered HTML retains its
+revision-keyed one-hour lifetime. Uncached revision tags are
+looked up together in one D1 request; missing rows mean revision zero. D1 stores
+tag revisions in the existing `revalidations` table. Mutations await
 invalidation, then clear request memo/version state. Background KV writes use
 `waitUntil` when available. Public rendered articles are keyed by post ID, slug,
 saved revision and renderer version; bump the renderer version after policy changes.
-Draft preview rendering is always uncached.
+Draft preview rendering is always uncached. RSS and sitemap responses revalidate
+rather than adding a longer HTTP stale window. This is bounded server freshness,
+not exact scheduling or automatic refresh of an already open browser page; see the
+[publication/backend specification](docs/publication-backend-efficiency.md).
 
 KV propagation can cause misses/recomputation. D1 revision keys prevent a stale
 KV entry from bypassing invalidation. This cache reduces repeated work but cannot
@@ -237,3 +248,27 @@ contracts; avoid reintroducing server-only dependencies into browser imports.
 Build directories and generated type files are ignored. Database schema changes
 use Drizzle migrations. CI owns approved deployment to isolated dev/production
 Worker resources. No migration work itself authorizes shipping.
+
+## Admin editor client state
+
+The post form delegates working-draft snapshots and asynchronous save, upload,
+refresh, autosave and navigation coordination to its feature-local
+`usePostFormController` hook. `PostForm` retains DOM, accessible status/form
+associations, caret restoration and object URL lifecycle. Confirmation flags live
+in the controller because they suspend autosave. The route key resets the controller
+for a different post; no module-global draft or browser draft persistence exists.
+TanStack Query owns server responses and invalidation; Tiptap owns editing history
+and selection. Public/archive filters stay in URL parameters.
+
+## Admin interface state
+
+Admin-only Zustand stores coordinate the cards/table display preference, navigation
+drawer/Public menus and current-page post selection. Preference persistence keeps
+the existing raw storage format, cross-tab updates and document-memory fallback;
+transient navigation/selection state is never persisted. Components select only
+the state they consume. Selection belongs to a posts-list instance and resets on
+URL criteria/page changes or departure. Actions intersect current authoritative
+results, process existing per-post status APIs sequentially and report partial
+outcomes. Query data and mutations remain managed through TanStack Query and the
+existing cache helpers; server authorization remains authoritative. See the
+[admin state specification](docs/specs/admin-zustand-selection.md).

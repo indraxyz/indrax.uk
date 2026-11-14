@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 
 import { startAnalytics, stopAnalytics } from "@/lib/analytics"
-import { CONSENT_CHANGE_EVENT, readConsent } from "@/lib/consent"
+import { subscribeToConsent, readConsent } from "@/lib/consent"
 
 /**
  * Starts and stops the tracker in step with the visitor's decision.
@@ -23,14 +23,7 @@ export function PostHogAnalytics() {
 
     sync()
 
-    window.addEventListener(CONSENT_CHANGE_EVENT, sync)
-    // Another tab is the same person making the same decision.
-    window.addEventListener("storage", sync)
-
-    return () => {
-      window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
-      window.removeEventListener("storage", sync)
-    }
+    return subscribeToConsent(sync)
   }, [])
 
   return null

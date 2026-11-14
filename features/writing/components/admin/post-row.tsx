@@ -2,7 +2,7 @@ import { PencilLine } from "lucide-react"
 import { memo } from "react"
 import { Link } from "react-router"
 
-import { PostActions } from "./post-actions"
+import { ListPostActions, PostSelectionCheckbox } from "./post-selection"
 import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
 import { PostStatusLabel } from "./post-status-label"
 import { PostTags } from "@/features/writing/components/post-tags"
@@ -16,9 +16,20 @@ import { mediaUrl, formatDate } from "@/lib/utils"
  * Memoized: TanStack Query keeps unchanged posts referentially equal across
  * refetches, so after a status change or delete only the affected row renders.
  */
-export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary }) {
+export const PostRow = memo(function PostRow({
+  post,
+  selectable = false,
+  selectionDisabled = false,
+}: {
+  post: AdminPostSummary
+  selectable?: boolean
+  selectionDisabled?: boolean
+}) {
   return (
     <li className="flex flex-col items-stretch border-2 border-border bg-card sm:flex-row">
+      {selectable && (
+        <PostSelectionCheckbox id={post.id} title={post.title} disabled={selectionDisabled} />
+      )}
       {mediaUrl(post.coverUrl) && (
         <Link
           to={`/admin/posts/edit/${post.id}`}
@@ -69,7 +80,7 @@ export const PostRow = memo(function PostRow({ post }: { post: AdminPostSummary 
             <PencilLine className="h-4 w-4" aria-hidden />
           </Link>
 
-          <PostActions post={post} context="list" />
+          <ListPostActions post={post} />
         </div>
       </div>
     </li>

@@ -250,7 +250,7 @@ export function TableOfContents({
       data-article-toc
       data-enhanced={enhanced}
       className={cn(
-        "z-30 self-start bg-background/95 backdrop-blur data-[enhanced=true]:sticky lg:sticky lg:top-[calc(var(--site-header-offset,6rem)_+_1rem)] lg:bg-transparent lg:backdrop-blur-none print:hidden",
+        "-mx-4 z-30 self-start bg-background/95 backdrop-blur data-[enhanced=true]:sticky lg:mx-0 lg:sticky lg:top-[calc(var(--site-header-offset,6rem)_+_1rem)] lg:bg-transparent lg:backdrop-blur-none print:hidden",
         stickyHeaderOffsetClassNames,
         className
       )}

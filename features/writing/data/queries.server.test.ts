@@ -2,14 +2,25 @@ import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ getDb: vi.fn(), log: vi.fn(), cache: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  log: vi.fn(),
+  cache: vi.fn(),
+  cacheOptions: vi.fn(),
+}))
 vi.mock("@/lib/db/index.server", async () => ({
   getDb: mocks.getDb,
   schema: await import("@/lib/db/schema"),
 }))
 vi.mock("@/lib/cache.server", () => ({
-  cachedRead: (key: string, _tags: string[], read: () => Promise<unknown>) => {
+  cachedRead: (
+    key: string,
+    _tags: string[],
+    read: () => Promise<unknown>,
+    options?: { freshUntil?: (startedAt: number) => Promise<number | undefined> }
+  ) => {
     mocks.cache(key)
+    mocks.cacheOptions(options)
     return read()
   },
 }))
@@ -25,6 +36,9 @@ import {
   getRecentPosts,
   getRelatedPosts,
   getSeriesBySlug,
+  getPublishedSlugs,
+  getSeriesSlugs,
+  getTagsInUse,
   searchPosts,
 } from "./queries.server"
 
@@ -40,8 +54,9 @@ const date = "2026-10-08T00:00:00.000Z"
 // Driver responses are array-mode rows; real Drizzle maps columns and dates.
 const summaryRow = ["post-id", "article", "Article", "Excerpt", null, null, date, date, 1, [tag]]
 
-function database(results: unknown[][][]) {
-  const query = vi.fn().mockImplementation(() => Promise.resolve({ rows: results.shift() ?? [] }))
+function database(results: ReadonlyArray<ReadonlyArray<ReadonlyArray<unknown>>>) {
+  const pending = results.map((rows) => rows.map((row) => [...row]))
+  const query = vi.fn().mockImplementation(() => Promise.resolve({ rows: pending.shift() ?? [] }))
   const transaction = vi
     .fn()
     .mockImplementation((queries: Promise<unknown>[]) => Promise.all(queries))
@@ -104,7 +119,12 @@ describe("public database round trips", () => {
   it("separates archive caches from older page sizes", async () => {
     database([[[0]], []])
     await getArchivePosts()
-    expect(JSON.parse(mocks.cache.mock.calls[0][0])[1]).toBe("ArchivePosts:9")
+    expect(JSON.parse(mocks.cache.mock.calls[0][0])).toEqual([
+      "writing",
+      "public-v2",
+      "ArchivePosts:9",
+      defaultArchiveOptions,
+    ])
   })
 
   it("corrects a stale out-of-range page to the last real page", async () => {
@@ -309,4 +329,153 @@ describe("unified archive SQL", () => {
     database([[[0]], []])
     expect(await getArchivePosts()).toEqual({ posts: [], page: 1, pageCount: 0, total: 0 })
   })
+})
+
+describe("publication-time visibility", () => {
+  const now = new Date("2030-01-01T12:00:00.000Z")
+  const reads = [
+    ["article detail", () => getPostBySlug("article"), [[]]],
+    ["plain archive", () => getPublishedPosts(), [[[0]], []]],
+    ["default archive", () => getArchivePosts(), [[[0]], []]],
+    [
+      "filtered archive",
+      () => getArchivePosts({ ...defaultArchiveOptions, tags: ["database"] }),
+      [[[0]], []],
+    ],
+    ["tag archive", () => getPostsByTag("database"), [[[0]], []]],
+    ["search", () => searchPosts("database"), [[[0]], []]],
+    ["recent posts", () => getRecentPosts(3), [[]]],
+    ["related posts", () => getRelatedPosts("source-id"), [[]]],
+    ["feed", () => getFeedPosts(), [[]]],
+    ["sitemap posts", () => getPublishedSlugs(), [[]]],
+    ["tag counts", () => getTagsInUse(), [[]]],
+    ["series parts", () => getSeriesBySlug("series"), [[]]],
+    ["sitemap series", () => getSeriesSlugs(), [[]]],
+  ] as const
+
+  it.each(reads)("binds a current cutoff in every %s statement", async (_name, read, rows) => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(now)
+    try {
+      const db = database(rows)
+      await read()
+      expect(db.query.mock.calls.length).toBeGreaterThan(0)
+      for (const [statement, parameters] of db.query.mock.calls) {
+        expect(statement).toContain('"posts"."status" =')
+        expect(statement).toContain('"posts"."published_at" is not null')
+        expect(statement).toContain('"posts"."published_at" <=')
+        expect(statement).toContain('"posts"."content_json" is not null')
+        expect(parameters).toContain(now.toISOString())
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps missing article and database failure distinct", async () => {
+    const db = database([[]])
+    expect(await getPostBySlug("missing")).toBeNull()
+    db.query.mockRejectedValueOnce(new Error("database offline"))
+    await expect(getPostBySlug("article")).rejects.toMatchObject({
+      cause: { message: "database offline" },
+    })
+  })
+
+  it("re-evaluates the cutoff for later reads rather than freezing it at module import", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      const db = database([[], []])
+      vi.setSystemTime(now)
+      await getRecentPosts(1)
+      vi.setSystemTime(new Date(now.getTime() + 60_000))
+      await getRecentPosts(1)
+      expect(db.query.mock.calls[0][1]).toContain(now.toISOString())
+      expect(db.query.mock.calls[1][1]).toContain("2030-01-01T12:01:00.000Z")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps token-guarded preview detail outside the public predicate and cache", async () => {
+    const content = { type: "doc", content: [] }
+    const db = database([[[...summaryRow, content, "published", 0, null]]])
+    await expect(getPostForPreview("article")).resolves.toMatchObject({ content })
+    const [statement] = db.query.mock.calls[0]
+    expect(statement).not.toContain('"posts"."published_at" <=')
+    expect(statement).not.toContain('"posts"."status" =')
+    expect(mocks.cache).not.toHaveBeenCalled()
+  })
+
+  it("uses publication eligibility for series metadata while retaining unreadable part titles", async () => {
+    const db = database([
+      [[...summaryRow, { type: "doc", content: [] }, "published", 0, "series-id"]],
+      [["series-id", "series", "Series", null]],
+      [
+        ["article", "Article", 1, true],
+        ["scheduled", "Scheduled title", 2, false],
+        ["draft", "Draft title", 3, false],
+      ],
+    ])
+    const post = await getPostBySlug("article")
+    expect(post?.seriesContext).toMatchObject({
+      position: 1,
+      total: 1,
+      previous: null,
+      next: null,
+      parts: [
+        { slug: "article", published: true },
+        { slug: "scheduled", published: false },
+        { slug: "draft", published: false },
+      ],
+    })
+    const [projection] = db.query.mock.calls[2]
+    expect(projection.split(" from ")[0]).toContain('"posts"."published_at" <=')
+    // Visibility is projected, not filtered: unpublished titles are intentional series context.
+    expect(projection.split(" where ")[1]).not.toContain('"posts"."status"')
+  })
+})
+
+it("versions all publication-dependent caches and expires them at publication deadlines", async () => {
+  const reads = [
+    () => getArchivePosts(),
+    () => getPublishedPosts(),
+    () => getPostsByTag("database"),
+    () => getPostBySlug("article"),
+    () => getFeedPosts(),
+    () => getRecentPosts(3),
+    () => getRelatedPosts("source-id"),
+    () => getPublishedSlugs(),
+    () => getSeriesBySlug("series"),
+    () => getSeriesSlugs(),
+    () => getTagsInUse(),
+  ]
+  for (const read of reads) {
+    database([[[0]], []])
+    await read()
+  }
+  expect(mocks.cache).toHaveBeenCalledTimes(reads.length)
+  expect(mocks.cacheOptions).toHaveBeenCalledTimes(reads.length)
+  for (const [key] of mocks.cache.mock.calls)
+    expect(JSON.parse(key).slice(0, 2)).toEqual(["writing", "public-v2"])
+  for (const [options] of mocks.cacheOptions.mock.calls)
+    expect(options).toEqual({ freshUntil: expect.any(Function) })
+})
+
+it("looks up the next publication after the original cold-read cutoff", async () => {
+  const { nextPublicationTime } = await import("./publication.server")
+  const next = "2030-01-01T00:00:00.000Z"
+  const { query } = database([[[next]]])
+  const cutoff = Date.parse("2029-12-31T23:59:59.000Z")
+  expect(await nextPublicationTime(cutoff)).toBe(Date.parse(next))
+  expect(query.mock.calls[0][0]).toContain('min("published_at")')
+  expect(query.mock.calls[0][0]).toContain('"posts"."published_at" >')
+  expect(query.mock.calls[0][1]).toContain(new Date(cutoff).toISOString())
+})
+
+it("keeps the normal lifetime when no publication is pending and skips persistence without DB", async () => {
+  const { nextPublicationTime } = await import("./publication.server")
+  database([[[null]]])
+  expect(await nextPublicationTime(1000)).toBeUndefined()
+  mocks.getDb.mockReturnValue(null)
+  expect(await nextPublicationTime(1000)).toBe(1000)
 })

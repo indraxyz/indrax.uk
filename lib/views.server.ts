@@ -1,5 +1,6 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
+import { publicPostCondition } from "@/features/writing/data/publication.server"
 import { getDb, schema } from "@/lib/db/index.server"
 import { logServerError } from "@/lib/observability"
 
@@ -48,13 +49,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       await db
         .update(schema.posts)
         .set({ viewCount: sql`${schema.posts.viewCount} + 1` })
-        .where(
-          and(
-            eq(schema.posts.slug, slug),
-            eq(schema.posts.status, "published"),
-            isNotNull(schema.posts.publishedAt)
-          )
-        )
+        .where(and(eq(schema.posts.slug, slug), publicPostCondition()))
     } catch (error) {
       // A counter that cannot count must not break the page it sits on.
       logServerError(error, { scope: "writing.viewCount", slug })

@@ -52,7 +52,7 @@ async function sitemap() {
   return new Response(xml, {
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, max-age=0, s-maxage=3600",
+      "Cache-Control": "no-cache, must-revalidate",
     },
   })
 }

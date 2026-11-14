@@ -71,20 +71,15 @@ export default function ArticlePage() {
       ))}
 
       <PostReactions key={post.slug} slug={post.slug}>
-        {({ trigger, summary }) => (
+        {({ header }) => (
           <ArticleCard
             post={post}
             article={article}
-            actions={
-              <div className="flex items-center gap-1">
-                {trigger}
-                <ShareLink slug={post.slug} />
-              </div>
-            }
-            reactions={summary}
+            actions={<ShareLink slug={post.slug} />}
+            reactions={header}
             meta={
               post.viewCount > 0 && (
-                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="flex max-w-full flex-wrap items-center gap-1.5 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
                   <Eye className="h-3.5 w-3.5" aria-hidden />
                   {post.viewCount.toLocaleString("en-US")} views
                 </span>

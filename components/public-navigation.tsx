@@ -8,7 +8,7 @@ export type PublicPage = "home" | "resume" | "writing" | "tech-stack"
 
 export function PublicNavigation({ activePage }: { activePage?: PublicPage | null }) {
   return (
-    <nav aria-label="Site" className="flex items-center gap-1 sm:gap-2">
+    <nav aria-label="Site" className="flex max-w-full flex-wrap items-center gap-1 sm:gap-2">
       <Link
         prefetch="none"
         to="/"

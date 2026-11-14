@@ -386,7 +386,14 @@ screen-reader, responsive and print behavior.
 ## Cache and operations
 
 Public reads are memoized per request. Persistent KV keys incorporate D1 tag
-revisions from the existing `revalidations` table and expire after one hour.
+revisions from the existing `revalidations` table. Publication-dependent snapshots
+retain a one-hour lifetime from read start, shortened to the next publication date,
+including cached absence. Rendered HTML retains its revision-keyed one-hour lifetime. Logical publication keys and the cache namespace are
+versioned so older visibility rules cannot be reused. Uncached revision tags share
+one D1 request. RSS/sitemap revalidate instead of extending the query-cache window.
+This is bounded server freshness, not an exact scheduler; the existing client cache
+and already-open pages have separate refresh behavior. See the
+[publication/backend specification](publication-backend-efficiency.md).
 Mutations await invalidation and clear request-local revision state. Rendered
 articles include post identity, saved revision and renderer version in their keys;
 renderer policy changes require a version bump. Private reads and draft rendering

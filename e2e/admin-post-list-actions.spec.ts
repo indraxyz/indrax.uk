@@ -490,6 +490,7 @@ test("switches posts between cards and a table and remembers the choice", async 
     "archived fixture",
   ])
   await expect(grid.getByRole("columnheader")).toHaveText([
+    "Select post",
     /Title/,
     "Status",
     "Tags",
@@ -601,11 +602,7 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   // The title column stays pinned while the other columns scroll beneath it, so
   // each row keeps naming its post.
   const title = grid.getByRole("rowheader", { name: "draft fixture" })
-  const status = grid
-    .getByRole("row")
-    .filter({ hasText: "draft fixture" })
-    .getByRole("cell")
-    .first()
+  const status = grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").nth(1)
   const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
   await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
@@ -636,3 +633,24 @@ for (const theme of ["light", "dark"] as const)
     )
     expect(blocking.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([])
   })
+
+test("layout choice survives failed writes over an older stored preference", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("indrax-admin-posts-view", "cards")
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "indrax-admin-posts-view") throw new Error("blocked preference write")
+      original.call(this, key, value)
+    }
+  })
+  await archiveFixture(page)
+  const layout = page.getByRole("group", { name: "Posts layout" })
+  const table = layout.getByRole("button", { name: "Table", exact: true })
+  await table.focus()
+  await page.keyboard.press("Enter")
+  await expect(table).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("table")).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem("indrax-admin-posts-view"))).toBe("cards")
+  await layout.getByRole("button", { name: "Cards", exact: true }).click()
+  await expect(table).toHaveAttribute("aria-pressed", "false")
+})

@@ -1,7 +1,8 @@
-import { and, asc, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm"
+import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm"
 import { postTagsProjection } from "./post-tags-query.server"
 import { buildArchiveQuery } from "./archive-query.server"
 import { cachedRead } from "@/lib/cache.server"
+import { nextPublicationTime, publicPostCondition } from "./publication.server"
 
 import {
   archivePageLimit,
@@ -37,20 +38,9 @@ export const CACHE_TAGS = {
   post: (slug: string) => `post:${slug}`,
 } as const
 
-// A published post is one that is marked published, has a publication date, and
-// has a body. All three matter.
-//
-// The date keeps a row flipped to published without one from appearing with a
-// blank byline. The body closes a gap the expand/contract migration opens: a row
-// carrying the old markdown column but no document renders nothing, and without
-// this clause it would still be listed in the archive, the feed and the sitemap
-// while answering 404 when opened - the archive advertising a link it cannot
-// honour. Found by leaving exactly such a row behind locally.
-const isPublic = and(
-  eq(schema.posts.status, "published"),
-  isNotNull(schema.posts.publishedAt),
-  isNotNull(schema.posts.contentJson)
-)
+// Build the cutoff for each read, not once when a Worker isolate loads.
+const isPublic = publicPostCondition
+const PUBLIC_CACHE_OPTIONS = { freshUntil: nextPublicationTime } as const
 
 // Everything a card needs. `content` is absent on purpose - a list page that
 // selects article bodies pays for every word it does not show (PRD US-2.1).
@@ -190,7 +180,7 @@ async function readPublishedPosts(page: number): Promise<PaginatedPosts> {
   const db = getDb()
   if (!db) return EMPTY_PAGE
 
-  return readPage(db, isPublic, page, WRITING_CONFIG.pageSize, [
+  return readPage(db, isPublic(), page, WRITING_CONFIG.pageSize, [
     desc(schema.posts.publishedAt),
     asc(schema.posts.id),
   ])
@@ -203,7 +193,7 @@ async function readArchivePosts(options: ArchiveOptions): Promise<ArchiveResults
   const { filter, order } = buildArchiveQuery(options)
   return (await readPage(
     db,
-    and(isPublic, filter),
+    and(isPublic(), filter),
     options.page,
     WRITING_CONFIG.pageSize,
     order,
@@ -217,7 +207,7 @@ async function readPostsByTag(tagSlug: string, page: number): Promise<PaginatedP
   if (!db) return EMPTY_PAGE
 
   const carriesTag = and(
-    isPublic,
+    isPublic(),
     sql`exists (
       select 1 from ${schema.postTags}
       inner join ${schema.tags} on ${schema.tags.id} = ${schema.postTags.tagId}
@@ -256,7 +246,7 @@ async function readSearchResults(query: string, page: number): Promise<SearchRes
   // Built once and reused by both statements so the count and the page can never
   // disagree about what was asked.
   const tsquery = sql`websearch_to_tsquery('english', ${query})`
-  const matches = and(isPublic, sql`${schema.posts.searchVector} @@ ${tsquery}`)
+  const matches = and(isPublic(), sql`${schema.posts.searchVector} @@ ${tsquery}`)
 
   const results = await readPage(
     db,
@@ -296,7 +286,7 @@ async function readSeriesContext(
         slug: schema.posts.slug,
         title: schema.posts.title,
         order: schema.posts.seriesOrder,
-        published: sql<boolean>`${isPublic}`,
+        published: sql<boolean>`${isPublic()}`,
       })
       .from(schema.posts)
       .where(eq(schema.posts.seriesId, seriesId))
@@ -346,7 +336,7 @@ async function readSeriesBySlug(slug: string): Promise<SeriesWithParts | null> {
       },
     })
     .from(schema.series)
-    .leftJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic))
+    .leftJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic()))
     .where(eq(schema.series.slug, slug))
     .orderBy(schema.posts.seriesOrder)
 
@@ -373,7 +363,7 @@ async function readSeriesSlugs(): Promise<{ slug: string; updatedAt: string }[]>
       updatedAt: sql<Date>`max(${schema.posts.updatedAt})`.as("updated_at"),
     })
     .from(schema.series)
-    .innerJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic))
+    .innerJoin(schema.posts, and(eq(schema.posts.seriesId, schema.series.id), isPublic()))
     .groupBy(schema.series.slug)
 
   return rows.map((row) => ({ slug: row.slug, updatedAt: new Date(row.updatedAt).toISOString() }))
@@ -395,7 +385,7 @@ async function readPostBySlug(slug: string): Promise<Post | null> {
     // The status filter lives in the query, not in a caller's `if`. A draft is
     // indistinguishable from a slug that was never used, which is what makes an
     // unpublished post a 404 rather than a 403 (threat T-4).
-    .where(and(eq(schema.posts.slug, slug), isPublic))
+    .where(and(eq(schema.posts.slug, slug), isPublic()))
     .limit(1)
 
   // A published row with no document is not a post anyone can read. Treating it
@@ -474,7 +464,7 @@ async function readTagsInUse(): Promise<TagWithCount[]> {
     .from(schema.tags)
     .innerJoin(schema.postTags, eq(schema.postTags.tagId, schema.tags.id))
     .innerJoin(schema.posts, eq(schema.posts.id, schema.postTags.postId))
-    .where(isPublic)
+    .where(isPublic())
     .groupBy(schema.tags.id, schema.tags.name, schema.tags.slug)
     .orderBy(schema.tags.name)
 }
@@ -486,7 +476,7 @@ async function readRecentPosts(limit: number): Promise<PostSummary[]> {
   const rows = await db
     .select(summaryWithTags)
     .from(schema.posts)
-    .where(isPublic)
+    .where(isPublic())
     .orderBy(desc(schema.posts.publishedAt))
     .limit(limit)
 
@@ -525,7 +515,7 @@ async function readRelatedPosts(postId: string, limit: number): Promise<PostSumm
     .select(summaryWithTags)
     .from(schema.posts)
     .innerJoin(shared, eq(shared.postId, schema.posts.id))
-    .where(isPublic)
+    .where(isPublic())
     .orderBy(desc(shared.shared), desc(schema.posts.publishedAt), asc(schema.posts.id))
     .limit(limit)
 
@@ -539,7 +529,7 @@ async function readFeedPosts(): Promise<PostSummary[]> {
   const rows = await db
     .select(summaryWithTags)
     .from(schema.posts)
-    .where(isPublic)
+    .where(isPublic())
     .orderBy(desc(schema.posts.publishedAt))
     .limit(WRITING_CONFIG.feedSize)
 
@@ -553,7 +543,7 @@ async function readPublishedSlugs(): Promise<{ slug: string; updatedAt: string }
   const rows = await db
     .select({ slug: schema.posts.slug, updatedAt: schema.posts.updatedAt })
     .from(schema.posts)
-    .where(isPublic)
+    .where(isPublic())
     .orderBy(desc(schema.posts.publishedAt))
 
   return rows.map((row) => ({ slug: row.slug, updatedAt: row.updatedAt.toISOString() }))
@@ -562,7 +552,12 @@ async function readPublishedSlugs(): Promise<{ slug: string; updatedAt: string }
 /** Public reads share the platform cache and mutation invalidation tags. */
 function publicRead<A extends unknown[], T>(name: string, read: (...args: A) => Promise<T>) {
   return (...args: A) =>
-    cachedRead(JSON.stringify(["writing", name, ...args]), [CACHE_TAGS.posts], () => read(...args))
+    cachedRead(
+      JSON.stringify(["writing", "public-v2", name, ...args]),
+      [CACHE_TAGS.posts],
+      () => read(...args),
+      PUBLIC_CACHE_OPTIONS
+    )
 }
 
 const cachedArchivePosts = publicRead(`ArchivePosts:${WRITING_CONFIG.pageSize}`, readArchivePosts)
@@ -678,7 +673,8 @@ export const getSeriesSlugs = () =>
  */
 export const getPostBySlug = (slug: string) =>
   cachedRead(
-    JSON.stringify(["writing", "post-by-slug", slug]),
+    JSON.stringify(["writing", "public-v2", "post-by-slug", slug]),
     [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
-    () => readPostBySlug(slug)
+    () => readPostBySlug(slug),
+    PUBLIC_CACHE_OPTIONS
   )

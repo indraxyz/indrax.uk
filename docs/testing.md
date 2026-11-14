@@ -14,7 +14,12 @@ picker updates. Pagination tests cover delayed results, focus, sticky offsets an
 reduced motion; copy feedback tests assert accessible toast-only updates. `e2e/admin-sync.spec.ts` and `e2e/reactions.spec.ts`
 belong to the serial writes project with the other authoring tests. Clock-driven
 autosave cases must not wait a real minute. Reaction integration cases use the
-explicit loopback-only `TEST_DATABASE_URL` and remove their own fixture rows.
+explicit loopback-only `TEST_DATABASE_URL` and remove their own fixture rows. Article reaction
+coverage checks grouped header controls without a footer duplicate, request
+budgets, pending guards, local focus recovery, errors, 44px targets, responsive
+wrapping, enlarged text, axe and print. See the
+[article reaction controls specification](article-reaction-controls.md) for
+acceptance criteria and the user’s icon-only/no-checkmark/no-underline preferences.
 
 | Layer                 | Command                    | Boundary                                                           |
 | --------------------- | -------------------------- | ------------------------------------------------------------------ |
@@ -47,7 +52,7 @@ public rails/grids and admin dashboard/cards/table pending states, then verifies
 empty, error/retry and cached results. `image-loading.spec.ts` checks real image load/decode,
 source replacement/error recovery, reserved dimensions, cached images and reduced motion
 on public preview and admin editor pages. `article-navigation.spec.ts` covers nested h2–h4
-contents, desktop/sidebar and mobile/disclosure layouts, upward/downward heading links,
+contents, desktop/sidebar and edge-to-edge mobile/disclosure layouts, upward/downward heading links,
 header clearance, keyboard access, axe and print. `toolbar-drag.spec.ts` covers mouse drag
 versus clicks, native touch, keyboard boundaries, cancelled gestures and overflow cues.
 The [content-loading specification](content-loading-article-navigation.md) records behavior.
@@ -115,6 +120,17 @@ Inspect the current inventory without changing application data:
 rg --files -g '*.test.ts' -g '*.test.tsx' -g '!node_modules' -g '!build'
 npx playwright test --list
 ```
+
+## Editor controller regressions
+
+`e2e/admin-sync.spec.ts` uses intercepted private APIs and a controlled browser clock
+to verify save/refresh/autosave coordination without database prerequisites. It
+also checks that leaving a dirty editor clears its autosave lifecycle, a new editor
+starts empty, and replaced/removed cover previews revoke object URLs. Pure
+reconciliation tests and mocked form-submit tests complement these real React
+lifecycle checks; hook mocks alone do not prove timer or subscription behavior.
+The authenticated `admin-authoring` suite still requires disposable database/auth
+fixtures; report its skips separately.
 
 ## Prerequisites and local gate
 
@@ -381,6 +397,40 @@ cases and evidence locations when presenting results.
 from `config/local-neon.sql`, including on existing local volumes. This is local
 Docker setup and is never applied to a remote Neon database.
 
+## Publication and backend measurements
+
+`test/integration/publication.test.ts` uses a Date-only controlled clock and
+isolated UUID fixtures to verify public visibility, unavailable series metadata,
+view increments, exact publication/cache boundaries and ordinary one-hour cache
+reuse. The cache deadline query uses the read's original cutoff, not a later
+completion time. An ordinary cold default archive costs two concurrent Neon HTTP
+requests (count/page batch plus deadline lookup); a warm hit costs zero. Missing
+cache bindings add no deadline query.
+
+Reaction SQL tests exercise the actual ordered Neon HTTP batch, immediate returned
+counts, concurrent idempotency/visitor isolation, hidden posts, constraints,
+cascades and rollback after a later statement fails. Browser reaction coverage
+also creates a loopback-only future fixture to verify SSR/API 404 and RSS/sitemap
+revalidation without leaking it publicly. Each test deletes only its own fixture.
+
+Repeatable benchmarks run without environment files or remote resources:
+
+```bash
+node --import tsx scripts/benchmark-cache-revisions.mjs
+TEST_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4452/indrax?sslmode=require' \
+TEST_DIRECT_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:55442/indrax' \
+npx tsx scripts/benchmark-reactions.ts /tmp/reactions.json
+```
+
+Use ports for an isolated, migrated local database; do not assume another running
+local stack is disposable. The reaction run records warmups, 30 samples per
+operation/size, p50/p95, request counts and PostgreSQL plans. Its optional
+`REACTION_BENCHMARK_SQL_ONLY=true` pass separates uninstrumented SQL from per-node
+EXPLAIN timing overhead. See [reaction results](reaction-benchmark.md),
+[D1 call/row results](cache-revision-benchmark.md) and the
+[publication/backend spec](publication-backend-efficiency.md). No remote latency,
+Neon cold-start or global free-tier capacity guarantee follows from local timings.
+
 ## Local workerd diagnostics
 
 A message such as `kj::getCaughtExceptionAsKj() ... disconnected: write():
@@ -495,3 +545,21 @@ access preserves the release deployment history. A 200 cleanup response proves
 one bounded invocation completed, not that every pending record was drained. Record skipped live checks explicitly; a green local suite does not prove
 Preview TLS, OAuth credentials or the remote Neon secret's target. See the
 [migration specification](workers-previews-migration-spec.md) for acceptance.
+
+Client preference regressions are covered by `lib/client-preference.test.ts`,
+`lib/theme.test.ts`, `features/writing/utils/admin-posts-view.test.ts`, and
+`e2e/client-preferences.spec.ts`. These require no database or authenticated session:
+exercise real second-tab consent changes, blocked storage theme choices, system
+color scheme changes and persisted theme reloads. The preference contract is in
+`docs/specs/client-preference-state.md`.
+
+## Admin Zustand and bulk actions
+
+The [admin state specification](specs/admin-zustand-selection.md) defines display
+preference compatibility, navigation/drawer lifecycle and current-page selection
+for bulk Publish, Draft and Archive. Store and orchestration tests exercise
+isolated state, stale-ID pruning, partial outcomes, retries and authorization
+expiry. Browser tests use intercepted private APIs to check cards/table selection,
+confirmation, keyboard behavior, URL/page resets and failure recovery without
+changing database fixtures. These tests complement the existing real authoring
+and session suites; fixture-dependent skips must still be reported.

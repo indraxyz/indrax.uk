@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { controlClassNames } from "@/components/ui/variants"
 import {
-  CONSENT_CHANGE_EVENT,
+  subscribeToConsent,
   clearConsent,
   readConsent,
   writeConsent,
@@ -36,9 +36,7 @@ export function ConsentBanner() {
     const sync = () => setDecision(readConsent())
 
     sync()
-    window.addEventListener(CONSENT_CHANGE_EVENT, sync)
-
-    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
+    return subscribeToConsent(sync)
   }, [])
 
   // The bar is fixed, so it is out of flow and sits on top of whatever the page
@@ -88,7 +86,7 @@ export function ConsentBanner() {
             </span>
           </p>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => writeConsent("denied")}
@@ -128,9 +126,7 @@ export function ConsentControl({ className }: { className?: string }) {
     const sync = () => setDecided(readConsent() !== null)
 
     sync()
-    window.addEventListener(CONSENT_CHANGE_EVENT, sync)
-
-    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, sync)
+    return subscribeToConsent(sync)
   }, [])
 
   // Hidden while the banner is already asking; two controls for one question is
