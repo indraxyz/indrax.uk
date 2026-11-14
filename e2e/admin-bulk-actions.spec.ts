@@ -145,6 +145,11 @@ for (const theme of ["light", "dark"] as const) {
     await expect(
       menu.getByRole("menuitem", { name: "Change to draft", exact: true })
     ).toHaveAttribute("aria-disabled", "true")
+    await expect(menu).toHaveCSS("box-shadow", "none")
+    await expect(menu).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    await expect(menu).toHaveCSS("backdrop-filter", /blur\(/)
+    await expect(selection(page)).toHaveCSS("box-shadow", "none")
+    await expect(selection(page)).toHaveCSS("backdrop-filter", /blur\(/)
     const menuResults = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
     expect(menuResults.violations).toEqual([])
     await page.screenshot({ path: test.info().outputPath(`floating-menu-${theme}.png`) })

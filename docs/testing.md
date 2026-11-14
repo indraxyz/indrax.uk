@@ -562,7 +562,8 @@ It provides select-all, a selected count, clear and an upward-opening actions me
 Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
 Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
 selection returns focus to a post checkbox. Results remain visible after the bar closes.
-The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
+The bar and popovers share a transparent, blurred surface without a drop shadow, with an opaque
+forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
 that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
 navigation and footer focus at 320px and 1280px.
 Card checkboxes sit immediately before status labels. Only the checkbox table column stays pinned;

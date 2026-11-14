@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
+import { popoverSurfaceClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
 const Popover = PopoverPrimitive.Root
@@ -18,7 +19,8 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        "z-50 w-72 max-w-[calc(100vw-1.5rem)] rounded-none border-2 border-[var(--semantic-border-strong)] bg-popover p-4 text-popover-foreground shadow-soft-lg outline-none",
+        popoverSurfaceClassNames,
+        "z-50 w-72 max-w-[calc(100vw-1.5rem)] p-4",
         className
       )}
       {...props}

@@ -12,6 +12,8 @@ import { usePostSelectionStore } from "./post-selection"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { LoadingIndicator } from "@/components/ui/loading-indicator"
+import { popoverSurfaceClassNames } from "@/components/ui/variants"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -172,7 +174,10 @@ export function BulkPostActions({
           ref={bar}
           data-slot="post-selection-bar"
           aria-label="Post selection"
-          className="m-0! fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 border-2 border-border bg-background p-2 shadow-soft-lg"
+          className={cn(
+            popoverSurfaceClassNames,
+            "m-0! fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 p-2"
+          )}
         >
           <label
             className="inline-flex min-h-11 min-w-11 items-center justify-center"
@@ -227,7 +232,12 @@ export function BulkPostActions({
               </Menu.Trigger>
               <Menu.Portal>
                 <Menu.Positioner side="top" align="end" sideOffset={16} className="z-[60]">
-                  <Menu.Popup className="min-w-48 max-w-[calc(100vw-2rem)] border-2 border-border bg-background p-1 text-foreground shadow-soft-lg outline-none">
+                  <Menu.Popup
+                    className={cn(
+                      popoverSurfaceClassNames,
+                      "min-w-48 max-w-[calc(100vw-2rem)] p-1"
+                    )}
+                  >
                     {BULK_ACTIONS.map(({ status, label, icon: Icon }) => {
                       const targets = selectedPosts
                         .filter((post) => post.status !== status)
