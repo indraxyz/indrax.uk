@@ -562,6 +562,9 @@ its labelled controls select the current page, publish, move to draft, archive o
 Confirmation cancellation returns focus to the action; clearing or completing selection returns
 focus to a post checkbox. Results remain visible after the action bar closes. Card checkboxes
 sit beside status labels, and only the Title table column stays pinned while scrolling.
+The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
+browser checks cover both themes, keyboard selection, 44px label targets and native rendering
+in forced-colors mode.
 Store and orchestration tests exercise isolated state, stale-ID pruning, partial outcomes,
 retries and authorization
 expiry. Browser tests use intercepted private APIs to check cards/table selection,

@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox"
 import { Archive, EyeOff, Send, X } from "lucide-react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { useStore } from "zustand"
@@ -144,12 +145,11 @@ export function BulkPostActions({
           className="flex flex-wrap items-center gap-2 border-2 border-border bg-card p-2"
         >
           <label
-            className="inline-flex min-h-11 min-w-11 items-center justify-center focus-within:ring-2 focus-within:ring-ring"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center"
             title="Select all posts on this page"
           >
-            <input
+            <Checkbox
               ref={selectAll}
-              type="checkbox"
               aria-label="Select all posts on this page"
               checked={ids.length > 0 && selected.length === ids.length}
               disabled={!usable || !ids.length || pending}
@@ -157,7 +157,6 @@ export function BulkPostActions({
                 if (selected.length === ids.length) focusPostCheckbox()
                 store.getState().select(selected.length === ids.length ? [] : ids)
               }}
-              className="size-5 accent-primary"
             />
           </label>
           <span role="status" className="mr-auto text-sm">

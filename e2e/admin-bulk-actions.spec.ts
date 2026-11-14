@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
+import { THEME_STORAGE_KEY } from "../lib/theme"
 
 const ids = [1, 2, 3].map((n) => `550e8400-e29b-41d4-a716-44665544000${n}`)
 async function fixture(page: Page) {
@@ -99,6 +100,81 @@ async function confirm(page: Page, action: string, count: number) {
   const dialog = page.getByRole("alertdialog", { name: `${action} selected posts?`, exact: true })
   await dialog.getByRole("button", { name: `${action} ${count} posts`, exact: true }).click()
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`native post checkboxes match the ${theme} theme in cards and table`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme,
+    })
+    await fixture(page)
+    const checkbox = page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    await expect(checkbox).toHaveCSS("appearance", "none")
+    await expect(checkbox).toHaveCSS("border-radius", "0px")
+    await expect(checkbox).toHaveCSS("border-top-width", "2px")
+    const target = (await checkbox.locator("xpath=../..").boundingBox())!
+    expect(target.width).toBeGreaterThanOrEqual(44)
+    expect(target.height).toBeGreaterThanOrEqual(44)
+    await checkbox.focus()
+    await page.keyboard.press("Space")
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toBeFocused()
+    await expect(checkbox).not.toHaveCSS("box-shadow", "none")
+    await expect(checkbox).toHaveCSS(
+      "background-color",
+      theme === "light" ? "rgb(6, 59, 0)" : "rgb(225, 225, 0)"
+    )
+    await expect(checkbox.locator("..").locator("svg.lucide-check")).toBeVisible()
+    const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
+    await expect(all).toHaveJSProperty("indeterminate", true)
+    await expect(all.locator("..").locator("svg.lucide-minus")).toBeVisible()
+    await expect(all.locator("..").locator("svg.lucide-check")).toBeHidden()
+    await page.screenshot({
+      path: test.info().outputPath(`checkbox-cards-${theme}.png`),
+      fullPage: true,
+    })
+    await all.check()
+    await expect(all.locator("..").locator("svg.lucide-check")).toBeVisible()
+    await expect(all.locator("..").locator("svg.lucide-minus")).toBeHidden()
+    await page.getByRole("button", { name: "Table", exact: true }).click()
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toHaveCSS("appearance", "none")
+    await page.screenshot({
+      path: test.info().outputPath(`checkbox-table-${theme}.png`),
+      fullPage: true,
+    })
+    const results = await new AxeBuilder({ page }).include("main").analyze()
+    expect(
+      results.violations.filter(({ impact }) => impact === "serious" || impact === "critical")
+    ).toEqual([])
+  })
+}
+
+test("post checkboxes retain native indicators and keyboard behavior in forced colors", async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: "active" })
+  await fixture(page)
+  const checkbox = page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  await expect(checkbox).toHaveCSS("appearance", "auto")
+  await checkbox.focus()
+  await expect(checkbox).toHaveCSS("outline-style", "solid")
+  await expect(checkbox).toHaveCSS("outline-width", "2px")
+  await page.keyboard.press("Space")
+  await expect(checkbox).toBeChecked()
+  await expect(checkbox.locator("..").locator("svg.lucide-check")).toBeHidden()
+  const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
+  await expect(all).toHaveJSProperty("indeterminate", true)
+  await expect(all.locator("..").locator("svg.lucide-minus")).toBeHidden()
+  await all.focus()
+  await page.keyboard.press("Space")
+  await expect(all).toBeChecked()
+  await expect(all).toHaveJSProperty("indeterminate", false)
+  await expect(
+    page.getByRole("checkbox", { name: "Select published fixture", exact: true })
+  ).toBeChecked()
+})
 
 for (const width of [320, 1280]) {
   test(`card selection and compact bulk actions fit at ${width}px`, async ({ page }) => {

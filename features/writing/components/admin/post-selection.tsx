@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox"
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useStore } from "zustand"
 import { PostActions } from "./post-actions"
@@ -27,15 +28,13 @@ export function PostSelectionCheckbox({
   const selected = useStore(store, (state) => state.selectedIds.includes(id))
   const pending = useStore(store, (state) => state.pending)
   return (
-    <label className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center focus-within:ring-2 focus-within:ring-ring">
-      <input
-        type="checkbox"
+    <label className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center">
+      <Checkbox
         data-post-selection
         aria-label={`Select ${title}`}
         checked={selected}
         disabled={disabled || pending}
         onChange={() => store.getState().toggle(id)}
-        className="size-5 accent-primary"
       />
     </label>
   )
