@@ -58,6 +58,24 @@ primary keys and unique constraints enforce the actual integrity. This distincti
 follows [Drizzle's relation model](https://orm.drizzle.team/docs/relations) and
 [PostgreSQL's constraint semantics](https://www.postgresql.org/docs/current/ddl-constraints.html).
 
+## Public publication and reactions
+
+Public queries, reactions and view increments share a read-time predicate:
+status published, non-null content/publication date, and publication date no later
+than the current call. Series DTOs retain intentional unavailable-part metadata
+with `published: false`; navigation/counts use only readable parts. Private preview
+reads remain separate. Admin publishing sets the first date to now and preserves
+existing dates on republish; it does not expose a scheduling UI.
+
+Reaction rows retain their existing `(post_id, visitor_id, reaction)` primary key,
+check constraint and post deletion cascade. GET uses one uncached aggregate.
+Desired-state PUT performs the guarded idempotent insert/delete and then the
+aggregate in one ordered Neon HTTP transaction. Each statement sees prior writes
+in that transaction; concurrency remains PostgreSQL Read Committed latest-state
+behavior rather than an exclusive per-visitor snapshot. No reaction response enters
+a shared cache. The [benchmark report](reaction-benchmark.md) records scaling
+measurements and the decision on additional indexes/counters.
+
 ## Cover cleanup
 
 Database rows and R2 objects cannot commit in one transaction. A small cleanup

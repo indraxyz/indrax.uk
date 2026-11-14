@@ -150,3 +150,11 @@ it("answers malformed view-counter encoding with 400 instead of throwing", async
   const result = await handle(request("/api/views/%E0%A4%A"))
   expect(result.status).toBe(400)
 })
+
+it("revalidates sitemap responses rather than extending publication query freshness", async () => {
+  mocks.slugs.mockResolvedValue([])
+  mocks.series.mockResolvedValue([])
+  const response = await handle(request("/sitemap.xml"))
+  expect(response.headers.get("Cache-Control")).toBe("no-cache, must-revalidate")
+  expect(await response.text()).toContain("<urlset")
+})

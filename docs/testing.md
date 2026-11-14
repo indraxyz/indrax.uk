@@ -386,6 +386,40 @@ cases and evidence locations when presenting results.
 from `config/local-neon.sql`, including on existing local volumes. This is local
 Docker setup and is never applied to a remote Neon database.
 
+## Publication and backend measurements
+
+`test/integration/publication.test.ts` uses a Date-only controlled clock and
+isolated UUID fixtures to verify public visibility, unavailable series metadata,
+view increments, exact publication/cache boundaries and ordinary one-hour cache
+reuse. The cache deadline query uses the read's original cutoff, not a later
+completion time. An ordinary cold default archive costs two concurrent Neon HTTP
+requests (count/page batch plus deadline lookup); a warm hit costs zero. Missing
+cache bindings add no deadline query.
+
+Reaction SQL tests exercise the actual ordered Neon HTTP batch, immediate returned
+counts, concurrent idempotency/visitor isolation, hidden posts, constraints,
+cascades and rollback after a later statement fails. Browser reaction coverage
+also creates a loopback-only future fixture to verify SSR/API 404 and RSS/sitemap
+revalidation without leaking it publicly. Each test deletes only its own fixture.
+
+Repeatable benchmarks run without environment files or remote resources:
+
+```bash
+node --import tsx scripts/benchmark-cache-revisions.mjs
+TEST_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:4452/indrax?sslmode=require' \
+TEST_DIRECT_DATABASE_URL='postgres://indrax:indrax@127.0.0.1:55442/indrax' \
+npx tsx scripts/benchmark-reactions.ts /tmp/reactions.json
+```
+
+Use ports for an isolated, migrated local database; do not assume another running
+local stack is disposable. The reaction run records warmups, 30 samples per
+operation/size, p50/p95, request counts and PostgreSQL plans. Its optional
+`REACTION_BENCHMARK_SQL_ONLY=true` pass separates uninstrumented SQL from per-node
+EXPLAIN timing overhead. See [reaction results](reaction-benchmark.md),
+[D1 call/row results](cache-revision-benchmark.md) and the
+[publication/backend spec](publication-backend-efficiency.md). No remote latency,
+Neon cold-start or global free-tier capacity guarantee follows from local timings.
+
 ## Local workerd diagnostics
 
 A message such as `kj::getCaughtExceptionAsKj() ... disconnected: write():

@@ -651,3 +651,43 @@ test("persists idempotent reactions through the real Worker API", async ({ reque
     })
   }
 })
+
+test("future-dated articles stay unavailable through SSR and the real reaction API", async ({
+  request,
+}) => {
+  test.skip(!process.env.DATABASE_URL, "needs disposable seeded database")
+  const url = new URL(process.env.DATABASE_URL!)
+  if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+    throw new Error("Publication fixtures require a disposable loopback database.")
+  const { neon, neonConfig } = await import("@neondatabase/serverless")
+  neonConfig.fetchEndpoint = `http://${url.hostname}:${url.port || "4444"}/sql`
+  const sql = neon(url.toString())
+  const id = crypto.randomUUID()
+  const slug = `future-publication-${id}`
+  const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] })
+  const date = new Date(Date.now() + 365 * 86_400_000).toISOString()
+  try {
+    await sql`insert into posts (id, slug, title, status, published_at, content_json)
+      values (${id}::uuid, ${slug}, 'Future publication fixture', 'published', ${date}::timestamptz, ${body}::jsonb)`
+    expect((await request.get(`/writing/${slug}`)).status()).toBe(404)
+    const endpoint = `/api/writing/posts/${slug}/reactions`
+    const read = await request.get(endpoint)
+    expect(read.status()).toBe(404)
+    expect(read.headers()["cache-control"]).toBe("no-store")
+    const write = await request.put(endpoint, {
+      headers: { origin: E2E_BASE_URL },
+      data: { visitorId: crypto.randomUUID(), reaction: "love", active: true },
+    })
+    expect(write.status()).toBe(404)
+    const rows =
+      await sql`select count(*)::int as total from post_reactions where post_id = ${id}::uuid`
+    expect(rows[0].total).toBe(0)
+    for (const path of ["/writing/rss.xml", "/sitemap.xml"]) {
+      const response = await request.get(path)
+      expect(response.headers()["cache-control"]).toBe("no-cache, must-revalidate")
+      expect(await response.text()).not.toContain(slug)
+    }
+  } finally {
+    await sql`delete from posts where id = ${id}::uuid`
+  }
+})
