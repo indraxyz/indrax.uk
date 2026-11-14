@@ -90,3 +90,13 @@ PostForm save lifecycle, Drizzle and the Worker request boundaries.
 Existing authoring uses last-write-wins across tabs. This work serializes requests
 within a form; atomic cross-tab revision conflicts require a separate contract.
 The retained old dev Worker and shared staging resources remain untouched.
+
+## Editor state ownership
+
+`use-post-form-controller.ts` owns the working draft, saved baseline, upload/save and
+refresh orchestration, dirty navigation protection and autosave. Its confirmation
+flags gate autosave; `PostForm` renders their dialogs and owns focus, slug caret
+restoration and selected-file object URL cleanup. The edit route keys each form by
+post ID, so changing posts creates a fresh controller. TanStack Query remains the
+server cache and Tiptap owns selection/history. No draft is persisted in browser
+storage. See [the controller specification](editor-state-controller.md).

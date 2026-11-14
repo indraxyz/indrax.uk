@@ -23,7 +23,7 @@ const post: AdminPost = {
   seriesOrder: null,
 }
 
-async function setup(page: Page) {
+async function setup(page: Page, coverUploadsConfigured = false) {
   await page.context().addCookies([
     {
       name: "better-auth.session_token",
@@ -42,7 +42,7 @@ async function setup(page: Page) {
         json: {
           author: { id: "author", name: "Author", email: "author@example.test" },
           authConfigured: true,
-          coverUploadsConfigured: false,
+          coverUploadsConfigured,
           databaseConfigured: true,
           previewConfigured: true,
         },
@@ -345,4 +345,64 @@ test("updates publication state from the mutation response without rereading the
   await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeDisabled()
   await expect(page.locator(".tiptap")).toContainText("Saved body")
   expect(state.reads).toBe(1)
+})
+
+test("leaving a dirty editor stops autosave and a new editor starts empty", async ({ page }) => {
+  const state = await setup(page)
+  await page.clock.install()
+  await page.route("**/api/admin/posts/archive**", (route) =>
+    route.fulfill({ json: { posts: [post], total: 1, page: 1, pageCount: 1 } })
+  )
+  await page.goto(`/admin/posts/edit/${ID}`)
+  await expect(page.locator(".tiptap")).toBeVisible()
+  await page.getByLabel("Title", { exact: true }).fill("Discard this draft")
+  page.on("dialog", (dialog) => dialog.accept())
+  await page.locator('a[href="/admin/posts"]').first().click()
+  await expect(page).toHaveURL(/\/admin\/posts$/)
+  await expect(page.getByRole("link", { name: "Sync post", exact: true }).first()).toBeVisible()
+  await page.clock.fastForward(120_000)
+  expect(state.writes).toHaveLength(0)
+  await page.getByRole("link", { name: "New post", exact: true }).click()
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("")
+  await expect(page.getByLabel("Excerpt", { exact: true })).toHaveValue("")
+  await expect(page.locator(".tiptap")).not.toContainText("Saved body")
+  await page.clock.fastForward(60_000)
+  expect(state.writes).toHaveLength(0)
+})
+
+test("replacing and removing a selected cover releases its preview URLs", async ({ page }) => {
+  await setup(page, true)
+  await page.addInitScript(() => {
+    const revoked: string[] = []
+    const original = URL.revokeObjectURL
+    URL.revokeObjectURL = (url: string) => {
+      revoked.push(url)
+      original.call(URL, url)
+    }
+    Object.assign(window, { revokedCoverUrls: revoked })
+  })
+  await page.goto(`/admin/posts/edit/${ID}`)
+  const cover = page.getByRole("group", { name: "Cover image", exact: true })
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1X8AAAAASUVORK5CYII=",
+    "base64"
+  )
+  const file = cover.locator('input[type="file"]')
+  await file.setInputFiles({ name: "first.png", mimeType: "image/png", buffer: png })
+  const image = cover.locator('img[src^="blob:"]')
+  await expect(image).toBeVisible()
+  const first = await image.getAttribute("src")
+  await file.setInputFiles({ name: "second.png", mimeType: "image/png", buffer: png })
+  await expect(image).not.toHaveAttribute("src", first!)
+  const second = await image.getAttribute("src")
+  await cover.getByRole("button", { name: "Remove cover image", exact: true }).click()
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Remove cover", exact: true })
+    .click()
+  await expect(image).toHaveCount(0)
+  const revoked = await page.evaluate(
+    () => (window as unknown as { revokedCoverUrls: string[] }).revokedCoverUrls
+  )
+  expect(revoked).toEqual(expect.arrayContaining([first, second]))
 })
