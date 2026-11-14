@@ -41,8 +41,10 @@ export function BulkPostActions({
   const pending = useStore(store, (state) => state.pending)
   const result = useStore(store, (state) => state.result)
   const client = useQueryClient()
-  const [targetStatus, setTargetStatus] = useState<PostStatus>("archived")
-  const [confirmation, setConfirmation] = useState<string[] | null>(null)
+  const [confirmation, setConfirmation] = useState<{
+    status: PostStatus
+    ids: string[]
+  } | null>(null)
   const failedRefreshVersion = useRef<number | null>(null)
   const usable =
     ready &&
@@ -56,11 +58,14 @@ export function BulkPostActions({
   const selectAll = useRef<HTMLInputElement>(null)
   const actionTrigger = useRef<HTMLButtonElement | null>(null)
   const ids = usable ? posts.map(({ id }) => id) : []
-  const selected = selectedIds.filter((id) => ids.includes(id))
-  const targets = selected.filter(
-    (id) => posts.find((post) => post.id === id)?.status !== targetStatus
-  )
-  const confirmed = confirmation?.filter((id) => targets.includes(id)) ?? []
+  const selectedPosts = usable ? posts.filter((post) => selectedIds.includes(post.id)) : []
+  const selected = selectedPosts.map(({ id }) => id)
+  const action = BULK_ACTIONS.find(({ status }) => status === confirmation?.status)
+  // Revalidation can narrow the approved snapshot, but must never expand it.
+  const confirmed = selectedPosts
+    .filter((post) => confirmation?.ids.includes(post.id) && post.status !== confirmation.status)
+    .map(({ id }) => id)
+  const skipped = selectedPosts.filter((post) => post.status === action?.status).length
   useLayoutEffect(() => {
     if (ready) store.getState().prune(posts.map(({ id }) => id))
   }, [posts, ready, store])
@@ -75,13 +80,12 @@ export function BulkPostActions({
     }
   }, [])
 
-  const actionLabel = { published: "Publish", draft: "Change to draft", archived: "Archive" }[
-    targetStatus
-  ]
+  const actionLabel = action?.label ?? "Archive"
 
   async function applyStatus() {
-    if (!usable || !confirmed.length || !store.getState().begin()) return
+    if (!usable || !confirmation || !confirmed.length || !store.getState().begin()) return
     const snapshot = [...confirmed]
+    const targetStatus = confirmation.status
     try {
       const outcome = await runBulkPostStatus({
         ids: snapshot,
@@ -160,32 +164,30 @@ export function BulkPostActions({
             {selectedIds.length} selected
           </span>
           <ButtonGroup aria-label="Bulk post actions">
-            {BULK_ACTIONS.map(({ status, label, icon: Icon }) => (
-              <Button
-                key={status}
-                type="button"
-                variant="secondary"
-                appearance="flat"
-                size="icon"
-                data-slot="button"
-                aria-label={`${label} selected`}
-                title={`${label} selected`}
-                disabled={
-                  !usable ||
-                  pending ||
-                  !selected.some((id) => posts.find((post) => post.id === id)?.status !== status)
-                }
-                onClick={(event) => {
-                  actionTrigger.current = event.currentTarget
-                  setTargetStatus(status)
-                  setConfirmation(
-                    selected.filter((id) => posts.find((post) => post.id === id)?.status !== status)
-                  )
-                }}
-              >
-                <Icon aria-hidden />
-              </Button>
-            ))}
+            {BULK_ACTIONS.map(({ status, label, icon: Icon }) => {
+              const targets = selectedPosts
+                .filter((post) => post.status !== status)
+                .map(({ id }) => id)
+              return (
+                <Button
+                  key={status}
+                  type="button"
+                  variant="secondary"
+                  appearance="flat"
+                  size="icon"
+                  data-slot="button"
+                  aria-label={`${label} selected`}
+                  title={`${label} selected`}
+                  disabled={!usable || pending || !targets.length}
+                  onClick={(event) => {
+                    actionTrigger.current = event.currentTarget
+                    setConfirmation({ status, ids: targets })
+                  }}
+                >
+                  <Icon aria-hidden />
+                </Button>
+              )
+            })}
             <Button
               type="button"
               variant="secondary"
@@ -238,12 +240,12 @@ export function BulkPostActions({
             <AlertDialogTitle>{actionLabel} selected posts?</AlertDialogTitle>
             <AlertDialogDescription>
               {actionLabel} {confirmed.length} posts from this page?{" "}
-              {selected.length > confirmed.length && (
+              {skipped > 0 && (
                 <>
-                  {selected.length - confirmed.length} already {targetStatus}; skipped.{" "}
+                  {skipped} already {action?.status}; skipped.{" "}
                 </>
               )}
-              {targetStatus === "published"
+              {action?.status === "published"
                 ? "They will be visible to everyone. Posts without publishable content or cover alt text may be refused."
                 : "They will be hidden from the public site."}{" "}
               Each post is updated separately; some updates may not be confirmed.

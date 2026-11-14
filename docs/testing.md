@@ -565,6 +565,7 @@ sit beside status labels, and only the Title table column stays pinned while scr
 Store and orchestration tests exercise isolated state, stale-ID pruning, partial outcomes,
 retries and authorization
 expiry. Browser tests use intercepted private APIs to check cards/table selection,
-confirmation, keyboard behavior, URL/page resets and failure recovery without
+confirmation (including background refreshes that may narrow but never expand approved targets),
+keyboard focus visibility beneath pinned columns, URL/page resets and failure recovery without
 changing database fixtures. These tests complement the existing real authoring
 and session suites; fixture-dependent skips must still be reported.

@@ -617,6 +617,24 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   // through the pinned one.
   expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
   await page.screenshot({ path: test.info().outputPath("posts-table-390.png"), fullPage: true })
+  // Returning to selection by keyboard reveals the checkbox instead of leaving
+  // focus hidden beneath the pinned title.
+  const titleLink = title.getByRole("link")
+  await titleLink.focus()
+  await page.keyboard.press("Shift+Tab")
+  const checkbox = grid.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  await expect(checkbox).toBeFocused()
+  await expect
+    .poll(() =>
+      checkbox.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        return (
+          document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2) ===
+          node
+        )
+      })
+    )
+    .toBe(true)
 })
 
 for (const theme of ["light", "dark"] as const)

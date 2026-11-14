@@ -206,6 +206,42 @@ for (const [status, action] of [
   })
 }
 
+test("background refresh narrows an open confirmation without adding new targets", async ({
+  page,
+}) => {
+  const state = await fixture(page)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
+
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route("**/api/admin/posts/archive*", async (route) => {
+    await gate
+    await route.fallback()
+  })
+  await page.getByRole("button", { name: "Refresh posts", exact: true }).click()
+  await page.getByRole("button", { name: "Archive selected", exact: true }).click()
+  const dialog = page.getByRole("alertdialog")
+  await expect(dialog.getByRole("button", { name: "Archive 2 posts", exact: true })).toBeEnabled()
+
+  // A post in the approved snapshot no longer needs the action; a previously
+  // excluded post now does. Only the remaining approved post may be changed.
+  state.posts[0].status = "archived"
+  state.posts[2].status = "published"
+  const refreshed = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+  )
+  release()
+  await refreshed
+  await expect(dialog).toContainText("1 already archived; skipped.")
+  await dialog.getByRole("button", { name: "Archive 1 posts", exact: true }).click()
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
+  expect(state.writes).toEqual([{ id: ids[1], status: "archived" }])
+  expect(state.posts[2].status).toBe("published")
+})
+
 test("partial failures retain only failed selections and user retry targets only those posts", async ({
   page,
 }) => {
