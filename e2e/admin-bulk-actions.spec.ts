@@ -259,6 +259,19 @@ for (const width of [320, 1280]) {
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     expect((await floating.boundingBox())!.y).toBeCloseTo(initial.y, 0)
+    const shell = page.locator('[data-slot="admin-shell"]')
+    await expect(shell).toHaveCSS("padding-bottom", "96px")
+    await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
+    expect((await shell.boundingBox())!.y + (await shell.boundingBox())!.height).toBeCloseTo(900, 0)
+    expect(
+      await page.evaluate(
+        () =>
+          !!document
+            .elementFromPoint(1, window.innerHeight - 1)
+            ?.closest('[data-slot="admin-shell"]')
+      )
+    ).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`footer-selection-${width}.png`) })
     const theme = page.locator("footer").getByRole("button", { name: /Switch theme/ })
     await theme.focus()
     await expect
@@ -276,6 +289,7 @@ for (const width of [320, 1280]) {
     await page.getByRole("button", { name: "Clear selection", exact: true }).click()
     await expect(floating).toHaveCount(0)
     await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
+    await expect(shell).toHaveCSS("padding-bottom", "0px")
   })
 }
 

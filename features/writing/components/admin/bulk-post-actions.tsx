@@ -12,7 +12,7 @@ import { usePostSelectionStore } from "./post-selection"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { LoadingIndicator } from "@/components/ui/loading-indicator"
-import { popoverSurfaceClassNames } from "@/components/ui/variants"
+import { popoverMenuItemClassNames, popoverSurfaceClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 import {
   AlertDialog,
@@ -251,7 +251,7 @@ export function BulkPostActions({
                               ? `Selected posts are already ${status}.`
                               : undefined
                           }
-                          className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-primary data-highlighted:text-primary-foreground data-disabled:opacity-50"
+                          className={popoverMenuItemClassNames}
                           onClick={() => {
                             setMenuOpen(false)
                             setConfirmation({ status, ids: targets })

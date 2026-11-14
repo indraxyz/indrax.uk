@@ -33,7 +33,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { controlClassNames } from "@/components/ui/variants"
+import {
+  controlClassNames,
+  popoverMenuItemClassNames,
+  popoverSurfaceClassNames,
+} from "@/components/ui/variants"
 import { PostStatusDialog } from "./post-status-dialog"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
 import { cachePostMutation, invalidatePostCollections } from "@/features/writing/api/mutation-cache"
@@ -42,8 +46,7 @@ import type { ActionResult, AdminPost, PostStatus } from "@/features/writing/typ
 import { cn } from "@/lib/utils"
 
 type Action = "view" | "status" | "delete"
-const menuItemClass =
-  "flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted data-disabled:opacity-50"
+const menuItemClass = popoverMenuItemClassNames
 
 /** Shared editor/list actions, ordered from viewing to status changes to deletion. */
 export function PostActions({
@@ -188,9 +191,11 @@ export function PostActions({
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner align="end" sideOffset={8} className="z-[60]">
-              <Menu.Popup className="min-w-48 max-w-[calc(100vw-2rem)] border-2 border-border bg-card p-1 text-card-foreground shadow-soft-lg outline-none">
+              <Menu.Popup
+                className={cn(popoverSurfaceClassNames, "min-w-48 max-w-[calc(100vw-2rem)] p-1")}
+              >
                 {!savedPost && (
-                  <p className="max-w-64 px-3 py-2 text-xs text-muted-foreground">
+                  <p className="max-w-64 px-3 py-2 text-xs">
                     Save the post to enable these actions.
                   </p>
                 )}
@@ -249,10 +254,7 @@ export function PostActions({
                   </Menu.Item>
                 )}
                 {error && (
-                  <p
-                    role="alert"
-                    className="max-w-64 px-3 py-2 text-xs font-semibold text-destructive"
-                  >
+                  <p role="alert" className="max-w-64 px-3 py-2 text-xs font-semibold">
                     {error}
                   </p>
                 )}
@@ -264,9 +266,9 @@ export function PostActions({
                     setDeleteError(null)
                     setDeleteOpen(true)
                   }}
-                  className={cn(menuItemClass, "text-destructive")}
+                  className={menuItemClass}
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden />
+                  <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
                   Delete
                 </Menu.Item>
               </Menu.Popup>

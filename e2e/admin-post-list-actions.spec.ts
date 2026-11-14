@@ -112,6 +112,43 @@ function actions(page: Page, status: Status) {
   return page.getByRole("button", { name: `Actions for ${status} fixture`, exact: true })
 }
 
+for (const theme of ["light", "dark"] as const) {
+  test(`post and navigation menus share the ${theme} glass surface`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme,
+    })
+    await archiveFixture(page)
+    const expectGlassMenu = async (capture: string) => {
+      const menu = page.getByRole("menu")
+      await expect(menu).toHaveCSS(
+        "background-color",
+        theme === "light" ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.45)"
+      )
+      await expect(menu).toHaveCSS("box-shadow", "none")
+      await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
+      const results = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
+      expect(results.violations).toEqual([])
+      await page.screenshot({ path: test.info().outputPath(`${capture}-${theme}.png`) })
+    }
+    await actions(page, "draft").click()
+    await expectGlassMenu("post-menu-cards")
+    await page.keyboard.press("Escape")
+    await expect(actions(page, "draft")).toBeFocused()
+    await showTable(page)
+    await actions(page, "draft").click()
+    await expectGlassMenu("post-menu-table")
+    await page.keyboard.press("Escape")
+    const publicTrigger = page.getByRole("button", { name: "Public", exact: true })
+    await publicTrigger.focus()
+    await page.keyboard.press("Enter")
+    await expectGlassMenu("public-menu")
+    await page.keyboard.press("Escape")
+    await expect(publicTrigger).toBeFocused()
+  })
+}
+
 for (const status of ["draft", "published", "archived"] as const) {
   test(`orders ${status} actions and opens the correct destination in a new tab`, async ({
     page,

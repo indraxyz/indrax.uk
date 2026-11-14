@@ -418,12 +418,12 @@ img[data-image-state="loading"] {
 }
 
 @layer components {
-  /* The conditional fixed admin bar keeps end-of-page controls reachable. */
+  /* Reserve space inside the opaque admin surface, so the body grid is never exposed. */
   html:has([data-slot="post-selection-bar"]) {
     scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   }
 
-  body:has([data-slot="post-selection-bar"]) {
+  [data-slot="admin-shell"]:has([data-slot="post-selection-bar"]) {
     padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   }
 

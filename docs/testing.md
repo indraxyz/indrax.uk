@@ -564,10 +564,14 @@ Escape and confirmation cancellation return focus to the menu trigger; clearing 
 selection returns focus to a post checkbox. Results remain visible after the bar closes.
 The bar and popovers share a blurred glass surface without a drop shadow: 45% black in light mode and 45% white in
 dark mode, both with dark text for contrast. Content remains visible through
-the tint with a soft 8px backdrop blur. The surface has an opaque
+the tint with a soft 8px backdrop blur. Post actions (cards/table/editor) and admin Public
+menus reuse this surface and shared highlighted-item styling; browser checks scan the post
+and navigation menus in both themes. The surface has an opaque
 forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
 that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
-navigation and footer focus at 320px and 1280px.
+navigation and footer focus at 320px and 1280px. The reserved bottom space belongs to the
+opaque admin shell rather than the patterned body, and footer captures verify the grid cannot
+appear below the admin footer while selection is active.
 Card checkboxes sit immediately before status labels. Only the checkbox table column stays pinned;
 the title and remaining columns scroll horizontally.
 The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
