@@ -121,6 +121,17 @@ rg --files -g '*.test.ts' -g '*.test.tsx' -g '!node_modules' -g '!build'
 npx playwright test --list
 ```
 
+## Editor controller regressions
+
+`e2e/admin-sync.spec.ts` uses intercepted private APIs and a controlled browser clock
+to verify save/refresh/autosave coordination without database prerequisites. It
+also checks that leaving a dirty editor clears its autosave lifecycle, a new editor
+starts empty, and replaced/removed cover previews revoke object URLs. Pure
+reconciliation tests and mocked form-submit tests complement these real React
+lifecycle checks; hook mocks alone do not prove timer or subscription behavior.
+The authenticated `admin-authoring` suite still requires disposable database/auth
+fixtures; report its skips separately.
+
 ## Prerequisites and local gate
 
 Use Node 22.22+ (CI: Node 24), npm and the lockfile. Install browser binaries/system
@@ -534,14 +545,3 @@ access preserves the release deployment history. A 200 cleanup response proves
 one bounded invocation completed, not that every pending record was drained. Record skipped live checks explicitly; a green local suite does not prove
 Preview TLS, OAuth credentials or the remote Neon secret's target. See the
 [migration specification](workers-previews-migration-spec.md) for acceptance.
-
-## Editor controller regressions
-
-`e2e/admin-sync.spec.ts` uses intercepted private APIs and a controlled browser clock
-to verify save/refresh/autosave coordination without database prerequisites. It
-also checks that leaving a dirty editor clears its autosave lifecycle, a new editor
-starts empty, and replaced/removed cover previews revoke object URLs. Pure
-reconciliation tests and mocked form-submit tests complement these real React
-lifecycle checks; hook mocks alone do not prove timer or subscription behavior.
-The authenticated `admin-authoring` suite still requires disposable database/auth
-fixtures; report its skips separately.
