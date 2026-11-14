@@ -146,12 +146,9 @@ for (const theme of ["light", "dark"] as const) {
       menu.getByRole("menuitem", { name: "Change to draft", exact: true })
     ).toHaveAttribute("aria-disabled", "true")
     await expect(menu).toHaveCSS("box-shadow", "none")
-    const glassBackground = theme === "light" ? "rgba(0, 0, 0, 0.6)" : "rgba(255, 255, 255, 0.6)"
+    const glassBackground = theme === "light" ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.45)"
     await expect(menu).toHaveCSS("background-color", glassBackground)
-    await expect(menu).toHaveCSS(
-      "color",
-      theme === "light" ? "rgb(255, 255, 255)" : "rgb(6, 59, 0)"
-    )
+    await expect(menu).toHaveCSS("color", "rgb(0, 0, 0)")
     await expect(selection(page)).toHaveCSS("background-color", glassBackground)
     await expect(menu).toHaveCSS("backdrop-filter", /blur\(/)
     await expect(selection(page)).toHaveCSS("box-shadow", "none")

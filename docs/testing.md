@@ -562,8 +562,8 @@ It provides select-all, a selected count, clear and an upward-opening actions me
 Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
 Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
 selection returns focus to a post checkbox. Results remain visible after the bar closes.
-The bar and popovers share a blurred glass surface without a drop shadow: 60% black with white
-text in light mode, and 60% white with dark text in dark mode. Content remains visible through
+The bar and popovers share a blurred glass surface without a drop shadow: 45% black in light mode and 45% white in
+dark mode, both with dark text for contrast. Content remains visible through
 the tint but blurred. The surface has an opaque
 forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
 that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
