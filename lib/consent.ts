@@ -1,3 +1,5 @@
+import { subscribeToPreference } from "./client-preference"
+
 /**
  * Whether the visitor has agreed to be measured.
  *
@@ -22,6 +24,14 @@ export const CONSENT_STORAGE_KEY = "indrax-analytics-consent"
 /** Fired on the window when the decision changes, so listeners can react. */
 export const CONSENT_CHANGE_EVENT = "indrax-analytics-consent-change"
 
+const failedMutations = new WeakSet<Window>()
+
+export function subscribeToConsent(callback: () => void) {
+  return subscribeToPreference(CONSENT_STORAGE_KEY, CONSENT_CHANGE_EVENT, callback, () => {
+    failedMutations.delete(window)
+  })
+}
+
 export type ConsentDecision = "granted" | "denied"
 
 /**
@@ -31,7 +41,7 @@ export type ConsentDecision = "granted" | "denied"
  * consent helper that can throw would take the page with it.
  */
 export function readConsent(): ConsentDecision | null {
-  if (typeof window === "undefined") return null
+  if (typeof window === "undefined" || failedMutations.has(window)) return null
 
   try {
     const value = window.localStorage.getItem(CONSENT_STORAGE_KEY)
@@ -44,9 +54,12 @@ export function readConsent(): ConsentDecision | null {
 }
 
 export function writeConsent(decision: ConsentDecision): void {
+  if (typeof window === "undefined") return
   try {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, decision)
+    failedMutations.delete(window)
   } catch {
+    failedMutations.add(window)
     // If the choice cannot be stored it will be asked again next visit. That is
     // worse than remembering it and much better than tracking without it.
   }
@@ -56,10 +69,13 @@ export function writeConsent(decision: ConsentDecision): void {
 
 /** Forget the decision, so the banner asks again. */
 export function clearConsent(): void {
+  if (typeof window === "undefined") return
   try {
     window.localStorage.removeItem(CONSENT_STORAGE_KEY)
+    failedMutations.delete(window)
   } catch {
-    // Nothing to do; the caller has already stopped the tracker.
+    failedMutations.add(window)
+    // Suppress any stale persisted grant for the rest of this document.
   }
 
   window.dispatchEvent(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: null }))

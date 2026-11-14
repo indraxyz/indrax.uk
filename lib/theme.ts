@@ -1,3 +1,5 @@
+import { createDisplayPreference } from "./client-preference"
+
 export type ThemePreference = "light" | "dark" | "system"
 
 export const THEME_STORAGE_KEY = "indrax-theme"
@@ -15,3 +17,13 @@ export const THEME_INIT_SCRIPT = `(()=>{try{const t=localStorage.getItem(${JSON.
  * script without updating this fails a test instead of silently blanking the theme.
  */
 export const THEME_INIT_SCRIPT_HASH = "sha256-sC3nbee+Gna9KZMSIbwN6g9ig53eAlAkogugVYZegJI="
+
+const themePreference = createDisplayPreference(
+  THEME_STORAGE_KEY,
+  THEME_CHANGE_EVENT,
+  DEFAULT_THEME,
+  (value): value is ThemePreference => value === "light" || value === "dark" || value === "system"
+)
+export const readTheme = themePreference.read
+export const writeTheme = themePreference.write
+export const subscribeToTheme = themePreference.subscribe
