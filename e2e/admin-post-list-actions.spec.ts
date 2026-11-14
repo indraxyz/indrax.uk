@@ -599,28 +599,39 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await expect(grid).toBeVisible()
 
-  // The title column stays pinned while the other columns scroll beneath it, so
-  // each row keeps naming its post.
+  // Only selection stays pinned; the title and all remaining columns scroll.
   const title = grid.getByRole("rowheader", { name: "draft fixture" })
-  const status = grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").nth(1)
-  const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
+  const row = grid.getByRole("row").filter({ hasText: "draft fixture" })
+  const selection = row.getByRole("cell").first()
+  const before = {
+    title: (await title.boundingBox())!.x,
+    selection: (await selection.boundingBox())!.x,
+  }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
-  await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
-  const edge = (await region.boundingBox())!.x + 2
-  expect((await title.boundingBox())!.x).toBeCloseTo(edge, 0)
-  expect((await title.boundingBox())!.x).toBeLessThan(before.title)
-  await expect(grid.getByRole("columnheader").first()).toHaveCSS("position", "static")
-  await expect(
-    grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").first()
-  ).toHaveCSS("position", "static")
-  // Fully opaque (card surfaces are translucent), so scrolled cells never show
-  // through the pinned one.
-  expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
+  await expect.poll(async () => (await title.boundingBox())!.x).toBeLessThan(before.title)
+  expect((await selection.boundingBox())!.x).toBeCloseTo(before.selection, 0)
+  await expect(grid.getByRole("columnheader").first()).toHaveCSS("position", "sticky")
+  await expect(selection).toHaveCSS("position", "sticky")
+  await expect(title).toHaveCSS("position", "static")
+  expect(await selection.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(
+    /^rgb\(/
+  )
   await page.screenshot({ path: test.info().outputPath("posts-table-390.png"), fullPage: true })
-  // Returning to selection by keyboard reveals the checkbox instead of leaving
-  // focus hidden beneath the pinned title.
+  // Keyboard focus reveals the title beside the pinned selection column.
   const titleLink = title.getByRole("link")
   await titleLink.focus()
+  await expect
+    .poll(() =>
+      titleLink.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        const front = document.elementFromPoint(
+          bounds.x + bounds.width / 2,
+          bounds.y + bounds.height / 2
+        )
+        return !!front && node.contains(front)
+      })
+    )
+    .toBe(true)
   await page.keyboard.press("Shift+Tab")
   const checkbox = grid.getByRole("checkbox", { name: "Select draft fixture", exact: true })
   await expect(checkbox).toBeFocused()

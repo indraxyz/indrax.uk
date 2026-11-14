@@ -1,6 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox"
-import { Archive, EyeOff, Send, X } from "lucide-react"
-import { useLayoutEffect, useRef, useState } from "react"
+import { Menu } from "@base-ui/react/menu"
+import { Archive, EyeOff, MoreHorizontal, Send, X } from "lucide-react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useStore } from "zustand"
 import { useQueryClient } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "../../api/client"
@@ -8,7 +9,7 @@ import { cachePostMutation, invalidatePostCollections } from "../../api/mutation
 import { runBulkPostStatus } from "../../utils/bulk-post-status"
 import type { AdminPostSummary, PostStatus } from "../../types"
 import { usePostSelectionStore } from "./post-selection"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { LoadingIndicator } from "@/components/ui/loading-indicator"
 import {
@@ -42,6 +43,9 @@ export function BulkPostActions({
   const pending = useStore(store, (state) => state.pending)
   const result = useStore(store, (state) => state.result)
   const client = useQueryClient()
+  const hasSelection = selectedIds.length > 0
+  const bar = useRef<HTMLElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [confirmation, setConfirmation] = useState<{
     status: PostStatus
     ids: string[]
@@ -55,6 +59,7 @@ export function BulkPostActions({
   useLayoutEffect(() => {
     currentStore.current = store
     setConfirmation(null)
+    setMenuOpen(false)
   }, [store])
   const selectAll = useRef<HTMLInputElement>(null)
   const actionTrigger = useRef<HTMLButtonElement | null>(null)
@@ -80,6 +85,29 @@ export function BulkPostActions({
       alive.current = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!hasSelection) return
+    // A fixed bar must not leave keyboard focus hidden behind it. CSS reserves
+    // bottom scroll space; this also handles controls already inside the viewport.
+    const revealFocus = (event: FocusEvent) => {
+      const target = event.target
+      const floating = bar.current
+      if (!(target instanceof HTMLElement) || !floating || floating.contains(target)) return
+      if (target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]')) return
+      const bounds = target.getBoundingClientRect()
+      const overlay = floating.getBoundingClientRect()
+      if (
+        bounds.bottom > overlay.top - 8 &&
+        bounds.top < overlay.bottom &&
+        bounds.right > overlay.left &&
+        bounds.left < overlay.right
+      )
+        target.scrollIntoView({ block: "center", inline: "nearest" })
+    }
+    document.addEventListener("focusin", revealFocus)
+    return () => document.removeEventListener("focusin", revealFocus)
+  }, [hasSelection])
 
   const actionLabel = action?.label ?? "Archive"
 
@@ -139,10 +167,12 @@ export function BulkPostActions({
 
   return (
     <>
-      {selectedIds.length > 0 && (
+      {hasSelection && (
         <section
+          ref={bar}
+          data-slot="post-selection-bar"
           aria-label="Post selection"
-          className="flex flex-wrap items-center gap-2 border-2 border-border bg-card p-2"
+          className="m-0! fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 border-2 border-border bg-background p-2 shadow-soft-lg"
         >
           <label
             className="inline-flex min-h-11 min-w-11 items-center justify-center"
@@ -159,34 +189,10 @@ export function BulkPostActions({
               }}
             />
           </label>
-          <span role="status" className="mr-auto text-sm">
+          <span role="status" className="whitespace-nowrap text-sm">
             {selectedIds.length} selected
           </span>
           <ButtonGroup aria-label="Bulk post actions">
-            {BULK_ACTIONS.map(({ status, label, icon: Icon }) => {
-              const targets = selectedPosts
-                .filter((post) => post.status !== status)
-                .map(({ id }) => id)
-              return (
-                <Button
-                  key={status}
-                  type="button"
-                  variant="secondary"
-                  appearance="flat"
-                  size="icon"
-                  data-slot="button"
-                  aria-label={`${label} selected`}
-                  title={`${label} selected`}
-                  disabled={!usable || pending || !targets.length}
-                  onClick={(event) => {
-                    actionTrigger.current = event.currentTarget
-                    setConfirmation({ status, ids: targets })
-                  }}
-                >
-                  <Icon aria-hidden />
-                </Button>
-              )
-            })}
             <Button
               type="button"
               variant="secondary"
@@ -203,6 +209,53 @@ export function BulkPostActions({
             >
               <X aria-hidden />
             </Button>
+            <Menu.Root open={menuOpen} onOpenChange={setMenuOpen}>
+              <Menu.Trigger
+                ref={actionTrigger}
+                data-slot="button"
+                aria-label="Bulk post actions"
+                title="Bulk post actions"
+                disabled={!usable || pending}
+                className={buttonVariants({
+                  variant: "secondary",
+                  appearance: "flat",
+                  size: "icon",
+                  className: "data-popup-open:bg-accent data-popup-open:text-accent-foreground",
+                })}
+              >
+                <MoreHorizontal aria-hidden />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner side="top" align="end" sideOffset={16} className="z-[60]">
+                  <Menu.Popup className="min-w-48 max-w-[calc(100vw-2rem)] border-2 border-border bg-background p-1 text-foreground shadow-soft-lg outline-none">
+                    {BULK_ACTIONS.map(({ status, label, icon: Icon }) => {
+                      const targets = selectedPosts
+                        .filter((post) => post.status !== status)
+                        .map(({ id }) => id)
+                      return (
+                        <Menu.Item
+                          key={status}
+                          disabled={!usable || pending || !targets.length}
+                          aria-description={
+                            usable && !targets.length
+                              ? `Selected posts are already ${status}.`
+                              : undefined
+                          }
+                          className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-primary data-highlighted:text-primary-foreground data-disabled:opacity-50"
+                          onClick={() => {
+                            setMenuOpen(false)
+                            setConfirmation({ status, ids: targets })
+                          }}
+                        >
+                          <Icon className="size-4" aria-hidden />
+                          {label}
+                        </Menu.Item>
+                      )
+                    })}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
           </ButtonGroup>
         </section>
       )}

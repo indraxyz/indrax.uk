@@ -95,8 +95,12 @@ async function fixture(page: Page) {
   }
 }
 const selection = (page: Page) => page.getByRole("region", { name: "Post selection" })
+async function chooseAction(page: Page, action: string) {
+  await page.getByRole("button", { name: "Bulk post actions", exact: true }).click()
+  await page.getByRole("menuitem", { name: action, exact: true }).click()
+}
 async function confirm(page: Page, action: string, count: number) {
-  await page.getByRole("button", { name: `${action} selected`, exact: true }).click()
+  await chooseAction(page, action)
   const dialog = page.getByRole("alertdialog", { name: `${action} selected posts?`, exact: true })
   await dialog.getByRole("button", { name: `${action} ${count} posts`, exact: true }).click()
 }
@@ -134,6 +138,18 @@ for (const theme of ["light", "dark"] as const) {
       path: test.info().outputPath(`checkbox-cards-${theme}.png`),
       fullPage: true,
     })
+    const actionTrigger = page.getByRole("button", { name: "Bulk post actions", exact: true })
+    await actionTrigger.focus()
+    await page.keyboard.press("Enter")
+    const menu = page.getByRole("menu", { name: "Bulk post actions", exact: true })
+    await expect(
+      menu.getByRole("menuitem", { name: "Change to draft", exact: true })
+    ).toHaveAttribute("aria-disabled", "true")
+    const menuResults = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
+    expect(menuResults.violations).toEqual([])
+    await page.screenshot({ path: test.info().outputPath(`floating-menu-${theme}.png`) })
+    await page.keyboard.press("Escape")
+    await expect(actionTrigger).toBeFocused()
     await all.check()
     await expect(all.locator("..").locator("svg.lucide-check")).toBeVisible()
     await expect(all.locator("..").locator("svg.lucide-minus")).toBeHidden()
@@ -187,16 +203,11 @@ for (const width of [320, 1280]) {
     const checkboxBox = (await checkbox.boundingBox())!
     const statusBox = (await status.boundingBox())!
     expect(checkboxBox.width).toBeGreaterThanOrEqual(20)
-    expect(checkboxBox.x).toBeGreaterThan(statusBox.x + statusBox.width)
+    expect(checkboxBox.x + checkboxBox.width).toBeLessThan(statusBox.x)
     expect(checkboxBox.y).toBeLessThan(statusBox.y + statusBox.height)
     await checkbox.check()
     await expect(selection(page).getByRole("status")).toHaveText("1 selected")
-    for (const name of [
-      "Publish selected",
-      "Change to draft selected",
-      "Archive selected",
-      "Clear selection",
-    ]) {
+    for (const name of ["Clear selection", "Bulk post actions"]) {
       const button = selection(page).getByRole("button", { name, exact: true })
       await expect(button).toHaveText("")
       await expect(button).toHaveAttribute("title", name)
@@ -207,10 +218,56 @@ for (const width of [320, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width
     )
-    await page.screenshot({
-      path: test.info().outputPath(`bulk-actions-${width}.png`),
-      fullPage: true,
-    })
+    const floating = selection(page)
+    await expect(floating).toHaveCSS("position", "fixed")
+    const initial = (await floating.boundingBox())!
+    expect(initial.x).toBeGreaterThanOrEqual(16)
+    expect(initial.x + initial.width).toBeLessThanOrEqual(width - 16)
+    expect(initial.height).toBeLessThanOrEqual(80)
+    expect(900 - initial.y - initial.height).toBeCloseTo(16, 0)
+    await page.screenshot({ path: test.info().outputPath(`bulk-actions-${width}.png`) })
+
+    const trigger = page.getByRole("button", { name: "Bulk post actions", exact: true })
+    await trigger.focus()
+    await page.keyboard.press("Enter")
+    const menu = page.getByRole("menu", { name: "Bulk post actions", exact: true })
+    await expect(menu.getByRole("menuitem")).toHaveText(["Publish", "Change to draft", "Archive"])
+    await expect(menu.getByRole("menuitem", { name: "Publish", exact: true })).toBeFocused()
+    await page.keyboard.press("ArrowDown")
+    const unavailable = menu.getByRole("menuitem", { name: "Change to draft", exact: true })
+    await expect(unavailable).toBeFocused()
+    await expect(unavailable).toHaveAttribute("aria-disabled", "true")
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+    await page.keyboard.press("ArrowDown")
+    await expect(menu.getByRole("menuitem", { name: "Archive", exact: true })).toBeFocused()
+    const menuBox = (await menu.boundingBox())!
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(initial.y)
+    expect(menuBox.x).toBeGreaterThanOrEqual(0)
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: test.info().outputPath(`bulk-menu-${width}.png`) })
+    await page.keyboard.press("Escape")
+    await expect(trigger).toBeFocused()
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    expect((await floating.boundingBox())!.y).toBeCloseTo(initial.y, 0)
+    const theme = page.locator("footer").getByRole("button", { name: /Switch theme/ })
+    await theme.focus()
+    await expect
+      .poll(() =>
+        theme.evaluate((node) => {
+          const bounds = node.getBoundingClientRect()
+          const front = document.elementFromPoint(
+            bounds.x + bounds.width / 2,
+            bounds.y + bounds.height / 2
+          )
+          return !!front && node.contains(front)
+        })
+      )
+      .toBe(true)
+    await page.getByRole("button", { name: "Clear selection", exact: true }).click()
+    await expect(floating).toHaveCount(0)
+    await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
   })
 }
 
@@ -259,15 +316,13 @@ for (const [status, action] of [
     const state = await fixture(page)
     await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
     await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
-    await page.getByRole("button", { name: `${action} selected`, exact: true }).click()
+    await chooseAction(page, action)
     const dialog = page.getByRole("alertdialog")
     await expect(dialog).toContainText(`${action} 2 posts`)
     await expect(dialog).toContainText(`1 already ${status}; skipped.`)
     if (status === "published") await expect(dialog).toContainText("visible to everyone")
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
-    await expect(
-      page.getByRole("button", { name: `${action} selected`, exact: true })
-    ).toBeFocused()
+    await expect(page.getByRole("button", { name: "Bulk post actions", exact: true })).toBeFocused()
     expect(state.writes).toHaveLength(0)
     await confirm(page, action, 2)
     await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
@@ -298,7 +353,7 @@ test("background refresh narrows an open confirmation without adding new targets
     await route.fallback()
   })
   await page.getByRole("button", { name: "Refresh posts", exact: true }).click()
-  await page.getByRole("button", { name: "Archive selected", exact: true }).click()
+  await chooseAction(page, "Archive")
   const dialog = page.getByRole("alertdialog")
   await expect(dialog.getByRole("button", { name: "Archive 2 posts", exact: true })).toBeEnabled()
 

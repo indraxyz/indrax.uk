@@ -42,8 +42,7 @@ export const PostRow = memo(function PostRow({
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
         <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <PostStatusLabel status={post.status} />
+            <div className="flex items-center gap-2">
               {selectable && (
                 <PostSelectionCheckbox
                   id={post.id}
@@ -51,6 +50,7 @@ export const PostRow = memo(function PostRow({
                   disabled={selectionDisabled}
                 />
               )}
+              <PostStatusLabel status={post.status} />
             </div>
             <div>
               <Link

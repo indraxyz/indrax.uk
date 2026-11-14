@@ -30,9 +30,6 @@ interface PostColumnMeta {
   className?: string
   // The title names each row for assistive technology, so it is a row header.
   rowHeader?: boolean
-  // Pinned to the start while the rest scrolls, so a narrow screen keeps each
-  // row's post in view. Header and body cells need their own opaque background.
-  sticky?: boolean
   srOnlyHeader?: boolean
 }
 
@@ -61,7 +58,6 @@ const columns = column.columns([
     header: "Title",
     meta: {
       rowHeader: true,
-      sticky: true,
       className: "min-w-[10rem] max-w-[14rem] sm:min-w-[16rem] sm:max-w-md",
     },
     cell: ({ row }) => (
@@ -152,8 +148,7 @@ function ColumnHeader({ header, sort }: { header: PostHeader; sort: AdminPostsSo
       aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
         "whitespace-nowrap px-3 py-2 text-left text-xs font-black uppercase tracking-[0.14em] text-muted-foreground",
-        meta?.className,
-        meta?.sticky && cn(STICKY_CELL, "bg-[var(--color-muted)]")
+        meta?.className
       )}
     >
       {meta?.srOnlyHeader ? (
@@ -238,7 +233,10 @@ export const PostTable = memo(function PostTable({
       role="region"
       aria-labelledby={captionId}
       tabIndex={0}
-      className="relative overflow-x-auto border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "relative overflow-x-auto border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selectable && "scroll-pl-[60px]"
+      )}
     >
       <table className="w-full border-collapse text-sm">
         <caption id={captionId} className="sr-only">
@@ -250,7 +248,7 @@ export const PostTable = memo(function PostTable({
               {selectable && (
                 <th
                   scope="col"
-                  className="px-2"
+                  className={cn("px-2", STICKY_CELL, "bg-[var(--color-muted)]")}
                   style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
                 >
                   <span className="sr-only">Select post</span>
@@ -270,7 +268,7 @@ export const PostTable = memo(function PostTable({
             >
               {selectable && (
                 <td
-                  className="px-2"
+                  className={cn("px-2", STICKY_CELL, STICKY_BODY_CELL)}
                   style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
                 >
                   <PostSelectionCheckbox
@@ -287,11 +285,7 @@ export const PostTable = memo(function PostTable({
                   <Cell
                     key={cell.id}
                     scope={meta?.rowHeader ? "row" : undefined}
-                    className={cn(
-                      "px-3 py-3 text-left font-medium",
-                      meta?.className,
-                      meta?.sticky && cn(STICKY_CELL, STICKY_BODY_CELL)
-                    )}
+                    className={cn("px-3 py-3 text-left font-medium", meta?.className)}
                   >
                     <table.FlexRender cell={cell} />
                   </Cell>

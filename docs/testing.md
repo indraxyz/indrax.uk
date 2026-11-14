@@ -506,7 +506,7 @@ keyboard focus restoration at 320px and 1280px. The posts layout checks switch
 between cards and the table, persist the choice across reloads, sort through the
 server from table headers by pointer and keyboard (resetting to page one and
 keeping other criteria), keep row actions, scroll a 390px table inside its own
-region without page overflow while the Title column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
+region without page overflow while only the checkbox column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
 asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
 with 200 when configured. These checks do not require real private writes.
 
@@ -557,11 +557,16 @@ color scheme changes and persisted theme reloads. The preference contract is in
 
 The [admin state specification](specs/admin-zustand-selection.md) defines display
 preference compatibility, navigation/drawer lifecycle and current-page selection
-for bulk Publish, Draft and Archive. The compact icon action bar appears after selecting a post;
-its labelled controls select the current page, publish, move to draft, archive or clear selection.
-Confirmation cancellation returns focus to the action; clearing or completing selection returns
-focus to a post checkbox. Results remain visible after the action bar closes. Card checkboxes
-sit beside status labels, and only the Title table column stays pinned while scrolling.
+for bulk Publish, Draft and Archive. A compact floating bottom bar appears after selecting a post.
+It provides select-all, a selected count, clear and an upward-opening actions menu. The menu reuses
+Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
+Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
+selection returns focus to a post checkbox. Results remain visible after the bar closes.
+The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
+that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
+navigation and footer focus at 320px and 1280px.
+Card checkboxes sit immediately before status labels. Only the checkbox table column stays pinned;
+the title and remaining columns scroll horizontally.
 The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
 browser checks cover both themes, keyboard selection, 44px label targets and native rendering
 in forced-colors mode.
