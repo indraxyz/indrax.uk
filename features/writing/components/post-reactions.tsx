@@ -33,27 +33,27 @@ function ensureReactionVisitor() {
   return id
 }
 
-/** One query lifecycle supplies the header picker and count chips beside article SSR. */
-export function PostReactions({
-  slug,
-  children,
-}: {
-  slug: string
-  children: (controls: { trigger: ReactNode; summary: ReactNode }) => ReactNode
-}) {
+/** Own the query, mutation, picker and local focus lifecycle for one article. */
+function useReactionControls(slug: string) {
   const client = useQueryClient()
   const [visitorId, setVisitorId] = useState<string | null | undefined>(undefined)
   const [message, setMessage] = useState("")
   const submitting = useRef(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const summaryRef = useRef<HTMLElement>(null)
   const [open, setOpen] = useState(false)
+  const focusOrigin = useRef<{
+    button: HTMLButtonElement
+    trigger: HTMLButtonElement | null
+  } | null>(null)
+  const restoreFocus = useRef(false)
   const [storageError, setStorageError] = useState(false)
   useEffect(() => {
     setVisitorId(readReactionVisitor())
     const syncVisitor = (event: StorageEvent) => {
-      if (event.key === REACTION_VISITOR_KEY || event.key === null)
+      if (event.key === REACTION_VISITOR_KEY || event.key === null) {
         setVisitorId(readReactionVisitor())
+        setMessage("")
+        setStorageError(false)
+      }
     }
     window.addEventListener("storage", syncVisitor)
     return () => window.removeEventListener("storage", syncVisitor)
@@ -75,11 +75,7 @@ export function PostReactions({
       setMessage(
         `${REACTION_OPTIONS[input.reaction].label} reaction ${input.active ? "added" : "removed"}.`
       )
-      if (!input.active && summary.counts[input.reaction] === 0) {
-        const focused = document.activeElement
-        if (focused === document.body || summaryRef.current?.contains(focused))
-          triggerRef.current?.focus({ preventScroll: true })
-      }
+      restoreFocus.current = !input.active && summary.counts[input.reaction] === 0
     },
     onError: () => setMessage("Your reaction could not be saved. Please try again."),
     onSettled: () => {
@@ -92,9 +88,25 @@ export function PostReactions({
     enabled: visitorId !== undefined && !mutation.isPending,
   })
 
-  function react(reaction: Reaction) {
+  useEffect(() => {
+    // Cache notification and mutation settlement must commit before checking
+    // whether the focused chip disappeared and returning focus locally.
+    if (mutation.isPending || !restoreFocus.current) return
+    restoreFocus.current = false
+    const source = focusOrigin.current
+    const focused = document.activeElement
+    if (
+      source &&
+      (focused === source.button || (!source.button.isConnected && focused === document.body))
+    )
+      source.trigger?.focus({ preventScroll: true })
+  }, [mutation.isPending, results.data])
+
+  function react(reaction: Reaction, button: HTMLButtonElement, trigger: HTMLButtonElement | null) {
     if (!results.data || submitting.current) return
     setOpen(false)
+    focusOrigin.current = { button, trigger }
+    restoreFocus.current = false
     setStorageError(false)
     try {
       const id = ensureReactionVisitor()
@@ -112,104 +124,131 @@ export function PostReactions({
   }
 
   const visibleReactions = REACTIONS.filter((reaction) => (results.data?.counts[reaction] ?? 0) > 0)
-  const error =
-    storageError || mutation.isError
+  const error = results.isError
+    ? "Reactions could not be loaded."
+    : storageError || mutation.isError
       ? message
-      : results.isError
-        ? "Reactions could not be loaded."
-        : ""
-  const status =
-    message ||
-    (results.isError ? "Reactions could not be loaded." : !results.data ? "Loading reactions…" : "")
+      : ""
+  const status = results.isError
+    ? "Reactions could not be loaded."
+    : !results.data
+      ? "Loading reactions…"
+      : message
 
-  const trigger = (
-    <span role="group" aria-label="Reaction controls" className="inline-flex print:hidden">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            ref={triggerRef}
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Add reaction"
-            title="Add reaction"
-            aria-busy={mutation.isPending}
-            disabled={!results.data}
-          >
-            <SmilePlus aria-hidden />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" aria-label="Choose a reaction" className="w-auto p-2">
-          <div className="flex gap-1">
-            {REACTIONS.map((reaction) => (
-              <Button
-                key={reaction}
-                type="button"
-                variant="ghost"
-                className="aria-pressed:border-border aria-pressed:bg-[var(--variant-hover)]"
-                appearance="flat"
-                size="icon"
-                aria-label={REACTION_OPTIONS[reaction].label}
-                title={REACTION_OPTIONS[reaction].label}
-                aria-pressed={results.data?.selected.includes(reaction) ?? false}
-                disabled={mutation.isPending}
-                onClick={() => react(reaction)}
-              >
-                <span aria-hidden className="text-lg leading-none">
-                  {REACTION_OPTIONS[reaction].emoji}
-                </span>
-              </Button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-      <span role="status" className="sr-only">
-        {status}
-      </span>
-    </span>
-  )
-  const summary =
-    visibleReactions.length > 0 || error ? (
-      <section ref={summaryRef} aria-label="Reader reactions" className="space-y-2 print:hidden">
-        {visibleReactions.length > 0 && (
-          <div className="flex flex-wrap gap-2" aria-busy={mutation.isPending}>
-            {visibleReactions.map((reaction) => {
-              const { emoji, label } = REACTION_OPTIONS[reaction]
-              const count = results.data!.counts[reaction]
-              const selected = results.data!.selected.includes(reaction)
-              return (
-                <button
+  return { results, mutation, visibleReactions, error, status, react, open, setOpen }
+}
+
+function ReactionGroup({ controls }: { controls: ReturnType<typeof useReactionControls> }) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const { results, mutation, visibleReactions, error, react, open, setOpen } = controls
+  return (
+    <section
+      aria-label="Reader reactions"
+      data-reaction-location="header"
+      className="min-w-0 max-w-full space-y-2 print:hidden"
+    >
+      <div
+        role="group"
+        aria-label="Reaction controls"
+        aria-busy={mutation.isPending}
+        className="flex flex-wrap items-center gap-1"
+      >
+        {visibleReactions.map((reaction) => {
+          const { emoji, label } = REACTION_OPTIONS[reaction]
+          const count = results.data!.counts[reaction]
+          const selected = results.data!.selected.includes(reaction)
+          return (
+            <button
+              key={reaction}
+              type="button"
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 bg-transparent px-2 text-xs font-medium tracking-normal text-muted-foreground hover:text-foreground disabled:opacity-50 ${focusControlClassNames}`}
+              aria-label={`${label}: ${count} ${count === 1 ? "reaction" : "reactions"}`}
+              title={`${selected ? "Remove your" : "Add"} ${label.toLowerCase()} reaction`}
+              aria-pressed={selected}
+              disabled={mutation.isPending}
+              onClick={(event) => react(reaction, event.currentTarget, triggerRef.current)}
+            >
+              <span aria-hidden className="text-sm leading-none">
+                {emoji}
+              </span>
+              <span aria-hidden className={selected ? "font-semibold" : undefined}>
+                {count.toLocaleString("en-US")}
+              </span>
+            </button>
+          )
+        })}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              ref={triggerRef}
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Add reaction"
+              title="Add reaction"
+              aria-busy={mutation.isPending}
+              disabled={!results.data}
+            >
+              <SmilePlus aria-hidden />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" aria-label="Choose a reaction" className="w-auto p-2">
+            <div className="flex flex-wrap gap-1">
+              {REACTIONS.map((reaction) => (
+                <Button
                   key={reaction}
                   type="button"
-                  className={`inline-flex min-h-7 min-w-7 items-center justify-center gap-1.5 bg-transparent px-1 text-xs font-medium tracking-normal text-muted-foreground hover:text-foreground disabled:opacity-50 ${focusControlClassNames}`}
-                  aria-label={`${label}: ${count} ${count === 1 ? "reaction" : "reactions"}`}
-                  title={`${selected ? "Remove your" : "Add"} ${label.toLowerCase()} reaction`}
-                  aria-pressed={selected}
+                  variant="ghost"
+                  className="aria-pressed:border-border aria-pressed:bg-[var(--variant-hover)] [&[aria-pressed=true]>span]:scale-110"
+                  appearance="flat"
+                  size="icon"
+                  aria-label={REACTION_OPTIONS[reaction].label}
+                  title={REACTION_OPTIONS[reaction].label}
+                  aria-pressed={results.data?.selected.includes(reaction) ?? false}
                   disabled={mutation.isPending}
-                  onClick={() => react(reaction)}
+                  onClick={(event) => react(reaction, event.currentTarget, triggerRef.current)}
                 >
-                  <span aria-hidden className="text-sm leading-none">
-                    {emoji}
+                  <span aria-hidden className="text-lg leading-none">
+                    {REACTION_OPTIONS[reaction].emoji}
                   </span>
-                  <span aria-hidden>{count.toLocaleString("en-US")}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {results.isError && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={results.isFetching}
-            onClick={() => void results.refetch()}
-          >
-            Try loading reactions again
-          </Button>
-        )}
-      </section>
-    ) : null
-  return children({ trigger, summary })
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {results.isError && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto min-h-11 whitespace-normal text-left"
+          disabled={results.isFetching}
+          onClick={() => void results.refetch()}
+        >
+          Try loading reactions again
+        </Button>
+      )}
+    </section>
+  )
+}
+
+export function PostReactions({
+  slug,
+  children,
+}: {
+  slug: string
+  children: (controls: { header: ReactNode }) => ReactNode
+}) {
+  const controls = useReactionControls(slug)
+  return (
+    <>
+      {children({
+        header: <ReactionGroup controls={controls} />,
+      })}
+      <span role="status" className="sr-only print:hidden">
+        {controls.status}
+      </span>
+    </>
+  )
 }
