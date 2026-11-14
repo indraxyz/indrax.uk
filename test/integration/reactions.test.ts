@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto"
+import { neonConfig } from "@neondatabase/serverless"
 import { eq, inArray, sql } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest"
 
 import { getReactions, setReaction } from "@/features/writing/data/reactions.server"
+import { REACTIONS } from "@/features/writing/reactions"
 import { getDb, schema } from "@/lib/db/index.server"
 
 const db = getDb()!
@@ -57,11 +59,83 @@ it("counts multiple emoji independently and returns only this browser's selectio
   expect((await getReactions(slug, otherVisitorId)).selected).toEqual(["love"])
 })
 
+it("returns its own addition and removal immediately through one actual Neon HTTP request each", async () => {
+  const previousFetch = neonConfig.fetchFunction
+  let requests = 0
+  const countFetch: typeof fetch = (input, init) => {
+    requests++
+    return fetch(input, init)
+  }
+  neonConfig.fetchFunction = countFetch
+  try {
+    const added = await setReaction(slug, { visitorId, reaction: "rocket", active: true })
+    expect(added).toEqual({
+      counts: { love: 0, noted: 0, thumbsup: 0, fire: 0, rocket: 1 },
+      selected: ["rocket"],
+    })
+    expect(requests).toBe(1)
+    const removed = await setReaction(slug, { visitorId, reaction: "rocket", active: false })
+    expect(removed).toEqual({
+      counts: { love: 0, noted: 0, thumbsup: 0, fire: 0, rocket: 0 },
+      selected: [],
+    })
+    expect(requests).toBe(2)
+    await getReactions(slug, visitorId)
+    expect(requests).toBe(3)
+  } finally {
+    neonConfig.fetchFunction = previousFetch
+  }
+})
+
+it("rolls back the ordered HTTP transaction if a following statement fails", async () => {
+  await expect(
+    db.batch([
+      db.insert(schema.postReactions).values({ postId: ids[0], visitorId, reaction: "love" }),
+      db.execute(sql`select 1 / 0`),
+    ])
+  ).rejects.toThrow()
+  expect(await getReactions(slug, visitorId)).toMatchObject({ counts: { love: 0 }, selected: [] })
+})
+
+it("isolates selections while different visitors add all reaction types concurrently", async () => {
+  const inputs = REACTIONS.map((reaction) => ({
+    visitorId: randomUUID(),
+    reaction,
+    active: true,
+  }))
+  const responses = await Promise.all(inputs.map((input) => setReaction(slug, input)))
+  for (let index = 0; index < inputs.length; index++) {
+    expect(responses[index].selected).toEqual([inputs[index].reaction])
+    for (const count of Object.values(responses[index].counts)) {
+      expect(count).toBeGreaterThanOrEqual(0)
+      expect(count).toBeLessThanOrEqual(1)
+    }
+  }
+  expect((await getReactions(slug)).counts).toEqual({
+    love: 1,
+    noted: 1,
+    thumbsup: 1,
+    fire: 1,
+    rocket: 1,
+  })
+  await Promise.all(inputs.map((input) => setReaction(slug, { ...input, active: false })))
+  expect(await getReactions(slug)).toEqual({
+    counts: { love: 0, noted: 0, thumbsup: 0, fire: 0, rocket: 0 },
+    selected: [],
+  })
+})
+
 it("makes concurrent repeated additions and removals idempotent", async () => {
   const input = { visitorId, reaction: "noted" as const, active: true }
-  await Promise.all(Array.from({ length: 6 }, () => setReaction(slug, input)))
+  const added = await Promise.all(Array.from({ length: 6 }, () => setReaction(slug, input)))
+  for (const response of added)
+    expect(response).toMatchObject({ counts: { noted: 1 }, selected: ["noted"] })
   expect((await getReactions(slug, visitorId)).counts.noted).toBe(1)
-  await Promise.all(Array.from({ length: 6 }, () => setReaction(slug, { ...input, active: false })))
+  const removed = await Promise.all(
+    Array.from({ length: 6 }, () => setReaction(slug, { ...input, active: false }))
+  )
+  for (const response of removed)
+    expect(response).toMatchObject({ counts: { noted: 0 }, selected: [] })
   expect(await getReactions(slug, visitorId)).toMatchObject({ counts: { noted: 0 }, selected: [] })
 })
 
