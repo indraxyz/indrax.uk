@@ -1,7 +1,7 @@
 import { Menu as DropdownMenu } from "@base-ui/react/menu"
 import { ChevronDown, FileText, Globe, House, LogOut, Menu, X } from "lucide-react"
 import { Link } from "react-router"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -18,6 +18,8 @@ import { navigationLinkClassNames } from "@/components/ui/navigation-link"
 import { controlClassNames } from "@/components/ui/variants"
 import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
+import { useStore } from "zustand"
+import { adminNavigationStore } from "@/admin/state/admin-navigation"
 import { cn } from "@/lib/utils"
 
 const links = [
@@ -34,14 +36,16 @@ const publicLinks = [
 function PublicMenu({
   onNavigate,
   onOpenChange,
+  open,
   inSheet = false,
 }: {
   onNavigate?: () => void
-  onOpenChange?: (open: boolean) => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
   inSheet?: boolean
 }) {
   return (
-    <DropdownMenu.Root onOpenChange={onOpenChange}>
+    <DropdownMenu.Root open={open} onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger
         className={
           inSheet
@@ -76,27 +80,33 @@ function PublicMenu({
 interface AdminNavigationProps {
   activePage?: "home" | "posts"
   signedIn: boolean
-  onMenuOpenChange?: (open: boolean) => void
 }
 
-export function AdminNavigation({ activePage, signedIn, onMenuOpenChange }: AdminNavigationProps) {
-  const [open, setOpen] = useState(false)
+export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) {
+  const open = useStore(adminNavigationStore, (state) => state.drawerOpen)
+  const desktopPublicOpen = useStore(adminNavigationStore, (state) => state.desktopPublicOpen)
+  const mobilePublicOpen = useStore(adminNavigationStore, (state) => state.mobilePublicOpen)
+  const { setDrawerOpen: setOpen, setPublicOpen, reset } = adminNavigationStore.getState()
   const desktopNavigation = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    onMenuOpenChange?.(open)
-  }, [open, onMenuOpenChange])
+    if (!signedIn) reset()
+    return reset
+  }, [signedIn, reset])
 
   useEffect(() => {
     const navigation = desktopNavigation.current
     if (!navigation) return
     // Follow the actual CSS breakpoint instead of duplicating it in JavaScript.
+    let desktopVisible = navigation.getBoundingClientRect().width > 0
     const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width > 0) setOpen(false)
+      const nextVisible = entry.contentRect.width > 0
+      if (nextVisible !== desktopVisible) reset()
+      desktopVisible = nextVisible
     })
     observer.observe(navigation)
     return () => observer.disconnect()
-  }, [signedIn])
+  }, [signedIn, reset])
 
   if (!signedIn) return null
 
@@ -116,7 +126,10 @@ export function AdminNavigation({ activePage, signedIn, onMenuOpenChange }: Admi
               {page === "home" ? <Icon className="h-4 w-4" aria-hidden /> : label}
             </Link>
           ))}
-          <PublicMenu onOpenChange={onMenuOpenChange} />
+          <PublicMenu
+            open={desktopPublicOpen}
+            onOpenChange={(next) => setPublicOpen("desktop", next)}
+          />
         </nav>
         <SignOutButton className={buttonVariants({ variant: "ghost", size: "icon" })}>
           <LogOut className="h-3.5 w-3.5" aria-hidden />
@@ -168,7 +181,8 @@ export function AdminNavigation({ activePage, signedIn, onMenuOpenChange }: Admi
               <PublicMenu
                 inSheet
                 onNavigate={() => setOpen(false)}
-                onOpenChange={(publicOpen) => onMenuOpenChange?.(open || publicOpen)}
+                open={mobilePublicOpen}
+                onOpenChange={(next) => setPublicOpen("mobile", next)}
               />
             </nav>
           </div>

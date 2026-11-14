@@ -552,3 +552,14 @@ Client preference regressions are covered by `lib/client-preference.test.ts`,
 exercise real second-tab consent changes, blocked storage theme choices, system
 color scheme changes and persisted theme reloads. The preference contract is in
 `docs/specs/client-preference-state.md`.
+
+## Admin Zustand and bulk actions
+
+The [admin state specification](specs/admin-zustand-selection.md) defines display
+preference compatibility, navigation/drawer lifecycle and current-page selection
+for bulk Publish, Draft and Archive. Store and orchestration tests exercise
+isolated state, stale-ID pruning, partial outcomes, retries and authorization
+expiry. Browser tests use intercepted private APIs to check cards/table selection,
+confirmation, keyboard behavior, URL/page resets and failure recovery without
+changing database fixtures. These tests complement the existing real authoring
+and session suites; fixture-dependent skips must still be reported.

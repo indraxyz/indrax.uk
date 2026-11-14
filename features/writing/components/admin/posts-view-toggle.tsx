@@ -1,15 +1,10 @@
 import { LayoutList, Table2 } from "lucide-react"
-import { useSyncExternalStore } from "react"
+import { useStore } from "zustand"
+import { getAdminPreferences } from "@/admin/state/admin-preferences"
 
 import { ButtonGroup } from "@/components/ui/button-group"
 import { controlClassNames } from "@/components/ui/variants"
-import {
-  DEFAULT_ADMIN_POSTS_VIEW,
-  readAdminPostsView,
-  subscribeToAdminPostsView,
-  writeAdminPostsView,
-  type AdminPostsView,
-} from "@/features/writing/utils/admin-posts-view"
+import { writeAdminPostsView, type AdminPostsView } from "@/features/writing/utils/admin-posts-view"
 import { cn } from "@/lib/utils"
 
 const VIEWS = [
@@ -19,11 +14,7 @@ const VIEWS = [
 
 /** The remembered layout, read during render so the first paint already uses it. */
 export function useAdminPostsView(): AdminPostsView {
-  return useSyncExternalStore(
-    subscribeToAdminPostsView,
-    readAdminPostsView,
-    () => DEFAULT_ADMIN_POSTS_VIEW
-  )
+  return useStore(getAdminPreferences().store, (state) => state.postsView)
 }
 
 export function PostsViewToggle({ view }: { view: AdminPostsView }) {

@@ -25,7 +25,8 @@ remain mandatory. Moving an editor into the browser does not make a save CPU-fre
 - React Router Framework Mode with Vite and the Cloudflare Vite plugin; separate
   Vite admin bundle and React Router browser routing.
 - TanStack Query and Ky for writing cards, archive results, and admin data; TanStack Table
-  for the admin posts table.
+  for the admin posts table. Zustand owns admin display preferences, coordinated
+  menus and current-page bulk selection; API data stays in TanStack Query.
 - Neon Postgres over HTTP and Drizzle ORM; batched post/tag writes.
   See [Neon environment setup](docs/neon-environments.md) for branch separation,
   runtime permissions, migration connections, and recovery preparation.

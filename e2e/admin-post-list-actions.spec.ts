@@ -490,6 +490,7 @@ test("switches posts between cards and a table and remembers the choice", async 
     "archived fixture",
   ])
   await expect(grid.getByRole("columnheader")).toHaveText([
+    "Select post",
     /Title/,
     "Status",
     "Tags",
@@ -601,11 +602,7 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   // The title column stays pinned while the other columns scroll beneath it, so
   // each row keeps naming its post.
   const title = grid.getByRole("rowheader", { name: "draft fixture" })
-  const status = grid
-    .getByRole("row")
-    .filter({ hasText: "draft fixture" })
-    .getByRole("cell")
-    .first()
+  const status = grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").nth(1)
   const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
   await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
