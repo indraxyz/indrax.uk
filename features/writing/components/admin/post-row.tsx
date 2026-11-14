@@ -27,9 +27,6 @@ export const PostRow = memo(function PostRow({
 }) {
   return (
     <li className="flex flex-col items-stretch border-2 border-border bg-card sm:flex-row">
-      {selectable && (
-        <PostSelectionCheckbox id={post.id} title={post.title} disabled={selectionDisabled} />
-      )}
       {mediaUrl(post.coverUrl) && (
         <Link
           to={`/admin/posts/edit/${post.id}`}
@@ -45,7 +42,16 @@ export const PostRow = memo(function PostRow({
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
         <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">
           <div className="space-y-2">
-            <PostStatusLabel status={post.status} />
+            <div className="flex items-center justify-between gap-3">
+              <PostStatusLabel status={post.status} />
+              {selectable && (
+                <PostSelectionCheckbox
+                  id={post.id}
+                  title={post.title}
+                  disabled={selectionDisabled}
+                />
+              )}
+            </div>
             <div>
               <Link
                 to={`/admin/posts/edit/${post.id}`}

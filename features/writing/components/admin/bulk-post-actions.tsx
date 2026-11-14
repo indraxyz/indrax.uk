@@ -1,3 +1,4 @@
+import { Archive, EyeOff, Send, X } from "lucide-react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { useStore } from "zustand"
 import { useQueryClient } from "@tanstack/react-query"
@@ -7,6 +8,8 @@ import { runBulkPostStatus } from "../../utils/bulk-post-status"
 import type { AdminPostSummary, PostStatus } from "../../types"
 import { usePostSelectionStore } from "./post-selection"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,6 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+
+const BULK_ACTIONS = [
+  { status: "published", label: "Publish", icon: Send },
+  { status: "draft", label: "Change to draft", icon: EyeOff },
+  { status: "archived", label: "Archive", icon: Archive },
+] as const satisfies readonly { status: PostStatus; label: string; icon: typeof Send }[]
 
 /** Only authoritative rows from the currently loaded page may become action targets. */
 export function BulkPostActions({
@@ -45,7 +54,7 @@ export function BulkPostActions({
     setConfirmation(null)
   }, [store])
   const selectAll = useRef<HTMLInputElement>(null)
-  const actionSelect = useRef<HTMLSelectElement>(null)
+  const actionTrigger = useRef<HTMLButtonElement | null>(null)
   const ids = usable ? posts.map(({ id }) => id) : []
   const selected = selectedIds.filter((id) => ids.includes(id))
   const targets = selected.filter(
@@ -119,71 +128,92 @@ export function BulkPostActions({
     }
   }
 
+  function focusPostCheckbox() {
+    document.querySelector<HTMLInputElement>('input[type="checkbox"][data-post-selection]')?.focus()
+  }
+
   return (
-    <section
-      aria-label="Post selection"
-      className="flex flex-wrap items-center gap-2 border-2 border-border bg-card p-3"
-    >
-      <label className="inline-flex min-h-11 items-center gap-2 px-2 focus-within:ring-2 focus-within:ring-ring">
-        <input
-          ref={selectAll}
-          type="checkbox"
-          aria-label="Select all posts on this page"
-          checked={ids.length > 0 && selected.length === ids.length}
-          disabled={!usable || !ids.length || pending}
-          onChange={() => store.getState().select(selected.length === ids.length ? [] : ids)}
-          className="size-4 accent-primary"
-        />
-        Select this page
-      </label>
-      <span>{selected.length} selected</span>
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={!selected.length || pending}
-        onClick={() => store.getState().select([])}
-      >
-        Clear selection
-      </Button>
-      <label className="inline-flex min-h-11 items-center gap-2">
-        Action
-        <select
-          ref={actionSelect}
-          aria-label="Bulk post action"
-          className="min-h-11 border-2 border-border bg-background px-2"
-          value={targetStatus}
-          disabled={pending}
-          onChange={(event) => {
-            setTargetStatus(event.target.value as PostStatus)
-            store.getState().select(selected)
-          }}
+    <>
+      {selectedIds.length > 0 && (
+        <section
+          aria-label="Post selection"
+          className="flex flex-wrap items-center gap-2 border-2 border-border bg-card p-2"
         >
-          <option value="archived">Archive</option>
-          <option value="draft">Change to draft</option>
-          <option value="published">Publish</option>
-        </select>
-      </label>
-      <Button
-        type="button"
-        disabled={!usable || !targets.length || pending}
-        onClick={() => setConfirmation([...targets])}
-      >
-        {pending ? "Updating…" : `${actionLabel} selected`}
-      </Button>
-      {selected.length > targets.length && (
-        <p className="basis-full text-sm">
-          {selected.length - targets.length} already {targetStatus}; excluded from this action.
-        </p>
+          <label
+            className="inline-flex min-h-11 min-w-11 items-center justify-center focus-within:ring-2 focus-within:ring-ring"
+            title="Select all posts on this page"
+          >
+            <input
+              ref={selectAll}
+              type="checkbox"
+              aria-label="Select all posts on this page"
+              checked={ids.length > 0 && selected.length === ids.length}
+              disabled={!usable || !ids.length || pending}
+              onChange={() => {
+                if (selected.length === ids.length) focusPostCheckbox()
+                store.getState().select(selected.length === ids.length ? [] : ids)
+              }}
+              className="size-5 accent-primary"
+            />
+          </label>
+          <span role="status" className="mr-auto text-sm">
+            {selectedIds.length} selected
+          </span>
+          <ButtonGroup aria-label="Bulk post actions">
+            {BULK_ACTIONS.map(({ status, label, icon: Icon }) => (
+              <Button
+                key={status}
+                type="button"
+                variant="secondary"
+                appearance="flat"
+                size="icon"
+                data-slot="button"
+                aria-label={`${label} selected`}
+                title={`${label} selected`}
+                disabled={
+                  !usable ||
+                  pending ||
+                  !selected.some((id) => posts.find((post) => post.id === id)?.status !== status)
+                }
+                onClick={(event) => {
+                  actionTrigger.current = event.currentTarget
+                  setTargetStatus(status)
+                  setConfirmation(
+                    selected.filter((id) => posts.find((post) => post.id === id)?.status !== status)
+                  )
+                }}
+              >
+                <Icon aria-hidden />
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              appearance="flat"
+              size="icon"
+              data-slot="button"
+              aria-label="Clear selection"
+              title="Clear selection"
+              disabled={pending}
+              onClick={() => {
+                focusPostCheckbox()
+                store.getState().select([])
+              }}
+            >
+              <X aria-hidden />
+            </Button>
+          </ButtonGroup>
+        </section>
       )}
-      <p role="status" aria-live="polite" className="basis-full text-sm">
+      <div role="status" aria-live="polite" className={pending || result ? "text-sm" : "sr-only"}>
         {pending
           ? "Updating selected posts. Keep this page open."
           : result
             ? `${result.succeeded.length} updated. ${result.failed.length} not confirmed. ${result.notAttempted.length} not attempted.${result.refreshFailed ? " Results could not be refreshed; refresh the list before selecting more posts." : ""}`
-            : `${selected.length} posts selected on this page.`}
-      </p>
+            : ""}
+      </div>
       {!!result?.failed.length && (
-        <ul className="basis-full text-sm text-destructive">
+        <ul className="text-sm text-destructive">
           {result.failed.map(({ id, message }) => (
             <li key={id}>
               {posts.find((post) => post.id === id)?.title ?? id}: {message}
@@ -199,7 +229,8 @@ export function BulkPostActions({
       >
         <AlertDialogContent
           finalFocus={() => {
-            actionSelect.current?.focus()
+            if (actionTrigger.current?.isConnected) actionTrigger.current.focus()
+            else focusPostCheckbox()
             return false
           }}
         >
@@ -207,6 +238,11 @@ export function BulkPostActions({
             <AlertDialogTitle>{actionLabel} selected posts?</AlertDialogTitle>
             <AlertDialogDescription>
               {actionLabel} {confirmed.length} posts from this page?{" "}
+              {selected.length > confirmed.length && (
+                <>
+                  {selected.length - confirmed.length} already {targetStatus}; skipped.{" "}
+                </>
+              )}
               {targetStatus === "published"
                 ? "They will be visible to everyone. Posts without publishable content or cover alt text may be refused."
                 : "They will be hidden from the public site."}{" "}
@@ -220,11 +256,12 @@ export function BulkPostActions({
               disabled={pending || !usable || !confirmed.length}
               onClick={() => void applyStatus()}
             >
+              {pending && <LoadingIndicator />}
               {pending ? "Updating…" : `${actionLabel} ${confirmed.length} posts`}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </>
   )
 }

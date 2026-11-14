@@ -30,11 +30,12 @@ export function PostSelectionCheckbox({
     <label className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center focus-within:ring-2 focus-within:ring-ring">
       <input
         type="checkbox"
+        data-post-selection
         aria-label={`Select ${title}`}
         checked={selected}
         disabled={disabled || pending}
         onChange={() => store.getState().toggle(id)}
-        className="size-4 accent-primary"
+        className="size-5 accent-primary"
       />
     </label>
   )

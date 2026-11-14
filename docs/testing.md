@@ -557,8 +557,13 @@ color scheme changes and persisted theme reloads. The preference contract is in
 
 The [admin state specification](specs/admin-zustand-selection.md) defines display
 preference compatibility, navigation/drawer lifecycle and current-page selection
-for bulk Publish, Draft and Archive. Store and orchestration tests exercise
-isolated state, stale-ID pruning, partial outcomes, retries and authorization
+for bulk Publish, Draft and Archive. The compact icon action bar appears after selecting a post;
+its labelled controls select the current page, publish, move to draft, archive or clear selection.
+Confirmation cancellation returns focus to the action; clearing or completing selection returns
+focus to a post checkbox. Results remain visible after the action bar closes. Card checkboxes
+sit beside status labels, and only the Title table column stays pinned while scrolling.
+Store and orchestration tests exercise isolated state, stale-ID pruning, partial outcomes,
+retries and authorization
 expiry. Browser tests use intercepted private APIs to check cards/table selection,
 confirmation, keyboard behavior, URL/page resets and failure recovery without
 changing database fixtures. These tests complement the existing real authoring

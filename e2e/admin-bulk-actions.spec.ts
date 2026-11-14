@@ -100,10 +100,49 @@ async function confirm(page: Page, action: string, count: number) {
   await dialog.getByRole("button", { name: `${action} ${count} posts`, exact: true }).click()
 }
 
+for (const width of [320, 1280]) {
+  test(`card selection and compact bulk actions fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await fixture(page)
+    await expect(selection(page)).toHaveCount(0)
+    const card = page.getByRole("listitem").filter({ hasText: "draft fixture" })
+    const checkbox = card.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    const status = card.getByText("draft", { exact: true })
+    const checkboxBox = (await checkbox.boundingBox())!
+    const statusBox = (await status.boundingBox())!
+    expect(checkboxBox.width).toBeGreaterThanOrEqual(20)
+    expect(checkboxBox.x).toBeGreaterThan(statusBox.x + statusBox.width)
+    expect(checkboxBox.y).toBeLessThan(statusBox.y + statusBox.height)
+    await checkbox.check()
+    await expect(selection(page).getByRole("status")).toHaveText("1 selected")
+    for (const name of [
+      "Publish selected",
+      "Change to draft selected",
+      "Archive selected",
+      "Clear selection",
+    ]) {
+      const button = selection(page).getByRole("button", { name, exact: true })
+      await expect(button).toHaveText("")
+      await expect(button).toHaveAttribute("title", name)
+      const bounds = (await button.boundingBox())!
+      expect(bounds.width).toBeGreaterThanOrEqual(44)
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width
+    )
+    await page.screenshot({
+      path: test.info().outputPath(`bulk-actions-${width}.png`),
+      fullPage: true,
+    })
+  })
+}
+
 test("selection follows cards/table, mixed state, clear, URL changes and navigation", async ({
   page,
 }) => {
   await fixture(page)
+  await expect(selection(page)).toHaveCount(0)
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
   await expect(all).toHaveJSProperty("indeterminate", true)
@@ -112,16 +151,19 @@ test("selection follows cards/table, mixed state, clear, URL changes and navigat
     page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
   ).toBeChecked()
   await all.check()
-  await expect(selection(page).getByRole("status")).toContainText("3 posts selected")
+  await expect(selection(page).getByRole("status")).toHaveText("3 selected")
   expect(
     (await new AxeBuilder({ page }).include('section[aria-label="Post selection"]').analyze())
       .violations
   ).toEqual([])
   await page.getByRole("button", { name: "Clear selection" }).click()
-  await expect(all).not.toBeChecked()
+  await expect(selection(page)).toHaveCount(0)
+  await expect(
+    page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  ).toBeFocused()
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("button", { name: /Title: sort/ }).click()
-  await expect(selection(page).getByRole("status")).toContainText("0 posts selected")
+  await expect(selection(page)).toHaveCount(0)
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("link", { name: "Dashboard", exact: true }).click()
   await page.getByRole("link", { name: "Posts", exact: true }).first().click()
@@ -139,23 +181,28 @@ for (const [status, action] of [
     page,
   }) => {
     const state = await fixture(page)
+    await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
     await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
-    await page.getByRole("combobox", { name: "Bulk post action" }).selectOption(status)
     await page.getByRole("button", { name: `${action} selected`, exact: true }).click()
     const dialog = page.getByRole("alertdialog")
     await expect(dialog).toContainText(`${action} 2 posts`)
+    await expect(dialog).toContainText(`1 already ${status}; skipped.`)
     if (status === "published") await expect(dialog).toContainText("visible to everyone")
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
-    await expect(page.getByRole("combobox", { name: "Bulk post action" })).toBeFocused()
+    await expect(
+      page.getByRole("button", { name: `${action} selected`, exact: true })
+    ).toBeFocused()
     expect(state.writes).toHaveLength(0)
     await confirm(page, action, 2)
-    await expect(selection(page).getByRole("status")).toContainText("2 updated. 0 not confirmed")
-    await expect(page.getByRole("combobox", { name: "Bulk post action" })).toBeFocused()
+    await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+      "2 updated. 0 not confirmed"
+    )
+    await expect(
+      page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    ).toBeFocused()
     expect(state.writes).toHaveLength(2)
     expect(state.writes.every((write) => write.status === status)).toBe(true)
-    await expect(
-      page.getByRole("checkbox", { name: "Select all posts on this page" })
-    ).not.toBeChecked()
+    await expect(selection(page)).toHaveCount(0)
   })
 }
 
@@ -164,9 +211,12 @@ test("partial failures retain only failed selections and user retry targets only
 }) => {
   const state = await fixture(page)
   state.failures.set(ids[1], 422)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
-  await expect(selection(page).getByRole("status")).toContainText("1 updated. 1 not confirmed")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+    "1 updated. 1 not confirmed"
+  )
   await expect(
     page.getByRole("checkbox", { name: "Select published fixture", exact: true })
   ).toBeChecked()
@@ -175,7 +225,9 @@ test("partial failures retain only failed selections and user retry targets only
   ).not.toBeChecked()
   state.failures.clear()
   await confirm(page, "Archive", 1)
-  await expect(selection(page).getByRole("status")).toContainText("1 updated. 0 not confirmed")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+    "1 updated. 0 not confirmed"
+  )
   expect(state.writes.map(({ id }) => id)).toEqual([ids[0], ids[1], ids[1]])
 })
 
@@ -187,6 +239,7 @@ test("pending bulk writes block duplicate and individual actions", async ({ page
       release = resolve
     })
   )
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect.poll(() => state.writes.length).toBe(1)
@@ -197,7 +250,7 @@ test("pending bulk writes block duplicate and individual actions", async ({ page
     page.getByRole("checkbox", { name: "Select draft fixture", exact: true, includeHidden: true })
   ).toBeDisabled()
   release()
-  await expect(selection(page).getByRole("status")).toContainText("2 updated")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText("2 updated")
   expect(state.writes).toHaveLength(2)
 })
 
@@ -206,6 +259,7 @@ test("authorization expiry stops subsequent writes and resets selection on login
 }) => {
   const state = await fixture(page)
   state.failures.set(ids[0], 401)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect(page).toHaveURL(/\/admin\/login$/)
@@ -225,6 +279,7 @@ test("changing archive URL stops old bulk work without clearing new selections",
       release = resolve
     })
   )
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect.poll(() => state.writes.length).toBe(1)

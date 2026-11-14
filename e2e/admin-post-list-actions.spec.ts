@@ -606,7 +606,13 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
   await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
-  expect((await title.boundingBox())!.x).toBe(before.title)
+  const edge = (await region.boundingBox())!.x + 2
+  expect((await title.boundingBox())!.x).toBeCloseTo(edge, 0)
+  expect((await title.boundingBox())!.x).toBeLessThan(before.title)
+  await expect(grid.getByRole("columnheader").first()).toHaveCSS("position", "static")
+  await expect(
+    grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").first()
+  ).toHaveCSS("position", "static")
   // Fully opaque (card surfaces are translucent), so scrolled cells never show
   // through the pinned one.
   expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
