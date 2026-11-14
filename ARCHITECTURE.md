@@ -248,3 +248,14 @@ contracts; avoid reintroducing server-only dependencies into browser imports.
 Build directories and generated type files are ignored. Database schema changes
 use Drizzle migrations. CI owns approved deployment to isolated dev/production
 Worker resources. No migration work itself authorizes shipping.
+
+## Admin editor client state
+
+The post form delegates working-draft snapshots and asynchronous save, upload,
+refresh, autosave and navigation coordination to its feature-local
+`usePostFormController` hook. `PostForm` retains DOM, accessible status/form
+associations, caret restoration and object URL lifecycle. Confirmation flags live
+in the controller because they suspend autosave. The route key resets the controller
+for a different post; no module-global draft or browser draft persistence exists.
+TanStack Query owns server responses and invalidation; Tiptap owns editing history
+and selection. Public/archive filters stay in URL parameters.
