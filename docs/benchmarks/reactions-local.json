@@ -1,0 +1,1064 @@
+{
+  "measuredAt": "2026-11-14T00:26:30.112Z",
+  "node": "v24.16.0",
+  "postgres": "PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "neonDriver": "1.1.0",
+  "drizzle": "0.45.3",
+  "transport": "Node → loopback Neon HTTP proxy → disposable PostgreSQL; no artificial RTT",
+  "cacheConditions": "Fixtures inserted and ANALYZEd before first observed read; warm shared buffers. First observed latency is not a cold-storage or Neon scale-to-zero measurement.",
+  "sampleCount": 30,
+  "warmupCount": 5,
+  "distribution": "Up to three distinct emoji per visitor, balanced across all five reaction types; identified reads select the first seeded visitor, writes use an independent visitor.",
+  "budget": {
+    "identifiedReadP95At100kMs": 100,
+    "materialWriteP95RegressionPercent": 10
+  },
+  "datasets": [
+    {
+      "reactions": 0,
+      "visitors": 0,
+      "firstObservedRead": {
+        "milliseconds": 201.135812,
+        "requests": 1
+      },
+      "anonymousRead": {
+        "samples": 30,
+        "p50Ms": 232.083,
+        "p95Ms": 374.251,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          195.195, 197.064, 197.753, 214.343, 197.364, 194.694, 211.785, 201.777, 196.138, 195.586,
+          194.825, 194.773, 193.267, 194.783, 312.474, 291.788, 294.136, 320.366, 248.536, 232.083,
+          245.221, 388.113, 268.374, 239.982, 374.251, 342.041, 334.004, 329.376, 354.65, 356.39
+        ]
+      },
+      "identifiedRead": {
+        "samples": 30,
+        "p50Ms": 248.677,
+        "p95Ms": 375.748,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          249.998, 274.148, 282.015, 275.185, 280.54, 242.576, 244.021, 248.677, 239.585, 242.803,
+          241.105, 242.894, 238.004, 237.195, 247.484, 248.172, 234.065, 224.546, 251.101, 235.401,
+          232.195, 375.748, 324.389, 268.454, 405.155, 339.445, 274.687, 326.239, 302.482, 279.553
+        ]
+      },
+      "sequentialAdd": {
+        "samples": 30,
+        "p50Ms": 396.241,
+        "p95Ms": 590.499,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          401.451, 390.034, 395.094, 395.868, 393.642, 422.211, 438.416, 387.706, 393.495, 391.757,
+          401.904, 393.013, 392.387, 396.241, 391.916, 404.214, 393.847, 400.06, 404.071, 415.725,
+          408.302, 391.499, 385.891, 408.376, 415.998, 386.671, 612.234, 590.499, 528.276, 483.465
+        ]
+      },
+      "batchedAdd": {
+        "samples": 30,
+        "p50Ms": 201.232,
+        "p95Ms": 236.918,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          197.32, 200.633, 200.577, 196.507, 206.941, 197.705, 220.395, 198.66, 202.14, 207.724,
+          198.236, 200.259, 199.796, 199.679, 215.898, 236.918, 204.641, 213.355, 216.348, 208.941,
+          202.448, 199.01, 200.399, 201.063, 238.82, 218.878, 201.232, 199.448, 208.263, 231.191
+        ]
+      },
+      "sequentialRemove": {
+        "samples": 30,
+        "p50Ms": 396.14,
+        "p95Ms": 438.12,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          395.397, 393.856, 392.213, 396.14, 418.999, 407.097, 394.294, 412.6, 401.467, 405.434,
+          400.297, 396.441, 391.825, 415.804, 404.137, 393.152, 404.037, 393.334, 438.12, 406.764,
+          468.562, 390.957, 387.954, 393.335, 397.584, 392.077, 393.767, 407.85, 391.328, 391.671
+        ]
+      },
+      "batchedRemove": {
+        "samples": 30,
+        "p50Ms": 200.412,
+        "p95Ms": 269.001,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          200.19, 201.617, 199.494, 199.453, 202.917, 208.753, 203.318, 198.168, 197.638, 199.941,
+          221.848, 199.427, 200.008, 200.601, 197.565, 197.443, 200.412, 197.394, 199.303, 199.837,
+          197.366, 202.759, 283.358, 223.149, 260.459, 256.729, 224.63, 269.001, 243.14, 240.193
+        ]
+      },
+      "explain": [
+        {
+          "Plan": {
+            "Node Type": "Aggregate",
+            "Strategy": "Sorted",
+            "Partial Mode": "Simple",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 9.19,
+            "Total Cost": 9.24,
+            "Plan Rows": 1,
+            "Plan Width": 88,
+            "Actual Startup Time": 0.107,
+            "Actual Total Time": 0.122,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Group Key": ["posts.id"],
+            "Shared Hit Blocks": 6,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 9.19,
+                "Total Cost": 9.2,
+                "Plan Rows": 1,
+                "Plan Width": 64,
+                "Actual Startup Time": 0.098,
+                "Actual Total Time": 0.109,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Sort Key": ["posts.id"],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 25,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Nested Loop",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Join Type": "Left",
+                    "Startup Cost": 0.14,
+                    "Total Cost": 9.18,
+                    "Plan Rows": 1,
+                    "Plan Width": 64,
+                    "Actual Startup Time": 0.048,
+                    "Actual Total Time": 0.059,
+                    "Actual Rows": 1,
+                    "Actual Loops": 1,
+                    "Inner Unique": false,
+                    "Join Filter": "(posts.id = post_reactions.post_id)",
+                    "Rows Removed by Join Filter": 0,
+                    "Shared Hit Blocks": 3,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Scan Direction": "Forward",
+                        "Index Name": "posts_slug_unique",
+                        "Relation Name": "posts",
+                        "Alias": "posts",
+                        "Startup Cost": 0.14,
+                        "Total Cost": 8.17,
+                        "Plan Rows": 1,
+                        "Plan Width": 16,
+                        "Actual Startup Time": 0.038,
+                        "Actual Total Time": 0.041,
+                        "Actual Rows": 1,
+                        "Actual Loops": 1,
+                        "Index Cond": "(slug = 'reaction-benchmark-cd99cf5b-0f8a-4ae8-8ae8-c41c1e1c5e36-0'::text)",
+                        "Rows Removed by Index Recheck": 0,
+                        "Filter": "((published_at IS NOT NULL) AND (content_json IS NOT NULL) AND (published_at <= '2026-11-14 00:19:18.756+00'::timestamp with time zone) AND (status = 'published'::post_status))",
+                        "Rows Removed by Filter": 0,
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      },
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "post_reactions",
+                        "Alias": "post_reactions",
+                        "Startup Cost": 0,
+                        "Total Cost": 1,
+                        "Plan Rows": 1,
+                        "Plan Width": 64,
+                        "Actual Startup Time": 0.005,
+                        "Actual Total Time": 0.007,
+                        "Actual Rows": 0,
+                        "Actual Loops": 1,
+                        "Shared Hit Blocks": 1,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Planning": {
+            "Shared Hit Blocks": 215,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 1.555,
+          "Triggers": [],
+          "Execution Time": 0.22
+        }
+      ]
+    },
+    {
+      "reactions": 100,
+      "visitors": 34,
+      "firstObservedRead": {
+        "milliseconds": 241.7968339999934,
+        "requests": 1
+      },
+      "anonymousRead": {
+        "samples": 30,
+        "p50Ms": 233.813,
+        "p95Ms": 254.586,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          239.7, 229.302, 257.879, 242.846, 234.213, 233.813, 236.811, 253.83, 239.16, 234.911,
+          232.411, 231.113, 230.026, 233.789, 227.766, 246.81, 235.693, 229.201, 223.155, 227.673,
+          229.433, 230.909, 225.647, 240.069, 242.048, 235.115, 227.776, 254.586, 252.943, 230.22
+        ]
+      },
+      "identifiedRead": {
+        "samples": 30,
+        "p50Ms": 195.991,
+        "p95Ms": 212.077,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          197.874, 210.104, 212.077, 211.122, 211.641, 193.875, 193.823, 196.106, 196.387, 204.121,
+          199.09, 195.922, 195.928, 211.174, 204.145, 193.866, 193.508, 195.493, 193.742, 206.153,
+          197.986, 195.991, 195.583, 191.895, 194.022, 195.332, 195.728, 195.192, 198.404, 225.891
+        ]
+      },
+      "sequentialAdd": {
+        "samples": 30,
+        "p50Ms": 395.638,
+        "p95Ms": 517.357,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          403.28, 398.815, 395.8, 393.458, 387.706, 392.238, 391.301, 398.918, 390.396, 407.561,
+          386.286, 387.081, 582.646, 517.357, 419.563, 385.753, 401.622, 389.319, 425.091, 397.74,
+          397.629, 386.085, 394.41, 386.737, 395.638, 407.387, 410.589, 387.214, 389.473, 398.103
+        ]
+      },
+      "batchedAdd": {
+        "samples": 30,
+        "p50Ms": 201.891,
+        "p95Ms": 235.927,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          235.927, 218.38, 201.891, 208.316, 201.737, 198.506, 200.993, 199.165, 213.616, 199.866,
+          202.178, 203.903, 226.115, 243.571, 199.352, 210.965, 222.99, 195.839, 210.618, 205.227,
+          198.562, 199.704, 202.93, 207.858, 200.097, 199.296, 197.308, 199.739, 207.883, 201.588
+        ]
+      },
+      "sequentialRemove": {
+        "samples": 30,
+        "p50Ms": 399.153,
+        "p95Ms": 532.865,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          390.854, 399.143, 390.358, 387.238, 401.98, 411.372, 388.373, 390.739, 415.38, 402.441,
+          392.836, 389.982, 411.131, 401.264, 639.411, 524.655, 465.11, 442.906, 392.907, 452.017,
+          532.865, 398.937, 390.104, 399.153, 428.05, 389.417, 391.563, 393.583, 400.728, 408.615
+        ]
+      },
+      "batchedRemove": {
+        "samples": 30,
+        "p50Ms": 199.719,
+        "p95Ms": 225.068,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          199.294, 218.022, 199.672, 197.627, 199.54, 201.823, 213.604, 198.607, 199.221, 195.996,
+          203.965, 225.068, 220.683, 200.54, 202.143, 198.966, 199.675, 199.408, 216.199, 199.105,
+          347.137, 222.245, 200.503, 199.719, 199.827, 197.858, 196.506, 207.58, 202.516, 197.762
+        ]
+      },
+      "explain": [
+        {
+          "Plan": {
+            "Node Type": "Aggregate",
+            "Strategy": "Sorted",
+            "Partial Mode": "Simple",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 11.45,
+            "Total Cost": 11.5,
+            "Plan Rows": 1,
+            "Plan Width": 88,
+            "Actual Startup Time": 1.388,
+            "Actual Total Time": 1.411,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Group Key": ["posts.id"],
+            "Shared Hit Blocks": 4,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 11.45,
+                "Total Cost": 11.46,
+                "Plan Rows": 1,
+                "Plan Width": 38,
+                "Actual Startup Time": 0.969,
+                "Actual Total Time": 1.173,
+                "Actual Rows": 100,
+                "Actual Loops": 1,
+                "Sort Key": ["posts.id"],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 30,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 4,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Hash Join",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Join Type": "Right",
+                    "Startup Cost": 8.18,
+                    "Total Cost": 11.44,
+                    "Plan Rows": 1,
+                    "Plan Width": 38,
+                    "Actual Startup Time": 0.116,
+                    "Actual Total Time": 0.733,
+                    "Actual Rows": 100,
+                    "Actual Loops": 1,
+                    "Inner Unique": true,
+                    "Hash Cond": "(post_reactions.post_id = posts.id)",
+                    "Shared Hit Blocks": 4,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "post_reactions",
+                        "Alias": "post_reactions",
+                        "Startup Cost": 0,
+                        "Total Cost": 3,
+                        "Plan Rows": 100,
+                        "Plan Width": 38,
+                        "Actual Startup Time": 0.01,
+                        "Actual Total Time": 0.217,
+                        "Actual Rows": 100,
+                        "Actual Loops": 1,
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      },
+                      {
+                        "Node Type": "Hash",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 8.17,
+                        "Total Cost": 8.17,
+                        "Plan Rows": 1,
+                        "Plan Width": 16,
+                        "Actual Startup Time": 0.064,
+                        "Actual Total Time": 0.07,
+                        "Actual Rows": 1,
+                        "Actual Loops": 1,
+                        "Hash Buckets": 1024,
+                        "Original Hash Buckets": 1024,
+                        "Hash Batches": 1,
+                        "Original Hash Batches": 1,
+                        "Peak Memory Usage": 9,
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "Plans": [
+                          {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "posts_slug_unique",
+                            "Relation Name": "posts",
+                            "Alias": "posts",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 8.17,
+                            "Plan Rows": 1,
+                            "Plan Width": 16,
+                            "Actual Startup Time": 0.036,
+                            "Actual Total Time": 0.042,
+                            "Actual Rows": 1,
+                            "Actual Loops": 1,
+                            "Index Cond": "(slug = 'reaction-benchmark-cd99cf5b-0f8a-4ae8-8ae8-c41c1e1c5e36-100'::text)",
+                            "Rows Removed by Index Recheck": 0,
+                            "Filter": "((published_at IS NOT NULL) AND (content_json IS NOT NULL) AND (published_at <= '2026-11-14 00:21:04.982+00'::timestamp with time zone) AND (status = 'published'::post_status))",
+                            "Rows Removed by Filter": 0,
+                            "Shared Hit Blocks": 2,
+                            "Shared Read Blocks": 0,
+                            "Shared Dirtied Blocks": 0,
+                            "Shared Written Blocks": 0,
+                            "Local Hit Blocks": 0,
+                            "Local Read Blocks": 0,
+                            "Local Dirtied Blocks": 0,
+                            "Local Written Blocks": 0,
+                            "Temp Read Blocks": 0,
+                            "Temp Written Blocks": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Planning": {
+            "Shared Hit Blocks": 22,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.603,
+          "Triggers": [],
+          "Execution Time": 1.554
+        }
+      ]
+    },
+    {
+      "reactions": 10000,
+      "visitors": 3334,
+      "firstObservedRead": {
+        "milliseconds": 199.7370799999917,
+        "requests": 1
+      },
+      "anonymousRead": {
+        "samples": 30,
+        "p50Ms": 199.371,
+        "p95Ms": 231.267,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          200.776, 199.543, 199.371, 202.632, 198.319, 218.178, 231.267, 227.507, 221.28, 224.839,
+          212.565, 195.331, 199.208, 198.891, 205.27, 204.471, 232.565, 217.558, 198.011, 197.082,
+          198.048, 200.402, 197.207, 195.869, 197.916, 197.9, 206.427, 199.25, 196.63, 197.464
+        ]
+      },
+      "identifiedRead": {
+        "samples": 30,
+        "p50Ms": 200.091,
+        "p95Ms": 229.028,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          201.32, 205.059, 200.091, 201.664, 198.64, 204.937, 197.815, 217.071, 201.492, 197.712,
+          202.101, 199.739, 204.821, 198.439, 199.559, 199.595, 201.507, 229.611, 198.316, 197.478,
+          198.809, 199.721, 208.46, 195.935, 205.714, 229.028, 219.392, 212.294, 195.348, 194.198
+        ]
+      },
+      "sequentialAdd": {
+        "samples": 30,
+        "p50Ms": 403.289,
+        "p95Ms": 480.833,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          462.372, 434.354, 406.19, 417.456, 421.39, 398.553, 480.833, 406.309, 403.289, 497.871,
+          424.945, 449.157, 393.094, 393.236, 398.405, 393.968, 397.025, 401.287, 391.492, 456.362,
+          396.619, 394.113, 423.193, 400.449, 416.512, 464.75, 401.117, 395.658, 404.35, 396.031
+        ]
+      },
+      "batchedAdd": {
+        "samples": 30,
+        "p50Ms": 204.362,
+        "p95Ms": 293.193,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          222.054, 293.193, 341.189, 264.269, 200.278, 217.091, 203.554, 201.581, 204.176, 204.731,
+          200.355, 203.581, 208.98, 200.68, 205.366, 200.585, 204.508, 202.576, 203.34, 201.555,
+          211.511, 203.815, 215.636, 224.157, 204.362, 207.252, 211.955, 201.911, 203.158, 205.557
+        ]
+      },
+      "sequentialRemove": {
+        "samples": 30,
+        "p50Ms": 399.024,
+        "p95Ms": 422.312,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          396.109, 400.224, 412.982, 401.672, 438.621, 401.301, 395.813, 391.133, 417.638, 393.759,
+          391.578, 410.164, 395.259, 401.712, 395.758, 399.024, 394.67, 410.821, 410.818, 394.66,
+          399.129, 397.911, 390.502, 406.541, 388.922, 392.478, 402.098, 407.434, 422.312, 397.061
+        ]
+      },
+      "batchedRemove": {
+        "samples": 30,
+        "p50Ms": 203.021,
+        "p95Ms": 221.036,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          199.292, 203.684, 221.036, 201.525, 201.874, 202.825, 200.254, 211.721, 205.988, 198.785,
+          202.395, 197.662, 204.212, 200.485, 210.249, 204.175, 202.118, 202.317, 201.262, 207.03,
+          204.35, 202.521, 203.43, 234.492, 220.007, 201.404, 207.773, 212.249, 203.021, 204.261
+        ]
+      },
+      "explain": [
+        {
+          "Plan": {
+            "Node Type": "Aggregate",
+            "Strategy": "Sorted",
+            "Partial Mode": "Simple",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 224.2,
+            "Total Cost": 225.61,
+            "Plan Rows": 1,
+            "Plan Width": 88,
+            "Actual Startup Time": 89.611,
+            "Actual Total Time": 89.63,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Group Key": ["posts.id"],
+            "Shared Hit Blocks": 89,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 224.2,
+                "Total Cost": 224.3,
+                "Plan Rows": 40,
+                "Plan Width": 38,
+                "Actual Startup Time": 60.174,
+                "Actual Total Time": 73.809,
+                "Actual Rows": 10000,
+                "Actual Loops": 1,
+                "Sort Key": ["posts.id"],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 947,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 89,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Hash Join",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Join Type": "Right",
+                    "Startup Cost": 8.18,
+                    "Total Cost": 223.14,
+                    "Plan Rows": 40,
+                    "Plan Width": 38,
+                    "Actual Startup Time": 0.055,
+                    "Actual Total Time": 44.28,
+                    "Actual Rows": 10000,
+                    "Actual Loops": 1,
+                    "Inner Unique": true,
+                    "Hash Cond": "(post_reactions.post_id = posts.id)",
+                    "Shared Hit Blocks": 89,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "post_reactions",
+                        "Alias": "post_reactions",
+                        "Startup Cost": 0,
+                        "Total Cost": 188,
+                        "Plan Rows": 10100,
+                        "Plan Width": 38,
+                        "Actual Startup Time": 0.007,
+                        "Actual Total Time": 14.496,
+                        "Actual Rows": 10100,
+                        "Actual Loops": 1,
+                        "Shared Hit Blocks": 87,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      },
+                      {
+                        "Node Type": "Hash",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 8.17,
+                        "Total Cost": 8.17,
+                        "Plan Rows": 1,
+                        "Plan Width": 16,
+                        "Actual Startup Time": 0.036,
+                        "Actual Total Time": 0.041,
+                        "Actual Rows": 1,
+                        "Actual Loops": 1,
+                        "Hash Buckets": 1024,
+                        "Original Hash Buckets": 1024,
+                        "Hash Batches": 1,
+                        "Original Hash Batches": 1,
+                        "Peak Memory Usage": 9,
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "Plans": [
+                          {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "posts_slug_unique",
+                            "Relation Name": "posts",
+                            "Alias": "posts",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 8.17,
+                            "Plan Rows": 1,
+                            "Plan Width": 16,
+                            "Actual Startup Time": 0.023,
+                            "Actual Total Time": 0.026,
+                            "Actual Rows": 1,
+                            "Actual Loops": 1,
+                            "Index Cond": "(slug = 'reaction-benchmark-cd99cf5b-0f8a-4ae8-8ae8-c41c1e1c5e36-10000'::text)",
+                            "Rows Removed by Index Recheck": 0,
+                            "Filter": "((published_at IS NOT NULL) AND (content_json IS NOT NULL) AND (published_at <= '2026-11-14 00:22:48.235+00'::timestamp with time zone) AND (status = 'published'::post_status))",
+                            "Rows Removed by Filter": 0,
+                            "Shared Hit Blocks": 2,
+                            "Shared Read Blocks": 0,
+                            "Shared Dirtied Blocks": 0,
+                            "Shared Written Blocks": 0,
+                            "Local Hit Blocks": 0,
+                            "Local Read Blocks": 0,
+                            "Local Dirtied Blocks": 0,
+                            "Local Written Blocks": 0,
+                            "Temp Read Blocks": 0,
+                            "Temp Written Blocks": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Planning": {
+            "Shared Hit Blocks": 24,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.386,
+          "Triggers": [],
+          "Execution Time": 89.819
+        }
+      ]
+    },
+    {
+      "reactions": 100000,
+      "visitors": 33334,
+      "firstObservedRead": {
+        "milliseconds": 247.26423299999442,
+        "requests": 1
+      },
+      "anonymousRead": {
+        "samples": 30,
+        "p50Ms": 243.611,
+        "p95Ms": 271.398,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          239.763, 251.612, 236.804, 241.356, 242.139, 241.469, 248.215, 238.758, 243.262, 245.357,
+          243.611, 246.701, 260.912, 273.512, 271.398, 255.497, 255.086, 250.132, 244.488, 242.465,
+          243.763, 246.155, 240.239, 243.96, 242.29, 240.159, 248.245, 236.16, 238.801, 237.104
+        ]
+      },
+      "identifiedRead": {
+        "samples": 30,
+        "p50Ms": 246.627,
+        "p95Ms": 281.198,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          243.903, 265.986, 251.045, 246.961, 242.947, 243.851, 246.061, 251.117, 249.475, 244.374,
+          245.335, 246.627, 244.116, 242.882, 243.957, 254.649, 256.399, 246.628, 247.65, 246.486,
+          255.073, 288.149, 281.198, 260.232, 252.889, 246.238, 245.396, 277.562, 242.428, 245.772
+        ]
+      },
+      "sequentialAdd": {
+        "samples": 30,
+        "p50Ms": 443.882,
+        "p95Ms": 498.479,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          442.058, 443.581, 447.932, 450.886, 511.354, 441.635, 434.118, 436.333, 477.36, 455.212,
+          440.434, 447.536, 438.595, 449.643, 443.882, 469.542, 496.117, 443.302, 440.488, 441.167,
+          490.683, 442.646, 451.063, 438.36, 438.093, 435.778, 446.176, 448.915, 498.479, 454.606
+        ]
+      },
+      "batchedAdd": {
+        "samples": 30,
+        "p50Ms": 249.958,
+        "p95Ms": 283.777,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          250.251, 245.987, 252.22, 249.958, 247.925, 248.658, 255.964, 247.394, 248.123, 250.697,
+          257.607, 246.534, 283.777, 286.029, 265.637, 246.477, 250.126, 255.402, 259.044, 250.356,
+          248.105, 251.026, 255.446, 244.804, 248.336, 248.052, 255.252, 246.543, 245.976, 245.05
+        ]
+      },
+      "sequentialRemove": {
+        "samples": 30,
+        "p50Ms": 444.692,
+        "p95Ms": 491.243,
+        "requestsPerOperation": [2],
+        "milliseconds": [
+          439.669, 432.065, 438.145, 439.168, 444.487, 453.05, 443.496, 451.925, 442.243, 491.243,
+          451.062, 459.019, 440.39, 449.684, 440.251, 470.594, 450.226, 443.802, 439.357, 438.194,
+          445.084, 497.455, 445.518, 437.044, 478.398, 437.617, 453.314, 461.859, 444.692, 448.839
+        ]
+      },
+      "batchedRemove": {
+        "samples": 30,
+        "p50Ms": 250.316,
+        "p95Ms": 284.585,
+        "requestsPerOperation": [1],
+        "milliseconds": [
+          280.514, 284.585, 252.272, 246.851, 248.01, 248.768, 255.434, 246.553, 250.542, 252.121,
+          272.892, 249.19, 247.919, 250.368, 258.383, 244.488, 245.241, 250.316, 261.39, 250.05,
+          258.844, 252.375, 285.184, 248.104, 248.331, 253.043, 256.857, 246.002, 246.426, 248.202
+        ]
+      },
+      "explain": [
+        {
+          "Plan": {
+            "Node Type": "Aggregate",
+            "Strategy": "Sorted",
+            "Partial Mode": "Simple",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 2364.41,
+            "Total Cost": 2379.82,
+            "Plan Rows": 1,
+            "Plan Width": 88,
+            "Actual Startup Time": 933.32,
+            "Actual Total Time": 933.349,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Group Key": ["posts.id"],
+            "Shared Hit Blocks": 944,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 593,
+            "Temp Written Blocks": 594,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 2364.41,
+                "Total Cost": 2365.51,
+                "Plan Rows": 440,
+                "Plan Width": 38,
+                "Actual Startup Time": 629.162,
+                "Actual Total Time": 774.829,
+                "Actual Rows": 100000,
+                "Actual Loops": 1,
+                "Sort Key": ["posts.id"],
+                "Sort Method": "external merge",
+                "Sort Space Used": 4744,
+                "Sort Space Type": "Disk",
+                "Shared Hit Blocks": 944,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 593,
+                "Temp Written Blocks": 594,
+                "Plans": [
+                  {
+                    "Node Type": "Hash Join",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Join Type": "Right",
+                    "Startup Cost": 8.18,
+                    "Total Cost": 2345.09,
+                    "Plan Rows": 440,
+                    "Plan Width": 38,
+                    "Actual Startup Time": 0.31,
+                    "Actual Total Time": 467.002,
+                    "Actual Rows": 100000,
+                    "Actual Loops": 1,
+                    "Inner Unique": true,
+                    "Hash Cond": "(post_reactions.post_id = posts.id)",
+                    "Shared Hit Blocks": 944,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "post_reactions",
+                        "Alias": "post_reactions",
+                        "Startup Cost": 0,
+                        "Total Cost": 2043,
+                        "Plan Rows": 110100,
+                        "Plan Width": 38,
+                        "Actual Startup Time": 0.008,
+                        "Actual Total Time": 159.516,
+                        "Actual Rows": 110100,
+                        "Actual Loops": 1,
+                        "Shared Hit Blocks": 942,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0
+                      },
+                      {
+                        "Node Type": "Hash",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 8.17,
+                        "Total Cost": 8.17,
+                        "Plan Rows": 1,
+                        "Plan Width": 16,
+                        "Actual Startup Time": 0.037,
+                        "Actual Total Time": 0.052,
+                        "Actual Rows": 1,
+                        "Actual Loops": 1,
+                        "Hash Buckets": 1024,
+                        "Original Hash Buckets": 1024,
+                        "Hash Batches": 1,
+                        "Original Hash Batches": 1,
+                        "Peak Memory Usage": 9,
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "Plans": [
+                          {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "posts_slug_unique",
+                            "Relation Name": "posts",
+                            "Alias": "posts",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 8.17,
+                            "Plan Rows": 1,
+                            "Plan Width": 16,
+                            "Actual Startup Time": 0.023,
+                            "Actual Total Time": 0.036,
+                            "Actual Rows": 1,
+                            "Actual Loops": 1,
+                            "Index Cond": "(slug = 'reaction-benchmark-cd99cf5b-0f8a-4ae8-8ae8-c41c1e1c5e36-100000'::text)",
+                            "Rows Removed by Index Recheck": 0,
+                            "Filter": "((published_at IS NOT NULL) AND (content_json IS NOT NULL) AND (published_at <= '2026-11-14 00:24:32.913+00'::timestamp with time zone) AND (status = 'published'::post_status))",
+                            "Rows Removed by Filter": 0,
+                            "Shared Hit Blocks": 2,
+                            "Shared Read Blocks": 0,
+                            "Shared Dirtied Blocks": 0,
+                            "Shared Written Blocks": 0,
+                            "Local Hit Blocks": 0,
+                            "Local Read Blocks": 0,
+                            "Local Dirtied Blocks": 0,
+                            "Local Written Blocks": 0,
+                            "Temp Read Blocks": 0,
+                            "Temp Written Blocks": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Planning": {
+            "Shared Hit Blocks": 22,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.351,
+          "Triggers": [],
+          "Execution Time": 934.516
+        }
+      ]
+    }
+  ]
+}
