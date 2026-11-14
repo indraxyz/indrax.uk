@@ -636,3 +636,24 @@ for (const theme of ["light", "dark"] as const)
     )
     expect(blocking.map(({ id, nodes }) => `${id}: ${nodes.length}`)).toEqual([])
   })
+
+test("layout choice survives failed writes over an older stored preference", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("indrax-admin-posts-view", "cards")
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "indrax-admin-posts-view") throw new Error("blocked preference write")
+      original.call(this, key, value)
+    }
+  })
+  await archiveFixture(page)
+  const layout = page.getByRole("group", { name: "Posts layout" })
+  const table = layout.getByRole("button", { name: "Table", exact: true })
+  await table.focus()
+  await page.keyboard.press("Enter")
+  await expect(table).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("table")).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem("indrax-admin-posts-view"))).toBe("cards")
+  await layout.getByRole("button", { name: "Cards", exact: true }).click()
+  await expect(table).toHaveAttribute("aria-pressed", "false")
+})

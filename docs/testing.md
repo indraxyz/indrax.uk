@@ -534,3 +534,10 @@ access preserves the release deployment history. A 200 cleanup response proves
 one bounded invocation completed, not that every pending record was drained. Record skipped live checks explicitly; a green local suite does not prove
 Preview TLS, OAuth credentials or the remote Neon secret's target. See the
 [migration specification](workers-previews-migration-spec.md) for acceptance.
+
+Client preference regressions are covered by `lib/client-preference.test.ts`,
+`lib/theme.test.ts`, `features/writing/utils/admin-posts-view.test.ts`, and
+`e2e/client-preferences.spec.ts`. These require no database or authenticated session:
+exercise real second-tab consent changes, blocked storage theme choices, system
+color scheme changes and persisted theme reloads. The preference contract is in
+`docs/specs/client-preference-state.md`.

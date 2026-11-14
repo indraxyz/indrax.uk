@@ -49,7 +49,7 @@ describe("admin posts view preference", () => {
   it("follows changes made in another tab", () => {
     const listener = vi.fn()
     subscribeToAdminPostsView(listener)
-    events.dispatchEvent(new Event("storage"))
+    events.dispatchEvent(Object.assign(new Event("storage"), { key: ADMIN_POSTS_VIEW_STORAGE_KEY }))
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
@@ -57,6 +57,7 @@ describe("admin posts view preference", () => {
     const blocked = () => {
       throw new DOMException("blocked", "SecurityError")
     }
+    stored.set(ADMIN_POSTS_VIEW_STORAGE_KEY, "cards")
     window.localStorage.getItem = blocked
     window.localStorage.setItem = blocked
     const listener = vi.fn()
@@ -65,5 +66,6 @@ describe("admin posts view preference", () => {
     expect(readAdminPostsView()).toBe("cards")
     expect(() => writeAdminPostsView("table")).not.toThrow()
     expect(listener).toHaveBeenCalledTimes(1)
+    expect(readAdminPostsView()).toBe("table")
   })
 })
