@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { resetAdminNavigation } from "@/admin/state/admin-navigation"
 import { Navigate, Outlet } from "react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { HTTPError } from "ky"
@@ -12,6 +13,7 @@ export function ProtectedAdmin() {
   const session = useQuery(adminSessionOptions)
   useEffect(() => {
     const expire = () => {
+      resetAdminNavigation()
       client.removeQueries({ queryKey: adminKeys.all })
       client.getMutationCache().clear()
       window.location.replace("/admin/login")
@@ -23,6 +25,7 @@ export function ProtectedAdmin() {
         event.query.state.error instanceof HTTPError &&
         [401, 403].includes(event.query.state.error.response.status)
       ) {
+        resetAdminNavigation()
         client.removeQueries({ queryKey: adminKeys.all })
         client.getMutationCache().clear()
         window.location.replace("/admin/login")
@@ -35,6 +38,7 @@ export function ProtectedAdmin() {
   }, [client])
   useEffect(() => {
     if (session.data && !session.data.author) {
+      resetAdminNavigation()
       client.removeQueries({
         predicate: (query) => query.queryKey[0] === "admin" && query.queryKey[1] !== "session",
       })

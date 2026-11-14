@@ -259,3 +259,16 @@ in the controller because they suspend autosave. The route key resets the contro
 for a different post; no module-global draft or browser draft persistence exists.
 TanStack Query owns server responses and invalidation; Tiptap owns editing history
 and selection. Public/archive filters stay in URL parameters.
+
+## Admin interface state
+
+Admin-only Zustand stores coordinate the cards/table display preference, navigation
+drawer/Public menus and current-page post selection. Preference persistence keeps
+the existing raw storage format, cross-tab updates and document-memory fallback;
+transient navigation/selection state is never persisted. Components select only
+the state they consume. Selection belongs to a posts-list instance and resets on
+URL criteria/page changes or departure. Actions intersect current authoritative
+results, process existing per-post status APIs sequentially and report partial
+outcomes. Query data and mutations remain managed through TanStack Query and the
+existing cache helpers; server authorization remains authoritative. See the
+[admin state specification](docs/specs/admin-zustand-selection.md).

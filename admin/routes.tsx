@@ -1,3 +1,7 @@
+import { useEffect } from "react"
+import { useLocation } from "react-router"
+import { getAdminPreferences } from "@/admin/state/admin-preferences"
+import { resetAdminNavigation } from "@/admin/state/admin-navigation"
 import { createBrowserRouter, Outlet, redirect } from "react-router"
 import type { QueryKey } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
@@ -16,6 +20,11 @@ async function loadAdminPage<T>(queryKey?: QueryKey, queryFn?: () => Promise<T>)
 }
 
 function AdminRoot() {
+  const location = useLocation()
+  useEffect(() => getAdminPreferences().subscribe(() => {}), [])
+  useEffect(() => {
+    resetAdminNavigation()
+  }, [location.key])
   return (
     <>
       <NavigationProgress />

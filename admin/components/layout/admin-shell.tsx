@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router"
-import { useState, type ReactNode } from "react"
+import { type ReactNode } from "react"
+import { useStore } from "zustand"
+import { adminNavigationStore, selectAdminNavigationOpen } from "@/admin/state/admin-navigation"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
@@ -29,7 +31,7 @@ export function AdminShell({
   signedIn = true,
 }: AdminShellProps) {
   const { pathname } = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const menuOpen = useStore(adminNavigationStore, selectAdminNavigationOpen)
   const currentPage = signedIn
     ? pathname.startsWith("/admin/posts")
       ? "posts"
@@ -53,11 +55,7 @@ export function AdminShell({
               Indra&apos;s Admin
             </Link>
 
-            <AdminNavigation
-              activePage={currentPage}
-              signedIn={signedIn}
-              onMenuOpenChange={setMenuOpen}
-            />
+            <AdminNavigation activePage={currentPage} signedIn={signedIn} />
           </div>
         </div>
       </ScrollHeader>

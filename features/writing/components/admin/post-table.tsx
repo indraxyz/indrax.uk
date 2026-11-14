@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table"
 
 import { PostTags } from "@/features/writing/components/post-tags"
-import { PostActions } from "./post-actions"
+import { ListPostActions, PostSelectionCheckbox } from "./post-selection"
 import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
 import { PostStatusLabel } from "./post-status-label"
 import type { AdminPostSummary } from "@/features/writing/types"
@@ -124,7 +124,7 @@ const columns = column.columns([
         >
           <PencilLine className="h-4 w-4" aria-hidden />
         </Link>
-        <PostActions post={row.original} context="list" />
+        <ListPostActions post={row.original} />
       </div>
     ),
   }),
@@ -132,7 +132,15 @@ const columns = column.columns([
 
 type PostHeader = Header<typeof features, AdminPostSummary, unknown>
 
-function ColumnHeader({ header, sort }: { header: PostHeader; sort: AdminPostsSort }) {
+function ColumnHeader({
+  header,
+  sort,
+  selectable = false,
+}: {
+  header: PostHeader
+  sort: AdminPostsSort
+  selectable?: boolean
+}) {
   const { column } = header
   const label = String(column.columnDef.header)
   const meta = column.columnDef.meta
@@ -149,6 +157,7 @@ function ColumnHeader({ header, sort }: { header: PostHeader; sort: AdminPostsSo
   return (
     <th
       scope="col"
+      style={meta?.sticky && selectable ? { left: SELECTION_COLUMN_WIDTH } : undefined}
       aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
         "whitespace-nowrap px-3 py-2 text-left text-xs font-black uppercase tracking-[0.14em] text-muted-foreground",
@@ -186,6 +195,7 @@ type AdminPostsSort = AdminArchiveOptions["sort"]
 // cell. Card surfaces are translucent, so the body cell stacks the card tint on
 // the opaque page colour: it matches the region behind it and hides what scrolls
 // underneath.
+const SELECTION_COLUMN_WIDTH = 60
 const STICKY_CELL = "sticky left-0 z-[1] shadow-[inset_-2px_0_0_var(--color-border)]"
 const STICKY_BODY_CELL =
   "bg-[var(--color-background)] bg-[image:linear-gradient(var(--color-card),var(--color-card))] transition-colors group-hover:bg-[var(--color-muted)] group-hover:bg-none"
@@ -199,9 +209,13 @@ const STICKY_BODY_CELL =
 export const PostTable = memo(function PostTable({
   posts,
   options,
+  selectable = false,
+  selectionDisabled = false,
 }: {
   posts: AdminPostSummary[]
   options: AdminArchiveOptions
+  selectable?: boolean
+  selectionDisabled?: boolean
 }) {
   const [, setParams] = useSearchParams()
   const captionId = useId()
@@ -242,8 +256,22 @@ export const PostTable = memo(function PostTable({
         <thead className="border-b-2 border-border bg-[var(--color-muted)]">
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id}>
+              {selectable && (
+                <th
+                  scope="col"
+                  className="sticky left-0 z-[2] bg-[var(--color-muted)] px-2"
+                  style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
+                >
+                  <span className="sr-only">Select post</span>
+                </th>
+              )}
               {group.headers.map((header) => (
-                <ColumnHeader key={header.id} header={header} sort={options.sort} />
+                <ColumnHeader
+                  key={header.id}
+                  header={header}
+                  sort={options.sort}
+                  selectable={selectable}
+                />
               ))}
             </tr>
           ))}
@@ -254,6 +282,18 @@ export const PostTable = memo(function PostTable({
               key={row.id}
               className="group border-t-2 border-border align-middle transition-colors first:border-t-0 hover:bg-[var(--color-muted)]"
             >
+              {selectable && (
+                <td
+                  className={cn("sticky left-0 z-[2] px-2", STICKY_BODY_CELL)}
+                  style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
+                >
+                  <PostSelectionCheckbox
+                    id={row.original.id}
+                    title={row.original.title}
+                    disabled={selectionDisabled}
+                  />
+                </td>
+              )}
               {row.getAllCells().map((cell) => {
                 const meta = cell.column.columnDef.meta
                 const Cell = meta?.rowHeader ? "th" : "td"
@@ -261,6 +301,9 @@ export const PostTable = memo(function PostTable({
                   <Cell
                     key={cell.id}
                     scope={meta?.rowHeader ? "row" : undefined}
+                    style={
+                      meta?.sticky && selectable ? { left: SELECTION_COLUMN_WIDTH } : undefined
+                    }
                     className={cn(
                       "px-3 py-3 text-left font-medium",
                       meta?.className,

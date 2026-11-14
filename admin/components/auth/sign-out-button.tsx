@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router"
+import { resetAdminNavigation } from "@/admin/state/admin-navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import { adminKeys } from "@/features/writing/api/client"
 import { useState, useTransition, type ReactNode } from "react"
@@ -45,6 +46,7 @@ export function SignOutButton({ children, className }: SignOutButtonProps) {
           return
         }
 
+        resetAdminNavigation()
         setOpen(false)
         queryClient.removeQueries({ queryKey: adminKeys.all })
         queryClient.getMutationCache().clear()
