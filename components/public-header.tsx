@@ -21,7 +21,7 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
           >
             Indra
           </Link>
-          <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 print:hidden">
             <PublicNavigation activePage={activePage} />
           </div>
         </div>

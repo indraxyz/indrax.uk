@@ -46,19 +46,26 @@ export function ArticleCard({ post, article, meta, actions, reactions }: Article
           {/* The page's only h1. The render pipeline shifts body headings so the
               shallowest becomes an h2, which keeps this true whatever a post
               contains and without skipping a level. */}
-          <h1 className="text-3xl font-black uppercase leading-tight tracking-tight sm:text-4xl">
+          <h1 className="break-words text-3xl font-black uppercase leading-tight tracking-tight sm:text-4xl">
             {post.title}
           </h1>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <PostMeta post={post} />
+            <PostMeta
+              post={post}
+              className="min-w-0 max-w-full [&>span]:max-w-full [&>span]:flex-wrap"
+            />
             {meta}
-            {actions && <div className="ml-auto">{actions}</div>}
           </div>
 
-          {reactions}
-
           <PostTags tags={post.tags} label="Article tags" />
+
+          {(reactions || actions) && (
+            <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
+              {reactions}
+              {actions && <div className="ml-auto">{actions}</div>}
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="pt-2">

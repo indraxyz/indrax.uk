@@ -59,6 +59,10 @@ for (const width of [390, 1024, 1440]) {
     const summary = toc.locator("[data-toc-mobile] > summary")
     if (width < 1200) {
       await expect(summary).toBeVisible()
+      const bounds = (await toc.boundingBox())!
+      expect(bounds.x).toBeCloseTo(0, 0)
+      expect(bounds.width).toBeCloseTo(width, 0)
+      await toc.screenshot({ path: test.info().outputPath(`contents-full-width-${width}.png`) })
       await expect(toc.locator("[data-toc-mobile]")).not.toHaveAttribute("open")
       await summary.focus()
       await page.keyboard.press("Enter")

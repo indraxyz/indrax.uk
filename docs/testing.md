@@ -14,7 +14,12 @@ picker updates. Pagination tests cover delayed results, focus, sticky offsets an
 reduced motion; copy feedback tests assert accessible toast-only updates. `e2e/admin-sync.spec.ts` and `e2e/reactions.spec.ts`
 belong to the serial writes project with the other authoring tests. Clock-driven
 autosave cases must not wait a real minute. Reaction integration cases use the
-explicit loopback-only `TEST_DATABASE_URL` and remove their own fixture rows.
+explicit loopback-only `TEST_DATABASE_URL` and remove their own fixture rows. Article reaction
+coverage checks grouped header controls without a footer duplicate, request
+budgets, pending guards, local focus recovery, errors, 44px targets, responsive
+wrapping, enlarged text, axe and print. See the
+[article reaction controls specification](article-reaction-controls.md) for
+acceptance criteria and the user’s icon-only/no-checkmark/no-underline preferences.
 
 | Layer                 | Command                    | Boundary                                                           |
 | --------------------- | -------------------------- | ------------------------------------------------------------------ |
@@ -47,7 +52,7 @@ public rails/grids and admin dashboard/cards/table pending states, then verifies
 empty, error/retry and cached results. `image-loading.spec.ts` checks real image load/decode,
 source replacement/error recovery, reserved dimensions, cached images and reduced motion
 on public preview and admin editor pages. `article-navigation.spec.ts` covers nested h2–h4
-contents, desktop/sidebar and mobile/disclosure layouts, upward/downward heading links,
+contents, desktop/sidebar and edge-to-edge mobile/disclosure layouts, upward/downward heading links,
 header clearance, keyboard access, axe and print. `toolbar-drag.spec.ts` covers mouse drag
 versus clicks, native touch, keyboard boundaries, cancelled gestures and overflow cues.
 The [content-loading specification](content-loading-article-navigation.md) records behavior.

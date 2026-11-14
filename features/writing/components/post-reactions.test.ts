@@ -7,7 +7,7 @@ import { REACTION_VISITOR_KEY } from "../reactions"
 
 afterEach(() => vi.unstubAllGlobals())
 
-it("renders only the accessible picker trigger without invented counts or a server-side fetch", () => {
+it("renders the accessible picker trigger without invented counts or a server-side fetch", () => {
   const fetch = vi.fn()
   vi.stubGlobal("fetch", fetch)
   const html = renderToStaticMarkup(
@@ -16,15 +16,16 @@ it("renders only the accessible picker trigger without invented counts or a serv
       { client: new QueryClient() },
       createElement(PostReactions, {
         slug: "article",
-        children: ({ trigger, summary }) => createElement("div", null, trigger, summary),
+        children: ({ header }) => createElement("div", null, header),
       })
     )
   )
   expect(html).toContain('aria-label="Add reaction"')
-  expect(html).not.toContain('aria-label="Reader reactions"')
+  expect(html.match(/aria-label="Reader reactions"/g)).toHaveLength(1)
+  expect(html.match(/aria-label="Add reaction"/g)).toHaveLength(1)
+  expect(html.match(/role="status"/g)).toHaveLength(1)
   expect(html).not.toContain("aria-pressed")
   expect(html).not.toContain("count unavailable")
-  expect(html).toContain('role="status"')
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -53,7 +54,7 @@ it("shows only positive reaction counts from the shared query cache", () => {
       { client },
       createElement(PostReactions, {
         slug: "article",
-        children: ({ trigger, summary }) => createElement("div", null, trigger, summary),
+        children: ({ header }) => createElement("div", null, header),
       })
     )
   )
@@ -63,4 +64,7 @@ it("shows only positive reaction counts from the shared query cache", () => {
   expect(html).not.toContain("👍")
   expect(html).not.toContain("🔥")
   expect(html.match(/aria-pressed=/g)).toHaveLength(2)
+  expect(html.match(/aria-pressed="true"/g)).toHaveLength(1)
+  expect(html).not.toContain("lucide-check")
+  expect(html).not.toContain("underline")
 })
