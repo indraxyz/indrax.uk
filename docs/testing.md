@@ -564,7 +564,7 @@ Escape and confirmation cancellation return focus to the menu trigger; clearing 
 selection returns focus to a post checkbox. Results remain visible after the bar closes.
 The bar and popovers share a blurred glass surface without a drop shadow: 45% black in light mode and 45% white in
 dark mode, both with dark text for contrast. Content remains visible through
-the tint but blurred. The surface has an opaque
+the tint with a soft 8px backdrop blur. The surface has an opaque
 forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
 that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
 navigation and footer focus at 320px and 1280px.
