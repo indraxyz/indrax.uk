@@ -112,6 +112,43 @@ function actions(page: Page, status: Status) {
   return page.getByRole("button", { name: `Actions for ${status} fixture`, exact: true })
 }
 
+for (const theme of ["light", "dark"] as const) {
+  test(`post and navigation menus share the ${theme} glass surface`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme,
+    })
+    await archiveFixture(page)
+    const expectGlassMenu = async (capture: string) => {
+      const menu = page.getByRole("menu")
+      await expect(menu).toHaveCSS(
+        "background-color",
+        theme === "light" ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.45)"
+      )
+      await expect(menu).toHaveCSS("box-shadow", "none")
+      await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
+      const results = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
+      expect(results.violations).toEqual([])
+      await page.screenshot({ path: test.info().outputPath(`${capture}-${theme}.png`) })
+    }
+    await actions(page, "draft").click()
+    await expectGlassMenu("post-menu-cards")
+    await page.keyboard.press("Escape")
+    await expect(actions(page, "draft")).toBeFocused()
+    await showTable(page)
+    await actions(page, "draft").click()
+    await expectGlassMenu("post-menu-table")
+    await page.keyboard.press("Escape")
+    const publicTrigger = page.getByRole("button", { name: "Public", exact: true })
+    await publicTrigger.focus()
+    await page.keyboard.press("Enter")
+    await expectGlassMenu("public-menu")
+    await page.keyboard.press("Escape")
+    await expect(publicTrigger).toBeFocused()
+  })
+}
+
 for (const status of ["draft", "published", "archived"] as const) {
   test(`orders ${status} actions and opens the correct destination in a new tab`, async ({
     page,
@@ -599,18 +636,53 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await expect(grid).toBeVisible()
 
-  // The title column stays pinned while the other columns scroll beneath it, so
-  // each row keeps naming its post.
+  // Only selection stays pinned; the title and all remaining columns scroll.
   const title = grid.getByRole("rowheader", { name: "draft fixture" })
-  const status = grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").nth(1)
-  const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
+  const row = grid.getByRole("row").filter({ hasText: "draft fixture" })
+  const selection = row.getByRole("cell").first()
+  const before = {
+    title: (await title.boundingBox())!.x,
+    selection: (await selection.boundingBox())!.x,
+  }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
-  await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
-  expect((await title.boundingBox())!.x).toBe(before.title)
-  // Fully opaque (card surfaces are translucent), so scrolled cells never show
-  // through the pinned one.
-  expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
+  await expect.poll(async () => (await title.boundingBox())!.x).toBeLessThan(before.title)
+  expect((await selection.boundingBox())!.x).toBeCloseTo(before.selection, 0)
+  await expect(grid.getByRole("columnheader").first()).toHaveCSS("position", "sticky")
+  await expect(selection).toHaveCSS("position", "sticky")
+  await expect(title).toHaveCSS("position", "static")
+  expect(await selection.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(
+    /^rgb\(/
+  )
   await page.screenshot({ path: test.info().outputPath("posts-table-390.png"), fullPage: true })
+  // Keyboard focus reveals the title beside the pinned selection column.
+  const titleLink = title.getByRole("link")
+  await titleLink.focus()
+  await expect
+    .poll(() =>
+      titleLink.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        const front = document.elementFromPoint(
+          bounds.x + bounds.width / 2,
+          bounds.y + bounds.height / 2
+        )
+        return !!front && node.contains(front)
+      })
+    )
+    .toBe(true)
+  await page.keyboard.press("Shift+Tab")
+  const checkbox = grid.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  await expect(checkbox).toBeFocused()
+  await expect
+    .poll(() =>
+      checkbox.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        return (
+          document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2) ===
+          node
+        )
+      })
+    )
+    .toBe(true)
 })
 
 for (const theme of ["light", "dark"] as const)

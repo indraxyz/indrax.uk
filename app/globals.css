@@ -138,6 +138,8 @@ img[data-image-state="loading"] {
     --semantic-surface-card: rgba(255, 255, 255, 0.92);
     --semantic-surface-muted: var(--primitive-neutral-50);
     --semantic-surface-overlay: var(--primitive-neutral-0);
+    --component-popover-glass-bg: rgb(0 0 0 / 45%);
+    --component-popover-glass-fg: #000;
     --semantic-text-primary: var(--primitive-neutral-900);
     --semantic-text-secondary: var(--primitive-neutral-700);
     --semantic-border-default: var(--primitive-brand-950);
@@ -257,6 +259,8 @@ img[data-image-state="loading"] {
     --semantic-surface-card: rgba(6, 59, 0, 0.84);
     --semantic-surface-muted: #0b2b05;
     --semantic-surface-overlay: #061c02;
+    --component-popover-glass-bg: rgb(255 255 255 / 45%);
+    --component-popover-glass-fg: #000;
     --semantic-text-primary: #f7fbe9;
     --semantic-text-secondary: #c5d7b8;
     --semantic-border-default: var(--primitive-brand-300);
@@ -414,6 +418,15 @@ img[data-image-state="loading"] {
 }
 
 @layer components {
+  /* Reserve space inside the opaque admin surface, so the body grid is never exposed. */
+  html:has([data-slot="post-selection-bar"]) {
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  [data-slot="admin-shell"]:has([data-slot="post-selection-bar"]) {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
   .variant-primary {
     --variant-bg: var(--component-variant-primary-bg);
     --variant-fg: var(--component-variant-primary-fg);

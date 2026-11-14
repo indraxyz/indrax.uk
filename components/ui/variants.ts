@@ -27,3 +27,10 @@ export const loadingIndicatorSizes = {
   sm: { container: "size-5" },
   lg: { container: "size-12" },
 } as const
+
+// Shared glass surface for popovers and floating admin controls.
+export const popoverSurfaceClassNames =
+  "rounded-none border-2 border-[var(--semantic-border-strong)] bg-[var(--component-popover-glass-bg)] text-[var(--component-popover-glass-fg)] [box-shadow:none] backdrop-blur-sm outline-none forced-colors:bg-popover forced-colors:text-popover-foreground"
+
+export const popoverMenuItemClassNames =
+  "flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-primary data-highlighted:text-primary-foreground data-disabled:opacity-50"

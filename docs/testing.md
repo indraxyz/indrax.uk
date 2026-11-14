@@ -506,7 +506,7 @@ keyboard focus restoration at 320px and 1280px. The posts layout checks switch
 between cards and the table, persist the choice across reloads, sort through the
 server from table headers by pointer and keyboard (resetting to page one and
 keeping other criteria), keep row actions, scroll a 390px table inside its own
-region without page overflow while the Title column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
+region without page overflow while only the checkbox column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
 asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
 with 200 when configured. These checks do not require real private writes.
 
@@ -557,9 +557,30 @@ color scheme changes and persisted theme reloads. The preference contract is in
 
 The [admin state specification](specs/admin-zustand-selection.md) defines display
 preference compatibility, navigation/drawer lifecycle and current-page selection
-for bulk Publish, Draft and Archive. Store and orchestration tests exercise
-isolated state, stale-ID pruning, partial outcomes, retries and authorization
+for bulk Publish, Draft and Archive. A compact floating bottom bar appears after selecting a post.
+It provides select-all, a selected count, clear and an upward-opening actions menu. The menu reuses
+Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
+Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
+selection returns focus to a post checkbox. Results remain visible after the bar closes.
+The bar and popovers share a blurred glass surface without a drop shadow: 45% black in light mode and 45% white in
+dark mode, both with dark text for contrast. Content remains visible through
+the tint with a soft 8px backdrop blur. Post actions (cards/table/editor) and admin Public
+menus reuse this surface and shared highlighted-item styling; browser checks scan the post
+and navigation menus in both themes. The surface has an opaque
+forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
+that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
+navigation and footer focus at 320px and 1280px. The reserved bottom space belongs to the
+opaque admin shell rather than the patterned body, and footer captures verify the grid cannot
+appear below the admin footer while selection is active.
+Card checkboxes sit immediately before status labels. Only the checkbox table column stays pinned;
+the title and remaining columns scroll horizontally.
+The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
+browser checks cover both themes, keyboard selection, 44px label targets and native rendering
+in forced-colors mode.
+Store and orchestration tests exercise isolated state, stale-ID pruning, partial outcomes,
+retries and authorization
 expiry. Browser tests use intercepted private APIs to check cards/table selection,
-confirmation, keyboard behavior, URL/page resets and failure recovery without
+confirmation (including background refreshes that may narrow but never expand approved targets),
+keyboard focus visibility beneath pinned columns, URL/page resets and failure recovery without
 changing database fixtures. These tests complement the existing real authoring
 and session suites; fixture-dependent skips must still be reported.

@@ -15,7 +15,11 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer"
 import { navigationLinkClassNames } from "@/components/ui/navigation-link"
-import { controlClassNames } from "@/components/ui/variants"
+import {
+  controlClassNames,
+  popoverMenuItemClassNames,
+  popoverSurfaceClassNames,
+} from "@/components/ui/variants"
 import { SignOutButton } from "@/admin/components/auth/sign-out-button"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import { useStore } from "zustand"
@@ -59,13 +63,13 @@ function PublicMenu({
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Positioner align="end" sideOffset={8} className="z-[70]">
-          <DropdownMenu.Popup className="min-w-48 border-2 border-border bg-card p-1 text-card-foreground shadow-soft-lg outline-none">
+          <DropdownMenu.Popup className={cn(popoverSurfaceClassNames, "min-w-48 p-1")}>
             {publicLinks.map(({ href, label }) => (
               <DropdownMenu.Item
                 key={href}
                 render={<a href={href} target="_blank" rel="noopener noreferrer" />}
                 onClick={onNavigate}
-                className="flex min-h-11 items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] outline-none data-highlighted:bg-muted"
+                className={popoverMenuItemClassNames}
               >
                 {label}
               </DropdownMenu.Item>
