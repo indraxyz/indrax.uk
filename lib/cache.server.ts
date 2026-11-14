@@ -31,45 +31,98 @@ function bindings() {
   }
 }
 const LIFETIME_SECONDS = 3600
-async function version(tag: string, db: D1Database, cache?: RequestCache): Promise<number> {
-  let promise = cache?.versions.get(tag)
-  if (!promise) {
-    promise = db
-      .prepare("SELECT revalidatedAt FROM revalidations WHERE tag = ?")
-      .bind(tag)
-      .first<number>("revalidatedAt")
-      .then((value) => value ?? 0)
-    cache?.versions.set(tag, promise)
+
+export interface CacheReadOptions {
+  /** Persistent freshness from read start; KV requires at least 60 seconds. */
+  lifetimeSeconds?: number
+  /** Optional earlier absolute expiry, computed only on a persistent miss. */
+  freshUntil?: (startedAt: number) => Promise<number | undefined>
+}
+
+interface RevisionRow {
+  tag: string
+  revalidatedAt: number
+}
+
+function versions(tags: string[], db: D1Database, cache?: RequestCache): Promise<number[]> {
+  const memo = cache?.versions ?? new Map<string, Promise<number>>()
+  const missing = [...new Set(tags)].filter((tag) => !memo.has(tag))
+  if (missing.length) {
+    const rows = db
+      .prepare(
+        missing
+          .map(() => "SELECT tag, revalidatedAt FROM revalidations WHERE tag = ?")
+          .join(" UNION ALL ")
+      )
+      .bind(...missing)
+      .all<RevisionRow>()
+      .then(({ results }) => new Map(results.map((row) => [row.tag, row.revalidatedAt])))
+    // Install promises before yielding, so overlapping reads reuse pending tags.
+    // Completion never writes back into the map: invalidation can safely clear it.
+    for (const tag of missing)
+      memo.set(
+        tag,
+        rows.then((values) => values.get(tag) ?? 0)
+      )
   }
-  return promise
+  return Promise.all(tags.map((tag) => memo.get(tag)!))
 }
 async function read<T>(
   key: string,
   tags: string[],
   loader: () => Promise<T>,
+  lifetimeSeconds: number,
+  freshUntil: CacheReadOptions["freshUntil"],
   cache?: RequestCache
 ): Promise<T> {
+  const startedAt = Date.now()
+  let expiresAt = startedAt + lifetimeSeconds * 1000
   const { kv, db } = bindings()
   if (!kv || !db) return loader()
   let storageKey: string
   try {
-    const versions = await Promise.all(tags.map((tag) => version(tag, db, cache)))
-    const bytes = new TextEncoder().encode(JSON.stringify([key, tags, versions]))
+    const revisions = await versions(tags, db, cache)
+    const bytes = new TextEncoder().encode(
+      JSON.stringify([key, tags, revisions, lifetimeSeconds, Boolean(freshUntil)])
+    )
     const digest = await crypto.subtle.digest("SHA-256", bytes)
     const hash = Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, "0")
     ).join("")
-    storageKey = `react-router:v1:${hash}`
+    storageKey = `react-router:v2:${hash}`
     const cached = await kv.get<CacheValue<T>>(storageKey, "json")
     if (cached && cached.expiresAt > Date.now()) return cached.data
   } catch (error) {
     logServerError(error, { scope: "cache.read" })
     return loader()
   }
+  // Start policy lookup with the loader so a cold miss adds no sequential trip.
+  // A failed policy read must not hide content or persist an unsafe deadline.
+  const deadline = freshUntil
+    ? Promise.resolve()
+        .then(() => freshUntil(startedAt))
+        .then(
+          (value) => ({ value, failed: false }),
+          (error: unknown) => {
+            logServerError(error, { scope: "cache.expiration" })
+            return { value: undefined, failed: true }
+          }
+        )
+    : undefined
   const data = await loader()
+  if (deadline) {
+    const result = await deadline
+    if (result.failed) return data
+    if (result.value !== undefined) {
+      if (!Number.isFinite(result.value)) return data
+      expiresAt = Math.min(expiresAt, result.value)
+    }
+  }
+  // A slow pre-publication read must not acquire a fresh lifetime at completion.
+  if (expiresAt <= Date.now()) return data
   const write = kv
-    .put(storageKey, JSON.stringify({ data, expiresAt: Date.now() + LIFETIME_SECONDS * 1000 }), {
-      expirationTtl: LIFETIME_SECONDS,
+    .put(storageKey, JSON.stringify({ data, expiresAt }), {
+      expirationTtl: lifetimeSeconds,
     })
     .catch((error: unknown) => logServerError(error, { scope: "cache.write" }))
   const execution = getExecutionContext()
@@ -78,12 +131,19 @@ async function read<T>(
   return data
 }
 /** Public results only. Private reads and arbitrary search strings never use KV. */
-export function cachedRead<T>(key: string, tags: string[], loader: () => Promise<T>): Promise<T> {
+export function cachedRead<T>(
+  key: string,
+  tags: string[],
+  loader: () => Promise<T>,
+  { lifetimeSeconds = LIFETIME_SECONDS, freshUntil }: CacheReadOptions = {}
+): Promise<T> {
+  if (!Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 60)
+    throw new RangeError("Cache lifetime must be an integer of at least 60 seconds.")
   const cache = requestCache()
-  const memoKey = JSON.stringify([key, tags])
+  const memoKey = JSON.stringify([key, tags, lifetimeSeconds, Boolean(freshUntil)])
   const existing = cache?.values.get(memoKey)
   if (existing) return existing as Promise<T>
-  const promise = read(key, tags, loader, cache)
+  const promise = read(key, tags, loader, lifetimeSeconds, freshUntil, cache)
   cache?.values.set(memoKey, promise)
   return promise
 }

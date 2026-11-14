@@ -24,20 +24,39 @@ the request context for public routes and API handlers.
 
 ### Public reads
 
-1. `cachedRead` memoizes a result within the current Request.
-2. It reads each cache tag's revision from D1. A missing tag row means revision `0`.
-3. It hashes the logical query key, tags and revisions into a KV key starting with
-   `react-router:v1:`.
-4. A valid KV entry returns its `data`. Each entry also has `expiresAt`, and the KV
-   expiration TTL is **3,600 seconds**.
+1. `cachedRead` memoizes a result within the current Request, including its lifetime.
+2. Previously uncached tag revisions are fetched in one parameterized D1 request.
+   A missing tag row means revision `0`; overlapping reads reuse pending promises.
+3. It hashes the logical key, tags, revisions and lifetime into a KV key starting
+   with `react-router:v2:`. Previous namespace entries cannot bypass the policy.
+4. A valid entry returns its `data` only while its absolute `expiresAt` is current.
+   Public results retain **3,600 seconds from read start**, including absence and
+   lists, shortened by `freshUntil` to the next stored publication date. Rendered
+   HTML keeps the revision-keyed default lifetime.
 5. On a miss, the loader queries PostgreSQL or renders the published document.
-   KV writes run through `ExecutionContext.waitUntil` when available.
+   Publication-dependent loaders run a parallel indexed next-publication lookup
+   using the original read cutoff. It adds one SQL/HTTP request on a cold miss,
+   none on a warm hit. If that lookup fails, content is served without persisting
+   an unsafe deadline. KV writes use `waitUntil`; an already-expired result is not
+   stored, so a slow pre-publication read cannot extend eligibility delay.
+
+The KV physical expiration TTL has a minimum of 60 seconds. The absolute payload
+expiry remains authoritative even if an old value propagates late. This bounds
+reuse of a cached server snapshot, not database/network response time.
 
 The public default writing archive uses KV when there is no query or tag/date/
 duration filter and the sort is Newest. Its bounded page options remain part of
 the key. Arbitrary search/filter combinations and alternate sorts query
 PostgreSQL directly. Other public helpers cache recent posts, tags, feed data,
 related posts and published slugs; see [public queries](../features/writing/data/queries.server.ts).
+Publication-dependent logical keys include `public-v2`, excluding any old
+future-visible result even independently of the cache namespace. Public SQL requires
+`published_at <= now` at each read. The admin sets the first publication date when
+publishing and preserves it on republish; it has no scheduled-publishing control.
+Future dates supplied through managed data/imports are respected by public reads.
+Imports and maintenance writes must invalidate the same public tags as authoring;
+direct SQL that bypasses invalidation has only the normal one-hour fallback bound.
+
 Published article rendering includes post ID, slug, `updatedAt` and renderer
 version in its key; see [render cache](../features/writing/data/rendered-article.server.ts).
 
@@ -45,6 +64,31 @@ Admin reads, sessions and draft previews never enter this public KV cache. Brows
 TanStack Query caching is separate. Public API `no-store` response headers do not
 disable the server's internal KV cache. Social-image response caching uses a
 separate Workers Cache API helper; it is not this KV/D1 mechanism.
+
+RSS and sitemap send `no-cache, must-revalidate`; they do not add an hour/day of
+HTTP staleness over the query cache. Existing downstream responses cached under
+the old headers must expire or be purged during rollout before claiming the new freshness policy
+at those external caches. No live cache purge is part of local validation.
+
+The cache does not reuse a pre-publication result after its stored boundary.
+Ordinary results without an upcoming boundary remain warm for one hour. The
+existing browser query cache has a 60-second stale time and can retain a previously
+loaded result until its next refresh; open tabs do not automatically refresh at a
+publication boundary. Database/network time and client refresh are not an exact
+scheduled-publication guarantee.
+
+A fixed one-minute lifetime was rejected for the free-tier budget: one continuously
+hot key could otherwise need 1,440 writes/day, versus about 24 with hourly expiry
+and no edits or scheduled transition. These are single-location steady-state
+estimates, not global quota guarantees; concurrent misses and KV propagation can
+repeat work. See [KV pricing](https://developers.cloudflare.com/kv/platform/pricing/)
+for the current 1,000 writes/day free allowance. No polling, new index, counter
+maintenance or paid service is introduced.
+
+Revision lookup measurements and the selected one-request query are recorded in
+[the D1 benchmark](cache-revision-benchmark.md). Call reduction does not imply fewer
+billed rows; the measured `UNION ALL` form retains baseline rows read, unlike the
+rejected `IN` prototype.
 
 ### Saving, publishing and deleting
 

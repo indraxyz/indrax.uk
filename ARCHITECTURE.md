@@ -166,7 +166,9 @@ returns sanitized HTML/headings and metadata without raw document duplication.
 The [D1 and KV cache guide](docs/d1-kv-cache.md) documents the implementation,
 local persistence roots, environment selection and remote initialization/inspection.
 
-Public reads enforce published status, publication date and content presence.
+Public reads enforce published status, content presence and a publication date no later
+than the current read. The shared predicate is built per call so long-lived Workers
+do not freeze the cutoff.
 There is no boolean flag that can make a public query include drafts. Admin reads
 live separately and never persist in KV. Minimal list projections omit bodies;
 related tags are aggregated within SQL. Count/page pairs and post/tag writes use
@@ -177,18 +179,27 @@ save behavior.
 Reader reactions live in `post_reactions`, with a post/browser/emoji primary key
 and cascading post deletion. Desired-state inserts ignore duplicate additions;
 deletes remove only the requested browser's emoji. Both writes enforce public
-visibility in SQL. Aggregates use one uncached query and stay outside article SSR
+visibility in SQL. PUT executes its desired-state write and following aggregate in
+one ordered Neon HTTP batch; GET remains one uncached aggregate. Results stay outside article SSR
 and rendered-content invalidation. Browser identity is random functional storage,
 created on first reaction rather than on page load.
 
 `lib/cache.server.ts` memoizes public reads within one Request, even without storage.
 Persistent cache keys include D1 invalidation revisions and use a new namespace
-prefix that isolates the application cache format. KV entries expire after one hour;
-D1 stores tag revisions in the existing `revalidations` table. Mutations await
+prefix (`react-router:v2:`) that isolates the application cache format. Publication-
+dependent results use versioned logical keys and retain a one-hour lifetime, shortened
+to the next stored publication date. A cold miss runs the indexed deadline lookup
+alongside its loader; warm hits add no PostgreSQL work. Rendered HTML retains its
+revision-keyed one-hour lifetime. Uncached revision tags are
+looked up together in one D1 request; missing rows mean revision zero. D1 stores
+tag revisions in the existing `revalidations` table. Mutations await
 invalidation, then clear request memo/version state. Background KV writes use
 `waitUntil` when available. Public rendered articles are keyed by post ID, slug,
 saved revision and renderer version; bump the renderer version after policy changes.
-Draft preview rendering is always uncached.
+Draft preview rendering is always uncached. RSS and sitemap responses revalidate
+rather than adding a longer HTTP stale window. This is bounded server freshness,
+not exact scheduling or automatic refresh of an already open browser page; see the
+[publication/backend specification](docs/publication-backend-efficiency.md).
 
 KV propagation can cause misses/recomputation. D1 revision keys prevent a stale
 KV entry from bypassing invalidation. This cache reduces repeated work but cannot

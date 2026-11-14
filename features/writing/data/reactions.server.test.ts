@@ -15,20 +15,22 @@ const summaryRow = ["2", "0", "1", "0", "0", ["love", "thumbsup"]]
 
 function database(results: unknown[][][]) {
   const query = vi.fn().mockImplementation(() => Promise.resolve({ rows: results.shift() ?? [] }))
-  const client = { query } as unknown as ReturnType<typeof neon>
+  const transaction = vi.fn((queries: Promise<unknown>[]) => Promise.all(queries))
+  const client = { query, transaction } as unknown as ReturnType<typeof neon>
   mocks.getDb.mockReturnValue(drizzle(client))
-  return query
+  return { query, transaction }
 }
 
 beforeEach(() => vi.resetAllMocks())
 
 it("gets counts and this visitor's selections in one uncached query", async () => {
-  const query = database([[summaryRow]])
+  const { query, transaction } = database([[summaryRow]])
   expect(await getReactions("article", visitorId)).toEqual({
     counts: { love: 2, noted: 0, thumbsup: 1, fire: 0, rocket: 0 },
     selected: ["love", "thumbsup"],
   })
   expect(query).toHaveBeenCalledTimes(1)
+  expect(transaction).not.toHaveBeenCalled()
   const [statement, params] = query.mock.calls[0]
   expect(statement).toContain('"posts"."status" =')
   expect(statement).toContain('"posts"."published_at" is not null')
@@ -38,12 +40,18 @@ it("gets counts and this visitor's selections in one uncached query", async () =
 })
 
 it.each([true, false])(
-  "sets desired active=%s in two queries with public visibility in the write",
+  "sets desired active=%s in one ordered HTTP transaction with public visibility in the write",
   async (active) => {
-    const query = database([[], [summaryRow]])
-    await setReaction("article", { visitorId, reaction: "love", active })
+    const { query, transaction } = database([[], [summaryRow]])
+    expect(await setReaction("article", { visitorId, reaction: "love", active })).toEqual({
+      counts: { love: 2, noted: 0, thumbsup: 1, fire: 0, rocket: 0 },
+      selected: ["love", "thumbsup"],
+    })
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(transaction.mock.calls[0][0]).toHaveLength(2)
     expect(query).toHaveBeenCalledTimes(2)
     const [statement] = query.mock.calls[0]
+    expect(query.mock.calls[1][0]).toContain("count(*) filter")
     expect(statement).toContain('"posts"."content_json" is not null')
     expect(statement).toContain('"posts"."published_at" <=')
     if (active)
@@ -58,3 +66,14 @@ it("distinguishes unavailable storage from a missing or private post", async () 
   database([[]])
   await expect(getReactions("article")).rejects.toMatchObject({ status: 404 })
 })
+
+it.each([true, false])(
+  "returns 404 after a hidden-post active=%s batch without a summary row",
+  async (active) => {
+    const { transaction } = database([[], []])
+    await expect(
+      setReaction("hidden", { visitorId, reaction: "fire", active })
+    ).rejects.toMatchObject({ status: 404 })
+    expect(transaction).toHaveBeenCalledTimes(1)
+  }
+)
