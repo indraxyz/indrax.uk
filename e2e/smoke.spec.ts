@@ -194,8 +194,12 @@ test.describe("the public pages", () => {
         const header = await card.locator(":scope > div").first().boundingBox()
         const icon = await link.boundingBox()
         expect(Math.abs(header!.height - stackHeader!.height)).toBeLessThanOrEqual(1)
-        expect(icon!.width).toBeGreaterThanOrEqual(44)
-        expect(icon!.height).toBeGreaterThanOrEqual(44)
+        await expect(link).toHaveCSS("min-width", "44px")
+        await expect(link).toHaveCSS("min-height", "44px")
+        // A translated 44px rect can serialize as 43.999999px in Chromium.
+        // Check the CSS minimum exactly and allow only floating-point noise here.
+        expect(icon!.width).toBeGreaterThanOrEqual(44 - 0.001)
+        expect(icon!.height).toBeGreaterThanOrEqual(44 - 0.001)
         expect(icon!.x).toBeGreaterThanOrEqual(heading!.x + heading!.width)
         expect(icon!.y).toBeGreaterThanOrEqual(header!.y)
         expect(icon!.y + icon!.height).toBeLessThanOrEqual(header!.y + header!.height)

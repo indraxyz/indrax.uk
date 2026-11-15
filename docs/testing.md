@@ -623,3 +623,8 @@ active glyphs inside the existing 44px controls.
 Standard action hover checks compare both foreground and background across ghost icon buttons,
 Stack disclosures and resource links, verify contrast of at least 4.5:1 in both themes, and ensure
 colors reset after the pointer leaves. Variant fixtures cover the same contract in both bundles.
+
+Browser geometry assertions verify CSS hit-target minimums exactly, while allowing only 0.001px
+floating-point serialization noise in transformed rectangles. Carousel comparisons wait for the
+Home rail to reach its gutter before recording width, and compare each resume rail against its own
+navigation gutter; the existing 1px layout tolerance is unchanged.
