@@ -285,7 +285,9 @@ button-class consumers, hover/reset behavior, keyboard focus, disabled states,
 and card shadows. Shadows are Tailwind theme utilities so focus rings and state
 variants compose with them. Color variants own their foreground and border colors;
 neutral base classes must not override them. Flat actions keep their color treatment
-without raised shadows or movement. Filter and admin-menu regressions additionally
+without raised shadows or movement. Raised controls are also flat at rest, then lift on hover and
+return flush on press. Focus-ring and pagination-geometry checks wait for their transitions to settle.
+Filter and admin-menu regressions additionally
 check the real Apply/sign-out controls, text contrast, and pointer reset.
 
 The admin development app is built and watched separately from public Vite HMR.
@@ -607,3 +609,17 @@ Shared interaction coverage verifies pointer-down geometry for dashboard cards, 
 public writing cards and public carousel controls. Public cards must still reach their article after
 release; reduced-motion controls stay stationary. Informational resume cards retain their existing
 focus and scroll behavior.
+
+Public-surface browser checks distinguish static information cards from clickable writing cards.
+They cover hero/social/repository controls, Stack disclosures, article code-copy controls, filled
+current-nav icons, light/dark mobile/desktop views and reduced motion. Home writing-rail checks verify
+8px vertical clearance and that the raised card remains inside its clipping region.
+
+About Me checks cover mobile/desktop light/dark header hide/reveal within the sheet scroll root,
+stationary top-right Close hit targets, no footer action, Escape/icon dismissal, focus restoration,
+reopening, reduced motion, and unchanged window scrolling. Navigation checks verify 20px filled
+active glyphs inside the existing 44px controls.
+
+Standard action hover checks compare both foreground and background across ghost icon buttons,
+Stack disclosures and resource links, verify contrast of at least 4.5:1 in both themes, and ensure
+colors reset after the pointer leaves. Variant fixtures cover the same contract in both bundles.

@@ -474,7 +474,7 @@ Post-list action triggers reserve a transparent border at rest and on hover; the
 visible while their menu or confirmation is open. The vertical-dots action trigger sits before the title
 inside the Title cell, with no separate Actions column; only selection is sticky. Confirmation dialogs have no raised shadow. Shared raised
 buttons are flat at rest and smoothly lift 3px up/left on pointer hover, with a hard shadow at the
-original position. Flat and ghost buttons stay flat. Reduced-motion and touch users receive no lift;
+original position. Explicit flat controls stay flat; ghost icon buttons use the shared lift when raised. Reduced-motion and touch users receive no lift;
 keyboard focus retains its ring and disabled buttons do not animate. Pressing lowers the face flush with its original bounds and hides the shadow until release.
 A subtle brightness change also provides held-state feedback on touch devices. The same recipe covers bordered action controls in both applications and
 public writing cards; dashboard card faces also lower on press. Navigation and flat menu triggers
@@ -489,3 +489,16 @@ and left while the shadow and native-link hit area remain anchored, avoiding poi
 Reduced-motion mode keeps the face stationary and uses ring feedback. Workspace-service cards
 are informational and remain flat. The existing archive URL parser, status APIs, and TanStack Query
 queries remain the single data and navigation contracts.
+
+Public article containers are informational and remain flat. Code-copy and reaction controls reuse
+the existing button recipes, including the shared hover/press behavior; they retain their original
+clipboard and reaction handlers. The Home writing rail reserves vertical space for raised writing
+cards, while Stack and Portfolio information panels remain stationary without a hover shadow.
+
+Standard button/control hover colors share the secondary semantic pair: green/white in light
+mode and lime/deep green in dark mode. Destructive actions retain their warning palette;
+selected toggles and navigation retain their own state cues with paired readable foregrounds.
+
+Hover faces use a different color from the strong border/shadow token so the raised edge remains
+visible. Confirmation actions share a minimum 44px height, use the default button padding, and stack
+at narrow widths so long labels fit without changing the Cancel target size.

@@ -198,14 +198,14 @@ for (const width of [390, 768, 1440, 1920]) {
         .poll(async () => Math.abs((await card.boundingBox())!.x - writingBounds.x))
         .toBeLessThanOrEqual(1)
       await card.hover()
-      const hoverShadow = await card.evaluate((node) => getComputedStyle(node).boxShadow)
-      expect(hoverShadow).not.toBe("none")
+      await expect(card).toHaveCSS("box-shadow", "none")
+      await expect(card).toHaveCSS("translate", "none")
       await page.mouse.move(0, 0)
       const details = card.getByRole("region")
       await details.focus()
       await expect(details).toBeFocused()
-      await expect(card).toHaveCSS("box-shadow", hoverShadow)
-      await expect(card).toHaveCSS("transition-property", "none")
+      await expect(card).toHaveCSS("box-shadow", "none")
+      await expect(card).toHaveCSS("translate", "none")
       // Detail panes keep their own scroll keys instead of moving the carousel.
       const initialX = (await card.boundingBox())!.x
       await page.keyboard.press("ArrowRight")
@@ -217,7 +217,10 @@ for (const width of [390, 768, 1440, 1920]) {
 for (const theme of ["light", "dark"]) {
   test(`public writing cards and carousel buttons lift and press in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.addInitScript((theme) => localStorage.setItem("indrax-theme", theme), theme)
+    await page.addInitScript((theme) => {
+      localStorage.setItem("indrax-theme", theme)
+      localStorage.setItem("indrax-analytics-consent", "denied")
+    }, theme)
     await page.route("**/api/writing/recent**", (route) =>
       route.fulfill({
         json: [
@@ -246,6 +249,14 @@ for (const theme of ["light", "dark"]) {
     )
     await title.hover()
     await expect(card).toHaveCSS("translate", "-4px -4px")
+    const rail = page.getByRole("region", { name: "Writing", exact: true })
+    const railBounds = (await rail.boundingBox())!
+    const cardBounds = (await card.boundingBox())!
+    expect(cardBounds.y - railBounds.y).toBeGreaterThanOrEqual(4)
+    const track = rail.locator("[data-print-columns]")
+    await expect(track).toHaveCSS("padding-top", "8px")
+    await expect(track).toHaveCSS("padding-bottom", "8px")
+    await page.screenshot({ path: test.info().outputPath(`home-writing-hover-${theme}.png`) })
     await page.mouse.down()
     await expect(card).toHaveCSS("translate", "0px")
     await page.screenshot({ path: test.info().outputPath(`public-card-pressed-${theme}.png`) })

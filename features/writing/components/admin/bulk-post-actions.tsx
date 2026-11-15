@@ -112,6 +112,7 @@ export function BulkPostActions({
   }, [hasSelection])
 
   const actionLabel = action?.label ?? "Archive"
+  const selectionLabel = `${confirmed.length} ${confirmed.length === 1 ? "post" : "posts"}`
 
   async function applyStatus() {
     if (!usable || !confirmation || !confirmed.length || !store.getState().begin()) return
@@ -301,7 +302,7 @@ export function BulkPostActions({
           <AlertDialogHeader>
             <AlertDialogTitle>{actionLabel} selected posts?</AlertDialogTitle>
             <AlertDialogDescription>
-              {actionLabel} {confirmed.length} posts from this page?{" "}
+              {actionLabel} {selectionLabel} from this page?{" "}
               {skipped > 0 && (
                 <>
                   {skipped} already {action?.status}; skipped.{" "}
@@ -319,9 +320,10 @@ export function BulkPostActions({
               type="button"
               disabled={pending || !usable || !confirmed.length}
               onClick={() => void applyStatus()}
+              aria-label={pending ? "Updating…" : `${actionLabel} ${selectionLabel}`}
             >
               {pending && <LoadingIndicator />}
-              {pending ? "Updating…" : `${actionLabel} ${confirmed.length} posts`}
+              {pending ? "Updating…" : actionLabel}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

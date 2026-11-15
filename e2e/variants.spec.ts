@@ -180,23 +180,45 @@ for (const appearance of ["raised", "flat"] as const) {
               await expect
                 .poll(() => control.evaluate((element) => element.matches(":focus-visible")))
                 .toBe(true)
-              expect(await hasVisibleShadow(control)).toBe(true)
+              await expect.poll(() => hasVisibleShadow(control)).toBe(true)
               await control.evaluate((element: HTMLButtonElement) => element.blur())
             }
           }
+          await moveOffControls(page)
           const resting = await styles(button)
-          const restingBounds = await button.boundingBox()
+          const restingBounds = (await button.boundingBox())!
+          expect(await hasVisibleShadow(button)).toBe(false)
           await button.hover()
+          if (variant !== "destructive") {
+            await expect(button).toHaveCSS(
+              "background-color",
+              theme === "light" ? "rgb(38, 98, 16)" : "rgb(144, 184, 0)"
+            )
+            await expect(button).toHaveCSS(
+              "color",
+              theme === "light" ? "rgb(255, 255, 255)" : "rgb(6, 59, 0)"
+            )
+          } else {
+            await expect
+              .poll(async () => (await styles(button)).background)
+              .not.toBe(resting.background)
+          }
+          const lift = appearance === "raised" ? 3 : 0
           await expect
-            .poll(async () => (await styles(button)).background)
-            .not.toBe(resting.background)
-          await button.evaluate(async (element) => {
-            await Promise.all(element.getAnimations().map((animation) => animation.finished))
-          })
-          expect(await button.boundingBox()).toEqual(restingBounds)
+            .poll(async () => (await button.boundingBox())!.x)
+            .toBeCloseTo(restingBounds.x - lift, 0)
+          await expect
+            .poll(async () => (await button.boundingBox())!.y)
+            .toBeCloseTo(restingBounds.y - lift, 0)
+          expect(await hasVisibleShadow(button)).toBe(appearance === "raised")
           await page.mouse.down()
           try {
-            expect(await button.boundingBox()).toEqual(restingBounds)
+            await expect
+              .poll(async () => (await button.boundingBox())!.x)
+              .toBeCloseTo(restingBounds.x, 0)
+            await expect
+              .poll(async () => (await button.boundingBox())!.y)
+              .toBeCloseTo(restingBounds.y, 0)
           } finally {
             await page.mouse.up()
           }
@@ -204,7 +226,7 @@ for (const appearance of ["raised", "flat"] as const) {
           await moveOffControls(page)
           await expect.poll(() => styles(button)).toEqual(resting)
 
-          // Keyboard focus adds its ring without replacing the raised button shadow.
+          // Resting keyboard focus adds a visible ring without elevation.
           await page.keyboard.press("Tab")
           await button.focus()
           await expect(button).toBeFocused()
@@ -212,10 +234,9 @@ for (const appearance of ["raised", "flat"] as const) {
           await expect
             .poll(() => button.evaluate((element) => element.matches(":focus-visible")))
             .toBe(true)
+          await expect.poll(() => hasVisibleShadow(button)).toBe(true)
           const focusedShadow = (await styles(button)).shadow
           expect(focusedShadow).not.toBe(resting.shadow)
-          if (appearance === "raised" && variant !== "ghost")
-            expect(focusedShadow).toContain("3px 3px")
           await button.evaluate((element: HTMLButtonElement) => element.blur())
 
           // A disabled raised button must lose its elevation and movement.

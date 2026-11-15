@@ -1,15 +1,15 @@
 import * as React from "react"
 
+import { actionLiftClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
 export type CardVariant = "card" | "ghost"
 export type CardHeight = "auto" | "sm" | "md" | "lg" | "xl" | "2xl" | "full"
 
-export const cardFeedbackClassNames =
-  "transition-shadow hover:shadow-soft-lg focus-within:shadow-soft-lg motion-reduce:transition-none"
+export const cardFeedbackClassNames = `${actionLiftClassNames} isolate [--action-lift-distance:4px]`
 
 const cardVariantClasses: Record<CardVariant, string> = {
-  card: "rounded-none border-2 border-border bg-card shadow-soft",
+  card: "rounded-none border-2 border-border bg-card",
   ghost: "rounded-none border-0 bg-transparent p-0 shadow-none",
 }
 
@@ -53,6 +53,7 @@ const Card = React.forwardRef<
   }
 >(({ className, variant = "card", height = "auto", ...props }, ref) => (
   <div
+    data-slot="card"
     ref={ref}
     className={cn(
       "text-card-foreground",

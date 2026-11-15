@@ -192,7 +192,7 @@ export function PostActions({
               controlClassNames,
               "h-11 w-11 shrink-0 justify-center bg-card p-0 disabled:opacity-60",
               context === "list" &&
-                "border-transparent bg-transparent data-active:border-border data-active:bg-muted"
+                "border-transparent bg-transparent data-active:border-border data-active:bg-primary data-active:text-primary-foreground"
             )}
           >
             {context === "list" ? (

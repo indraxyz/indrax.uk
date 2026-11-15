@@ -2,6 +2,7 @@ import { ArrowUpRight, Boxes, ChevronDown } from "lucide-react"
 import { pageMeta } from "@/app/routes/meta"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button"
 import { SectionHeader } from "@/components/ui/section-header"
 import { controlClassNames } from "@/components/ui/variants"
 import { PublicShell } from "@/components/layout/public-shell"
@@ -26,7 +27,7 @@ export default function TechStackPage() {
 
         <section
           aria-labelledby="stack-architecture"
-          className="border-2 border-border bg-card p-6 shadow-soft"
+          className="border-2 border-border bg-card p-6"
         >
           <h2 id="stack-architecture" className="text-lg font-black uppercase">
             {stackPageContent.overview.title}
@@ -51,7 +52,7 @@ export default function TechStackPage() {
             <section
               key={groupTitle}
               aria-labelledby={`stack-${groupTitle.toLowerCase().replaceAll(" ", "-")}`}
-              className="border-2 border-border bg-card p-6 shadow-soft"
+              className="border-2 border-border bg-card p-6"
             >
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-border bg-[var(--semantic-action-tertiary)] text-[var(--semantic-action-tertiary-text)]">
@@ -70,8 +71,9 @@ export default function TechStackPage() {
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{detail}</p>
               <Collapsible className="mt-4 border-t-2 border-border pt-2">
                 <CollapsibleTrigger
+                  render={<Button variant="ghost" size="sm" />}
                   aria-label={`Why ${groupTitle}`}
-                  className="group flex min-h-11 items-center gap-2 text-xs font-black uppercase tracking-[0.14em] transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="group min-h-11"
                 >
                   {stackPageContent.reasonLabel}
                   <ChevronDown
@@ -89,10 +91,7 @@ export default function TechStackPage() {
           ))}
         </div>
 
-        <section
-          aria-labelledby="stack-source"
-          className="border-2 border-border bg-card p-6 shadow-soft"
-        >
+        <section aria-labelledby="stack-source" className="border-2 border-border bg-card p-6">
           <h2 id="stack-source" className="text-lg font-black uppercase">
             {stackPageContent.sources.title}
           </h2>

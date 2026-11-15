@@ -54,7 +54,15 @@ function AlertDialogDescription({
 }
 
 function AlertDialogFooter({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("mt-6 flex flex-wrap justify-end gap-2", className)} {...props} />
+  return (
+    <div
+      className={cn(
+        "mt-6 flex flex-col items-stretch justify-end gap-2 sm:flex-row sm:items-center [&>button]:min-h-11 [&>button]:whitespace-normal",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
 function AlertDialogCancel({
@@ -63,7 +71,7 @@ function AlertDialogCancel({
 }: ComponentProps<typeof AlertDialogPrimitive.Close>) {
   return (
     <AlertDialogPrimitive.Close
-      className={cn(buttonVariants({ variant: "secondary", size: "sm" }), className)}
+      className={cn(buttonVariants({ variant: "secondary", size: "default" }), className)}
       {...props}
     />
   )
@@ -73,7 +81,7 @@ function AlertDialogAction({ className, ...props }: ComponentProps<"button">) {
   return (
     <button
       type="button"
-      className={cn(buttonVariants({ variant: "destructive", size: "sm" }), className)}
+      className={cn(buttonVariants({ variant: "destructive", size: "default" }), className)}
       {...props}
     />
   )

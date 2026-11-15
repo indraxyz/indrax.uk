@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import {
+  actionHoverClassNames,
   actionLiftClassNames,
   actionTransitionClassNames,
   focusControlClassNames,
@@ -16,15 +17,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "variant-primary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-primary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         secondary:
-          "variant-secondary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-secondary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         tertiary:
-          "variant-tertiary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-tertiary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         destructive:
           "variant-destructive border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
         ghost:
-          "variant-ghost border-transparent bg-[var(--variant-bg)] text-[var(--variant-fg)] shadow-none hover:border-border hover:bg-[var(--variant-hover)]",
+          "variant-ghost border-transparent bg-[var(--variant-bg)] text-[var(--variant-fg)] shadow-none hover:border-border",
       },
       appearance: {
         raised: "",
@@ -39,7 +40,11 @@ const buttonVariants = cva(
     },
     compoundVariants: [
       {
-        variant: ["primary", "secondary", "tertiary", "destructive"],
+        variant: ["primary", "secondary", "tertiary", "ghost"],
+        className: actionHoverClassNames,
+      },
+      {
+        variant: ["primary", "secondary", "tertiary", "destructive", "ghost"],
         appearance: "raised",
         className: actionLiftClassNames,
       },

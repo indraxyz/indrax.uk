@@ -106,7 +106,12 @@ async function chooseAction(page: Page, action: string) {
 async function confirm(page: Page, action: string, count: number) {
   await chooseAction(page, action)
   const dialog = page.getByRole("alertdialog", { name: `${action} selected posts?`, exact: true })
-  await dialog.getByRole("button", { name: `${action} ${count} posts`, exact: true }).click()
+  await dialog
+    .getByRole("button", {
+      name: `${action} ${count} ${count === 1 ? "post" : "posts"}`,
+      exact: true,
+    })
+    .click()
 }
 
 for (const theme of ["light", "dark"] as const) {
@@ -440,7 +445,7 @@ test("background refresh narrows an open confirmation without adding new targets
   release()
   await refreshed
   await expect(dialog).toContainText("1 already archived; skipped.")
-  await dialog.getByRole("button", { name: "Archive 1 posts", exact: true }).click()
+  await dialog.getByRole("button", { name: "Archive 1 post", exact: true }).click()
   await expect(page.getByRole("alertdialog")).toHaveCount(0)
   expect(state.writes).toEqual([{ id: ids[1], status: "archived" }])
   expect(state.posts[2].status).toBe("published")
@@ -540,3 +545,25 @@ test("changing archive URL stops old bulk work without clearing new selections",
   expect(state.writes).toHaveLength(1)
   await expect(nextSelection).toBeChecked()
 })
+
+for (const width of [320, 1280]) {
+  test(`bulk confirmation actions share 44px targets and fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await fixture(page)
+    await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
+    await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
+    await chooseAction(page, "Change to draft")
+    const dialog = page.getByRole("alertdialog")
+    const cancel = dialog.getByRole("button", { name: "Cancel", exact: true })
+    const confirm = dialog.getByRole("button", { name: "Change to draft 2 posts", exact: true })
+    await expect(confirm).toHaveText("Change to draft")
+    for (const button of [cancel, confirm]) await expect(button).toHaveCSS("height", "44px")
+    await page.mouse.move(0, 0)
+    const first = (await cancel.boundingBox())!
+    const second = (await confirm.boundingBox())!
+    if (width < 640) expect(first.width).toBeCloseTo(second.width, 0)
+    else expect(first.y).toBeCloseTo(second.y, 0)
+    expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`bulk-dialog-actions-${width}.png`) })
+  })
+}

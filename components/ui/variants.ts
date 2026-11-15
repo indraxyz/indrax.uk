@@ -17,13 +17,14 @@ export const fieldClassNames = `min-h-11 w-full border-2 border-border bg-backgr
 // Raised actions share hover/press geometry across the public and admin applications.
 export const actionTransitionClassNames =
   "transition-[color,background-color,border-color,box-shadow,translate] duration-150 ease-out motion-reduce:transition-none"
+export const actionHoverClassNames = "hover:bg-secondary hover:text-secondary-foreground"
 export const actionLiftClassNames = `action-lift action-press relative shadow-none ${actionTransitionClassNames}`
 
 // The site's bordered control: a 2px box with the header's uppercase micro-type.
 // Written out three times across the not-found page, the error boundary and the
 // pagination before it was lifted here - it is a shape the design system owns, not
 // a string each page should carry its own copy of.
-export const controlClassNames = `flex items-center gap-2 border-2 border-border text-xs font-black uppercase tracking-[0.14em] hover:bg-[var(--color-muted)] ${actionLiftClassNames} ${focusControlClassNames}`
+export const controlClassNames = `flex items-center gap-2 border-2 border-border text-xs font-black uppercase tracking-[0.14em] ${actionHoverClassNames} ${actionLiftClassNames} ${focusControlClassNames}`
 
 export const loadingIndicatorClassNames =
   "inline-flex shrink-0 items-center justify-center animate-spin motion-reduce:animate-none"

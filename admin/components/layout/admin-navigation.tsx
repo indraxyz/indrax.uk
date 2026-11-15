@@ -1,5 +1,5 @@
 import { Menu as DropdownMenu } from "@base-ui/react/menu"
-import { Files, Globe, LayoutDashboard, LogOut, Menu, X } from "lucide-react"
+import { Globe, LogOut, Menu, X } from "lucide-react"
 import { Link } from "react-router"
 import { useEffect, useRef } from "react"
 
@@ -14,6 +14,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
+import { NavigationIcon } from "@/components/ui/navigation-icon"
 import { navigationLinkClassNames } from "@/components/ui/navigation-link"
 import {
   controlClassNames,
@@ -27,8 +28,8 @@ import { adminNavigationStore } from "@/admin/state/admin-navigation"
 import { cn } from "@/lib/utils"
 
 const links = [
-  { href: "/admin", label: "Dashboard", page: "home", icon: LayoutDashboard },
-  { href: "/admin/posts", label: "Posts", page: "posts", icon: Files },
+  { href: "/admin", label: "Dashboard", page: "home", icon: "dashboard" },
+  { href: "/admin/posts", label: "Posts", page: "posts", icon: "posts" },
 ] as const
 
 const publicLinks = [
@@ -53,13 +54,17 @@ function PublicMenu({
       <DropdownMenu.Trigger
         aria-label="Public"
         title="Public"
+        data-flat={inSheet ? "" : undefined}
         className={
           inSheet
-            ? cn(controlClassNames, "min-h-12 w-full px-4 py-3 text-left")
+            ? cn(
+                controlClassNames,
+                "min-h-12 w-full px-4 py-3 text-left hover:bg-muted hover:text-foreground"
+              )
             : cn(navigationLinkClassNames, "size-11 shrink-0 p-0")
         }
       >
-        <Globe className="size-4" aria-hidden />
+        <Globe className="size-5" aria-hidden />
         {inSheet && "Public"}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -119,7 +124,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
     <div className="flex items-center gap-2">
       <div ref={desktopNavigation} className="hidden items-center gap-2 md:flex">
         <nav aria-label="Admin" className="mr-1 flex items-center gap-4">
-          {links.map(({ href, label, page, icon: Icon }) => (
+          {links.map(({ href, label, page, icon }) => (
             <Link
               key={href}
               to={href}
@@ -128,7 +133,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
               title={label}
               className={cn(navigationLinkClassNames, "size-11 shrink-0 p-0")}
             >
-              <Icon className="size-4" aria-hidden />
+              <NavigationIcon name={icon} active={activePage === page} className="size-5" />
             </Link>
           ))}
           <PublicMenu
@@ -136,14 +141,20 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
             onOpenChange={(next) => setPublicOpen("desktop", next)}
           />
         </nav>
-        <SignOutButton className={buttonVariants({ variant: "ghost", size: "icon" })}>
-          <LogOut className="h-3.5 w-3.5" aria-hidden />
+        <SignOutButton
+          className={buttonVariants({
+            variant: "ghost",
+            size: "icon",
+            className: "[&_svg]:size-5",
+          })}
+        >
+          <LogOut className="h-5 w-5" aria-hidden />
         </SignOutButton>
       </div>
 
       <Drawer swipeDirection="right" open={open} onOpenChange={setOpen}>
         <DrawerTrigger
-          render={<Button variant="ghost" size="icon" className="md:hidden" />}
+          render={<Button variant="ghost" size="icon" className="md:hidden [&_svg]:size-5" />}
           aria-label="Open admin menu"
         >
           <Menu className="h-5 w-5" aria-hidden />
@@ -168,18 +179,19 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             <nav aria-label="Admin" className="flex flex-col gap-2">
-              {links.map(({ href, label, page, icon: Icon }) => (
+              {links.map(({ href, label, page, icon }) => (
                 <Link
                   key={href}
                   to={href}
                   onClick={() => setOpen(false)}
+                  data-flat=""
                   aria-current={activePage === page ? "page" : undefined}
                   className={cn(
                     controlClassNames,
-                    "min-h-12 px-4 py-3 aria-[current=page]:border-ring aria-[current=page]:bg-muted"
+                    "min-h-12 px-4 py-3 hover:bg-muted hover:text-foreground aria-[current=page]:border-ring aria-[current=page]:bg-muted"
                   )}
                 >
-                  <Icon className="h-4 w-4" aria-hidden />
+                  <NavigationIcon name={icon} active={activePage === page} className="h-5 w-5" />
                   {label}
                 </Link>
               ))}
@@ -201,7 +213,7 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
                 className: "w-full",
               })}
             >
-              <LogOut className="h-4 w-4" aria-hidden />
+              <LogOut className="h-5 w-5" aria-hidden />
               Sign out
             </SignOutButton>
           </DrawerFooter>

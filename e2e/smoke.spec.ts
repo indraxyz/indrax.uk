@@ -224,9 +224,8 @@ test.describe("the public pages", () => {
           exact: true,
         })
         await link.hover()
-        expect(await link.evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe(
-          "0px"
-        )
+        await expect(link).toHaveCSS("border-top-width", "2px")
+        await expect(link).not.toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
         await expect
           .poll(
             () =>

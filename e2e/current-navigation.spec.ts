@@ -2,6 +2,12 @@ import { expect, test, type Locator } from "@playwright/test"
 
 async function expectCurrentPage(link: Locator) {
   await expect(link).toHaveAttribute("aria-current", "page")
+  const icon = link.locator("svg")
+  if (await icon.count()) {
+    await expect(icon).toHaveAttribute("data-variant", "filled")
+    await expect(icon).toHaveCSS("width", "20px")
+    await expect(icon).toHaveCSS("height", "20px")
+  }
   expect(
     await link.evaluate((element) => {
       const style = getComputedStyle(element)
@@ -31,6 +37,9 @@ for (const theme of ["light", "dark"]) {
       await expect(link).toHaveCSS("border-bottom-width", "0px")
       await page.screenshot({ path: test.info().outputPath(`navigation-hover-${theme}.png`) })
     }
+    await expect(
+      navigation.getByRole("link", { name: "Stack", exact: true }).locator("svg")
+    ).toHaveAttribute("data-variant", "outline")
     await navigation.getByRole("link", { name: "Stack", exact: true }).click()
     await expect(page).toHaveURL(/\/tech-stack$/)
     await expectCurrentPage(navigation.getByRole("link", { name: "Stack", exact: true }))
