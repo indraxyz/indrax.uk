@@ -34,7 +34,7 @@ export async function expectReadableAction(page: Page, control: Locator) {
     await Promise.all(element.getAnimations().map((animation) => animation.finished))
   })
   const background = await control.evaluate((element) => getComputedStyle(element).backgroundColor)
-  // These flat actions retain focus rings but have no decorative shadow or motion.
+  // Raised actions lift; explicitly flat actions retain their resting geometry.
   const resting = await control.evaluate((element) => {
     const style = getComputedStyle(element)
     return { shadow: style.boxShadow, translate: style.translate }
@@ -45,8 +45,15 @@ export async function expectReadableAction(page: Page, control: Locator) {
     await Promise.all(element.getAnimations().map((animation) => animation.finished))
   })
   expect(await contrastRatio(control)).toBeGreaterThanOrEqual(4.5)
-  await expect(control).toHaveCSS("box-shadow", resting.shadow)
-  await expect(control).toHaveCSS("translate", resting.translate)
+  if (await control.evaluate((node) => node.classList.contains("action-lift"))) {
+    await expect(control).toHaveCSS("translate", "-3px -3px")
+    await expect(control).not.toHaveCSS("box-shadow", resting.shadow)
+  } else {
+    await expect(control).toHaveCSS("box-shadow", resting.shadow)
+    await expect(control).toHaveCSS("translate", resting.translate)
+  }
   await page.mouse.move(0, 0)
   await expect(control).toHaveCSS("background-color", background)
+  await expect(control).toHaveCSS("translate", resting.translate)
+  await expect(control).toHaveCSS("box-shadow", resting.shadow)
 }

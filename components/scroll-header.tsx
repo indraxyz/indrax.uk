@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type RefObject,
+} from "react"
 import { useLocation } from "react-router"
 
 import { cn } from "@/lib/utils"
@@ -11,8 +18,12 @@ export function ScrollHeader({
   children,
   className,
   pinned = false,
+  scrollTargetRef,
   ...props
-}: ComponentProps<"header"> & { pinned?: boolean }) {
+}: ComponentProps<"header"> & {
+  pinned?: boolean
+  scrollTargetRef?: RefObject<HTMLElement | null>
+}) {
   const headerRef = useRef<HTMLElement>(null)
   const [hidden, setHidden] = useState(false)
   const { key } = useLocation()
@@ -58,7 +69,9 @@ export function ScrollHeader({
   }, [isHidden])
 
   useEffect(() => {
-    let previous = window.scrollY
+    const scroller = scrollTargetRef?.current
+    const target = scroller ?? window
+    let previous = scroller?.scrollTop ?? window.scrollY
     let anchor = previous
     let direction = 0
     let frame = 0
@@ -69,8 +82,13 @@ export function ScrollHeader({
       const header = headerRef.current
       if (!header) return
       // Clamp elastic overscroll so reaching either boundary cannot flip direction.
-      const maximum = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
-      const current = Math.max(0, Math.min(window.scrollY, maximum))
+      const maximum = Math.max(
+        0,
+        scroller
+          ? scroller.scrollHeight - scroller.clientHeight
+          : document.documentElement.scrollHeight - window.innerHeight
+      )
+      const current = Math.max(0, Math.min(scroller?.scrollTop ?? window.scrollY, maximum))
       const nextDirection = Math.sign(current - previous)
       if (current <= header.offsetHeight || pinned || header.querySelector(":focus-visible")) {
         setHidden(false)
@@ -90,12 +108,12 @@ export function ScrollHeader({
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update)
     }
-    window.addEventListener("scroll", onScroll, { passive: true })
+    target.addEventListener("scroll", onScroll, { passive: true })
     return () => {
-      window.removeEventListener("scroll", onScroll)
+      target.removeEventListener("scroll", onScroll)
       cancelAnimationFrame(frame)
     }
-  }, [key, pinned])
+  }, [key, pinned, scrollTargetRef])
 
   return (
     <header

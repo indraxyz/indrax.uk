@@ -15,7 +15,7 @@ export function PublicHeader({ activePage }: { activePage?: PublicPage | null })
             prefetch="none"
             to="/"
             className={cn(
-              "text-lg font-black uppercase tracking-tight text-foreground hover:underline sm:text-xl",
+              "text-lg font-black uppercase tracking-tight text-foreground hover:no-underline sm:text-xl",
               focusControlClassNames
             )}
           >

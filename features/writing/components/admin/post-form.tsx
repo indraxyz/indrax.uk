@@ -189,7 +189,7 @@ export function PostForm({ post, coverUploadsConfigured, children }: PostFormPro
       aria-describedby={saveStatusId}
       className={cn(
         controlClassNames,
-        "variant-primary relative min-h-11 justify-center whitespace-nowrap bg-[var(--variant-bg)] px-3 py-2 text-[var(--variant-fg)] hover:bg-[var(--variant-hover)] disabled:opacity-60"
+        "variant-primary relative min-h-11 justify-center whitespace-nowrap bg-[var(--variant-bg)] px-3 py-2 text-[var(--variant-fg)] disabled:opacity-60"
       )}
     >
       {pending ? <LoadingIndicator /> : <Save className="h-3.5 w-3.5" aria-hidden />}

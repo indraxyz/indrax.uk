@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { focusControlClassNames } from "@/components/ui/variants"
 import { fetchReactions, putReaction, reactionKeys } from "../api/reactions"
 import {
   isReactionVisitor,
@@ -158,10 +157,11 @@ function ReactionGroup({ controls }: { controls: ReturnType<typeof useReactionCo
           const count = results.data!.counts[reaction]
           const selected = results.data!.selected.includes(reaction)
           return (
-            <button
+            <Button
               key={reaction}
               type="button"
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 bg-transparent px-2 text-xs font-medium tracking-normal text-muted-foreground hover:text-foreground disabled:opacity-50 ${focusControlClassNames}`}
+              variant="ghost"
+              className="min-w-11 gap-1.5 px-2 text-xs font-medium normal-case tracking-normal text-muted-foreground"
               aria-label={`${label}: ${count} ${count === 1 ? "reaction" : "reactions"}`}
               title={`${selected ? "Remove your" : "Add"} ${label.toLowerCase()} reaction`}
               aria-pressed={selected}
@@ -174,7 +174,7 @@ function ReactionGroup({ controls }: { controls: ReturnType<typeof useReactionCo
               <span aria-hidden className={selected ? "font-semibold" : undefined}>
                 {count.toLocaleString("en-US")}
               </span>
-            </button>
+            </Button>
           )
         })}
         <Popover open={open} onOpenChange={setOpen}>
@@ -199,7 +199,7 @@ function ReactionGroup({ controls }: { controls: ReturnType<typeof useReactionCo
                   key={reaction}
                   type="button"
                   variant="ghost"
-                  className="aria-pressed:border-border aria-pressed:bg-[var(--variant-hover)] [&[aria-pressed=true]>span]:scale-110"
+                  className="aria-pressed:border-border aria-pressed:bg-primary aria-pressed:text-primary-foreground [&[aria-pressed=true]>span]:scale-110"
                   appearance="flat"
                   size="icon"
                   aria-label={REACTION_OPTIONS[reaction].label}

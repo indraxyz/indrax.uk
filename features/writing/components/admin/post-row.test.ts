@@ -59,7 +59,7 @@ describe("PostRow", () => {
     expect(html).toContain("Edited ")
     expect(html).toContain("TypeScript")
     expect(html).toContain('href="/admin/posts/edit/post-id"')
-    expect(html).toContain('aria-label="Edit Sample post"')
+    expect(html).not.toContain('aria-label="Edit Sample post"')
     expect(html).toContain('aria-label="Actions for Sample post"')
     expect(html).toMatch(
       /<a[^>]*aria-label="Edit cover for Sample post"[^>]*>[\s\S]*?<img[\s\S]*?<\/a>/
@@ -73,8 +73,7 @@ describe("PostRow", () => {
     expect(excerpt).toMatch(/\.\.\.$/)
     expect(html).toContain(excerpt)
     expect(html).toContain("line-clamp-2 break-words")
-    expect(html).toContain("min-w-0 basis-full")
-    expect(html).toContain("sm:basis-0")
+    expect(html).toContain("min-w-0 flex-1")
     expect(html).toContain("ml-auto flex shrink-0")
   })
 
@@ -89,7 +88,7 @@ describe("PostRow", () => {
     expect(html).not.toContain("Edit cover for")
     expect(html).not.toContain("line-clamp-2")
     expect(html).toContain("Never published")
-    expect(html).toContain('aria-label="Edit Sample post"')
+    expect(html).not.toContain('aria-label="Edit Sample post"')
     expect(html).not.toContain('href="/writing/sample"')
   })
 

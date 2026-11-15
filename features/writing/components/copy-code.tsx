@@ -1,4 +1,6 @@
 import { useEffect } from "react"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 /**
  * Adds a copy button to every code block, after the page has loaded.
@@ -24,8 +26,10 @@ export function CopyCode() {
       const button = document.createElement("button")
       button.type = "button"
       button.textContent = "Copy"
-      button.className =
-        "absolute right-2 top-2 border-2 border-border bg-background px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+      button.className = cn(
+        buttonVariants({ variant: "secondary", size: "sm" }),
+        "absolute right-2 top-2 min-h-11 px-2 text-[10px] opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+      )
 
       const reset = () => {
         button.textContent = "Copy"

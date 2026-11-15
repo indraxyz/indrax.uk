@@ -112,6 +112,50 @@ function actions(page: Page, status: Status) {
   return page.getByRole("button", { name: `Actions for ${status} fixture`, exact: true })
 }
 
+for (const theme of ["light", "dark"] as const) {
+  test(`post and navigation menus share the ${theme} glass surface`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme,
+    })
+    await archiveFixture(page)
+    const expectGlassMenu = async (capture: string) => {
+      const menu = page.getByRole("menu")
+      await expect(menu).toHaveCSS(
+        "background-color",
+        theme === "light" ? "rgba(0, 0, 0, 0.25)" : "rgba(255, 255, 255, 0.25)"
+      )
+      await expect(menu).toHaveCSS("box-shadow", "none")
+      await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
+      const results = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
+      expect(results.violations).toEqual([])
+      await page.screenshot({ path: test.info().outputPath(`${capture}-${theme}.png`) })
+    }
+    const trigger = actions(page, "draft")
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await trigger.hover()
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await trigger.click()
+    await expect(trigger).toHaveAttribute("data-active", "")
+    await expect(trigger).not.toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await expectGlassMenu("post-menu-cards")
+    await page.keyboard.press("Escape")
+    await expect(actions(page, "draft")).toBeFocused()
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await showTable(page)
+    await actions(page, "draft").click()
+    await expectGlassMenu("post-menu-table")
+    await page.keyboard.press("Escape")
+    const publicTrigger = page.getByRole("button", { name: "Public", exact: true })
+    await publicTrigger.focus()
+    await page.keyboard.press("Enter")
+    await expectGlassMenu("public-menu")
+    await page.keyboard.press("Escape")
+    await expect(publicTrigger).toBeFocused()
+  })
+}
+
 for (const status of ["draft", "published", "archived"] as const) {
   test(`orders ${status} actions and opens the correct destination in a new tab`, async ({
     page,
@@ -119,10 +163,14 @@ for (const status of ["draft", "published", "archived"] as const) {
     const { writes, fullPostReads } = await archiveFixture(page)
     await expect(
       page.getByRole("link", { name: `Edit ${status} fixture`, exact: true })
-    ).toHaveAttribute("href", `/admin/posts/edit/${ids[status]}`)
+    ).toHaveCount(0)
     await actions(page, status).click()
+    await expect(
+      page.getByRole("menuitem", { name: `Edit ${status} fixture`, exact: true })
+    ).toHaveAttribute("href", `/admin/posts/edit/${ids[status]}`)
     const published = status === "published"
     await expect(page.getByRole("menuitem")).toHaveText([
+      "Edit",
       published ? "Visit" : "Preview",
       published ? "Unpublish" : "Publish",
       ...(status === "archived" ? [] : ["Archive"]),
@@ -149,6 +197,16 @@ for (const status of ["draft", "published", "archived"] as const) {
     )
     expect(fullPostReads).toEqual([])
     await tab.close()
+  })
+}
+
+for (const view of ["cards", "table"] as const) {
+  test(`edits a post from the ${view} action menu`, async ({ page }) => {
+    await archiveFixture(page)
+    if (view === "table") await showTable(page)
+    await actions(page, "draft").click()
+    await page.getByRole("menuitem", { name: "Edit draft fixture", exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${ids.draft}$`))
   })
 }
 
@@ -183,9 +241,12 @@ test("publishes and unpublishes the selected row and refreshes available actions
       data: { status: target },
     })
     await actions(page, "draft").click()
-    await expect(page.getByRole("menuitem").first()).toHaveText(
-      target === "published" ? "Visit" : "Preview"
-    )
+    await expect(
+      page.getByRole("menuitem", {
+        name: target === "published" ? "Visit" : "Preview",
+        exact: true,
+      })
+    ).toBeVisible()
     await page.keyboard.press("Escape")
   }
   expect(fullPostReads).toEqual([])
@@ -233,7 +294,7 @@ test("keeps publishing errors open for retry without changing another post", asy
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
   await actions(page, "published").click()
-  await expect(page.getByRole("menuitem").first()).toHaveText("Visit")
+  await expect(page.getByRole("menuitem", { name: "Visit", exact: true })).toBeVisible()
 })
 
 test("retries failed deletion, removes only its row, and retains list filters and page", async ({
@@ -273,6 +334,10 @@ for (const width of [320, 1280]) {
     const trigger = actions(page, "draft")
     await trigger.focus()
     await page.keyboard.press("Enter")
+    await expect(
+      page.getByRole("menuitem", { name: "Edit draft fixture", exact: true })
+    ).toBeFocused()
+    await page.keyboard.press("ArrowDown")
     await expect(page.getByRole("menuitem", { name: "Preview", exact: true })).toBeFocused()
     await page.keyboard.press("ArrowDown")
     await expect(page.getByRole("menuitem", { name: "Publish", exact: true })).toBeFocused()
@@ -394,7 +459,7 @@ for (const width of [320, 1280]) {
       await page.mouse.move(0, 0)
       await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
-    await expect(trigger.locator("svg")).toHaveCount(width < 900 ? 2 : 1)
+    await expect(trigger.locator("svg")).toHaveCount(1)
     for (const icon of await trigger.locator("svg").all())
       await expect(icon).toHaveAttribute("aria-hidden", "true")
     await trigger.hover()
@@ -408,7 +473,7 @@ for (const width of [320, 1280]) {
       expect(bounds!.height).toBe(posts!.height)
     } else {
       await expect(trigger).toHaveCSS("text-decoration-line", "none")
-      await expect(trigger).toHaveCSS("border-bottom-width", "2px")
+      await expect(trigger).toHaveCSS("border-bottom-width", "0px")
       await expect(trigger).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
     await trigger.focus()
@@ -496,7 +561,6 @@ test("switches posts between cards and a table and remembers the choice", async 
     "Tags",
     /Published/,
     /Updated/,
-    "Actions",
   ])
   await expect(page.getByRole("listitem").filter({ hasText: "draft fixture" })).toHaveCount(0)
   expect(
@@ -576,15 +640,24 @@ test("keeps row actions and editing available in the table", async ({ page }) =>
   await archiveFixture(page)
   const grid = await showTable(page)
   const row = grid.getByRole("row").filter({ hasText: "published fixture" })
-  await expect(
-    row.getByRole("link", { name: "Edit published fixture", exact: true })
-  ).toHaveAttribute("href", `/admin/posts/edit/${ids.published}`)
+  await expect(row.getByRole("link", { name: "Edit published fixture", exact: true })).toHaveCount(
+    0
+  )
   await expect(row.getByRole("rowheader").getByRole("link")).toHaveAttribute(
     "href",
     `/admin/posts/edit/${ids.published}`
   )
   await actions(page, "published").click()
-  await expect(page.getByRole("menuitem")).toHaveText(["Visit", "Unpublish", "Archive", "Delete"])
+  await expect(
+    page.getByRole("menuitem", { name: "Edit published fixture", exact: true })
+  ).toHaveAttribute("href", `/admin/posts/edit/${ids.published}`)
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "Edit",
+    "Visit",
+    "Unpublish",
+    "Archive",
+    "Delete",
+  ])
   await page.keyboard.press("Escape")
   await expect(actions(page, "published")).toBeFocused()
 })
@@ -599,18 +672,55 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await expect(grid).toBeVisible()
 
-  // The title column stays pinned while the other columns scroll beneath it, so
-  // each row keeps naming its post.
-  const title = grid.getByRole("rowheader", { name: "draft fixture" })
-  const status = grid.getByRole("row").filter({ hasText: "draft fixture" }).getByRole("cell").nth(1)
-  const before = { title: (await title.boundingBox())!.x, status: (await status.boundingBox())!.x }
+  // Only selection stays pinned; the title and all remaining columns scroll.
+  const title = grid.getByRole("rowheader").filter({ has: actions(page, "draft") })
+  const row = grid.getByRole("row").filter({ hasText: "draft fixture" })
+  const selection = row.getByRole("cell").first()
+  const before = {
+    title: (await title.boundingBox())!.x,
+    selection: (await selection.boundingBox())!.x,
+  }
   await region.evaluate((node) => node.scrollTo({ left: node.scrollWidth }))
-  await expect.poll(async () => (await status.boundingBox())!.x).toBeLessThan(before.status)
-  expect((await title.boundingBox())!.x).toBe(before.title)
-  // Fully opaque (card surfaces are translucent), so scrolled cells never show
-  // through the pinned one.
-  expect(await title.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(/^rgb\(/)
+  await expect.poll(async () => (await title.boundingBox())!.x).toBeLessThan(before.title)
+  expect((await selection.boundingBox())!.x).toBeCloseTo(before.selection, 0)
+  await expect(grid.getByRole("columnheader").first()).toHaveCSS("position", "sticky")
+  await expect(selection).toHaveCSS("position", "sticky")
+  await expect(title).toHaveCSS("position", "static")
+  expect(await selection.evaluate((node) => getComputedStyle(node).backgroundColor)).toMatch(
+    /^rgb\(/
+  )
   await page.screenshot({ path: test.info().outputPath("posts-table-390.png"), fullPage: true })
+  // Keyboard focus reveals the title beside the pinned selection column.
+  const titleLink = title.getByRole("link")
+  await titleLink.focus()
+  await expect
+    .poll(() =>
+      titleLink.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        const front = document.elementFromPoint(
+          bounds.x + bounds.width / 2,
+          bounds.y + bounds.height / 2
+        )
+        return !!front && node.contains(front)
+      })
+    )
+    .toBe(true)
+  await page.keyboard.press("Shift+Tab")
+  await expect(actions(page, "draft")).toBeFocused()
+  await page.keyboard.press("Shift+Tab")
+  const checkbox = grid.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  await expect(checkbox).toBeFocused()
+  await expect
+    .poll(() =>
+      checkbox.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        return (
+          document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2) ===
+          node
+        )
+      })
+    )
+    .toBe(true)
 })
 
 for (const theme of ["light", "dark"] as const)
@@ -654,3 +764,65 @@ test("layout choice survives failed writes over an older stored preference", asy
   await layout.getByRole("button", { name: "Cards", exact: true }).click()
   await expect(table).toHaveAttribute("aria-pressed", "false")
 })
+
+for (const theme of ["light", "dark"] as const) {
+  test(`confirmation is shadowless and buttons lift only on hover in ${theme}`, async ({
+    page,
+  }) => {
+    await page.addInitScript((theme) => localStorage.setItem("indrax-theme", theme), theme)
+    await archiveFixture(page)
+    await actions(page, "draft").click()
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click()
+    const dialog = page.getByRole("alertdialog", { name: "Delete post?", exact: true })
+    await expect(dialog).toHaveCSS("box-shadow", "none")
+    const cancel = dialog.getByRole("button", { name: "Cancel", exact: true })
+    const confirm = dialog.getByRole("button", { name: "Delete post", exact: true })
+    await page.mouse.move(0, 0)
+    for (const button of [cancel, confirm]) {
+      await expect(button).toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+      const original = (await button.boundingBox())!
+      await button.hover()
+      await expect(button).toHaveCSS("translate", "-3px -3px")
+      await expect(button).not.toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+      await expect.poll(async () => (await button.boundingBox())!.x).toBeCloseTo(original.x - 3, 0)
+      await expect.poll(async () => (await button.boundingBox())!.y).toBeCloseTo(original.y - 3, 0)
+      // The original bottom-right edge remains a stable pointer target during the lift.
+      await page.mouse.move(original.x + original.width - 1, original.y + original.height - 1)
+      await expect(button).toHaveCSS("translate", "-3px -3px")
+      await page.screenshot({ path: test.info().outputPath(`dialog-button-hover-${theme}.png`) })
+      await button.hover()
+      await page.mouse.down()
+      await expect(button).toHaveCSS("translate", "0px")
+      await page.mouse.move(0, 0)
+      await page.mouse.up()
+      await expect(button).toHaveCSS("translate", "none")
+      await expect(button).toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await confirm.hover()
+    await expect(confirm).toHaveCSS("translate", "none")
+    await expect(confirm).toHaveCSS(
+      "box-shadow",
+      /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+    )
+    expect(
+      await confirm.evaluate((node) => parseFloat(getComputedStyle(node).transitionDuration))
+    ).toBeLessThanOrEqual(0.00001)
+    await cancel.focus()
+    await expect(cancel).toBeFocused()
+    const results = await new AxeBuilder({ page }).include('[role="alertdialog"]').analyze()
+    expect(results.violations).toEqual([])
+    await page.screenshot({ path: test.info().outputPath(`dialog-rest-${theme}.png`) })
+    await cancel.click()
+    await expect(actions(page, "draft")).toBeFocused()
+  })
+}

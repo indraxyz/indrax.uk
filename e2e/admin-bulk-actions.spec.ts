@@ -1,8 +1,13 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
+import type { Tag } from "../features/writing/types"
+import { THEME_STORAGE_KEY } from "../lib/theme"
 
 const ids = [1, 2, 3].map((n) => `550e8400-e29b-41d4-a716-44665544000${n}`)
-async function fixture(page: Page) {
+async function fixture(
+  page: Page,
+  tags: Tag[] = [{ id: "tag-fixture", slug: "engineering", name: "Engineering" }]
+) {
   const posts = (["draft", "published", "archived"] as const).map((status, index) => ({
     id: ids[index],
     title: `${status} fixture`,
@@ -13,7 +18,7 @@ async function fixture(page: Page) {
     coverAlt: null,
     publishedAt: null,
     updatedAt: "2026-01-01T00:00:00Z",
-    tags: [],
+    tags: index === 0 ? tags : [],
     readingTime: 1,
     viewCount: 0,
   }))
@@ -94,16 +99,261 @@ async function fixture(page: Page) {
   }
 }
 const selection = (page: Page) => page.getByRole("region", { name: "Post selection" })
+async function chooseAction(page: Page, action: string) {
+  await page.getByRole("button", { name: "Bulk post actions", exact: true }).click()
+  await page.getByRole("menuitem", { name: action, exact: true }).click()
+}
 async function confirm(page: Page, action: string, count: number) {
-  await page.getByRole("button", { name: `${action} selected`, exact: true }).click()
+  await chooseAction(page, action)
   const dialog = page.getByRole("alertdialog", { name: `${action} selected posts?`, exact: true })
-  await dialog.getByRole("button", { name: `${action} ${count} posts`, exact: true }).click()
+  await dialog
+    .getByRole("button", {
+      name: `${action} ${count} ${count === 1 ? "post" : "posts"}`,
+      exact: true,
+    })
+    .click()
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`native post checkboxes match the ${theme} theme in cards and table`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme,
+    })
+    await fixture(page)
+    const checkbox = page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    await expect(checkbox).toHaveCSS("appearance", "none")
+    await expect(checkbox).toHaveCSS("border-radius", "0px")
+    await expect(checkbox).toHaveCSS("border-top-width", "2px")
+    const target = (await checkbox.locator("xpath=../..").boundingBox())!
+    expect(target.width).toBeGreaterThanOrEqual(44)
+    expect(target.height).toBeGreaterThanOrEqual(44)
+    await checkbox.focus()
+    await page.keyboard.press("Space")
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toBeFocused()
+    await expect(checkbox).not.toHaveCSS("box-shadow", "none")
+    await expect(checkbox).toHaveCSS(
+      "background-color",
+      theme === "light" ? "rgb(6, 59, 0)" : "rgb(225, 225, 0)"
+    )
+    await expect(checkbox.locator("..").locator("svg.lucide-check")).toBeVisible()
+    const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
+    await expect(all).toHaveJSProperty("indeterminate", true)
+    await expect(all.locator("..").locator("svg.lucide-minus")).toBeVisible()
+    await expect(all.locator("..").locator("svg.lucide-check")).toBeHidden()
+    await page.screenshot({
+      path: test.info().outputPath(`checkbox-cards-${theme}.png`),
+      fullPage: true,
+    })
+    const actionTrigger = page.getByRole("button", { name: "Bulk post actions", exact: true })
+    await actionTrigger.focus()
+    await page.keyboard.press("Enter")
+    const menu = page.getByRole("menu", { name: "Bulk post actions", exact: true })
+    await expect(
+      menu.getByRole("menuitem", { name: "Change to draft", exact: true })
+    ).toHaveAttribute("aria-disabled", "true")
+    await expect(menu).toHaveCSS("box-shadow", "none")
+    const glassBackground = theme === "light" ? "rgba(0, 0, 0, 0.25)" : "rgba(255, 255, 255, 0.25)"
+    await expect(menu).toHaveCSS("background-color", glassBackground)
+    await expect(menu).toHaveCSS("color", theme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)")
+    await expect(selection(page)).toHaveCSS("background-color", glassBackground)
+    await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
+    await expect(selection(page)).toHaveCSS("box-shadow", "none")
+    await expect(selection(page)).toHaveCSS("backdrop-filter", "blur(8px)")
+    const menuResults = await new AxeBuilder({ page }).include('[role="menu"]').analyze()
+    expect(menuResults.violations).toEqual([])
+    await page.screenshot({ path: test.info().outputPath(`floating-menu-${theme}.png`) })
+    await page.keyboard.press("Escape")
+    await expect(actionTrigger).toBeFocused()
+    await all.check()
+    await expect(all.locator("..").locator("svg.lucide-check")).toBeVisible()
+    await expect(all.locator("..").locator("svg.lucide-minus")).toBeHidden()
+    await page.getByRole("button", { name: "Table", exact: true }).click()
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toHaveCSS("appearance", "none")
+    await page.screenshot({
+      path: test.info().outputPath(`checkbox-table-${theme}.png`),
+      fullPage: true,
+    })
+    const results = await new AxeBuilder({ page }).include("main").analyze()
+    expect(
+      results.violations.filter(({ impact }) => impact === "serious" || impact === "critical")
+    ).toEqual([])
+  })
+}
+
+test("post checkboxes retain native indicators and keyboard behavior in forced colors", async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: "active" })
+  await fixture(page)
+  const checkbox = page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  await expect(checkbox).toHaveCSS("appearance", "auto")
+  await checkbox.focus()
+  await expect(checkbox).toHaveCSS("outline-style", "solid")
+  await expect(checkbox).toHaveCSS("outline-width", "2px")
+  await page.keyboard.press("Space")
+  await expect(checkbox).toBeChecked()
+  await expect(checkbox.locator("..").locator("svg.lucide-check")).toBeHidden()
+  const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
+  await expect(all).toHaveJSProperty("indeterminate", true)
+  await expect(all.locator("..").locator("svg.lucide-minus")).toBeHidden()
+  await all.focus()
+  await page.keyboard.press("Space")
+  await expect(all).toBeChecked()
+  await expect(all).toHaveJSProperty("indeterminate", false)
+  await expect(
+    page.getByRole("checkbox", { name: "Select published fixture", exact: true })
+  ).toBeChecked()
+})
+
+for (const width of [320, 1280]) {
+  test(`card selection and compact bulk actions fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await fixture(page)
+    await expect(selection(page)).toHaveCount(0)
+    const card = page.getByRole("listitem").filter({ hasText: "draft fixture" })
+    const checkbox = card.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    const status = card.getByText("draft", { exact: true })
+    const checkboxBox = (await checkbox.boundingBox())!
+    const statusBox = (await status.boundingBox())!
+    expect(checkboxBox.width).toBeGreaterThanOrEqual(20)
+    const cardBox = (await card.boundingBox())!
+    expect(checkboxBox.y).toBeGreaterThan(statusBox.y + statusBox.height)
+    const tagsBox = (await card
+      .getByRole("group", { name: "Tags for draft fixture", exact: true })
+      .boundingBox())!
+    expect(checkboxBox.y + checkboxBox.height / 2).toBeCloseTo(tagsBox.y + tagsBox.height / 2, 0)
+    expect(cardBox.x + cardBox.width - checkboxBox.x - checkboxBox.width).toBeLessThanOrEqual(36)
+    expect(cardBox.y + cardBox.height - checkboxBox.y - checkboxBox.height).toBeLessThanOrEqual(36)
+    await checkbox.check()
+    await expect(selection(page).getByRole("status")).toHaveText("1 selected")
+    for (const name of ["Clear selection", "Bulk post actions"]) {
+      const button = selection(page).getByRole("button", { name, exact: true })
+      await expect(button).toHaveText("")
+      await expect(button).toHaveAttribute("title", name)
+      const bounds = (await button.boundingBox())!
+      expect(bounds.width).toBeGreaterThanOrEqual(44)
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width
+    )
+    const floating = selection(page)
+    await expect(floating).toHaveCSS("position", "fixed")
+    const initial = (await floating.boundingBox())!
+    expect(initial.x).toBeGreaterThanOrEqual(16)
+    expect(initial.x + initial.width).toBeLessThanOrEqual(width - 16)
+    expect(initial.height).toBeLessThanOrEqual(80)
+    expect(900 - initial.y - initial.height).toBeCloseTo(16, 0)
+    await page.screenshot({ path: test.info().outputPath(`bulk-actions-${width}.png`) })
+
+    const trigger = page.getByRole("button", { name: "Bulk post actions", exact: true })
+    await trigger.focus()
+    await page.keyboard.press("Enter")
+    const menu = page.getByRole("menu", { name: "Bulk post actions", exact: true })
+    await expect(menu.getByRole("menuitem")).toHaveText(["Publish", "Change to draft", "Archive"])
+    await expect(menu.getByRole("menuitem", { name: "Publish", exact: true })).toBeFocused()
+    await page.keyboard.press("ArrowDown")
+    const unavailable = menu.getByRole("menuitem", { name: "Change to draft", exact: true })
+    await expect(unavailable).toBeFocused()
+    await expect(unavailable).toHaveAttribute("aria-disabled", "true")
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+    await page.keyboard.press("ArrowDown")
+    await expect(menu.getByRole("menuitem", { name: "Archive", exact: true })).toBeFocused()
+    const menuBox = (await menu.boundingBox())!
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(initial.y)
+    expect(menuBox.x).toBeGreaterThanOrEqual(0)
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: test.info().outputPath(`bulk-menu-${width}.png`) })
+    await page.keyboard.press("Escape")
+    await expect(trigger).toBeFocused()
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    expect((await floating.boundingBox())!.y).toBeCloseTo(initial.y, 0)
+    const shell = page.locator('[data-slot="admin-shell"]')
+    await expect(shell).toHaveCSS("padding-bottom", "96px")
+    await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
+    expect((await shell.boundingBox())!.y + (await shell.boundingBox())!.height).toBeCloseTo(900, 0)
+    expect(
+      await page.evaluate(
+        () =>
+          !!document
+            .elementFromPoint(1, window.innerHeight - 1)
+            ?.closest('[data-slot="admin-shell"]')
+      )
+    ).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`footer-selection-${width}.png`) })
+    const theme = page.locator("footer").getByRole("button", { name: /Switch theme/ })
+    await theme.focus()
+    await expect
+      .poll(() =>
+        theme.evaluate((node) => {
+          const bounds = node.getBoundingClientRect()
+          const front = document.elementFromPoint(
+            bounds.x + bounds.width / 2,
+            bounds.y + bounds.height / 2
+          )
+          return !!front && node.contains(front)
+        })
+      )
+      .toBe(true)
+    await page.getByRole("button", { name: "Clear selection", exact: true }).click()
+    await expect(floating).toHaveCount(0)
+    await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
+    await expect(shell).toHaveCSS("padding-bottom", "0px")
+  })
+}
+
+for (const width of [320, 1280]) {
+  test(`card selection stays aligned with wrapped and expanded tags at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await fixture(
+      page,
+      ["Engineering", "TypeScript", "React", "Cloudflare", "Accessibility"].map((name) => ({
+        id: name,
+        name,
+        slug: name.toLowerCase(),
+      }))
+    )
+    const card = page.getByRole("listitem").filter({ hasText: "draft fixture" })
+    const tags = card.getByRole("group", { name: "Tags for draft fixture", exact: true })
+    const checkbox = card.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    const aligned = async () => {
+      const tagBox = (await tags.boundingBox())!
+      const checkBox = (await checkbox.boundingBox())!
+      expect(checkBox.y + checkBox.height / 2).toBeCloseTo(tagBox.y + tagBox.height / 2, 0)
+      expect(checkBox.x).toBeGreaterThan(tagBox.x + tagBox.width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+    await aligned()
+    await card.getByRole("button", { name: "Show 3 more tags", exact: true }).click()
+    await aligned()
+    await checkbox.check()
+    await expect(checkbox).toBeChecked()
+    await card.screenshot({ path: test.info().outputPath(`tag-alignment-${width}.png`) })
+    const noTags = page.getByRole("listitem").filter({ hasText: "published fixture" })
+    await expect(
+      noTags.getByRole("group", { name: "Tags for published fixture", exact: true })
+    ).toHaveCount(0)
+    await expect(
+      noTags.getByRole("checkbox", { name: "Select published fixture", exact: true })
+    ).toBeVisible()
+  })
 }
 
 test("selection follows cards/table, mixed state, clear, URL changes and navigation", async ({
   page,
 }) => {
   await fixture(page)
+  await expect(selection(page)).toHaveCount(0)
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   const all = page.getByRole("checkbox", { name: "Select all posts on this page" })
   await expect(all).toHaveJSProperty("indeterminate", true)
@@ -112,16 +362,19 @@ test("selection follows cards/table, mixed state, clear, URL changes and navigat
     page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
   ).toBeChecked()
   await all.check()
-  await expect(selection(page).getByRole("status")).toContainText("3 posts selected")
+  await expect(selection(page).getByRole("status")).toHaveText("3 selected")
   expect(
     (await new AxeBuilder({ page }).include('section[aria-label="Post selection"]').analyze())
       .violations
   ).toEqual([])
   await page.getByRole("button", { name: "Clear selection" }).click()
-  await expect(all).not.toBeChecked()
+  await expect(selection(page)).toHaveCount(0)
+  await expect(
+    page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+  ).toBeFocused()
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("button", { name: /Title: sort/ }).click()
-  await expect(selection(page).getByRole("status")).toContainText("0 posts selected")
+  await expect(selection(page)).toHaveCount(0)
   await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("link", { name: "Dashboard", exact: true }).click()
   await page.getByRole("link", { name: "Posts", exact: true }).first().click()
@@ -139,34 +392,76 @@ for (const [status, action] of [
     page,
   }) => {
     const state = await fixture(page)
+    await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
     await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
-    await page.getByRole("combobox", { name: "Bulk post action" }).selectOption(status)
-    await page.getByRole("button", { name: `${action} selected`, exact: true }).click()
+    await chooseAction(page, action)
     const dialog = page.getByRole("alertdialog")
     await expect(dialog).toContainText(`${action} 2 posts`)
+    await expect(dialog).toContainText(`1 already ${status}; skipped.`)
     if (status === "published") await expect(dialog).toContainText("visible to everyone")
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
-    await expect(page.getByRole("combobox", { name: "Bulk post action" })).toBeFocused()
+    await expect(page.getByRole("button", { name: "Bulk post actions", exact: true })).toBeFocused()
     expect(state.writes).toHaveLength(0)
     await confirm(page, action, 2)
-    await expect(selection(page).getByRole("status")).toContainText("2 updated. 0 not confirmed")
-    await expect(page.getByRole("combobox", { name: "Bulk post action" })).toBeFocused()
+    await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+      "2 updated. 0 not confirmed"
+    )
+    await expect(
+      page.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    ).toBeFocused()
     expect(state.writes).toHaveLength(2)
     expect(state.writes.every((write) => write.status === status)).toBe(true)
-    await expect(
-      page.getByRole("checkbox", { name: "Select all posts on this page" })
-    ).not.toBeChecked()
+    await expect(selection(page)).toHaveCount(0)
   })
 }
+
+test("background refresh narrows an open confirmation without adding new targets", async ({
+  page,
+}) => {
+  const state = await fixture(page)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
+
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route("**/api/admin/posts/archive*", async (route) => {
+    await gate
+    await route.fallback()
+  })
+  await page.getByRole("button", { name: "Refresh posts", exact: true }).click()
+  await chooseAction(page, "Archive")
+  const dialog = page.getByRole("alertdialog")
+  await expect(dialog.getByRole("button", { name: "Archive 2 posts", exact: true })).toBeEnabled()
+
+  // A post in the approved snapshot no longer needs the action; a previously
+  // excluded post now does. Only the remaining approved post may be changed.
+  state.posts[0].status = "archived"
+  state.posts[2].status = "published"
+  const refreshed = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/admin/posts/archive"
+  )
+  release()
+  await refreshed
+  await expect(dialog).toContainText("1 already archived; skipped.")
+  await dialog.getByRole("button", { name: "Archive 1 post", exact: true }).click()
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
+  expect(state.writes).toEqual([{ id: ids[1], status: "archived" }])
+  expect(state.posts[2].status).toBe("published")
+})
 
 test("partial failures retain only failed selections and user retry targets only those posts", async ({
   page,
 }) => {
   const state = await fixture(page)
   state.failures.set(ids[1], 422)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
-  await expect(selection(page).getByRole("status")).toContainText("1 updated. 1 not confirmed")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+    "1 updated. 1 not confirmed"
+  )
   await expect(
     page.getByRole("checkbox", { name: "Select published fixture", exact: true })
   ).toBeChecked()
@@ -175,7 +470,9 @@ test("partial failures retain only failed selections and user retry targets only
   ).not.toBeChecked()
   state.failures.clear()
   await confirm(page, "Archive", 1)
-  await expect(selection(page).getByRole("status")).toContainText("1 updated. 0 not confirmed")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText(
+    "1 updated. 0 not confirmed"
+  )
   expect(state.writes.map(({ id }) => id)).toEqual([ids[0], ids[1], ids[1]])
 })
 
@@ -187,6 +484,7 @@ test("pending bulk writes block duplicate and individual actions", async ({ page
       release = resolve
     })
   )
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect.poll(() => state.writes.length).toBe(1)
@@ -197,7 +495,7 @@ test("pending bulk writes block duplicate and individual actions", async ({ page
     page.getByRole("checkbox", { name: "Select draft fixture", exact: true, includeHidden: true })
   ).toBeDisabled()
   release()
-  await expect(selection(page).getByRole("status")).toContainText("2 updated")
+  await expect(page.getByRole("status").filter({ hasText: /updated/ })).toContainText("2 updated")
   expect(state.writes).toHaveLength(2)
 })
 
@@ -206,6 +504,7 @@ test("authorization expiry stops subsequent writes and resets selection on login
 }) => {
   const state = await fixture(page)
   state.failures.set(ids[0], 401)
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect(page).toHaveURL(/\/admin\/login$/)
@@ -225,6 +524,7 @@ test("changing archive URL stops old bulk work without clearing new selections",
       release = resolve
     })
   )
+  await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
   await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
   await confirm(page, "Archive", 2)
   await expect.poll(() => state.writes.length).toBe(1)
@@ -245,3 +545,25 @@ test("changing archive URL stops old bulk work without clearing new selections",
   expect(state.writes).toHaveLength(1)
   await expect(nextSelection).toBeChecked()
 })
+
+for (const width of [320, 1280]) {
+  test(`bulk confirmation actions share 44px targets and fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await fixture(page)
+    await page.getByRole("checkbox", { name: "Select draft fixture", exact: true }).check()
+    await page.getByRole("checkbox", { name: "Select all posts on this page" }).check()
+    await chooseAction(page, "Change to draft")
+    const dialog = page.getByRole("alertdialog")
+    const cancel = dialog.getByRole("button", { name: "Cancel", exact: true })
+    const confirm = dialog.getByRole("button", { name: "Change to draft 2 posts", exact: true })
+    await expect(confirm).toHaveText("Change to draft")
+    for (const button of [cancel, confirm]) await expect(button).toHaveCSS("height", "44px")
+    await page.mouse.move(0, 0)
+    const first = (await cancel.boundingBox())!
+    const second = (await confirm.boundingBox())!
+    if (width < 640) expect(first.width).toBeCloseTo(second.width, 0)
+    else expect(first.y).toBeCloseTo(second.y, 0)
+    expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`bulk-dialog-actions-${width}.png`) })
+  })
+}

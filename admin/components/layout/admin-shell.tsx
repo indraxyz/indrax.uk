@@ -41,7 +41,7 @@ export function AdminShell({
     : undefined
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div data-slot="admin-shell" className="flex min-h-screen flex-col bg-background">
       <ScrollHeader data-admin-header pinned={menuOpen}>
         <div className={`${SITE_CONTAINER_CLASS} py-4`}>
           <div className="flex items-center justify-between gap-4">

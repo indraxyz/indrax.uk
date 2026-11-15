@@ -285,7 +285,9 @@ button-class consumers, hover/reset behavior, keyboard focus, disabled states,
 and card shadows. Shadows are Tailwind theme utilities so focus rings and state
 variants compose with them. Color variants own their foreground and border colors;
 neutral base classes must not override them. Flat actions keep their color treatment
-without raised shadows or movement. Filter and admin-menu regressions additionally
+without raised shadows or movement. Raised controls are also flat at rest, then lift on hover and
+return flush on press. Focus-ring and pagination-geometry checks wait for their transitions to settle.
+Filter and admin-menu regressions additionally
 check the real Apply/sign-out controls, text contrast, and pointer reset.
 
 The admin development app is built and watched separately from public Vite HMR.
@@ -506,7 +508,7 @@ keyboard focus restoration at 320px and 1280px. The posts layout checks switch
 between cards and the table, persist the choice across reloads, sort through the
 server from table headers by pointer and keyboard (resetting to page one and
 keeping other criteria), keep row actions, scroll a 390px table inside its own
-region without page overflow while the Title column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
+region without page overflow while only the checkbox column stays pinned, and scan the table with axe in both themes. The unauthenticated session check
 asserts the Worker’s exact 503 error when auth is unconfigured, or an empty session
 with 200 when configured. These checks do not require real private writes.
 
@@ -557,9 +559,67 @@ color scheme changes and persisted theme reloads. The preference contract is in
 
 The [admin state specification](specs/admin-zustand-selection.md) defines display
 preference compatibility, navigation/drawer lifecycle and current-page selection
-for bulk Publish, Draft and Archive. Store and orchestration tests exercise
-isolated state, stale-ID pruning, partial outcomes, retries and authorization
+for bulk Publish, Draft and Archive. A compact floating bottom bar appears after selecting a post.
+It provides select-all, a selected count, clear and an upward-opening actions menu. The menu reuses
+Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
+Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
+selection returns focus to a post checkbox. Results remain visible after the bar closes.
+The bar and popovers share a blurred glass surface without a drop shadow: 25% black with dark text in light mode and 25% white
+with light text in dark mode. Content remains visible through
+the tint with a soft 8px backdrop blur. Post actions (cards/table/editor) and admin Public
+menus reuse this surface and shared highlighted-item styling; browser checks scan the post
+and navigation menus in both themes. The surface has an opaque
+forced-colors fallback. The bar respects the mobile safe area, reserves bottom scroll space and reveals focused controls
+that would otherwise be obscured. Tests cover its viewport bounds, scrolling, menu keyboard
+navigation and footer focus at 320px and 1280px. The reserved bottom space belongs to the
+opaque admin shell rather than the patterned body, and footer captures verify the grid cannot
+appear below the admin footer while selection is active.
+Card checkboxes share a footer row with tags, aligned at the right. Tests cover single, wrapped,
+expanded and missing tags at mobile and desktop widths without overlap or horizontal overflow.
+Edit lives inside each post action menu in cards and tables; titles and covers remain edit links. Only the checkbox table column stays pinned;
+the title and remaining columns scroll horizontally.
+The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
+browser checks cover both themes, keyboard selection, 44px label targets and native rendering
+in forced-colors mode.
+Store and orchestration tests exercise isolated state, stale-ID pruning, partial outcomes,
+retries and authorization
 expiry. Browser tests use intercepted private APIs to check cards/table selection,
-confirmation, keyboard behavior, URL/page resets and failure recovery without
+confirmation (including background refreshes that may narrow but never expand approved targets),
+keyboard focus visibility beneath pinned columns, URL/page resets and failure recovery without
 changing database fixtures. These tests complement the existing real authoring
 and session suites; fixture-dependent skips must still be reported.
+
+## Icon navigation and dashboard actions
+
+`admin-dashboard-navigation.spec.ts` covers icon-only public/admin top navigation with accessible
+names, hover titles and 44px targets at mobile and desktop widths in both themes. Dropdown triggers
+use a purpose icon without a chevron. The mobile navigation drawer keeps labelled destinations.
+Dashboard post-total cards link to all/published/draft/archived archive views. The complete writing
+card opens the latest draft, or creates a new post when none exists. Clickable dashboard cards have
+no resting shadow. On hover only the foreground face lifts 4px up/left; the shadow and native-link
+hit area stay anchored to the original bounds, preventing hover flicker. Reduced-motion mode uses
+stationary ring feedback. Informational service cards stay flat. Browser checks verify filter navigation, writing destinations, hover feedback, layout and axe.
+
+Post-list browser checks also verify action placement inside the Title cell, open-only trigger borders, shadowless
+confirmation dialogs and shared button hover lift/reset in both themes. Reduced-motion checks ensure
+buttons remain stationary without a shadow; dialog axe checks cover the confirmation controls.
+Navigation regressions cover hover without underlines for top navigation and breadcrumbs.
+
+Shared interaction coverage verifies pointer-down geometry for dashboard cards, confirmation buttons,
+public writing cards and public carousel controls. Public cards must still reach their article after
+release; reduced-motion controls stay stationary. Informational resume cards retain their existing
+focus and scroll behavior.
+
+Public-surface browser checks distinguish static information cards from clickable writing cards.
+They cover hero/social/repository controls, Stack disclosures, article code-copy controls, filled
+current-nav icons, light/dark mobile/desktop views and reduced motion. Home writing-rail checks verify
+8px vertical clearance and that the raised card remains inside its clipping region.
+
+About Me checks cover mobile/desktop light/dark header hide/reveal within the sheet scroll root,
+stationary top-right Close hit targets, no footer action, Escape/icon dismissal, focus restoration,
+reopening, reduced motion, and unchanged window scrolling. Navigation checks verify 20px filled
+active glyphs inside the existing 44px controls.
+
+Standard action hover checks compare both foreground and background across ghost icon buttons,
+Stack disclosures and resource links, verify contrast of at least 4.5:1 in both themes, and ensure
+colors reset after the pointer leaves. Variant fixtures cover the same contract in both bundles.

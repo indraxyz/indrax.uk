@@ -20,14 +20,21 @@ The shared `SectionCard` owns full-bleed sizing and print resets whenever its ex
 `carouselFullBleed` option is enabled. The first card and every resting snap align to the
 page gutter, while dragging retains access to both viewport edges.
 
-All three card types share shadow feedback on hover and focus within. Keyboard focus keeps
-its existing visible outline, and reduced-motion preferences disable the shadow transition.
+Actionable writing cards are flat at rest, lift on hover and lower on press, using the shared action
+recipe. Informational resume cards stay flat on hover/focus within and retain independent
+scroll regions. Keyboard focus stays visible, and reduced-motion preferences disable lift.
 Tech Stack remains informational; Portfolio keeps its explicit, named GitHub link and
 independent scrollable details. Both resume rails retain bounded card heights, accessible
 previous/next controls, native scrolling before hydration, and the existing two-column print
 layout. No autoplay or new card-wide links are introduced.
 
 ## Navigation plan and specification
+
+Public and admin top-nav destinations use purpose-specific icons with accessible names, native
+hover titles, current-page state and 44px targets. Public icons are Home, Resume, Writing and Stack;
+admin icons are Dashboard, Posts, Public and Sign out. Dropdown triggers use a single purpose icon
+without a chevron. The mobile admin drawer retains labelled destinations and the same route/menu
+state. These navigation changes preserve native links and existing React Router paths.
 
 Use one shared sticky `ScrollHeader` in public and admin shells. After scrolling past
 its own height, 12 px of downward movement slides the header up; upward movement reveals
@@ -44,6 +51,9 @@ transition. Print and the public no-JavaScript fallback keep navigation visible.
 Verify actual scrolling, visible geometry, focus recovery, menu pinning, route changes,
 pointer-focus scrolling, reduced motion and print in Playwright across mobile and desktop
 public/admin pages.
+
+Navigation and breadcrumb links use background feedback for hover/current state, without an
+underline or bottom border. Keyboard focus retains the shared visible ring.
 
 ## Stack content plan and specification
 
@@ -113,3 +123,18 @@ Sticky-controls verification:
   no more than 2 px of separation during header reveal.
 - The repository check passed formatting, lint, generated types, TypeScript and all 854
   unit tests. This follow-up changes no database schema or remote resources.
+
+Active public/admin top-nav destinations use dedicated filled SVG silhouettes; inactive destinations
+use the existing outline icons. Their accessible names, current-page semantics and 44px targets stay
+the same. The filled glyphs inherit theme text color and keep internal details as cutouts.
+
+Informational public cards (resume, Stack, Portfolio and article containers) are flat at rest and on
+hover. Only actionable writing cards use the shared lift/flush-press effect. Icon buttons, including
+social links inside the Contact landmark, use the shared button recipe. Carousel tracks reserve
+8px above and below the cards so a 4px lift and its shadow remain inside the overflow boundary.
+
+Top-nav glyphs are 20px within the existing 44px targets. The About Me sheet uses the shared
+`ScrollHeader` with its own scroll element: 12px direction hysteresis, top-boundary reveal and
+reduced-motion support. Its icon-only Close control stays at the top right independently of the
+collapsing heading, with no footer action. The sheet's named scroll region supports keyboard
+scrolling; native dialog Escape and focus restoration remain in place.

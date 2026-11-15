@@ -1,9 +1,8 @@
-import { PencilLine } from "lucide-react"
 import { memo } from "react"
 import { Link } from "react-router"
 
 import { ListPostActions, PostSelectionCheckbox } from "./post-selection"
-import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
+import { ADMIN_DATE_FORMAT } from "./post-display"
 import { PostStatusLabel } from "./post-status-label"
 import { PostTags } from "@/features/writing/components/post-tags"
 import { PostCover } from "@/features/writing/components/post-cover"
@@ -27,9 +26,6 @@ export const PostRow = memo(function PostRow({
 }) {
   return (
     <li className="flex flex-col items-stretch border-2 border-border bg-card sm:flex-row">
-      {selectable && (
-        <PostSelectionCheckbox id={post.id} title={post.title} disabled={selectionDisabled} />
-      )}
       {mediaUrl(post.coverUrl) && (
         <Link
           to={`/admin/posts/edit/${post.id}`}
@@ -42,10 +38,15 @@ export const PostRow = memo(function PostRow({
           />
         </Link>
       )}
-      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3 p-3 sm:gap-4 sm:p-4">
-        <div className="min-w-0 basis-full space-y-1.5 sm:basis-0 sm:flex-1">
+      <div className="min-w-0 flex-1 p-3 sm:p-4">
+        <div className="space-y-1.5">
           <div className="space-y-2">
-            <PostStatusLabel status={post.status} />
+            <div className="flex items-center justify-between gap-2">
+              <PostStatusLabel status={post.status} />
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <ListPostActions post={post} />
+              </div>
+            </div>
             <div>
               <Link
                 to={`/admin/posts/edit/${post.id}`}
@@ -69,18 +70,20 @@ export const PostRow = memo(function PostRow({
             {" · "}
             Edited {formatDate(post.updatedAt, ADMIN_DATE_FORMAT)}
           </p>
-          <PostTags tags={post.tags} label={`Tags for ${post.title}`} linkTags={false} />
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link
-            to={`/admin/posts/edit/${post.id}`}
-            className={EDIT_ICON_LINK_CLASS}
-            aria-label={`Edit ${post.title}`}
-          >
-            <PencilLine className="h-4 w-4" aria-hidden />
-          </Link>
-
-          <ListPostActions post={post} />
+          {(post.tags.length > 0 || selectable) && (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <PostTags tags={post.tags} label={`Tags for ${post.title}`} linkTags={false} />
+              </div>
+              {selectable && (
+                <PostSelectionCheckbox
+                  id={post.id}
+                  title={post.title}
+                  disabled={selectionDisabled}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </li>

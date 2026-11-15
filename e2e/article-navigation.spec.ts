@@ -9,7 +9,7 @@ const headings = [
   { id: "user-content-last-sub", text: "Last subsection", level: 3 },
 ]
 
-async function preview(page: Page, paragraphs = 8) {
+async function preview(page: Page, paragraphs = 8, withCode = false) {
   await page.route("**/api/writing/preview/toc-fixture?**", (route) =>
     route.fulfill({
       json: {
@@ -29,16 +29,20 @@ async function preview(page: Page, paragraphs = 8) {
         },
         article: {
           headings,
-          html: headings
-            .map(
-              ({ id, text, level }) =>
-                `<h${level} id="${id}" tabindex="-1">${text}</h${level}>` +
-                Array.from(
-                  { length: paragraphs },
-                  () => `<p>${"Readable article text. ".repeat(12)}</p>`
-                ).join("")
-            )
-            .join(""),
+          html:
+            headings
+              .map(
+                ({ id, text, level }) =>
+                  `<h${level} id="${id}" tabindex="-1">${text}</h${level}>` +
+                  Array.from(
+                    { length: paragraphs },
+                    () => `<p>${"Readable article text. ".repeat(12)}</p>`
+                  ).join("")
+              )
+              .join("") +
+            (withCode
+              ? '<figure><pre aria-label="Code sample" tabindex="0"><code>const value = 1</code></pre></figure>'
+              : ""),
         },
       },
     })
@@ -322,3 +326,26 @@ test("short article contents begin with the first heading before the reader scro
     "#user-content-first"
   )
 })
+
+for (const theme of ["light", "dark"]) {
+  test(`article stays flat while its code-copy control lifts in ${theme}`, async ({ page }) => {
+    await page.addInitScript((theme) => {
+      localStorage.setItem("indrax-theme", theme)
+      localStorage.setItem("indrax-analytics-consent", "denied")
+    }, theme)
+    await preview(page, 1, true)
+    const articleCard = page.locator('article [data-slot="card"]')
+    await articleCard.hover()
+    await expect(articleCard).toHaveCSS("box-shadow", "none")
+    await expect(articleCard).toHaveCSS("translate", "none")
+    const copy = page.getByRole("button", { name: "Copy", exact: true })
+    await copy.hover()
+    await expect(copy).toHaveCSS("translate", "-3px -3px")
+    await page.mouse.down()
+    await expect(copy).toHaveCSS("translate", "0px")
+    await page.mouse.move(0, 0)
+    await page.mouse.up()
+    await expect(copy).toHaveCSS("translate", "none")
+    await page.screenshot({ path: test.info().outputPath(`article-flat-${theme}.png`) })
+  })
+}

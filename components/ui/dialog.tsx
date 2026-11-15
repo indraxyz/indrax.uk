@@ -13,7 +13,7 @@ function DialogContent({ className, ...props }: ComponentProps<typeof DialogPrim
       <DialogPrimitive.Backdrop className="fixed inset-0 z-[70] bg-black/60" />
       <DialogPrimitive.Popup
         className={cn(
-          "fixed top-1/2 left-1/2 z-[70] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-2 border-border bg-card p-6 text-card-foreground shadow-soft-lg outline-none",
+          "fixed top-1/2 left-1/2 z-[70] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-2 border-border bg-card p-6 text-card-foreground [box-shadow:none] outline-none",
           className
         )}
         {...props}

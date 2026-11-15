@@ -134,7 +134,7 @@ test.describe("admin post discovery", () => {
         }
       } else await expect(card.locator("img")).toHaveCount(0)
       await expect(
-        card.getByRole("link", { name: "Edit Admin archive fixture 1", exact: true })
+        card.getByRole("button", { name: "Actions for Admin archive fixture 1", exact: true })
       ).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
         width

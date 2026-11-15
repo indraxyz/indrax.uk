@@ -12,7 +12,7 @@ export function PostCardsSkeleton({ rail = false }: { rail?: boolean }) {
         <div
           key={index}
           className={cn(
-            "variant-secondary variant-border flex flex-col border-2 border-border bg-card shadow-soft",
+            "variant-secondary variant-border flex flex-col border-2 border-border bg-card",
             rail && RAIL_CARD_WIDTH
           )}
         >

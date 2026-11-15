@@ -2,25 +2,30 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { focusControlClassNames } from "@/components/ui/variants"
+import {
+  actionHoverClassNames,
+  actionLiftClassNames,
+  actionTransitionClassNames,
+  focusControlClassNames,
+} from "@/components/ui/variants"
 
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none border-2 text-sm font-black uppercase tracking-[0.14em] transition-colors duration-150 ease-out ${focusControlClassNames} disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none [&_svg]:pointer-events-none [&_:where(svg:not([data-loading-icon]))]:size-4 [&_svg]:shrink-0`,
+  `action-press inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none border-2 text-sm font-black uppercase tracking-[0.14em] ${actionTransitionClassNames} ${focusControlClassNames} disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none [&_svg]:pointer-events-none [&_:where(svg:not([data-loading-icon]))]:size-4 [&_svg]:shrink-0`,
   {
     variants: {
       variant: {
         primary:
-          "variant-primary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-primary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         secondary:
-          "variant-secondary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-secondary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         tertiary:
-          "variant-tertiary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
+          "variant-tertiary border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)]",
         destructive:
           "variant-destructive border-[var(--semantic-border-strong)] bg-[var(--variant-bg)] text-[var(--variant-fg)] hover:bg-[var(--variant-hover)]",
         ghost:
-          "variant-ghost border-transparent bg-[var(--variant-bg)] text-[var(--variant-fg)] shadow-none hover:border-border hover:bg-[var(--variant-hover)]",
+          "variant-ghost border-transparent bg-[var(--variant-bg)] text-[var(--variant-fg)] shadow-none hover:border-border",
       },
       appearance: {
         raised: "",
@@ -35,9 +40,13 @@ const buttonVariants = cva(
     },
     compoundVariants: [
       {
-        variant: ["primary", "secondary", "tertiary", "destructive"],
+        variant: ["primary", "secondary", "tertiary", "ghost"],
+        className: actionHoverClassNames,
+      },
+      {
+        variant: ["primary", "secondary", "tertiary", "destructive", "ghost"],
         appearance: "raised",
-        className: "shadow-soft-sm",
+        className: actionLiftClassNames,
       },
     ],
     defaultVariants: {

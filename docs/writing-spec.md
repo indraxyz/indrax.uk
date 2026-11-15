@@ -456,10 +456,11 @@ only; HTTP responses continue to use `no-store`.
 
 ### Post list actions
 
-The editor and post list share the same action order. Each admin post card keeps
-Edit directly accessible, followed by an overflow menu
-ordered by task: Visit (published) or Preview (draft/archived), Publish/Unpublish,
-Archive, then a divider and Delete. Archived rows omit Archive. The same shared
+The editor and post list share their status and destructive actions. Post-list cards and tables
+put Edit first inside the action menu, followed by Visit (published) or Preview (draft/archived),
+Publish/Unpublish, Archive, then a divider and Delete. Titles and covers also remain direct editor
+links. Card checkboxes share a row with tags on the right; wrapping or expanding tags keeps
+selection aligned without overlapping content. Archived rows omit Archive. The same shared
 post action component handles signing previews, publication and deletion; list
 rows pass summary fields and never download the article body just to show actions.
 
@@ -468,3 +469,36 @@ refresh the active archive after success. List actions preserve the current URL,
 filters and pagination instead of redirecting to an unfiltered list. Archive
 preserves the post and cover; Delete uses the existing managed R2 cleanup flow.
 Row controls use 44px targets and a post-specific accessible menu name.
+
+Post-list action triggers reserve a transparent border at rest and on hover; the border becomes
+visible while their menu or confirmation is open. The vertical-dots action trigger sits before the title
+inside the Title cell, with no separate Actions column; only selection is sticky. Confirmation dialogs have no raised shadow. Shared raised
+buttons are flat at rest and smoothly lift 3px up/left on pointer hover, with a hard shadow at the
+original position. Explicit flat controls stay flat; ghost icon buttons use the shared lift when raised. Reduced-motion and touch users receive no lift;
+keyboard focus retains its ring and disabled buttons do not animate. Pressing lowers the face flush with its original bounds and hides the shadow until release.
+A subtle brightness change also provides held-state feedback on touch devices. The same recipe covers bordered action controls in both applications and
+public writing cards; dashboard card faces also lower on press. Navigation and flat menu triggers
+retain their background/focus treatment.
+
+### Admin overview actions
+
+Post totals are native links to the full archive or the corresponding Published, Draft or Archived
+status filter. The whole Continue writing card opens the most recently edited draft, or a new post
+when none exists. These actionable cards are flat at rest. On hover the foreground lifts 4px up
+and left while the shadow and native-link hit area remain anchored, avoiding pointer flicker.
+Reduced-motion mode keeps the face stationary and uses ring feedback. Workspace-service cards
+are informational and remain flat. The existing archive URL parser, status APIs, and TanStack Query
+queries remain the single data and navigation contracts.
+
+Public article containers are informational and remain flat. Code-copy and reaction controls reuse
+the existing button recipes, including the shared hover/press behavior; they retain their original
+clipboard and reaction handlers. The Home writing rail reserves vertical space for raised writing
+cards, while Stack and Portfolio information panels remain stationary without a hover shadow.
+
+Standard button/control hover colors share the secondary semantic pair: green/white in light
+mode and lime/deep green in dark mode. Destructive actions retain their warning palette;
+selected toggles and navigation retain their own state cues with paired readable foregrounds.
+
+Hover faces use a different color from the strong border/shadow token so the raised edge remains
+visible. Confirmation actions share a minimum 44px height, use the default button padding, and stack
+at narrow widths so long labels fit without changing the Cancel target size.

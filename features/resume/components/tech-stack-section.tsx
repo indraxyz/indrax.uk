@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  cardFeedbackClassNames,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { SECTION_COPY } from "@/features/resume/data/page"
 import { techStackGroups } from "@/features/resume/utils/groups"
@@ -29,8 +23,7 @@ export function TechStackSection() {
           height="2xl"
           className={cn(
             "variant-secondary variant-border bg-[var(--variant-soft)]",
-            RAIL_CARD_WIDTH,
-            cardFeedbackClassNames
+            RAIL_CARD_WIDTH
           )}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">

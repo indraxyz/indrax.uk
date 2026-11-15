@@ -39,7 +39,7 @@ export const PostCard = memo(function PostCard({
       variant="card"
       // `relative` is what the title's stretched hit area below is measured against.
       className={cn(
-        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)]",
+        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)] cursor-pointer [--action-lift-distance:4px]",
         cardFeedbackClassNames,
         className
       )}
@@ -54,7 +54,7 @@ export const PostCard = memo(function PostCard({
           <Link
             prefetch="none"
             to={`${WRITING_CONFIG.basePath}/${post.slug}`}
-            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:underline"
+            className="after:absolute after:inset-0 after:-right-1 after:-bottom-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:underline"
           >
             {post.title}
           </Link>

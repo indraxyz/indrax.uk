@@ -14,7 +14,7 @@ test.describe("contact actions", () => {
       await whenHydrated(page)
       const heroIcon = await page.getByRole("link", { name: "GitHub profile" }).evaluate((node) => {
         const style = getComputedStyle(node)
-        return { background: style.backgroundColor, color: style.color, shadow: style.boxShadow }
+        return { background: style.backgroundColor, color: style.color }
       })
       const trigger = page.getByRole("button", { name: "Open about me" })
       await trigger.click()
@@ -29,7 +29,6 @@ test.describe("contact actions", () => {
         await expect(icon).toHaveCSS("height", "44px")
         await expect(icon).toHaveCSS("background-color", heroIcon.background)
         await expect(icon).toHaveCSS("color", heroIcon.color)
-        await expect(icon).toHaveCSS("box-shadow", heroIcon.shadow)
       }
       await expect(sheet.getByRole("link", { name: EMAIL })).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
@@ -41,7 +40,7 @@ test.describe("contact actions", () => {
       await trigger.click()
       await sheet
         .getByRole("button", {
-          name: width < 640 ? "Close about me" : "Close",
+          name: "Close about me",
           exact: true,
         })
         .click()
@@ -104,4 +103,76 @@ test.describe("contact actions", () => {
     // contact row is now the single place the profile is offered.
     await expect(page.getByRole("link", { name: "GitHub profile" })).toHaveCount(1)
   })
+})
+
+for (const theme of ["light", "dark"]) {
+  for (const width of [320, 1280]) {
+    test(`About Me hides its heading but keeps Close available at ${width}px in ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 700 })
+      await page.addInitScript((theme) => {
+        localStorage.setItem("indrax-theme", theme)
+        localStorage.setItem("indrax-analytics-consent", "denied")
+      }, theme)
+      await page.goto("/resume")
+      const trigger = page.getByRole("button", { name: "Open about me", exact: true })
+      await trigger.click()
+      const sheet = page.getByRole("dialog", { name: "About me", exact: true })
+      const pane = sheet.getByRole("region", { name: "About me details", exact: true })
+      const header = pane.locator("header")
+      const close = sheet.getByRole("button", { name: "Close about me", exact: true })
+      await expect(pane).toHaveAttribute("data-scroll-header-scope", "")
+      await expect(header).toHaveAttribute("data-scroll-hidden", "false")
+      await expect(close).toHaveCSS("width", "44px")
+      await expect(close).toHaveCSS("height", "44px")
+      await expect(close.locator("svg")).toHaveCSS("width", "20px")
+      await expect(sheet.locator('[data-slot="sheet-footer"]')).toHaveCount(0)
+      const windowY = await page.evaluate(() => scrollY)
+      await pane.evaluate((node) => node.scrollTo({ top: 600 }))
+      await expect(header).toHaveAttribute("data-scroll-hidden", "true")
+      await expect
+        .poll(async () => {
+          const bounds = (await header.boundingBox())!
+          return bounds.y + bounds.height - (await pane.boundingBox())!.y
+        })
+        .toBeLessThanOrEqual(1)
+      await expect(close).toBeVisible()
+      const closeBounds = (await close.boundingBox())!
+      const sheetBounds = (await sheet.boundingBox())!
+      expect(closeBounds.y - sheetBounds.y).toBeCloseTo(12, 0)
+      expect(sheetBounds.x + sheetBounds.width - closeBounds.x - closeBounds.width).toBeCloseTo(
+        12,
+        0
+      )
+      expect(await page.evaluate(() => scrollY)).toBe(windowY)
+      await page.screenshot({ path: test.info().outputPath(`about-hidden-${theme}-${width}.png`) })
+      await pane.evaluate((node) => node.scrollTo({ top: 520 }))
+      await expect(header).toHaveAttribute("data-scroll-hidden", "false")
+      await expect
+        .poll(async () => (await header.boundingBox())!.y - (await pane.boundingBox())!.y)
+        .toBeCloseTo(0, 0)
+      await page.screenshot({ path: test.info().outputPath(`about-shown-${theme}-${width}.png`) })
+      await close.focus()
+      await page.keyboard.press("Enter")
+      await expect(sheet).toBeHidden()
+      await expect(trigger).toBeFocused()
+      await trigger.click()
+      await expect(pane.locator("header")).toHaveAttribute("data-scroll-hidden", "false")
+      await page.keyboard.press("Escape")
+      await expect(sheet).toBeHidden()
+      await expect(trigger).toBeFocused()
+    })
+  }
+}
+
+test("About Me respects reduced motion when its own header hides", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await page.goto("/resume")
+  await page.getByRole("button", { name: "Open about me", exact: true }).click()
+  const pane = page.getByRole("region", { name: "About me details", exact: true })
+  await expect(pane).toHaveCSS("transition-property", "none")
+  await pane.evaluate((node) => node.scrollTo({ top: 600 }))
+  await expect(pane.locator("header")).toHaveAttribute("data-scroll-hidden", "true")
+  await expect(page.getByRole("button", { name: "Close about me", exact: true })).toBeVisible()
 })

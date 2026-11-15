@@ -73,7 +73,7 @@ export function CardCarousel({
         <div
           ref={trackRef}
           className={cn(
-            "flex touch-pan-y touch-pinch-zoom gap-6",
+            "flex touch-pan-y touch-pinch-zoom gap-6 py-2 print:py-0",
             // Padding moves with the track: inset the first card in the initial
             // HTML, then let cards scroll all the way to both viewport edges.
             fullBleed &&
