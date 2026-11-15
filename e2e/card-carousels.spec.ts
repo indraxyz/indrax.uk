@@ -180,7 +180,14 @@ for (const width of [390, 768, 1440, 1920]) {
     await expect(writingCard).toBeVisible()
     // Compare settled carousels: recent writing mounts after its API response,
     // while the resume initially supplies the native-scrolling SSR fallback.
-    await expect(page.getByRole("group", { name: "Writing carousel navigation" })).toBeVisible()
+    const writingControls = page.getByRole("group", { name: "Writing carousel navigation" })
+    await expect(writingControls).toBeVisible()
+    const writingLeft = await writingControls.evaluate(
+      (node) => node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
+    )
+    await expect
+      .poll(async () => Math.abs((await writingCard.boundingBox())!.x - writingLeft))
+      .toBeLessThanOrEqual(1)
     const writingBounds = (await writingCard.boundingBox())!
     await writingCard.hover()
     await expect(writingCard).toHaveCSS("translate", "none")
@@ -190,12 +197,16 @@ for (const width of [390, 768, 1440, 1920]) {
     for (const title of ["Tech Stack", "Portfolio"]) {
       const viewport = page.getByRole("region", { name: title, exact: true })
       const card = viewport.locator("[data-print-columns] > *").first()
-      await expect(page.getByRole("group", { name: `${title} carousel navigation` })).toBeVisible()
+      const controls = page.getByRole("group", { name: `${title} carousel navigation` })
+      await expect(controls).toBeVisible()
+      const expectedLeft = await controls.evaluate(
+        (node) => node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
+      )
       await expect
         .poll(async () => Math.abs((await card.boundingBox())!.width - writingBounds.width))
         .toBeLessThanOrEqual(1)
       await expect
-        .poll(async () => Math.abs((await card.boundingBox())!.x - writingBounds.x))
+        .poll(async () => Math.abs((await card.boundingBox())!.x - expectedLeft))
         .toBeLessThanOrEqual(1)
       await card.hover()
       await expect(card).toHaveCSS("box-shadow", "none")
