@@ -213,8 +213,15 @@ guarantee a CPU budget or prevent simultaneous uncached renders across isolates.
 - `admin/components/` owns the common admin shell, navigation and authentication
   buttons. `features/writing/components/admin/` owns editor and post-management UI.
 - `components/layout/public-shell.tsx` owns the public layout; `components/ui/`
-  provides shared primitives and variants. Public/admin navigation uses React
-  Router links and explicit active-state helpers.
+  provides shared primitives and variants. `Button`, bordered controls and actionable
+  writing cards reuse the shared hover/press recipes; informational cards remain static.
+  Popovers and admin menus reuse one glass surface and menu-item recipe. The native
+  `Checkbox` preserves browser semantics and forced-colors rendering. Public/admin
+  navigation uses React Router links, explicit active-state helpers and a shared
+  filled/outline `NavigationIcon`. The existing `ScrollHeader` supports both window
+  scrolling and the About Me sheet's scroll element; it owns the measured sticky offset.
+  Behavior and browser coverage are documented in `docs/navigation-carousel-ux.md`,
+  `docs/writing-spec.md` and `docs/testing.md`.
 - `config/site.ts` owns global `SITE_URL`, `SITE_HOST`, `absoluteUrl` and
   `SOCIAL_LINKS`. Profile-specific configuration remains with its feature.
 - `features/home` and `features/resume` own profile data and PDF/social-card

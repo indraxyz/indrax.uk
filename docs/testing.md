@@ -282,8 +282,10 @@ PLAYWRIGHT_BROWSER=firefox E2E_PORT=3212 npx playwright test --config playwright
 `e2e/variants.spec.ts` exercises the shared UI class recipes against both applications'
 actual stylesheets in light and dark mode. It checks every color variant, raw
 button-class consumers, hover/reset behavior, keyboard focus, disabled states,
-and card shadows. Shadows are Tailwind theme utilities so focus rings and state
-variants compose with them. Color variants own their foreground and border colors;
+and card shadows. Raised actions use the shared `action-lift` / `action-press` recipes in
+`components/ui/variants.ts` and `app/globals.css`; their hard shadows explicitly compose with
+Tailwind focus-ring variables. Static surfaces do not inherit actionable hover behavior.
+Color variants own their foreground and border colors;
 neutral base classes must not override them. Flat actions keep their color treatment
 without raised shadows or movement. Raised controls are also flat at rest, then lift on hover and
 return flush on press. Focus-ring and pagination-geometry checks wait for their transitions to settle.
