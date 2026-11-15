@@ -29,6 +29,12 @@ layout. No autoplay or new card-wide links are introduced.
 
 ## Navigation plan and specification
 
+Public and admin top-nav destinations use purpose-specific icons with accessible names, native
+hover titles, current-page state and 44px targets. Public icons are Home, Resume, Writing and Stack;
+admin icons are Dashboard, Posts, Public and Sign out. Dropdown triggers use a single purpose icon
+without a chevron. The mobile admin drawer retains labelled destinations and the same route/menu
+state. These navigation changes preserve native links and existing React Router paths.
+
 Use one shared sticky `ScrollHeader` in public and admin shells. After scrolling past
 its own height, 12 px of downward movement slides the header up; upward movement reveals
 it. Direction changes below that threshold do not flicker the header. At the top it always

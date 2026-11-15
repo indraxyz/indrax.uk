@@ -1,5 +1,5 @@
 import { Menu as DropdownMenu } from "@base-ui/react/menu"
-import { ChevronDown, FileText, Globe, House, LogOut, Menu, X } from "lucide-react"
+import { Files, Globe, LayoutDashboard, LogOut, Menu, X } from "lucide-react"
 import { Link } from "react-router"
 import { useEffect, useRef } from "react"
 
@@ -27,8 +27,8 @@ import { adminNavigationStore } from "@/admin/state/admin-navigation"
 import { cn } from "@/lib/utils"
 
 const links = [
-  { href: "/admin", label: "Dashboard", page: "home", icon: House },
-  { href: "/admin/posts", label: "Posts", page: "posts", icon: FileText },
+  { href: "/admin", label: "Dashboard", page: "home", icon: LayoutDashboard },
+  { href: "/admin/posts", label: "Posts", page: "posts", icon: Files },
 ] as const
 
 const publicLinks = [
@@ -51,15 +51,16 @@ function PublicMenu({
   return (
     <DropdownMenu.Root open={open} onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger
+        aria-label="Public"
+        title="Public"
         className={
           inSheet
             ? cn(controlClassNames, "min-h-12 w-full px-4 py-3 text-left")
-            : cn(navigationLinkClassNames, "gap-1.5")
+            : cn(navigationLinkClassNames, "size-11 shrink-0 p-0")
         }
       >
-        {inSheet && <Globe className="h-4 w-4" aria-hidden />}
-        Public
-        <ChevronDown className={cn("h-3.5 w-3.5", inSheet && "ml-auto")} aria-hidden />
+        <Globe className="size-4" aria-hidden />
+        {inSheet && "Public"}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Positioner align="end" sideOffset={8} className="z-[70]">
@@ -125,9 +126,9 @@ export function AdminNavigation({ activePage, signedIn }: AdminNavigationProps) 
               aria-label={label}
               aria-current={activePage === page ? "page" : undefined}
               title={label}
-              className={cn(navigationLinkClassNames, page === "home" && "min-w-11")}
+              className={cn(navigationLinkClassNames, "size-11 shrink-0 p-0")}
             >
-              {page === "home" ? <Icon className="h-4 w-4" aria-hidden /> : label}
+              <Icon className="size-4" aria-hidden />
             </Link>
           ))}
           <PublicMenu

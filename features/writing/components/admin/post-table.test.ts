@@ -68,7 +68,7 @@ describe("PostTable", () => {
     expect(html).toContain("Posts, ordered by recently updated")
     expect(html.match(/<th scope="row"/g)).toHaveLength(2)
     expect(html).toContain('href="/admin/posts/edit/published-id"')
-    expect(html).toContain('aria-label="Edit Draft post"')
+    expect(html).not.toContain('aria-label="Edit Draft post"')
     expect(html).toContain('aria-label="Actions for Published post"')
   })
 

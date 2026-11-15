@@ -562,8 +562,8 @@ It provides select-all, a selected count, clear and an upward-opening actions me
 Base UI keyboard navigation and offers Publish, Draft and Archive with explicit confirmation.
 Escape and confirmation cancellation return focus to the menu trigger; clearing or completing
 selection returns focus to a post checkbox. Results remain visible after the bar closes.
-The bar and popovers share a blurred glass surface without a drop shadow: 45% black in light mode and 45% white in
-dark mode, both with dark text for contrast. Content remains visible through
+The bar and popovers share a blurred glass surface without a drop shadow: 25% black with dark text in light mode and 25% white
+with light text in dark mode. Content remains visible through
 the tint with a soft 8px backdrop blur. Post actions (cards/table/editor) and admin Public
 menus reuse this surface and shared highlighted-item styling; browser checks scan the post
 and navigation menus in both themes. The surface has an opaque
@@ -572,7 +572,9 @@ that would otherwise be obscured. Tests cover its viewport bounds, scrolling, me
 navigation and footer focus at 320px and 1280px. The reserved bottom space belongs to the
 opaque admin shell rather than the patterned body, and footer captures verify the grid cannot
 appear below the admin footer while selection is active.
-Card checkboxes sit immediately before status labels. Only the checkbox table column stays pinned;
+Card checkboxes share a footer row with tags, aligned at the right. Tests cover single, wrapped,
+expanded and missing tags at mobile and desktop widths without overlap or horizontal overflow.
+Edit lives inside each post action menu in cards and tables; titles and covers remain edit links. Only the checkbox table column stays pinned;
 the title and remaining columns scroll horizontally.
 The shared native Checkbox uses square theme-token borders and checked/mixed indicators;
 browser checks cover both themes, keyboard selection, 44px label targets and native rendering
@@ -584,3 +586,14 @@ confirmation (including background refreshes that may narrow but never expand ap
 keyboard focus visibility beneath pinned columns, URL/page resets and failure recovery without
 changing database fixtures. These tests complement the existing real authoring
 and session suites; fixture-dependent skips must still be reported.
+
+## Icon navigation and dashboard actions
+
+`admin-dashboard-navigation.spec.ts` covers icon-only public/admin top navigation with accessible
+names, hover titles and 44px targets at mobile and desktop widths in both themes. Dropdown triggers
+use a purpose icon without a chevron. The mobile navigation drawer keeps labelled destinations.
+Dashboard post-total cards link to all/published/draft/archived archive views. The complete writing
+card opens the latest draft, or creates a new post when none exists. Clickable dashboard cards have
+no resting shadow. On hover only the foreground face lifts 4px up/left; the shadow and native-link
+hit area stay anchored to the original bounds, preventing hover flicker. Reduced-motion mode uses
+stationary ring feedback. Informational service cards stay flat. Browser checks verify filter navigation, writing destinations, hover feedback, layout and axe.

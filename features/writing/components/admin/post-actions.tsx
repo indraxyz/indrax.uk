@@ -6,11 +6,12 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  PencilLine,
   RefreshCw,
   Send,
   Trash2,
 } from "lucide-react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   cloneElement,
@@ -199,6 +200,17 @@ export function PostActions({
                     Save the post to enable these actions.
                   </p>
                 )}
+                {context === "list" && savedPost && (
+                  <Menu.Item
+                    render={<Link to={`/admin/posts/edit/${post.id}`} />}
+                    aria-label={`Edit ${post.title}`}
+                    disabled={busy}
+                    className={menuItemClass}
+                  >
+                    <PencilLine className="size-4" aria-hidden />
+                    Edit
+                  </Menu.Item>
+                )}
                 <Menu.Item
                   disabled={requiresSaved}
                   closeOnClick={false}
@@ -266,9 +278,12 @@ export function PostActions({
                     setDeleteError(null)
                     setDeleteOpen(true)
                   }}
-                  className={menuItemClass}
+                  className={cn(
+                    menuItemClass,
+                    "data-highlighted:bg-destructive data-highlighted:text-destructive-foreground"
+                  )}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                   Delete
                 </Menu.Item>
               </Menu.Popup>

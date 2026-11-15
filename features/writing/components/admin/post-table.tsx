@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, PencilLine } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 import { memo, useId, useMemo } from "react"
 import { Link, useSearchParams } from "react-router"
 import {
@@ -12,7 +12,7 @@ import {
 
 import { PostTags } from "@/features/writing/components/post-tags"
 import { ListPostActions, PostSelectionCheckbox } from "./post-selection"
-import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
+import { ADMIN_DATE_FORMAT } from "./post-display"
 import { PostStatusLabel } from "./post-status-label"
 import type { AdminPostSummary } from "@/features/writing/types"
 import {
@@ -113,13 +113,6 @@ const columns = column.columns([
     meta: { srOnlyHeader: true, className: "w-0" },
     cell: ({ row }) => (
       <div className="flex items-center justify-end gap-2">
-        <Link
-          to={`/admin/posts/edit/${row.original.id}`}
-          className={EDIT_ICON_LINK_CLASS}
-          aria-label={`Edit ${row.original.title}`}
-        >
-          <PencilLine className="h-4 w-4" aria-hidden />
-        </Link>
         <ListPostActions post={row.original} />
       </div>
     ),

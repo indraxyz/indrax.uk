@@ -109,9 +109,7 @@ test.describe("authoring", () => {
       ["Drafts", rows.filter((row) => row.status === "draft").length],
       ["Archived", rows.filter((row) => row.status === "archived").length],
     ] as const) {
-      const card = summary
-        .locator("div.border-2")
-        .filter({ has: page.getByText(label, { exact: true }) })
+      const card = summary.getByRole("link").filter({ has: page.getByText(label, { exact: true }) })
       await expect(card.locator("p").last()).toHaveText(String(value))
     }
     const latestDraft = rows.find((row) => row.status === "draft")

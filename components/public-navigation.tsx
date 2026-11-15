@@ -1,48 +1,35 @@
-import { House } from "lucide-react"
+import { BookOpenText, FileUser, House, Layers } from "lucide-react"
 import { Link } from "react-router"
 
 import { navigationLinkClassNames } from "@/components/ui/navigation-link"
 import { WRITING_CONFIG } from "@/features/writing/config"
+import { cn } from "@/lib/utils"
 
 export type PublicPage = "home" | "resume" | "writing" | "tech-stack"
+
+const LINKS = [
+  { to: "/", label: "Home", page: "home", icon: House },
+  { to: "/resume", label: "Resume", page: "resume", icon: FileUser },
+  { to: WRITING_CONFIG.basePath, label: WRITING_CONFIG.title, page: "writing", icon: BookOpenText },
+  { to: "/tech-stack", label: "Stack", page: "tech-stack", icon: Layers },
+] as const
 
 export function PublicNavigation({ activePage }: { activePage?: PublicPage | null }) {
   return (
     <nav aria-label="Site" className="flex max-w-full flex-wrap items-center gap-1 sm:gap-2">
-      <Link
-        prefetch="none"
-        to="/"
-        aria-label="Home"
-        title="Home"
-        aria-current={activePage === "home" ? "page" : undefined}
-        className={navigationLinkClassNames}
-      >
-        <House className="h-4 w-4" aria-hidden />
-      </Link>
-      <Link
-        prefetch="none"
-        to="/resume"
-        aria-current={activePage === "resume" ? "page" : undefined}
-        className={navigationLinkClassNames}
-      >
-        Resume
-      </Link>
-      <Link
-        prefetch="none"
-        to={WRITING_CONFIG.basePath}
-        aria-current={activePage === "writing" ? "page" : undefined}
-        className={navigationLinkClassNames}
-      >
-        {WRITING_CONFIG.title}
-      </Link>
-      <Link
-        prefetch="none"
-        to="/tech-stack"
-        aria-current={activePage === "tech-stack" ? "page" : undefined}
-        className={navigationLinkClassNames}
-      >
-        Stack
-      </Link>
+      {LINKS.map(({ to, label, page, icon: Icon }) => (
+        <Link
+          key={page}
+          prefetch="none"
+          to={to}
+          aria-label={label}
+          title={label}
+          aria-current={activePage === page ? "page" : undefined}
+          className={cn(navigationLinkClassNames, "size-11 shrink-0 p-0")}
+        >
+          <Icon className="size-4" aria-hidden />
+        </Link>
+      ))}
     </nav>
   )
 }

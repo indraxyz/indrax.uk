@@ -1,4 +1,5 @@
 import { ArrowRight, FilePenLine, Plus } from "lucide-react"
+import type { ReactNode } from "react"
 import { Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { adminApi, adminKeys } from "@/features/writing/api/client"
@@ -9,6 +10,42 @@ import { useAdminSession } from "@/admin/auth/session"
 import { controlClassNames } from "@/components/ui/variants"
 import { AdminShell } from "@/admin/components/layout/admin-shell"
 import { cn } from "@/lib/utils"
+
+/** The link hit area and shadow stay put; only the opaque card face lifts. */
+function DashboardActionCard({
+  to,
+  label,
+  children,
+  className,
+}: {
+  to: string
+  label: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      className="group relative block h-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span
+        data-slot="dashboard-card-shadow"
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[var(--semantic-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none"
+      />
+      <div
+        data-slot="dashboard-card-face"
+        className={cn(
+          "relative h-full border-2 border-border bg-[var(--color-background)] bg-[image:linear-gradient(var(--color-card),var(--color-card))] transition-transform duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0 motion-reduce:group-hover:ring-2 motion-reduce:group-hover:ring-ring",
+          className
+        )}
+      >
+        {children}
+      </div>
+    </Link>
+  )
+}
 
 export function Component() {
   const session = useAdminSession()
@@ -84,42 +121,47 @@ export function Component() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "All posts", value: total },
-            { label: "Published", value: published },
-            { label: "Drafts", value: drafts },
-            { label: "Archived", value: archived },
-          ].map(({ label, value }) => (
-            <div key={label} className="border-2 border-border bg-card px-5 py-4 shadow-soft">
+            { label: "All posts", value: total, to: "/admin/posts" },
+            { label: "Published", value: published, to: "/admin/posts?status=published" },
+            { label: "Drafts", value: drafts, to: "/admin/posts?status=draft" },
+            { label: "Archived", value: archived, to: "/admin/posts?status=archived" },
+          ].map(({ label, value, to }) => (
+            <DashboardActionCard
+              key={label}
+              to={to}
+              label={`${label}: ${value} ${value === 1 ? "post" : "posts"}`}
+              className="px-5 py-4"
+            >
               <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
                 {label}
               </p>
               <p className="mt-2 text-3xl font-black tabular-nums">{value}</p>
-            </div>
+            </DashboardActionCard>
           ))}
         </div>
       </section>
 
-      <section
-        aria-labelledby="next-heading"
-        className="flex flex-wrap items-start justify-between gap-4 border-2 border-border bg-card p-6 shadow-soft"
-      >
-        <div className="space-y-2">
-          <h2 id="next-heading" className="text-lg font-black uppercase tracking-tight">
-            Continue writing
-          </h2>
-          <p className="text-sm font-semibold text-muted-foreground">
-            {latestDraft
-              ? "Your most recently edited draft is “" + latestDraft.title + "”."
-              : "Start a draft to prepare your next article."}
-          </p>
-        </div>
-        <Link
+      <section aria-labelledby="next-heading">
+        <DashboardActionCard
           to={latestDraft ? "/admin/posts/edit/" + latestDraft.id : "/admin/posts/new"}
-          className={cn(controlClassNames, "px-3 py-2")}
+          label={latestDraft ? "Edit draft" : "New post"}
+          className="flex flex-wrap items-start justify-between gap-4 p-6"
         >
-          <FilePenLine className="h-3.5 w-3.5" aria-hidden />
-          {latestDraft ? "Edit draft" : "New post"}
-        </Link>
+          <div className="space-y-2">
+            <h2 id="next-heading" className="text-lg font-black uppercase tracking-tight">
+              Continue writing
+            </h2>
+            <p className="text-sm font-semibold text-muted-foreground">
+              {latestDraft
+                ? "Your most recently edited draft is “" + latestDraft.title + "”."
+                : "Start a draft to prepare your next article."}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em]">
+            <FilePenLine className="h-3.5 w-3.5" aria-hidden />
+            {latestDraft ? "Edit draft" : "New post"}
+          </span>
+        </DashboardActionCard>
       </section>
 
       <section aria-labelledby="services-heading" className="space-y-4">
@@ -133,7 +175,7 @@ export function Component() {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {services.map(({ name, state, description }) => (
-            <div key={name} className="border-2 border-border bg-card px-5 py-4 shadow-soft">
+            <div key={name} className="border-2 border-border bg-card px-5 py-4 [box-shadow:none]">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="text-sm font-black uppercase tracking-tight">{name}</h3>
                 <span className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">

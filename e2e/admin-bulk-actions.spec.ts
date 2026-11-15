@@ -1,9 +1,13 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
+import type { Tag } from "../features/writing/types"
 import { THEME_STORAGE_KEY } from "../lib/theme"
 
 const ids = [1, 2, 3].map((n) => `550e8400-e29b-41d4-a716-44665544000${n}`)
-async function fixture(page: Page) {
+async function fixture(
+  page: Page,
+  tags: Tag[] = [{ id: "tag-fixture", slug: "engineering", name: "Engineering" }]
+) {
   const posts = (["draft", "published", "archived"] as const).map((status, index) => ({
     id: ids[index],
     title: `${status} fixture`,
@@ -14,7 +18,7 @@ async function fixture(page: Page) {
     coverAlt: null,
     publishedAt: null,
     updatedAt: "2026-01-01T00:00:00Z",
-    tags: [],
+    tags: index === 0 ? tags : [],
     readingTime: 1,
     viewCount: 0,
   }))
@@ -146,9 +150,9 @@ for (const theme of ["light", "dark"] as const) {
       menu.getByRole("menuitem", { name: "Change to draft", exact: true })
     ).toHaveAttribute("aria-disabled", "true")
     await expect(menu).toHaveCSS("box-shadow", "none")
-    const glassBackground = theme === "light" ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.45)"
+    const glassBackground = theme === "light" ? "rgba(0, 0, 0, 0.25)" : "rgba(255, 255, 255, 0.25)"
     await expect(menu).toHaveCSS("background-color", glassBackground)
-    await expect(menu).toHaveCSS("color", "rgb(0, 0, 0)")
+    await expect(menu).toHaveCSS("color", theme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)")
     await expect(selection(page)).toHaveCSS("background-color", glassBackground)
     await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
     await expect(selection(page)).toHaveCSS("box-shadow", "none")
@@ -211,8 +215,14 @@ for (const width of [320, 1280]) {
     const checkboxBox = (await checkbox.boundingBox())!
     const statusBox = (await status.boundingBox())!
     expect(checkboxBox.width).toBeGreaterThanOrEqual(20)
-    expect(checkboxBox.x + checkboxBox.width).toBeLessThan(statusBox.x)
-    expect(checkboxBox.y).toBeLessThan(statusBox.y + statusBox.height)
+    const cardBox = (await card.boundingBox())!
+    expect(checkboxBox.y).toBeGreaterThan(statusBox.y + statusBox.height)
+    const tagsBox = (await card
+      .getByRole("group", { name: "Tags for draft fixture", exact: true })
+      .boundingBox())!
+    expect(checkboxBox.y + checkboxBox.height / 2).toBeCloseTo(tagsBox.y + tagsBox.height / 2, 0)
+    expect(cardBox.x + cardBox.width - checkboxBox.x - checkboxBox.width).toBeLessThanOrEqual(36)
+    expect(cardBox.y + cardBox.height - checkboxBox.y - checkboxBox.height).toBeLessThanOrEqual(36)
     await checkbox.check()
     await expect(selection(page).getByRole("status")).toHaveText("1 selected")
     for (const name of ["Clear selection", "Bulk post actions"]) {
@@ -290,6 +300,47 @@ for (const width of [320, 1280]) {
     await expect(floating).toHaveCount(0)
     await expect(page.locator("body")).toHaveCSS("padding-bottom", "0px")
     await expect(shell).toHaveCSS("padding-bottom", "0px")
+  })
+}
+
+for (const width of [320, 1280]) {
+  test(`card selection stays aligned with wrapped and expanded tags at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await fixture(
+      page,
+      ["Engineering", "TypeScript", "React", "Cloudflare", "Accessibility"].map((name) => ({
+        id: name,
+        name,
+        slug: name.toLowerCase(),
+      }))
+    )
+    const card = page.getByRole("listitem").filter({ hasText: "draft fixture" })
+    const tags = card.getByRole("group", { name: "Tags for draft fixture", exact: true })
+    const checkbox = card.getByRole("checkbox", { name: "Select draft fixture", exact: true })
+    const aligned = async () => {
+      const tagBox = (await tags.boundingBox())!
+      const checkBox = (await checkbox.boundingBox())!
+      expect(checkBox.y + checkBox.height / 2).toBeCloseTo(tagBox.y + tagBox.height / 2, 0)
+      expect(checkBox.x).toBeGreaterThan(tagBox.x + tagBox.width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width
+      )
+    }
+    await aligned()
+    await card.getByRole("button", { name: "Show 3 more tags", exact: true }).click()
+    await aligned()
+    await checkbox.check()
+    await expect(checkbox).toBeChecked()
+    await card.screenshot({ path: test.info().outputPath(`tag-alignment-${width}.png`) })
+    const noTags = page.getByRole("listitem").filter({ hasText: "published fixture" })
+    await expect(
+      noTags.getByRole("group", { name: "Tags for published fixture", exact: true })
+    ).toHaveCount(0)
+    await expect(
+      noTags.getByRole("checkbox", { name: "Select published fixture", exact: true })
+    ).toBeVisible()
   })
 }
 

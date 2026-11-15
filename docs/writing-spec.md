@@ -456,10 +456,11 @@ only; HTTP responses continue to use `no-store`.
 
 ### Post list actions
 
-The editor and post list share the same action order. Each admin post card keeps
-Edit directly accessible, followed by an overflow menu
-ordered by task: Visit (published) or Preview (draft/archived), Publish/Unpublish,
-Archive, then a divider and Delete. Archived rows omit Archive. The same shared
+The editor and post list share their status and destructive actions. Post-list cards and tables
+put Edit first inside the action menu, followed by Visit (published) or Preview (draft/archived),
+Publish/Unpublish, Archive, then a divider and Delete. Titles and covers also remain direct editor
+links. Card checkboxes share a row with tags on the right; wrapping or expanding tags keeps
+selection aligned without overlapping content. Archived rows omit Archive. The same shared
 post action component handles signing previews, publication and deletion; list
 rows pass summary fields and never download the article body just to show actions.
 
@@ -468,3 +469,13 @@ refresh the active archive after success. List actions preserve the current URL,
 filters and pagination instead of redirecting to an unfiltered list. Archive
 preserves the post and cover; Delete uses the existing managed R2 cleanup flow.
 Row controls use 44px targets and a post-specific accessible menu name.
+
+### Admin overview actions
+
+Post totals are native links to the full archive or the corresponding Published, Draft or Archived
+status filter. The whole Continue writing card opens the most recently edited draft, or a new post
+when none exists. These actionable cards are flat at rest. On hover the foreground lifts 4px up
+and left while the shadow and native-link hit area remain anchored, avoiding pointer flicker.
+Reduced-motion mode keeps the face stationary and uses ring feedback. Workspace-service cards
+are informational and remain flat. The existing archive URL parser, status APIs, and TanStack Query
+queries remain the single data and navigation contracts.

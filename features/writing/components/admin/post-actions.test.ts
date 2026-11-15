@@ -27,7 +27,8 @@ vi.mock("react", async (original) => ({
   useState: (initial: unknown) => [initial, mocks.setState],
   useTransition: () => [false, (callback: () => Promise<void>) => (mocks.transition = callback())],
 }))
-vi.mock("react-router", () => ({
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
   useNavigate: () => (to: string) => mocks.replace(to),
   useBlocker: () => ({ state: "unblocked" }),
   useBeforeUnload: vi.fn(),

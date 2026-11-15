@@ -124,7 +124,7 @@ for (const theme of ["light", "dark"] as const) {
       const menu = page.getByRole("menu")
       await expect(menu).toHaveCSS(
         "background-color",
-        theme === "light" ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.45)"
+        theme === "light" ? "rgba(0, 0, 0, 0.25)" : "rgba(255, 255, 255, 0.25)"
       )
       await expect(menu).toHaveCSS("box-shadow", "none")
       await expect(menu).toHaveCSS("backdrop-filter", "blur(8px)")
@@ -156,10 +156,14 @@ for (const status of ["draft", "published", "archived"] as const) {
     const { writes, fullPostReads } = await archiveFixture(page)
     await expect(
       page.getByRole("link", { name: `Edit ${status} fixture`, exact: true })
-    ).toHaveAttribute("href", `/admin/posts/edit/${ids[status]}`)
+    ).toHaveCount(0)
     await actions(page, status).click()
+    await expect(
+      page.getByRole("menuitem", { name: `Edit ${status} fixture`, exact: true })
+    ).toHaveAttribute("href", `/admin/posts/edit/${ids[status]}`)
     const published = status === "published"
     await expect(page.getByRole("menuitem")).toHaveText([
+      "Edit",
       published ? "Visit" : "Preview",
       published ? "Unpublish" : "Publish",
       ...(status === "archived" ? [] : ["Archive"]),
@@ -186,6 +190,16 @@ for (const status of ["draft", "published", "archived"] as const) {
     )
     expect(fullPostReads).toEqual([])
     await tab.close()
+  })
+}
+
+for (const view of ["cards", "table"] as const) {
+  test(`edits a post from the ${view} action menu`, async ({ page }) => {
+    await archiveFixture(page)
+    if (view === "table") await showTable(page)
+    await actions(page, "draft").click()
+    await page.getByRole("menuitem", { name: "Edit draft fixture", exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/admin/posts/edit/${ids.draft}$`))
   })
 }
 
@@ -220,9 +234,12 @@ test("publishes and unpublishes the selected row and refreshes available actions
       data: { status: target },
     })
     await actions(page, "draft").click()
-    await expect(page.getByRole("menuitem").first()).toHaveText(
-      target === "published" ? "Visit" : "Preview"
-    )
+    await expect(
+      page.getByRole("menuitem", {
+        name: target === "published" ? "Visit" : "Preview",
+        exact: true,
+      })
+    ).toBeVisible()
     await page.keyboard.press("Escape")
   }
   expect(fullPostReads).toEqual([])
@@ -270,7 +287,7 @@ test("keeps publishing errors open for retry without changing another post", asy
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
   await actions(page, "published").click()
-  await expect(page.getByRole("menuitem").first()).toHaveText("Visit")
+  await expect(page.getByRole("menuitem", { name: "Visit", exact: true })).toBeVisible()
 })
 
 test("retries failed deletion, removes only its row, and retains list filters and page", async ({
@@ -310,6 +327,10 @@ for (const width of [320, 1280]) {
     const trigger = actions(page, "draft")
     await trigger.focus()
     await page.keyboard.press("Enter")
+    await expect(
+      page.getByRole("menuitem", { name: "Edit draft fixture", exact: true })
+    ).toBeFocused()
+    await page.keyboard.press("ArrowDown")
     await expect(page.getByRole("menuitem", { name: "Preview", exact: true })).toBeFocused()
     await page.keyboard.press("ArrowDown")
     await expect(page.getByRole("menuitem", { name: "Publish", exact: true })).toBeFocused()
@@ -431,7 +452,7 @@ for (const width of [320, 1280]) {
       await page.mouse.move(0, 0)
       await expect(posts).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
-    await expect(trigger.locator("svg")).toHaveCount(width < 900 ? 2 : 1)
+    await expect(trigger.locator("svg")).toHaveCount(1)
     for (const icon of await trigger.locator("svg").all())
       await expect(icon).toHaveAttribute("aria-hidden", "true")
     await trigger.hover()
@@ -613,15 +634,24 @@ test("keeps row actions and editing available in the table", async ({ page }) =>
   await archiveFixture(page)
   const grid = await showTable(page)
   const row = grid.getByRole("row").filter({ hasText: "published fixture" })
-  await expect(
-    row.getByRole("link", { name: "Edit published fixture", exact: true })
-  ).toHaveAttribute("href", `/admin/posts/edit/${ids.published}`)
+  await expect(row.getByRole("link", { name: "Edit published fixture", exact: true })).toHaveCount(
+    0
+  )
   await expect(row.getByRole("rowheader").getByRole("link")).toHaveAttribute(
     "href",
     `/admin/posts/edit/${ids.published}`
   )
   await actions(page, "published").click()
-  await expect(page.getByRole("menuitem")).toHaveText(["Visit", "Unpublish", "Archive", "Delete"])
+  await expect(
+    page.getByRole("menuitem", { name: "Edit published fixture", exact: true })
+  ).toHaveAttribute("href", `/admin/posts/edit/${ids.published}`)
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "Edit",
+    "Visit",
+    "Unpublish",
+    "Archive",
+    "Delete",
+  ])
   await page.keyboard.press("Escape")
   await expect(actions(page, "published")).toBeFocused()
 })
