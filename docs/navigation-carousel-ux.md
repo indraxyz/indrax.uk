@@ -1,12 +1,12 @@
 # Navigation and carousel UX
 
-Branch: `feat/consistent-carousels-scroll-navigation`, based on `develop` and including
-the prerequisite work in PRs #96 and #97.
+Current navigation and carousel behavior, including the UI refinements in PR #124.
+The original implementation and its historical verification results are recorded below.
 
 ## Carousel plan
 
 1. Move the home Writing rail's responsive card width into shared UI infrastructure.
-2. Apply that width to Resume Tech Stack and Portfolio, with the same surface feedback.
+2. Apply that width to Resume Tech Stack and Portfolio, preserving feedback appropriate to each card's purpose.
 3. Make Portfolio use the same full-width viewport and container-aligned gutters.
 4. Keep bounded resume cards, named keyboard-scrollable detail panes and print columns.
 5. Cover mobile/desktop sizing, alignment, hover/focus, keyboard navigation and print behavior
@@ -28,6 +28,10 @@ independent scrollable details. Both resume rails retain bounded card heights, a
 previous/next controls, native scrolling before hydration, and the existing two-column print
 layout. No autoplay or new card-wide links are introduced.
 
+Icon buttons, including social links inside the Contact landmark, use the shared button recipe.
+Carousel tracks reserve
+8px above and below the cards so a 4px lift and its shadow remain inside the overflow boundary.
+
 ## Navigation plan and specification
 
 Public and admin top-nav destinations use purpose-specific icons with accessible names, native
@@ -35,6 +39,10 @@ hover titles, current-page state and 44px targets. Public icons are Home, Resume
 admin icons are Dashboard, Posts, Public and Sign out. Dropdown triggers use a single purpose icon
 without a chevron. The mobile admin drawer retains labelled destinations and the same route/menu
 state. These navigation changes preserve native links and existing React Router paths.
+
+Active public/admin top-nav destinations use dedicated filled SVG silhouettes; inactive destinations
+use the existing outline icons. Their accessible names, current-page semantics and 44px targets stay
+the same. Glyphs are 20px, inherit theme text color and keep internal details as cutouts.
 
 Use one shared sticky `ScrollHeader` in public and admin shells. After scrolling past
 its own height, 12 px of downward movement slides the header up; upward movement reveals
@@ -55,15 +63,26 @@ public/admin pages.
 Navigation and breadcrumb links use background feedback for hover/current state, without an
 underline or bottom border. Keyboard focus retains the shared visible ring.
 
+The About Me sheet uses the shared `ScrollHeader` with its own scroll element: 12px direction hysteresis, top-boundary reveal and
+reduced-motion support. Its icon-only Close control stays at the top right independently of the
+collapsing heading, with no footer action. The sheet's named scroll region supports keyboard
+scrolling; native dialog Escape and focus restoration remain in place.
+
 ## Stack content plan and specification
 
 Reconcile the Stack page with the implementations merged in PRs #96/#97 and the shared UX
 changes. Explain Base UI, responsive Embla rails, inline images, YouTube embeds, proportional
 resizing, alignment and the managed-upload lifecycle. Distinguish cover uploads on Save
-from inline uploads on insertion. Describe hourly abandoned-upload expiry after 24 hours
-and preservation of referenced media. Keep the existing typed content model and disclosures.
+from inline uploads on insertion. Abandoned uploads expire after 24 hours and referenced media
+is preserved. Production runs hourly cleanup; the named Preview uses post-deploy or manual
+cleanup, as described in `docs/development-and-deployment.md`. Keep the existing typed
+content model and disclosures.
 
-## Validation and shipping
+## Original implementation and validation (PRs #96–#98)
+
+The following shipping plan and results describe the original carousel/navigation work.
+Its migration prerequisites and test counts are historical, not release requirements for
+later UI-only refinements. Current release evidence belongs in the production release PR.
 
 Run formatting, ESLint, generated types, TypeScript and the unit suite, then the browser
 suite against built public/admin Worker artifacts. Inspect screenshots of the changed
@@ -123,18 +142,3 @@ Sticky-controls verification:
   no more than 2 px of separation during header reveal.
 - The repository check passed formatting, lint, generated types, TypeScript and all 854
   unit tests. This follow-up changes no database schema or remote resources.
-
-Active public/admin top-nav destinations use dedicated filled SVG silhouettes; inactive destinations
-use the existing outline icons. Their accessible names, current-page semantics and 44px targets stay
-the same. The filled glyphs inherit theme text color and keep internal details as cutouts.
-
-Informational public cards (resume, Stack, Portfolio and article containers) are flat at rest and on
-hover. Only actionable writing cards use the shared lift/flush-press effect. Icon buttons, including
-social links inside the Contact landmark, use the shared button recipe. Carousel tracks reserve
-8px above and below the cards so a 4px lift and its shadow remain inside the overflow boundary.
-
-Top-nav glyphs are 20px within the existing 44px targets. The About Me sheet uses the shared
-`ScrollHeader` with its own scroll element: 12px direction hysteresis, top-boundary reveal and
-reduced-motion support. Its icon-only Close control stays at the top right independently of the
-collapsing heading, with no footer action. The sheet's named scroll region supports keyboard
-scrolling; native dialog Escape and focus restoration remain in place.
