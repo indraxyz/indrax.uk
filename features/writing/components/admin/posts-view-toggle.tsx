@@ -34,7 +34,7 @@ export function PostsViewToggle({ view }: { view: AdminPostsView }) {
           // including while the pointer still rests on the button just chosen.
           className={cn(
             controlClassNames,
-            "size-11 shrink-0 justify-center p-0 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-accent-foreground)] aria-pressed:hover:bg-[var(--color-accent)]"
+            "size-11 shrink-0 justify-center p-0 aria-pressed:bg-[var(--color-accent)] aria-pressed:text-[var(--color-accent-foreground)] aria-pressed:hover:bg-[var(--color-accent)] aria-pressed:hover:text-[var(--color-accent-foreground)]"
           )}
         >
           <Icon className="h-4 w-4" aria-hidden />

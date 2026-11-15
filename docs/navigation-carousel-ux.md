@@ -1,12 +1,12 @@
 # Navigation and carousel UX
 
-Branch: `feat/consistent-carousels-scroll-navigation`, based on `develop` and including
-the prerequisite work in PRs #96 and #97.
+Current navigation and carousel behavior, including the UI refinements in PR #124.
+The original implementation and its historical verification results are recorded below.
 
 ## Carousel plan
 
 1. Move the home Writing rail's responsive card width into shared UI infrastructure.
-2. Apply that width to Resume Tech Stack and Portfolio, with the same surface feedback.
+2. Apply that width to Resume Tech Stack and Portfolio, preserving feedback appropriate to each card's purpose.
 3. Make Portfolio use the same full-width viewport and container-aligned gutters.
 4. Keep bounded resume cards, named keyboard-scrollable detail panes and print columns.
 5. Cover mobile/desktop sizing, alignment, hover/focus, keyboard navigation and print behavior
@@ -20,14 +20,29 @@ The shared `SectionCard` owns full-bleed sizing and print resets whenever its ex
 `carouselFullBleed` option is enabled. The first card and every resting snap align to the
 page gutter, while dragging retains access to both viewport edges.
 
-All three card types share shadow feedback on hover and focus within. Keyboard focus keeps
-its existing visible outline, and reduced-motion preferences disable the shadow transition.
+Actionable writing cards are flat at rest, lift on hover and lower on press, using the shared action
+recipe. Informational resume cards stay flat on hover/focus within and retain independent
+scroll regions. Keyboard focus stays visible, and reduced-motion preferences disable lift.
 Tech Stack remains informational; Portfolio keeps its explicit, named GitHub link and
 independent scrollable details. Both resume rails retain bounded card heights, accessible
 previous/next controls, native scrolling before hydration, and the existing two-column print
 layout. No autoplay or new card-wide links are introduced.
 
+Icon buttons, including social links inside the Contact landmark, use the shared button recipe.
+Carousel tracks reserve
+8px above and below the cards so a 4px lift and its shadow remain inside the overflow boundary.
+
 ## Navigation plan and specification
+
+Public and admin top-nav destinations use purpose-specific icons with accessible names, native
+hover titles, current-page state and 44px targets. Public icons are Home, Resume, Writing and Stack;
+admin icons are Dashboard, Posts, Public and Sign out. Dropdown triggers use a single purpose icon
+without a chevron. The mobile admin drawer retains labelled destinations and the same route/menu
+state. These navigation changes preserve native links and existing React Router paths.
+
+Active public/admin top-nav destinations use dedicated filled SVG silhouettes; inactive destinations
+use the existing outline icons. Their accessible names, current-page semantics and 44px targets stay
+the same. Glyphs are 20px, inherit theme text color and keep internal details as cutouts.
 
 Use one shared sticky `ScrollHeader` in public and admin shells. After scrolling past
 its own height, 12 px of downward movement slides the header up; upward movement reveals
@@ -45,15 +60,29 @@ Verify actual scrolling, visible geometry, focus recovery, menu pinning, route c
 pointer-focus scrolling, reduced motion and print in Playwright across mobile and desktop
 public/admin pages.
 
+Navigation and breadcrumb links use background feedback for hover/current state, without an
+underline or bottom border. Keyboard focus retains the shared visible ring.
+
+The About Me sheet uses the shared `ScrollHeader` with its own scroll element: 12px direction hysteresis, top-boundary reveal and
+reduced-motion support. Its icon-only Close control stays at the top right independently of the
+collapsing heading, with no footer action. The sheet's named scroll region supports keyboard
+scrolling; native dialog Escape and focus restoration remain in place.
+
 ## Stack content plan and specification
 
 Reconcile the Stack page with the implementations merged in PRs #96/#97 and the shared UX
 changes. Explain Base UI, responsive Embla rails, inline images, YouTube embeds, proportional
 resizing, alignment and the managed-upload lifecycle. Distinguish cover uploads on Save
-from inline uploads on insertion. Describe hourly abandoned-upload expiry after 24 hours
-and preservation of referenced media. Keep the existing typed content model and disclosures.
+from inline uploads on insertion. Abandoned uploads expire after 24 hours and referenced media
+is preserved. Production runs hourly cleanup; the named Preview uses post-deploy or manual
+cleanup, as described in `docs/development-and-deployment.md`. Keep the existing typed
+content model and disclosures.
 
-## Validation and shipping
+## Original implementation and validation (PRs #96–#98)
+
+The following shipping plan and results describe the original carousel/navigation work.
+Its migration prerequisites and test counts are historical, not release requirements for
+later UI-only refinements. Current release evidence belongs in the production release PR.
 
 Run formatting, ESLint, generated types, TypeScript and the unit suite, then the browser
 suite against built public/admin Worker artifacts. Inspect screenshots of the changed

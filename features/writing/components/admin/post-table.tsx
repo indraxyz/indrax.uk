@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, PencilLine } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 import { memo, useId, useMemo } from "react"
 import { Link, useSearchParams } from "react-router"
 import {
@@ -12,7 +12,7 @@ import {
 
 import { PostTags } from "@/features/writing/components/post-tags"
 import { ListPostActions, PostSelectionCheckbox } from "./post-selection"
-import { ADMIN_DATE_FORMAT, EDIT_ICON_LINK_CLASS } from "./post-display"
+import { ADMIN_DATE_FORMAT } from "./post-display"
 import { PostStatusLabel } from "./post-status-label"
 import type { AdminPostSummary } from "@/features/writing/types"
 import {
@@ -30,10 +30,6 @@ interface PostColumnMeta {
   className?: string
   // The title names each row for assistive technology, so it is a row header.
   rowHeader?: boolean
-  // Pinned to the start while the rest scrolls, so a narrow screen keeps each
-  // row's post in view. Header and body cells need their own opaque background.
-  sticky?: boolean
-  srOnlyHeader?: boolean
 }
 
 const features = tableFeatures({ rowSortingFeature, columnMeta: {} as PostColumnMeta })
@@ -61,16 +57,18 @@ const columns = column.columns([
     header: "Title",
     meta: {
       rowHeader: true,
-      sticky: true,
       className: "min-w-[10rem] max-w-[14rem] sm:min-w-[16rem] sm:max-w-md",
     },
     cell: ({ row }) => (
-      <Link
-        to={`/admin/posts/edit/${row.original.id}`}
-        className="break-words font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {row.original.title}
-      </Link>
+      <div className="flex items-center gap-2">
+        <ListPostActions post={row.original} />
+        <Link
+          to={`/admin/posts/edit/${row.original.id}`}
+          className="min-w-0 break-words font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {row.original.title}
+        </Link>
+      </div>
     ),
   }),
   column.accessor("status", {
@@ -111,36 +109,11 @@ const columns = column.columns([
     meta: { className: "whitespace-nowrap" },
     cell: ({ getValue }) => <DateCell value={getValue()} empty="—" />,
   }),
-  column.display({
-    id: "actions",
-    header: "Actions",
-    meta: { srOnlyHeader: true, className: "w-0" },
-    cell: ({ row }) => (
-      <div className="flex items-center justify-end gap-2">
-        <Link
-          to={`/admin/posts/edit/${row.original.id}`}
-          className={EDIT_ICON_LINK_CLASS}
-          aria-label={`Edit ${row.original.title}`}
-        >
-          <PencilLine className="h-4 w-4" aria-hidden />
-        </Link>
-        <ListPostActions post={row.original} />
-      </div>
-    ),
-  }),
 ])
 
 type PostHeader = Header<typeof features, AdminPostSummary, unknown>
 
-function ColumnHeader({
-  header,
-  sort,
-  selectable = false,
-}: {
-  header: PostHeader
-  sort: AdminPostsSort
-  selectable?: boolean
-}) {
+function ColumnHeader({ header, sort }: { header: PostHeader; sort: AdminPostsSort }) {
   const { column } = header
   const label = String(column.columnDef.header)
   const meta = column.columnDef.meta
@@ -157,17 +130,13 @@ function ColumnHeader({
   return (
     <th
       scope="col"
-      style={meta?.sticky && selectable ? { left: SELECTION_COLUMN_WIDTH } : undefined}
       aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
         "whitespace-nowrap px-3 py-2 text-left text-xs font-black uppercase tracking-[0.14em] text-muted-foreground",
-        meta?.className,
-        meta?.sticky && cn(STICKY_CELL, "bg-[var(--color-muted)]")
+        meta?.className
       )}
     >
-      {meta?.srOnlyHeader ? (
-        <span className="sr-only">{label}</span>
-      ) : actionable ? (
+      {actionable ? (
         <button
           type="button"
           // Starts with the visible label, then says what activating it does next.
@@ -247,7 +216,10 @@ export const PostTable = memo(function PostTable({
       role="region"
       aria-labelledby={captionId}
       tabIndex={0}
-      className="relative overflow-x-auto border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "relative overflow-x-auto border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selectable && "scroll-pl-[60px]"
+      )}
     >
       <table className="w-full border-collapse text-sm">
         <caption id={captionId} className="sr-only">
@@ -259,19 +231,14 @@ export const PostTable = memo(function PostTable({
               {selectable && (
                 <th
                   scope="col"
-                  className="sticky left-0 z-[2] bg-[var(--color-muted)] px-2"
+                  className={cn("px-2", STICKY_CELL, "bg-[var(--color-muted)]")}
                   style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
                 >
                   <span className="sr-only">Select post</span>
                 </th>
               )}
               {group.headers.map((header) => (
-                <ColumnHeader
-                  key={header.id}
-                  header={header}
-                  sort={options.sort}
-                  selectable={selectable}
-                />
+                <ColumnHeader key={header.id} header={header} sort={options.sort} />
               ))}
             </tr>
           ))}
@@ -284,7 +251,7 @@ export const PostTable = memo(function PostTable({
             >
               {selectable && (
                 <td
-                  className={cn("sticky left-0 z-[2] px-2", STICKY_BODY_CELL)}
+                  className={cn("px-2", STICKY_CELL, STICKY_BODY_CELL)}
                   style={{ minWidth: SELECTION_COLUMN_WIDTH, width: SELECTION_COLUMN_WIDTH }}
                 >
                   <PostSelectionCheckbox
@@ -301,14 +268,7 @@ export const PostTable = memo(function PostTable({
                   <Cell
                     key={cell.id}
                     scope={meta?.rowHeader ? "row" : undefined}
-                    style={
-                      meta?.sticky && selectable ? { left: SELECTION_COLUMN_WIDTH } : undefined
-                    }
-                    className={cn(
-                      "px-3 py-3 text-left font-medium",
-                      meta?.className,
-                      meta?.sticky && cn(STICKY_CELL, STICKY_BODY_CELL)
-                    )}
+                    className={cn("px-3 py-3 text-left font-medium", meta?.className)}
                   >
                     <table.FlexRender cell={cell} />
                   </Cell>

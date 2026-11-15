@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  cardFeedbackClassNames,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SOCIAL_LINKS } from "@/config/site"
 import { SECTION_COPY } from "@/features/resume/data/page"
 import { SectionCard } from "@/components/ui/section-card"
@@ -32,12 +26,11 @@ export function PortfolioSection() {
           height="2xl"
           className={cn(
             "variant-secondary variant-border bg-[var(--variant-soft)]",
-            RAIL_CARD_WIDTH,
-            cardFeedbackClassNames
+            RAIL_CARD_WIDTH
           )}
         >
           <CardHeader className="variant-surface-header border-b-2 pb-4">
-            <div className="relative flex items-center justify-between gap-4 pe-14">
+            <div className="flex items-center justify-between gap-4">
               <CardTitle className="text-lg leading-snug">{item.title}</CardTitle>
               <a
                 href={item.link}
@@ -46,7 +39,7 @@ export function PortfolioSection() {
                 aria-label={`${item.title} repository on GitHub (opens in a new tab)`}
                 className={cn(
                   controlClassNames,
-                  "absolute end-0 top-1/2 min-h-11 min-w-11 -translate-y-1/2 justify-center border-0 hover:text-foreground"
+                  "-my-3 min-h-11 min-w-11 shrink-0 justify-center border-transparent hover:border-border"
                 )}
               >
                 <GithubIcon className="h-4 w-4" />

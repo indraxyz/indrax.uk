@@ -16,7 +16,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-[70] bg-black/60" />
       <AlertDialogPrimitive.Popup
         className={cn(
-          "fixed top-1/2 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border-2 border-border bg-card p-6 text-card-foreground shadow-soft-lg outline-none",
+          "fixed top-1/2 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border-2 border-border bg-card p-6 text-card-foreground [box-shadow:none] outline-none",
           className
         )}
         {...props}
@@ -54,7 +54,15 @@ function AlertDialogDescription({
 }
 
 function AlertDialogFooter({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("mt-6 flex flex-wrap justify-end gap-2", className)} {...props} />
+  return (
+    <div
+      className={cn(
+        "mt-6 flex flex-col items-stretch justify-end gap-2 sm:flex-row sm:items-center [&>button]:min-h-11 [&>button]:whitespace-normal",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
 function AlertDialogCancel({
@@ -63,7 +71,7 @@ function AlertDialogCancel({
 }: ComponentProps<typeof AlertDialogPrimitive.Close>) {
   return (
     <AlertDialogPrimitive.Close
-      className={cn(buttonVariants({ variant: "secondary", size: "sm" }), className)}
+      className={cn(buttonVariants({ variant: "secondary", size: "default" }), className)}
       {...props}
     />
   )
@@ -73,7 +81,7 @@ function AlertDialogAction({ className, ...props }: ComponentProps<"button">) {
   return (
     <button
       type="button"
-      className={cn(buttonVariants({ variant: "destructive", size: "sm" }), className)}
+      className={cn(buttonVariants({ variant: "destructive", size: "default" }), className)}
       {...props}
     />
   )

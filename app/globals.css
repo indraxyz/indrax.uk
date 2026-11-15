@@ -138,6 +138,8 @@ img[data-image-state="loading"] {
     --semantic-surface-card: rgba(255, 255, 255, 0.92);
     --semantic-surface-muted: var(--primitive-neutral-50);
     --semantic-surface-overlay: var(--primitive-neutral-0);
+    --component-popover-glass-bg: rgb(0 0 0 / 25%);
+    --component-popover-glass-fg: #000;
     --semantic-text-primary: var(--primitive-neutral-900);
     --semantic-text-secondary: var(--primitive-neutral-700);
     --semantic-border-default: var(--primitive-brand-950);
@@ -257,6 +259,8 @@ img[data-image-state="loading"] {
     --semantic-surface-card: rgba(6, 59, 0, 0.84);
     --semantic-surface-muted: #0b2b05;
     --semantic-surface-overlay: #061c02;
+    --component-popover-glass-bg: rgb(255 255 255 / 25%);
+    --component-popover-glass-fg: var(--primitive-neutral-0);
     --semantic-text-primary: #f7fbe9;
     --semantic-text-secondary: #c5d7b8;
     --semantic-border-default: var(--primitive-brand-300);
@@ -414,6 +418,15 @@ img[data-image-state="loading"] {
 }
 
 @layer components {
+  /* Reserve space inside the opaque admin surface, so the body grid is never exposed. */
+  html:has([data-slot="post-selection-bar"]) {
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  [data-slot="admin-shell"]:has([data-slot="post-selection-bar"]) {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
   .variant-primary {
     --variant-bg: var(--component-variant-primary-bg);
     --variant-fg: var(--component-variant-primary-fg);
@@ -1004,4 +1017,43 @@ img[data-image-state="loading"] {
   [data-youtube-video] {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
+}
+
+/* Keep resting actions flat even when a composed card carries a legacy shadow utility. */
+.action-lift {
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+}
+
+/* Raised actions lift their face while the hard shadow lands at the original position. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  /* Keep the original hit area covered when the face moves, avoiding edge flicker. */
+  .action-lift:where(button, a, [role="button"]):not([data-flat])::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--action-lift-distance, 3px));
+  }
+
+  .action-lift:where(:not(:disabled):not([data-disabled]):not([data-flat])):hover {
+    translate: calc(-1 * var(--action-lift-distance, 3px))
+      calc(-1 * var(--action-lift-distance, 3px));
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      var(--action-lift-distance, 3px) var(--action-lift-distance, 3px) 0 0
+        var(--semantic-border-strong);
+  }
+}
+
+/* Press feedback also works on touch, where hover is unavailable. */
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .action-press:not(:disabled):not([data-disabled]):is(:active, :has(a:active, button:active)) {
+    translate: 0 0;
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+  }
+}
+
+@media (forced-colors: none) {
+  .action-press:not(:disabled):not([data-disabled]):is(:active, :has(a:active, button:active)) {
+    filter: brightness(0.95);
+  }
 }

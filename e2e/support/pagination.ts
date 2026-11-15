@@ -23,6 +23,9 @@ export async function expectIconPagination(page: Page, label: string, width: num
   }
   await pagination.getByRole("link", { name: "Next", exact: true }).blur()
   await page.mouse.move(0, 0)
+  for (const name of ["Previous", "Next"]) {
+    await expect(pagination.getByRole("link", { name, exact: true })).toHaveCSS("translate", "none")
+  }
   const bounds = await pagination.boundingBox()
   const info = await pagination.getByText("Page 2 of 3", { exact: true }).boundingBox()
   const previous = await pagination

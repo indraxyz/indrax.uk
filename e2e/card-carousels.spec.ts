@@ -149,7 +149,7 @@ for (const width of [390, 1920]) {
 }
 
 for (const width of [390, 768, 1440, 1920]) {
-  test(`matches home Writing card sizing and feedback on both resume rails at ${width}px`, async ({
+  test(`matches home Writing card sizing and respects distinct card purposes on both resume rails at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -180,31 +180,43 @@ for (const width of [390, 768, 1440, 1920]) {
     await expect(writingCard).toBeVisible()
     // Compare settled carousels: recent writing mounts after its API response,
     // while the resume initially supplies the native-scrolling SSR fallback.
-    await expect(page.getByRole("group", { name: "Writing carousel navigation" })).toBeVisible()
+    const writingControls = page.getByRole("group", { name: "Writing carousel navigation" })
+    await expect(writingControls).toBeVisible()
+    const writingLeft = await writingControls.evaluate(
+      (node) => node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
+    )
+    await expect
+      .poll(async () => Math.abs((await writingCard.boundingBox())!.x - writingLeft))
+      .toBeLessThanOrEqual(1)
     const writingBounds = (await writingCard.boundingBox())!
     await writingCard.hover()
-    const hoverShadow = await writingCard.evaluate((node) => getComputedStyle(node).boxShadow)
-    expect(hoverShadow).not.toBe("none")
+    await expect(writingCard).toHaveCSS("translate", "none")
+    await expect(writingCard).toHaveClass(/shadow-none/)
 
     await page.goto("/resume")
     for (const title of ["Tech Stack", "Portfolio"]) {
       const viewport = page.getByRole("region", { name: title, exact: true })
       const card = viewport.locator("[data-print-columns] > *").first()
-      await expect(page.getByRole("group", { name: `${title} carousel navigation` })).toBeVisible()
+      const controls = page.getByRole("group", { name: `${title} carousel navigation` })
+      await expect(controls).toBeVisible()
+      const expectedLeft = await controls.evaluate(
+        (node) => node.getBoundingClientRect().left + parseFloat(getComputedStyle(node).paddingLeft)
+      )
       await expect
         .poll(async () => Math.abs((await card.boundingBox())!.width - writingBounds.width))
         .toBeLessThanOrEqual(1)
       await expect
-        .poll(async () => Math.abs((await card.boundingBox())!.x - writingBounds.x))
+        .poll(async () => Math.abs((await card.boundingBox())!.x - expectedLeft))
         .toBeLessThanOrEqual(1)
       await card.hover()
-      await expect(card).toHaveCSS("box-shadow", hoverShadow)
+      await expect(card).toHaveCSS("box-shadow", "none")
+      await expect(card).toHaveCSS("translate", "none")
       await page.mouse.move(0, 0)
       const details = card.getByRole("region")
       await details.focus()
       await expect(details).toBeFocused()
-      await expect(card).toHaveCSS("box-shadow", hoverShadow)
-      await expect(card).toHaveCSS("transition-property", "none")
+      await expect(card).toHaveCSS("box-shadow", "none")
+      await expect(card).toHaveCSS("translate", "none")
       // Detail panes keep their own scroll keys instead of moving the carousel.
       const initialX = (await card.boundingBox())!.x
       await page.keyboard.press("ArrowRight")
@@ -212,3 +224,89 @@ for (const width of [390, 768, 1440, 1920]) {
     }
   })
 }
+
+for (const theme of ["light", "dark"]) {
+  test(`public writing cards and carousel buttons lift and press in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript((theme) => {
+      localStorage.setItem("indrax-theme", theme)
+      localStorage.setItem("indrax-analytics-consent", "denied")
+    }, theme)
+    await page.route("**/api/writing/recent**", (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: "motion",
+            slug: "motion",
+            title: "Shared interaction",
+            excerpt: "Pointer feedback",
+            coverUrl: null,
+            coverAlt: null,
+            publishedAt: "2026-10-09T00:00:00Z",
+            updatedAt: "2026-10-09T00:00:00Z",
+            readingTime: 1,
+            tags: [],
+          },
+        ],
+      })
+    )
+    await page.goto("/")
+    const title = page.getByRole("link", { name: "Shared interaction", exact: true })
+    const card = page.locator(".action-lift").filter({ has: title })
+    await expect(card).toBeVisible()
+    await expect(card).toHaveCSS(
+      "box-shadow",
+      /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+    )
+    await title.hover()
+    await expect(card).toHaveCSS("translate", "-4px -4px")
+    const rail = page.getByRole("region", { name: "Writing", exact: true })
+    const railBounds = (await rail.boundingBox())!
+    const cardBounds = (await card.boundingBox())!
+    expect(cardBounds.y - railBounds.y).toBeGreaterThanOrEqual(4)
+    const track = rail.locator("[data-print-columns]")
+    await expect(track).toHaveCSS("padding-top", "8px")
+    await expect(track).toHaveCSS("padding-bottom", "8px")
+    await page.screenshot({ path: test.info().outputPath(`home-writing-hover-${theme}.png`) })
+    await page.mouse.down()
+    await expect(card).toHaveCSS("translate", "0px")
+    await page.screenshot({ path: test.info().outputPath(`public-card-pressed-${theme}.png`) })
+    await page.mouse.up()
+    await expect(page).toHaveURL(/\/writing\/motion$/)
+    await page.goto("/resume")
+    const next = page.getByRole("button", { name: "Next Portfolio cards", exact: true })
+    await expect(next).toBeEnabled()
+    await next.hover()
+    await expect(next).toHaveCSS("translate", "-3px -3px")
+    await page.mouse.down()
+    await expect(next).toHaveCSS("translate", "0px")
+    await page.mouse.move(0, 0)
+    await page.mouse.up()
+    await expect(next).toHaveCSS("translate", "none")
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await next.hover()
+    await expect(next).toHaveCSS("translate", "none")
+  })
+}
+
+test.describe("non-hover press feedback", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+
+  test("holds a public action flush until pointer release without requiring hover", async ({
+    page,
+  }) => {
+    await page.goto("/resume")
+    expect(await page.evaluate(() => matchMedia("(hover: hover)").matches)).toBe(false)
+    const next = page.getByRole("button", { name: "Next Portfolio cards", exact: true })
+    await expect(next).toBeEnabled()
+    await next.hover()
+    await page.mouse.down()
+    await expect(next).toHaveCSS("translate", "0px")
+    await expect(next).toHaveCSS("filter", "brightness(0.95)")
+    await page.screenshot({ path: test.info().outputPath("public-button-non-hover-held.png") })
+    await expect(next).toHaveCSS("translate", "0px")
+    await page.mouse.move(0, 0)
+    await page.mouse.up()
+    await expect(next).toHaveCSS("translate", "none")
+  })
+})

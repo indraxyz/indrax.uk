@@ -13,6 +13,3 @@ export const ADMIN_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   month: "short",
   day: "numeric",
 }
-
-export const EDIT_ICON_LINK_CLASS =
-  "flex h-11 w-11 items-center justify-center border-2 border-border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

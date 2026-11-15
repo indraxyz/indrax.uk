@@ -26,7 +26,7 @@ export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
                 to={item.path}
                 reloadDocument={item.reloadDocument}
                 className={cn(
-                  "border-b-2 border-transparent px-1.5 py-1 break-words hover:border-ring hover:bg-muted hover:text-foreground",
+                  "px-1.5 py-1 break-words no-underline hover:bg-muted hover:no-underline hover:text-foreground",
                   focusControlClassNames
                 )}
               >
@@ -36,7 +36,7 @@ export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
               <span
                 aria-current={index === items.length - 1 ? "page" : undefined}
                 className={cn(
-                  "min-w-0 border-b-2 border-transparent px-1.5 py-1 break-words",
+                  "min-w-0 px-1.5 py-1 break-words",
                   index === items.length - 1 && currentPageClassNames
                 )}
               >
