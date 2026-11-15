@@ -16,7 +16,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-[70] bg-black/60" />
       <AlertDialogPrimitive.Popup
         className={cn(
-          "fixed top-1/2 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border-2 border-border bg-card p-6 text-card-foreground shadow-soft-lg outline-none",
+          "fixed top-1/2 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border-2 border-border bg-card p-6 text-card-foreground [box-shadow:none] outline-none",
           className
         )}
         {...props}

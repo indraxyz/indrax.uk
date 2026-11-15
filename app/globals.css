@@ -1018,3 +1018,45 @@ img[data-image-state="loading"] {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* Keep resting actions flat even when a composed card carries a legacy shadow utility. */
+.action-lift {
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+}
+
+/* Raised actions lift their face while the hard shadow lands at the original position. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  /* Keep the original hit area covered when the face moves, avoiding edge flicker. */
+  .action-lift:where(button, a, [role="button"]):not([data-flat]):not(nav *)::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--action-lift-distance, 3px));
+  }
+
+  .action-lift:where(:not(:disabled):not([data-disabled]):not([data-flat]):not(nav *)):hover {
+    translate: calc(-1 * var(--action-lift-distance, 3px))
+      calc(-1 * var(--action-lift-distance, 3px));
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      var(--action-lift-distance, 3px) var(--action-lift-distance, 3px) 0 0
+        var(--semantic-border-strong);
+  }
+}
+
+/* Press feedback also works on touch, where hover is unavailable. */
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .action-press:not(:disabled):not([data-disabled]):not(nav *):is(
+      :active,
+      :has(a:active, button:active)
+    ) {
+    translate: 0 0;
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+  }
+}
+
+@media (forced-colors: none) {
+  .action-press:not(:disabled):not([data-disabled]):is(:active, :has(a:active, button:active)) {
+    filter: brightness(0.95);
+  }
+}

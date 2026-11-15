@@ -110,7 +110,16 @@ for (const width of [320, 1280]) {
       await page.screenshot({
         path: test.info().outputPath(`dashboard-hover-${width}-${theme}.png`),
       })
+      await page.mouse.down()
+      await expect(shadow).toHaveCSS("opacity", "0")
+      await expect.poll(async () => (await face.boundingBox())!.x).toBeCloseTo(faceBefore.x, 0)
+      await expect.poll(async () => (await face.boundingBox())!.y).toBeCloseTo(faceBefore.y, 0)
+      await page.screenshot({
+        path: test.info().outputPath(`dashboard-pressed-${width}-${theme}.png`),
+      })
+      // Release away from the card so this geometry check does not navigate.
       await page.mouse.move(0, 0)
+      await page.mouse.up()
       await expect(shadow).toHaveCSS("opacity", "0")
       expect((await face.boundingBox())!.x).toBeCloseTo(faceBefore.x, 0)
       expect((await face.boundingBox())!.y).toBeCloseTo(faceBefore.y, 0)

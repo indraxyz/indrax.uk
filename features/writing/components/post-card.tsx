@@ -1,19 +1,13 @@
 import { memo } from "react"
 import { Link } from "react-router"
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  cardFeedbackClassNames,
-  type CardTitleLevel,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, type CardTitleLevel } from "@/components/ui/card"
 import { PostCover } from "@/features/writing/components/post-cover"
 import { PostMeta } from "@/features/writing/components/post-meta"
 import { PostTags } from "@/features/writing/components/post-tags"
 import { WRITING_CONFIG } from "@/features/writing/config"
 import type { PostSummary } from "@/features/writing/types"
+import { actionLiftClassNames } from "@/components/ui/variants"
 import { cn } from "@/lib/utils"
 
 interface PostCardProps {
@@ -39,8 +33,8 @@ export const PostCard = memo(function PostCard({
       variant="card"
       // `relative` is what the title's stretched hit area below is measured against.
       className={cn(
-        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)]",
-        cardFeedbackClassNames,
+        "variant-secondary variant-border relative flex flex-col bg-[var(--variant-soft)] cursor-pointer [--action-lift-distance:4px]",
+        actionLiftClassNames,
         className
       )}
     >
@@ -54,7 +48,7 @@ export const PostCard = memo(function PostCard({
           <Link
             prefetch="none"
             to={`${WRITING_CONFIG.basePath}/${post.slug}`}
-            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:underline"
+            className="after:absolute after:-inset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:underline"
           >
             {post.title}
           </Link>

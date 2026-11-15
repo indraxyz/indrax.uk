@@ -132,10 +132,17 @@ for (const theme of ["light", "dark"] as const) {
       expect(results.violations).toEqual([])
       await page.screenshot({ path: test.info().outputPath(`${capture}-${theme}.png`) })
     }
-    await actions(page, "draft").click()
+    const trigger = actions(page, "draft")
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await trigger.hover()
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
+    await trigger.click()
+    await expect(trigger).toHaveAttribute("data-active", "")
+    await expect(trigger).not.toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
     await expectGlassMenu("post-menu-cards")
     await page.keyboard.press("Escape")
     await expect(actions(page, "draft")).toBeFocused()
+    await expect(trigger).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)")
     await showTable(page)
     await actions(page, "draft").click()
     await expectGlassMenu("post-menu-table")
@@ -466,7 +473,7 @@ for (const width of [320, 1280]) {
       expect(bounds!.height).toBe(posts!.height)
     } else {
       await expect(trigger).toHaveCSS("text-decoration-line", "none")
-      await expect(trigger).toHaveCSS("border-bottom-width", "2px")
+      await expect(trigger).toHaveCSS("border-bottom-width", "0px")
       await expect(trigger).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     }
     await trigger.focus()
@@ -554,7 +561,6 @@ test("switches posts between cards and a table and remembers the choice", async 
     "Tags",
     /Published/,
     /Updated/,
-    "Actions",
   ])
   await expect(page.getByRole("listitem").filter({ hasText: "draft fixture" })).toHaveCount(0)
   expect(
@@ -667,7 +673,7 @@ test("scrolls a narrow table inside its own region instead of the page", async (
   await expect(grid).toBeVisible()
 
   // Only selection stays pinned; the title and all remaining columns scroll.
-  const title = grid.getByRole("rowheader", { name: "draft fixture" })
+  const title = grid.getByRole("rowheader").filter({ has: actions(page, "draft") })
   const row = grid.getByRole("row").filter({ hasText: "draft fixture" })
   const selection = row.getByRole("cell").first()
   const before = {
@@ -699,6 +705,8 @@ test("scrolls a narrow table inside its own region instead of the page", async (
       })
     )
     .toBe(true)
+  await page.keyboard.press("Shift+Tab")
+  await expect(actions(page, "draft")).toBeFocused()
   await page.keyboard.press("Shift+Tab")
   const checkbox = grid.getByRole("checkbox", { name: "Select draft fixture", exact: true })
   await expect(checkbox).toBeFocused()
@@ -756,3 +764,65 @@ test("layout choice survives failed writes over an older stored preference", asy
   await layout.getByRole("button", { name: "Cards", exact: true }).click()
   await expect(table).toHaveAttribute("aria-pressed", "false")
 })
+
+for (const theme of ["light", "dark"] as const) {
+  test(`confirmation is shadowless and buttons lift only on hover in ${theme}`, async ({
+    page,
+  }) => {
+    await page.addInitScript((theme) => localStorage.setItem("indrax-theme", theme), theme)
+    await archiveFixture(page)
+    await actions(page, "draft").click()
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click()
+    const dialog = page.getByRole("alertdialog", { name: "Delete post?", exact: true })
+    await expect(dialog).toHaveCSS("box-shadow", "none")
+    const cancel = dialog.getByRole("button", { name: "Cancel", exact: true })
+    const confirm = dialog.getByRole("button", { name: "Delete post", exact: true })
+    await page.mouse.move(0, 0)
+    for (const button of [cancel, confirm]) {
+      await expect(button).toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+      const original = (await button.boundingBox())!
+      await button.hover()
+      await expect(button).toHaveCSS("translate", "-3px -3px")
+      await expect(button).not.toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+      await expect.poll(async () => (await button.boundingBox())!.x).toBeCloseTo(original.x - 3, 0)
+      await expect.poll(async () => (await button.boundingBox())!.y).toBeCloseTo(original.y - 3, 0)
+      // The original bottom-right edge remains a stable pointer target during the lift.
+      await page.mouse.move(original.x + original.width - 1, original.y + original.height - 1)
+      await expect(button).toHaveCSS("translate", "-3px -3px")
+      await page.screenshot({ path: test.info().outputPath(`dialog-button-hover-${theme}.png`) })
+      await button.hover()
+      await page.mouse.down()
+      await expect(button).toHaveCSS("translate", "0px")
+      await page.mouse.move(0, 0)
+      await page.mouse.up()
+      await expect(button).toHaveCSS("translate", "none")
+      await expect(button).toHaveCSS(
+        "box-shadow",
+        /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+      )
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await confirm.hover()
+    await expect(confirm).toHaveCSS("translate", "none")
+    await expect(confirm).toHaveCSS(
+      "box-shadow",
+      /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+    )
+    expect(
+      await confirm.evaluate((node) => parseFloat(getComputedStyle(node).transitionDuration))
+    ).toBeLessThanOrEqual(0.00001)
+    await cancel.focus()
+    await expect(cancel).toBeFocused()
+    const results = await new AxeBuilder({ page }).include('[role="alertdialog"]').analyze()
+    expect(results.violations).toEqual([])
+    await page.screenshot({ path: test.info().outputPath(`dialog-rest-${theme}.png`) })
+    await cancel.click()
+    await expect(actions(page, "draft")).toBeFocused()
+  })
+}

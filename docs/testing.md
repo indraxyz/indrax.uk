@@ -597,3 +597,13 @@ card opens the latest draft, or creates a new post when none exists. Clickable d
 no resting shadow. On hover only the foreground face lifts 4px up/left; the shadow and native-link
 hit area stay anchored to the original bounds, preventing hover flicker. Reduced-motion mode uses
 stationary ring feedback. Informational service cards stay flat. Browser checks verify filter navigation, writing destinations, hover feedback, layout and axe.
+
+Post-list browser checks also verify action placement inside the Title cell, open-only trigger borders, shadowless
+confirmation dialogs and shared button hover lift/reset in both themes. Reduced-motion checks ensure
+buttons remain stationary without a shadow; dialog axe checks cover the confirmation controls.
+Navigation regressions cover hover without underlines for top navigation and breadcrumbs.
+
+Shared interaction coverage verifies pointer-down geometry for dashboard cards, confirmation buttons,
+public writing cards and public carousel controls. Public cards must still reach their article after
+release; reduced-motion controls stay stationary. Informational resume cards retain their existing
+focus and scroll behavior.

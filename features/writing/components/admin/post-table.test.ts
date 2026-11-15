@@ -106,7 +106,10 @@ describe("PostTable", () => {
     const html = render()
     expect(headerFor(html, "Status")).not.toContain("<button")
     expect(headerFor(html, "Tags")).not.toContain("<button")
-    expect(headerFor(html, "Actions")).toContain('<span class="sr-only">Actions</span>')
+    expect(headerFor(html, "Actions")).toBeUndefined()
+    const titleCell = html.match(/<th scope="row"[^>]*>(.*?)<\/th>/)?.[1]
+    expect(titleCell).toContain('aria-label="Actions for Published post"')
+    expect(titleCell!.indexOf('aria-label="Actions')).toBeLessThan(titleCell!.indexOf("<a "))
   })
 
   it("leaves every header unsorted for orderings without a column", () => {

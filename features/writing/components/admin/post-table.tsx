@@ -30,7 +30,6 @@ interface PostColumnMeta {
   className?: string
   // The title names each row for assistive technology, so it is a row header.
   rowHeader?: boolean
-  srOnlyHeader?: boolean
 }
 
 const features = tableFeatures({ rowSortingFeature, columnMeta: {} as PostColumnMeta })
@@ -61,12 +60,15 @@ const columns = column.columns([
       className: "min-w-[10rem] max-w-[14rem] sm:min-w-[16rem] sm:max-w-md",
     },
     cell: ({ row }) => (
-      <Link
-        to={`/admin/posts/edit/${row.original.id}`}
-        className="break-words font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {row.original.title}
-      </Link>
+      <div className="flex items-center gap-2">
+        <ListPostActions post={row.original} />
+        <Link
+          to={`/admin/posts/edit/${row.original.id}`}
+          className="min-w-0 break-words font-black uppercase tracking-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {row.original.title}
+        </Link>
+      </div>
     ),
   }),
   column.accessor("status", {
@@ -107,16 +109,6 @@ const columns = column.columns([
     meta: { className: "whitespace-nowrap" },
     cell: ({ getValue }) => <DateCell value={getValue()} empty="—" />,
   }),
-  column.display({
-    id: "actions",
-    header: "Actions",
-    meta: { srOnlyHeader: true, className: "w-0" },
-    cell: ({ row }) => (
-      <div className="flex items-center justify-end gap-2">
-        <ListPostActions post={row.original} />
-      </div>
-    ),
-  }),
 ])
 
 type PostHeader = Header<typeof features, AdminPostSummary, unknown>
@@ -144,9 +136,7 @@ function ColumnHeader({ header, sort }: { header: PostHeader; sort: AdminPostsSo
         meta?.className
       )}
     >
-      {meta?.srOnlyHeader ? (
-        <span className="sr-only">{label}</span>
-      ) : actionable ? (
+      {actionable ? (
         <button
           type="button"
           // Starts with the visible label, then says what activating it does next.

@@ -32,12 +32,12 @@ function DashboardActionCard({
       <span
         data-slot="dashboard-card-shadow"
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[var(--semantic-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none"
+        className="pointer-events-none absolute inset-0 bg-[var(--semantic-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-active:opacity-0 motion-reduce:transition-none"
       />
       <div
         data-slot="dashboard-card-face"
         className={cn(
-          "relative h-full border-2 border-border bg-[var(--color-background)] bg-[image:linear-gradient(var(--color-card),var(--color-card))] transition-transform duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0 motion-reduce:group-hover:ring-2 motion-reduce:group-hover:ring-ring",
+          "relative h-full border-2 border-border bg-[var(--color-background)] bg-[image:linear-gradient(var(--color-card),var(--color-card))] transition-transform duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 group-active:translate-x-0 group-active:translate-y-0 group-active:brightness-95 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0 motion-reduce:group-hover:ring-2 motion-reduce:group-hover:ring-ring",
           className
         )}
       >

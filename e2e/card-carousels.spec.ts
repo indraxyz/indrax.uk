@@ -149,7 +149,7 @@ for (const width of [390, 1920]) {
 }
 
 for (const width of [390, 768, 1440, 1920]) {
-  test(`matches home Writing card sizing and feedback on both resume rails at ${width}px`, async ({
+  test(`matches home Writing card sizing and respects distinct card purposes on both resume rails at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -183,8 +183,8 @@ for (const width of [390, 768, 1440, 1920]) {
     await expect(page.getByRole("group", { name: "Writing carousel navigation" })).toBeVisible()
     const writingBounds = (await writingCard.boundingBox())!
     await writingCard.hover()
-    const hoverShadow = await writingCard.evaluate((node) => getComputedStyle(node).boxShadow)
-    expect(hoverShadow).not.toBe("none")
+    await expect(writingCard).toHaveCSS("translate", "none")
+    await expect(writingCard).toHaveClass(/shadow-none/)
 
     await page.goto("/resume")
     for (const title of ["Tech Stack", "Portfolio"]) {
@@ -198,7 +198,8 @@ for (const width of [390, 768, 1440, 1920]) {
         .poll(async () => Math.abs((await card.boundingBox())!.x - writingBounds.x))
         .toBeLessThanOrEqual(1)
       await card.hover()
-      await expect(card).toHaveCSS("box-shadow", hoverShadow)
+      const hoverShadow = await card.evaluate((node) => getComputedStyle(node).boxShadow)
+      expect(hoverShadow).not.toBe("none")
       await page.mouse.move(0, 0)
       const details = card.getByRole("region")
       await details.focus()
@@ -212,3 +213,78 @@ for (const width of [390, 768, 1440, 1920]) {
     }
   })
 }
+
+for (const theme of ["light", "dark"]) {
+  test(`public writing cards and carousel buttons lift and press in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript((theme) => localStorage.setItem("indrax-theme", theme), theme)
+    await page.route("**/api/writing/recent**", (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: "motion",
+            slug: "motion",
+            title: "Shared interaction",
+            excerpt: "Pointer feedback",
+            coverUrl: null,
+            coverAlt: null,
+            publishedAt: "2026-10-09T00:00:00Z",
+            updatedAt: "2026-10-09T00:00:00Z",
+            readingTime: 1,
+            tags: [],
+          },
+        ],
+      })
+    )
+    await page.goto("/")
+    const title = page.getByRole("link", { name: "Shared interaction", exact: true })
+    const card = page.locator(".action-lift").filter({ has: title })
+    await expect(card).toBeVisible()
+    await expect(card).toHaveCSS(
+      "box-shadow",
+      /^(none|(?:rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(?:, )?)+)$/
+    )
+    await title.hover()
+    await expect(card).toHaveCSS("translate", "-4px -4px")
+    await page.mouse.down()
+    await expect(card).toHaveCSS("translate", "0px")
+    await page.screenshot({ path: test.info().outputPath(`public-card-pressed-${theme}.png`) })
+    await page.mouse.up()
+    await expect(page).toHaveURL(/\/writing\/motion$/)
+    await page.goto("/resume")
+    const next = page.getByRole("button", { name: "Next Portfolio cards", exact: true })
+    await expect(next).toBeEnabled()
+    await next.hover()
+    await expect(next).toHaveCSS("translate", "-3px -3px")
+    await page.mouse.down()
+    await expect(next).toHaveCSS("translate", "0px")
+    await page.mouse.move(0, 0)
+    await page.mouse.up()
+    await expect(next).toHaveCSS("translate", "none")
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await next.hover()
+    await expect(next).toHaveCSS("translate", "none")
+  })
+}
+
+test.describe("non-hover press feedback", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+
+  test("holds a public action flush until pointer release without requiring hover", async ({
+    page,
+  }) => {
+    await page.goto("/resume")
+    expect(await page.evaluate(() => matchMedia("(hover: hover)").matches)).toBe(false)
+    const next = page.getByRole("button", { name: "Next Portfolio cards", exact: true })
+    await expect(next).toBeEnabled()
+    await next.hover()
+    await page.mouse.down()
+    await expect(next).toHaveCSS("translate", "0px")
+    await expect(next).toHaveCSS("filter", "brightness(0.95)")
+    await page.screenshot({ path: test.info().outputPath("public-button-non-hover-held.png") })
+    await expect(next).toHaveCSS("translate", "0px")
+    await page.mouse.move(0, 0)
+    await page.mouse.up()
+    await expect(next).toHaveCSS("translate", "none")
+  })
+})

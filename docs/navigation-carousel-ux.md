@@ -20,8 +20,9 @@ The shared `SectionCard` owns full-bleed sizing and print resets whenever its ex
 `carouselFullBleed` option is enabled. The first card and every resting snap align to the
 page gutter, while dragging retains access to both viewport edges.
 
-All three card types share shadow feedback on hover and focus within. Keyboard focus keeps
-its existing visible outline, and reduced-motion preferences disable the shadow transition.
+Actionable writing cards are flat at rest, lift on hover and lower on press, using the shared action
+recipe. Informational resume cards retain shadow feedback on hover/focus within and independent
+scroll regions. Keyboard focus stays visible, and reduced-motion preferences disable lift.
 Tech Stack remains informational; Portfolio keeps its explicit, named GitHub link and
 independent scrollable details. Both resume rails retain bounded card heights, accessible
 previous/next controls, native scrolling before hydration, and the existing two-column print
@@ -50,6 +51,9 @@ transition. Print and the public no-JavaScript fallback keep navigation visible.
 Verify actual scrolling, visible geometry, focus recovery, menu pinning, route changes,
 pointer-focus scrolling, reduced motion and print in Playwright across mobile and desktop
 public/admin pages.
+
+Navigation and breadcrumb links use background feedback for hover/current state, without an
+underline or bottom border. Keyboard focus retains the shared visible ring.
 
 ## Stack content plan and specification
 

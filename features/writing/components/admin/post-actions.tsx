@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  MoreVertical,
   PencilLine,
   RefreshCw,
   Send,
@@ -183,12 +184,22 @@ export function PostActions({
             disabled={busy}
             aria-label={actionLabel}
             title={actionLabel}
+            data-flat={context === "list" ? "" : undefined}
+            data-active={
+              context === "list" && (menuOpen || statusOpen || deleteOpen) ? "" : undefined
+            }
             className={cn(
               controlClassNames,
-              "h-11 w-11 shrink-0 justify-center bg-card p-0 disabled:opacity-60"
+              "h-11 w-11 shrink-0 justify-center bg-card p-0 disabled:opacity-60",
+              context === "list" &&
+                "border-transparent bg-transparent data-active:border-border data-active:bg-muted"
             )}
           >
-            <MoreHorizontal className="h-4 w-4" aria-hidden />
+            {context === "list" ? (
+              <MoreVertical className="h-4 w-4" aria-hidden />
+            ) : (
+              <MoreHorizontal className="h-4 w-4" aria-hidden />
+            )}
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner align="end" sideOffset={8} className="z-[60]">

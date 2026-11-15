@@ -470,6 +470,16 @@ filters and pagination instead of redirecting to an unfiltered list. Archive
 preserves the post and cover; Delete uses the existing managed R2 cleanup flow.
 Row controls use 44px targets and a post-specific accessible menu name.
 
+Post-list action triggers reserve a transparent border at rest and on hover; the border becomes
+visible while their menu or confirmation is open. The vertical-dots action trigger sits before the title
+inside the Title cell, with no separate Actions column; only selection is sticky. Confirmation dialogs have no raised shadow. Shared raised
+buttons are flat at rest and smoothly lift 3px up/left on pointer hover, with a hard shadow at the
+original position. Flat and ghost buttons stay flat. Reduced-motion and touch users receive no lift;
+keyboard focus retains its ring and disabled buttons do not animate. Pressing lowers the face flush with its original bounds and hides the shadow until release.
+A subtle brightness change also provides held-state feedback on touch devices. The same recipe covers bordered action controls in both applications and
+public writing cards; dashboard card faces also lower on press. Navigation and flat menu triggers
+retain their background/focus treatment.
+
 ### Admin overview actions
 
 Post totals are native links to the full archive or the corresponding Published, Draft or Archived

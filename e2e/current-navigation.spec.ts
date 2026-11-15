@@ -5,10 +5,7 @@ async function expectCurrentPage(link: Locator) {
   expect(
     await link.evaluate((element) => {
       const style = getComputedStyle(element)
-      return (
-        style.borderBottomColor !== "rgba(0, 0, 0, 0)" &&
-        style.backgroundColor !== "rgba(0, 0, 0, 0)"
-      )
+      return style.textDecorationLine === "none" && style.backgroundColor !== "rgba(0, 0, 0, 0)"
     })
   ).toBe(true)
 }
@@ -25,6 +22,15 @@ for (const theme of ["light", "dark"]) {
     await expectCurrentPage(
       page.getByRole("navigation", { name: "Breadcrumb" }).locator('[aria-current="page"]')
     )
+    for (const link of [
+      navigation.getByRole("link", { name: "Stack", exact: true }),
+      page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link").first(),
+    ]) {
+      await link.hover()
+      await expect(link).toHaveCSS("text-decoration-line", "none")
+      await expect(link).toHaveCSS("border-bottom-width", "0px")
+      await page.screenshot({ path: test.info().outputPath(`navigation-hover-${theme}.png`) })
+    }
     await navigation.getByRole("link", { name: "Stack", exact: true }).click()
     await expect(page).toHaveURL(/\/tech-stack$/)
     await expectCurrentPage(navigation.getByRole("link", { name: "Stack", exact: true }))
@@ -163,7 +169,7 @@ for (const width of [320, 1280]) {
         await expectCurrentPage(dashboard)
         for (const edge of ["top", "left", "right"])
           await expect(dashboard).toHaveCSS(`border-${edge}-width`, "0px")
-        await expect(dashboard).toHaveCSS("border-bottom-width", "2px")
+        await expect(dashboard).toHaveCSS("border-bottom-width", "0px")
         const box = await dashboard.boundingBox()
         expect(box?.width).toBe(44)
         expect(box?.height).toBe(44)
